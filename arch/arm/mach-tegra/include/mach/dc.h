@@ -426,6 +426,7 @@ struct tegra_dc_win {
 	unsigned		out_w;
 	unsigned		out_h;
 	unsigned		z;
+	u8			global_alpha;
 
 	struct tegra_dc_csc	csc;
 
