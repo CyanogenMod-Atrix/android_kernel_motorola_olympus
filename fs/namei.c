@@ -2497,7 +2497,7 @@ SYSCALL_DEFINE4(mknodat, int, dfd, const char __user *, filename, int, mode,
 {
 	struct dentry *dentry;
 	struct path path;
-	int error;
+	int error = 0;
 
 	if (S_ISDIR(mode))
 		return -EPERM;
@@ -2569,7 +2569,7 @@ SYSCALL_DEFINE3(mkdirat, int, dfd, const char __user *, pathname, int, mode)
 {
 	struct dentry *dentry;
 	struct path path;
-	int error;
+	int error = 0;
 
 	dentry = user_path_create(dfd, pathname, &path, 1);
 	if (IS_ERR(dentry))
@@ -2662,7 +2662,7 @@ out:
 static long do_rmdir(int dfd, const char __user *pathname)
 {
 	int error = 0;
-	char * name;
+	char * name = 0;
 	struct dentry *dentry;
 	struct nameidata nd;
 
@@ -2758,7 +2758,7 @@ int vfs_unlink(struct inode *dir, struct dentry *dentry)
 static long do_unlinkat(int dfd, const char __user *pathname)
 {
 	int error;
-	char *name;
+	char *name = 0;
 	struct dentry *dentry;
 	struct nameidata nd;
 	struct inode *inode = NULL;
@@ -3149,8 +3149,8 @@ SYSCALL_DEFINE4(renameat, int, olddfd, const char __user *, oldname,
 	struct dentry *old_dentry, *new_dentry;
 	struct dentry *trap;
 	struct nameidata oldnd, newnd;
-	char *from;
-	char *to;
+	char *from = 0;
+	char *to = 0;
 	int error;
 
 	error = user_path_parent(olddfd, oldname, &oldnd, &from);
