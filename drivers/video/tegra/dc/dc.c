@@ -2009,7 +2009,7 @@ static void tegra_dc_trigger_windows(struct tegra_dc *dc)
 		dc->windows[i].dirty = 0;
 		completed = 1;
 #else
-		if (!(val & (WIN_A_UPDATE << i))) {
+		if (!(val & (WIN_A_ACT_REQ << i))) {
 			dc->windows[i].dirty = 0;
 			completed = 1;
 		} else {
