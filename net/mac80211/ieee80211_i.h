@@ -718,6 +718,10 @@ enum {
  *	about us leaving the channel and stop all associated STA interfaces
  * @SCAN_ENTER_OPER_CHANNEL: Enter the operating channel again, notify the
  *	AP about us being back and restart all associated STA interfaces
+ * @SCAN_ABORT: Abnormally terminate the scan operation, set only when
+ *	on the operating channel
+ * @SCAN_ENTER_OPER_CHANNEL_ABORT: Return to the operating channel then
+ *	terminate the scan operation
  */
 enum mac80211_scan_state {
 	SCAN_DECISION,
@@ -725,6 +729,8 @@ enum mac80211_scan_state {
 	SCAN_SEND_PROBE,
 	SCAN_LEAVE_OPER_CHANNEL,
 	SCAN_ENTER_OPER_CHANNEL,
+	SCAN_ABORT,
+	SCAN_ENTER_OPER_CHANNEL_ABORT,
 };
 
 struct ieee80211_local {
