@@ -215,7 +215,7 @@ static __initdata struct tegra_pingroup_config enterprise_pinmux_common[] = {
 	DEFAULT_PINMUX(LCD_D5,          DISPLAYA,        NORMAL,    NORMAL,     INPUT),
 	DEFAULT_PINMUX(LCD_D6,          RSVD1,           NORMAL,    NORMAL,     INPUT),
 	DEFAULT_PINMUX(LCD_D7,          RSVD1,           NORMAL,    NORMAL,     OUTPUT),
-	DEFAULT_PINMUX(LCD_D8,          DISPLAYA,        NORMAL,    NORMAL,     INPUT),
+	DEFAULT_PINMUX(LCD_D8,          DISPLAYA,        NORMAL,    TRISTATE,   INPUT),
 	DEFAULT_PINMUX(LCD_D9,          DISPLAYA,        NORMAL,    NORMAL,     INPUT),
 	DEFAULT_PINMUX(LCD_D11,         DISPLAYA,        NORMAL,    NORMAL,     INPUT),
 	DEFAULT_PINMUX(LCD_D12,         DISPLAYA,        NORMAL,    NORMAL,     INPUT),
