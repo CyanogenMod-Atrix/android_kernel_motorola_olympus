@@ -204,16 +204,114 @@ static void ventana_nct1008_init(void)
 	gpio_direction_input(NCT1008_THERM2_GPIO);
 }
 
+static long ventana_shutdown_temp = 115000;
+static long ventana_throttle_temp = 90000;
+static long ventana_throttle_hysteresis = 3000;
+static struct nct1008_data *nct_data;
+
+static void ventana_thermal_alert(void *vdata)
+{
+	struct nct1008_data *data = vdata;
+	long temp;
+	long lo_limit, hi_limit;
+	bool is_above_throttle;
+
+	nct1008_thermal_get_temp(data, &temp);
+	is_above_throttle = (temp >= ventana_throttle_temp);
+
+	if (is_above_throttle != tegra_is_throttling())
+		tegra_throttling_enable(is_above_throttle);
+
+	if (is_above_throttle) {
+		lo_limit = ventana_throttle_temp - ventana_throttle_hysteresis;
+		hi_limit = ventana_shutdown_temp;
+	} else {
+		lo_limit = 0;
+		hi_limit = ventana_throttle_temp;
+	}
+
+	nct1008_thermal_set_limits(data, lo_limit, hi_limit);
+}
+
+static void nct1008_probe_callback(struct nct1008_data *data)
+{
+	nct_data = data;
+	nct1008_thermal_set_shutdown_temp(data, ventana_shutdown_temp);
+	nct1008_thermal_set_alert(data, ventana_thermal_alert, data);
+	nct1008_thermal_set_limits(data, 0, ventana_throttle_temp);
+}
+
+#ifdef CONFIG_DEBUG_FS
+static int ventana_thermal_get_throttle_temp(void *data, u64 *val)
+{
+	*val = (u64)ventana_throttle_temp;
+	return 0;
+}
+
+static int ventana_thermal_set_throttle_temp(void *data, u64 val)
+{
+	ventana_throttle_temp = val;
+	if (nct_data)
+		ventana_thermal_alert(nct_data);
+
+	return 0;
+}
+
+DEFINE_SIMPLE_ATTRIBUTE(throttle_fops,
+			ventana_thermal_get_throttle_temp,
+			ventana_thermal_set_throttle_temp,
+			"%llu\n");
+
+static int ventana_thermal_get_shutdown_temp(void *data, u64 *val)
+{
+	*val = (u64)ventana_shutdown_temp;
+	return 0;
+}
+
+static int ventana_thermal_set_shutdown_temp(void *data, u64 val)
+{
+	ventana_shutdown_temp = val;
+	if (nct_data)
+		nct1008_thermal_set_shutdown_temp(nct_data,
+						ventana_shutdown_temp);
+
+	return 0;
+}
+
+DEFINE_SIMPLE_ATTRIBUTE(shutdown_fops,
+			ventana_thermal_get_shutdown_temp,
+			ventana_thermal_set_shutdown_temp,
+			"%llu\n");
+
+
+static int __init ventana_thermal_debug_init(void)
+{
+	struct dentry *thermal_debugfs_root;
+
+	thermal_debugfs_root = debugfs_create_dir("thermal", 0);
+
+	if (!debugfs_create_file("throttle", 0644, thermal_debugfs_root,
+					NULL, &throttle_fops))
+		return -ENOMEM;
+
+	if (!debugfs_create_file("shutdown", 0644, thermal_debugfs_root,
+					NULL, &shutdown_fops))
+		return -ENOMEM;
+
+	return 0;
+}
+
+late_initcall(ventana_thermal_debug_init);
+
+#endif
+
+
 static struct nct1008_platform_data ventana_nct1008_pdata = {
 	.supported_hwrev = true,
 	.ext_range = false,
 	.conv_rate = 0x08,
 	.offset = 0,
-	.hysteresis = 0,
-	.shutdown_ext_limit = 115,
-	.shutdown_local_limit = 120,
-	.throttling_ext_limit = 90,
-	.alarm_fn = tegra_throttling_enable,
+	.probe_callback = nct1008_probe_callback,
 };
 
 static const struct i2c_board_info ventana_i2c0_board_info[] = {
