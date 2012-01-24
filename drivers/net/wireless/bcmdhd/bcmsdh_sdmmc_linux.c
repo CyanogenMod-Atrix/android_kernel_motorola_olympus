@@ -21,7 +21,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: bcmsdh_sdmmc_linux.c 300908 2011-12-06 10:32:01Z $
+ * $Id: bcmsdh_sdmmc_linux.c 308645 2012-01-17 02:33:26Z $
  */
 
 #include <typedefs.h>
@@ -55,6 +55,12 @@
 #if !defined(SDIO_DEVICE_ID_BROADCOM_4330)
 #define SDIO_DEVICE_ID_BROADCOM_4330	0x4330
 #endif /* !defined(SDIO_DEVICE_ID_BROADCOM_4330) */
+#if !defined(SDIO_DEVICE_ID_BROADCOM_4334)
+#define SDIO_DEVICE_ID_BROADCOM_4334    0x4334
+#endif /* !defined(SDIO_DEVICE_ID_BROADCOM_4334) */
+#if !defined(SDIO_DEVICE_ID_BROADCOM_43239)
+#define SDIO_DEVICE_ID_BROADCOM_43239    43239
+#endif /* !defined(SDIO_DEVICE_ID_BROADCOM_43239) */
 
 #include <bcmsdh_sdmmc.h>
 
@@ -153,9 +159,9 @@ static const struct sdio_device_id bcmsdh_sdmmc_ids[] = {
 	{ SDIO_DEVICE(SDIO_VENDOR_ID_BROADCOM, SDIO_DEVICE_ID_BROADCOM_4325) },
 	{ SDIO_DEVICE(SDIO_VENDOR_ID_BROADCOM, SDIO_DEVICE_ID_BROADCOM_4319) },
 	{ SDIO_DEVICE(SDIO_VENDOR_ID_BROADCOM, SDIO_DEVICE_ID_BROADCOM_4330) },
-#ifndef BOARD_PANDA
+	{ SDIO_DEVICE(SDIO_VENDOR_ID_BROADCOM, SDIO_DEVICE_ID_BROADCOM_4334) },
+	{ SDIO_DEVICE(SDIO_VENDOR_ID_BROADCOM, SDIO_DEVICE_ID_BROADCOM_43239) },
 	{ SDIO_DEVICE_CLASS(SDIO_CLASS_NONE)            },
-#endif
 	{ /* end: all zeroes */				},
 };
 
@@ -170,11 +176,14 @@ static int bcmsdh_sdmmc_suspend(struct device *pdev)
 
 	if (func->num != 2)
 		return 0;
+
+	sd_trace(("%s Enter\n", __FUNCTION__));
+
 	if (dhd_os_check_wakelock(bcmsdh_get_drvdata()))
 		return -EBUSY;
 #if defined(OOB_INTR_ONLY)
 	bcmsdh_oob_intr_set(0);
-#endif
+#endif /* defined(OOB_INTR_ONLY) */
 	smp_mb();
 
 	sdio_flags = sdio_get_host_pm_caps(func);
@@ -203,11 +212,13 @@ static int bcmsdh_sdmmc_resume(struct device *pdev)
 {
 	struct sdio_func *func = dev_to_sdio_func(pdev);
 
+	sd_trace(("%s Enter\n", __FUNCTION__));
 	dhd_mmc_suspend = FALSE;
 #if defined(OOB_INTR_ONLY)
 	if ((func->num == 2) && dhd_os_check_if_up(bcmsdh_get_drvdata()))
 		bcmsdh_oob_intr_set(1);
-#endif
+#endif /* (OOB_INTR_ONLY) */
+
 	smp_mb();
 	return 0;
 }
@@ -216,7 +227,7 @@ static const struct dev_pm_ops bcmsdh_sdmmc_pm_ops = {
 	.suspend	= bcmsdh_sdmmc_suspend,
 	.resume		= bcmsdh_sdmmc_resume,
 };
-#endif
+#endif  /* (LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 39)) && defined(CONFIG_PM) */
 
 static struct sdio_driver bcmsdh_sdmmc_driver = {
 	.probe		= bcmsdh_sdmmc_probe,
@@ -227,7 +238,7 @@ static struct sdio_driver bcmsdh_sdmmc_driver = {
 	.drv = {
 		.pm	= &bcmsdh_sdmmc_pm_ops,
 	},
-#endif
+#endif /* (LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 39)) && defined(CONFIG_PM) */
 };
 
 struct sdos_info {
