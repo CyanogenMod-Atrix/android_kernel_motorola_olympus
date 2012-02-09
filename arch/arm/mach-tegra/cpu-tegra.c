@@ -435,9 +435,6 @@ static int __init tegra_cpu_debug_init(void)
 	if (!cpu_tegra_debugfs_root)
 		return -ENOMEM;
 
-	if (tegra_throttle_debug_init(cpu_tegra_debugfs_root))
-		goto err_out;
-
 	if (tegra_edp_debug_init(cpu_tegra_debugfs_root))
 		goto err_out;
 

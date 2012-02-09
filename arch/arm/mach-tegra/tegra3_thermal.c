@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra3_thermal.c
  *
- * Copyright (C) 2010-2011 NVIDIA Corporation.
+ * Copyright (C) 2010-2012 NVIDIA Corporation.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -40,7 +40,6 @@ struct tegra_thermal {
 	long temp_shutdown_tj;
 #ifdef CONFIG_TEGRA_THERMAL_THROTTLE
 	long temp_throttle_tj;
-	struct thermal_zone_device *thz;
 	int tc1;
 	int tc2;
 	long passive_delay;
@@ -59,6 +58,24 @@ static struct tegra_thermal thermal_state = {
 	.edp_thermal_zone_val = -1,
 #endif
 };
+#ifdef CONFIG_TEGRA_THERMAL_THROTTLE
+static struct throttle_table tj_bthrot_table[] = {
+	{      0, 1000 },
+	{ 640000, 1000 },
+	{ 640000, 1000 },
+	{ 640000, 1000 },
+	{ 640000, 1000 },
+	{ 640000, 1000 },
+	{ 760000, 1000 },
+	{ 760000, 1050 },
+	{1000000, 1050 },
+	{1000000, 1100 },
+};
+
+static struct balanced_throttle *tj_bthrot;
+
+#define TJ_BALANCED_THROTTLE_ID		(0)
+#endif
 
 #ifdef CONFIG_TEGRA_EDP_LIMITS
 static inline long edp2tj(struct tegra_thermal *thermal,
@@ -86,25 +103,54 @@ static inline long tj2dev(struct tegra_thermal_device *dev,
 	return tj_temp - dev->offset;
 }
 
-#ifdef CONFIG_TEGRA_THERMAL_THROTTLE
+static int tegra_thermal_get_tj_temp(long *tj_temp)
+{
+	long temp_dev;
+	struct tegra_thermal *thermal = &thermal_state;
 
-static int tegra_thermal_zone_bind(struct thermal_zone_device *thermal,
-				struct thermal_cooling_device *cdevice) {
-	/* Support only Thermal Throttling (1 trip) for now */
-	return thermal_zone_bind_cooling_device(thermal, 0, cdevice);
+	if (!thermal->device)
+		return -1;
+
+	thermal->device->get_temp(thermal->device->data,
+					&temp_dev);
+	*tj_temp = dev2tj(thermal->device, temp_dev);
+
+	return 0;
 }
 
-static int tegra_thermal_zone_unbind(struct thermal_zone_device *thermal,
+#ifdef CONFIG_TEGRA_THERMAL_THROTTLE
+
+static int tegra_thermal_zone_bind(struct thermal_zone_device *thz,
 				struct thermal_cooling_device *cdevice) {
-	/* Support only Thermal Throttling (1 trip) for now */
-	return thermal_zone_unbind_cooling_device(thermal, 0, cdevice);
+
+	struct balanced_throttle *bthrot = cdevice->devdata;
+	struct tegra_thermal_device *device = thz->devdata;
+
+	if ((bthrot->id == TJ_BALANCED_THROTTLE_ID) &&
+		(device == thermal_state.device))
+		return thermal_zone_bind_cooling_device(thz, 0, cdevice);
+
+	return 0;
+}
+
+static int tegra_thermal_zone_unbind(struct thermal_zone_device *thz,
+				struct thermal_cooling_device *cdevice) {
+	struct balanced_throttle *bthrot = cdevice->devdata;
+	struct tegra_thermal_device *device = thz->devdata;
+
+	if ((bthrot->id == TJ_BALANCED_THROTTLE_ID) &&
+		(device == thermal_state.device))
+		return thermal_zone_unbind_cooling_device(thz, 0, cdevice);
+
+	return 0;
 }
 
 static int tegra_thermal_zone_get_temp(struct thermal_zone_device *thz,
 					unsigned long *temp)
 {
-	struct tegra_thermal *thermal = thz->devdata;
-	thermal->device->get_temp(thermal->device->data, temp);
+	struct tegra_thermal_device *device = thz->devdata;
+
+	device->get_temp(device->data, temp);
 
 	return 0;
 }
@@ -113,8 +159,6 @@ static int tegra_thermal_zone_get_trip_type(
 			struct thermal_zone_device *thermal,
 			int trip,
 			enum thermal_trip_type *type) {
-
-	/* Support only Thermal Throttling (1 trip) for now */
 	if (trip != 0)
 		return -EINVAL;
 
@@ -126,13 +170,12 @@ static int tegra_thermal_zone_get_trip_type(
 static int tegra_thermal_zone_get_trip_temp(struct thermal_zone_device *thz,
 					int trip,
 					unsigned long *temp) {
-	struct tegra_thermal *thermal = thz->devdata;
+	struct tegra_thermal_device *device = thz->devdata;
 
-	/* Support only Thermal Throttling (1 trip) for now */
 	if (trip != 0)
 		return -EINVAL;
 
-	*temp = tj2dev(thermal->device, thermal->temp_throttle_tj);
+	*temp = tj2dev(device, thermal_state.temp_throttle_tj);
 
 	return 0;
 }
@@ -150,8 +193,7 @@ static struct thermal_zone_device_ops tegra_thermal_zone_ops = {
 void tegra_thermal_alert(void *data)
 {
 	struct tegra_thermal *thermal = data;
-	int err;
-	long temp_dev, temp_tj;
+	long temp_tj;
 	long lo_limit_throttle_tj, hi_limit_throttle_tj;
 	long lo_limit_edp_tj = 0, hi_limit_edp_tj = 0;
 	long temp_low_dev, temp_low_tj;
@@ -168,21 +210,16 @@ void tegra_thermal_alert(void *data)
 	mutex_lock(&thermal_state.mutex);
 
 #ifdef CONFIG_TEGRA_THERMAL_THROTTLE
-	if (thermal->thz) {
-		if (!thermal->thz->passive)
-			thermal_zone_device_update(thermal->thz);
+	if (thermal->device->thz) {
+		if (!thermal->device->thz->passive)
+			thermal_zone_device_update(thermal->device->thz);
 	}
 #endif
 
-	err = thermal->device->get_temp(thermal->device->data, &temp_dev);
-	if (err) {
-		pr_err("%s: get temp fail(%d)", __func__, err);
-		goto done;
-	}
-
 	/* Convert all temps to tj and then do all work/logic in terms of
 	   tj in order to avoid confusion */
-	temp_tj = dev2tj(thermal->device, temp_dev);
+	if (tegra_thermal_get_tj_temp(&temp_tj))
+		goto done;
 	thermal->device->get_temp_low(thermal->device, &temp_low_dev);
 	temp_low_tj = dev2tj(thermal->device, temp_low_dev);
 
@@ -248,6 +285,8 @@ done:
 	mutex_unlock(&thermal_state.mutex);
 }
 
+
+
 int tegra_thermal_set_device(struct tegra_thermal_device *device)
 {
 #ifdef CONFIG_TEGRA_THERMAL_THROTTLE
@@ -261,28 +300,34 @@ int tegra_thermal_set_device(struct tegra_thermal_device *device)
 	thermal_state.device = device;
 
 #ifdef CONFIG_TEGRA_THERMAL_THROTTLE
-	thz = thermal_zone_device_register(thermal_state.device->name,
+	thz = thermal_zone_device_register(device->name,
 					1, /* trips */
-					&thermal_state,
+					device,
 					&tegra_thermal_zone_ops,
 					thermal_state.tc1, /* dT/dt */
 					thermal_state.tc2, /* throttle */
 					thermal_state.passive_delay,
 					0); /* polling delay */
-
-	if (IS_ERR(thz)) {
-		thz = NULL;
+	if (IS_ERR_OR_NULL(thz))
 		return -ENODEV;
-	}
 
-	thermal_state.thz = thz;
+	device->thz = thz;
+
+	tj_bthrot = balanced_throttle_register(
+					TJ_BALANCED_THROTTLE_ID,
+					tj_bthrot_table,
+					ARRAY_SIZE(tj_bthrot_table));
+	if (IS_ERR_OR_NULL(tj_bthrot))
+		return -ENODEV;
+
 #endif
-	thermal_state.device->set_alert(thermal_state.device->data,
-					tegra_thermal_alert,
-					&thermal_state);
+	device->set_alert(device->data,
+				tegra_thermal_alert,
+				&thermal_state);
 
-	thermal_state.device->set_shutdown_temp(thermal_state.device->data,
+	device->set_shutdown_temp(device->data,
 				tj2dev(device, thermal_state.temp_shutdown_tj));
+
 
 	/* initialize limits */
 	tegra_thermal_alert(&thermal_state);
@@ -313,8 +358,8 @@ int __init tegra_thermal_init(struct tegra_thermal_data *data)
 int tegra_thermal_exit(void)
 {
 #ifdef CONFIG_TEGRA_THERMAL_THROTTLE
-	if (thermal_state.thz)
-		thermal_zone_device_unregister(thermal_state.thz);
+	if (thermal_state.device->thz)
+		thermal_zone_device_unregister(thermal_state.device->thz);
 #endif
 
 	return 0;
@@ -375,18 +420,10 @@ DEFINE_SIMPLE_ATTRIBUTE(shutdown_temp_tj_fops,
 
 static int tegra_thermal_temp_tj_get(void *data, u64 *val)
 {
-	long temp_tj, temp_dev;
+	long temp_tj;
 
-	if (thermal_state.device) {
-		thermal_state.device->get_temp(thermal_state.device->data,
-						&temp_dev);
-
-		/* Convert all temps to tj and then do all work/logic in
-		   terms of tj in order to avoid confusion */
-		temp_tj = dev2tj(thermal_state.device, temp_dev);
-	} else {
+	if (tegra_thermal_get_tj_temp(&temp_tj))
 		temp_tj = -1;
-	}
 
 	*val = (u64)temp_tj;
 
@@ -401,13 +438,13 @@ DEFINE_SIMPLE_ATTRIBUTE(temp_tj_fops,
 #ifdef CONFIG_TEGRA_THERMAL_THROTTLE
 static int tegra_thermal_tc1_set(void *data, u64 val)
 {
-	thermal_state.thz->tc1 = val;
+	thermal_state.device->thz->tc1 = val;
 	return 0;
 }
 
 static int tegra_thermal_tc1_get(void *data, u64 *val)
 {
-	*val = (u64)thermal_state.thz->tc1;
+	*val = (u64)thermal_state.device->thz->tc1;
 	return 0;
 }
 
@@ -418,13 +455,13 @@ DEFINE_SIMPLE_ATTRIBUTE(tc1_fops,
 
 static int tegra_thermal_tc2_set(void *data, u64 val)
 {
-	thermal_state.thz->tc2 = val;
+	thermal_state.device->thz->tc2 = val;
 	return 0;
 }
 
 static int tegra_thermal_tc2_get(void *data, u64 *val)
 {
-	*val = (u64)thermal_state.thz->tc2;
+	*val = (u64)thermal_state.device->thz->tc2;
 	return 0;
 }
 
@@ -435,13 +472,13 @@ DEFINE_SIMPLE_ATTRIBUTE(tc2_fops,
 
 static int tegra_thermal_passive_delay_set(void *data, u64 val)
 {
-	thermal_state.thz->passive_delay = val;
+	thermal_state.device->thz->passive_delay = val;
 	return 0;
 }
 
 static int tegra_thermal_passive_delay_get(void *data, u64 *val)
 {
-	*val = (u64)thermal_state.thz->passive_delay;
+	*val = (u64)thermal_state.device->thz->passive_delay;
 	return 0;
 }
 
