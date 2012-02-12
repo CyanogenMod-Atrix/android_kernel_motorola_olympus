@@ -1,7 +1,7 @@
  /***************************************************************************
  *
  * Copyright (C) 2007-2008 SMSC
- *
+ * Copyright (C) 2012 NVIDIA Corporation.
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -62,6 +62,11 @@ struct usb_context {
 static int turbo_mode = true;
 module_param(turbo_mode, bool, 0644);
 MODULE_PARM_DESC(turbo_mode, "Enable multiple frames per Rx transaction");
+
+static u8 mac_addr[6] = {0};
+static bool smsc_mac_addr_set;
+module_param_array_named(mac_addr, mac_addr, byte, NULL, 0);
+MODULE_PARM_DESC(mac_addr, "SMSC command line MAC address");
 
 static int smsc95xx_read_reg(struct usbnet *dev, u32 index, u32 *data)
 {
@@ -610,6 +615,15 @@ static void smsc95xx_init_mac_address(struct usbnet *dev)
 			netif_dbg(dev, ifup, dev->net, "MAC address read from EEPROM\n");
 			return;
 		}
+	}
+
+	/* try reading mac address from command line */
+	if (is_valid_ether_addr(mac_addr) && !smsc_mac_addr_set) {
+		memcpy(dev->net->dev_addr, mac_addr, sizeof(mac_addr));
+		smsc_mac_addr_set = true;
+		netif_dbg(dev, ifup, dev->net,
+				"MAC address read from command line");
+		return;
 	}
 
 	/* no eeprom, or eeprom values are invalid. generate random MAC */
