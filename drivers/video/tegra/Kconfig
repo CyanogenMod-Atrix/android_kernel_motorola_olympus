@@ -50,6 +50,7 @@ config TEGRA_DC_EXTENSIONS
 
 config TEGRA_NVMAP
 	bool "Tegra GPU memory management driver (nvmap)"
+	select ARM_DMA_USE_IOMMU if IOMMU_API
 	default y
 	help
 	  Say Y here to include the memory management driver for the Tegra
@@ -57,7 +58,7 @@ config TEGRA_NVMAP
 
 config NVMAP_RECLAIM_UNPINNED_VM
 	bool "Virtualize IOVMM memory in nvmap"
-	depends on TEGRA_NVMAP && TEGRA_IOVMM
+	depends on TEGRA_NVMAP && (TEGRA_IOVMM || IOMMU_API)
 	default y
 	help
 	  Say Y here to enable nvmap to reclaim I/O virtual memory after
@@ -76,7 +77,7 @@ config NVMAP_ALLOW_SYSMEM
 
 config NVMAP_HIGHMEM_ONLY
 	bool "Use only HIGHMEM for nvmap"
-	depends on TEGRA_NVMAP && (NVMAP_ALLOW_SYSMEM || TEGRA_IOVMM) && HIGHMEM
+	depends on TEGRA_NVMAP && (NVMAP_ALLOW_SYSMEM || TEGRA_IOVMM || IOMMU_API) && HIGHMEM
 	default n
 	help
 	  Say Y here to restrict nvmap system memory allocations (both
@@ -142,7 +143,7 @@ config TEGRA_DSI
 
 config NVMAP_CONVERT_CARVEOUT_TO_IOVMM
 	bool "Convert carveout to IOVMM"
-	depends on TEGRA_NVMAP && TEGRA_IOVMM_SMMU
+	depends on TEGRA_NVMAP &&  (TEGRA_IOVMM || IOMMU_API)
 	default y
 	help
 	  Say Y here to force to convert carveout memory requests to
