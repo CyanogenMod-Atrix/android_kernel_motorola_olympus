@@ -564,6 +564,10 @@ static void baseband_xmm_power_autopm_resume(struct work_struct *work)
 	if (usbdev) {
 		usb_lock_device(usbdev);
 		intf = usb_ifnum_to_if(usbdev, 0);
+		if (!intf) {
+			usb_unlock_device(usbdev);
+			return;
+		}
 		usb_autopm_get_interface(intf);
 		usb_autopm_put_interface(intf);
 		usb_unlock_device(usbdev);
