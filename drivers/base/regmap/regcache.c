@@ -287,6 +287,9 @@ int regcache_sync(struct regmap *map)
 
 	ret = map->cache_ops->sync(map);
 
+	if (ret == 0)
+		map->cache_dirty = false;
+
 out:
 	trace_regcache_sync(map->dev, name, "stop");
 	/* Restore the bypass state */
