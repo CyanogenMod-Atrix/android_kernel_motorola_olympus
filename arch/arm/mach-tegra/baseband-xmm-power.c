@@ -118,15 +118,12 @@ static int baseband_modem_power_on(struct baseband_power_platform_data *data)
 	gpio_set_value(baseband_power_driver_data->
 		modem.xmm.ipc_hsic_active, 1);
 
-	/* wait 20 ms */
-	mdelay(20);
-
 	/* reset / power on sequence */
-	mdelay(40);
+	msleep(40);
 	gpio_set_value(data->modem.xmm.bb_rst, 1);
 	mdelay(1);
 	gpio_set_value(data->modem.xmm.bb_on, 1);
-	udelay(40);
+	udelay(70);
 	gpio_set_value(data->modem.xmm.bb_on, 0);
 
 	return 0;
@@ -645,11 +642,12 @@ static void baseband_xmm_power_L2_resume_work(struct work_struct *work)
 static void baseband_xmm_power_reset_on(void)
 {
 	/* reset / power on sequence */
-	mdelay(40);
+	gpio_set_value(baseband_power_driver_data->modem.xmm.bb_rst, 0);
+	msleep(40);
 	gpio_set_value(baseband_power_driver_data->modem.xmm.bb_rst, 1);
 	mdelay(1);
 	gpio_set_value(baseband_power_driver_data->modem.xmm.bb_on, 1);
-	udelay(40);
+	udelay(70);
 	gpio_set_value(baseband_power_driver_data->modem.xmm.bb_on, 0);
 }
 
