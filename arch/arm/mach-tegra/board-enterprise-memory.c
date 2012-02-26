@@ -717,7 +717,7 @@ static const struct tegra_emc_table enterprise_emc_tables_h5tc2g[] = {
 			0x00000000, /* EMC_CTT_DURATION */
 			0x80000ce6, /* EMC_DYN_SELF_REF_CONTROL */
 			0x00000006, /* MC_EMEM_ARB_CFG */
-			0x80000048, /* MC_EMEM_ARB_OUTSTANDING_REQ */
+			0xc0000048, /* MC_EMEM_ARB_OUTSTANDING_REQ */
 			0x00000002, /* MC_EMEM_ARB_TIMING_RCD */
 			0x00000003, /* MC_EMEM_ARB_TIMING_RP */
 			0x0000000c, /* MC_EMEM_ARB_TIMING_RC */
