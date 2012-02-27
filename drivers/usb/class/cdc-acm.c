@@ -204,6 +204,8 @@ static int acm_write_start(struct acm *acm, int wbn)
 	usb_mark_last_busy(acm->dev);
 #ifdef CONFIG_PM
 	while ((res = usb_get_from_anchor(&acm->deferred))) {
+		/* decrement ref count*/
+		usb_put_urb(res);
 		rc = usb_submit_urb(res, GFP_ATOMIC);
 		if (rc < 0) {
 			dbg("usb_submit_urb(pending request) failed: %d", rc);
@@ -1425,6 +1427,8 @@ static int acm_resume(struct usb_interface *intf)
 		spin_lock_irq(&acm->write_lock);
 #ifdef CONFIG_PM
 		while ((res = usb_get_from_anchor(&acm->deferred))) {
+			/* decrement ref count*/
+			usb_put_urb(res);
 			rv = usb_submit_urb(res, GFP_ATOMIC);
 			if (rv < 0) {
 				dbg("usb_submit_urb(pending request)"
