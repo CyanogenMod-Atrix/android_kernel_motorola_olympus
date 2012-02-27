@@ -22,7 +22,7 @@
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: dhd_linux.c 308879 2012-01-17 22:03:47Z $
+ * $Id: dhd_linux.c 314746 2012-02-14 03:45:02Z $
  */
 
 #include <typedefs.h>
@@ -359,12 +359,6 @@ uint dhd_radio_up = 1;
 /* Network inteface name */
 char iface_name[IFNAMSIZ] = {'\0'};
 module_param_string(iface_name, iface_name, IFNAMSIZ, 0);
-
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 0))
-#define BLOCKABLE()	(!in_atomic())
-#else
-#define BLOCKABLE()	(!in_interrupt())
-#endif
 
 /* The following are specific to the SDIO dongle */
 
@@ -2339,7 +2333,6 @@ dhd_open(struct net_device *net)
 	}
 
 	dhd->pub.hang_was_sent = 0;
-
 #if !defined(WL_CFG80211)
 	/*
 	 * Force start if ifconfig_up gets called before START command
@@ -2936,6 +2929,9 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 #if defined(ARP_OFFLOAD_SUPPORT)
 	int arpoe = 1;
 #endif
+#if defined(KEEP_ALIVE)
+	int res;
+#endif /* defined(KEEP_ALIVE) */
 	int scan_assoc_time = DHD_SCAN_ACTIVE_TIME;
 	int scan_unassoc_time = 40;
 	int scan_passive_time = DHD_SCAN_PASSIVE_TIME;
@@ -2948,14 +2944,12 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 #if (defined(AP) && !defined(WLP2P)) || (!defined(AP) && defined(WL_CFG80211))
 	uint32 mpc = 0; /* Turn MPC off for AP/APSTA mode */
 #endif
-
 #if defined(AP) || defined(WLP2P)
 	uint32 apsta = 1; /* Enable APSTA mode */
 #endif /* defined(AP) || defined(WLP2P) */
 #ifdef GET_CUSTOM_MAC_ENABLE
 	struct ether_addr ea_addr;
 #endif /* GET_CUSTOM_MAC_ENABLE */
-
 	DHD_TRACE(("Enter %s\n", __FUNCTION__));
 	dhd->op_mode = 0;
 #ifdef GET_CUSTOM_MAC_ENABLE
@@ -3086,6 +3080,7 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 	/* Setup assoc_retry_max count to reconnect target AP in dongle */
 	bcm_mkiovar("assoc_retry_max", (char *)&retry_max, 4, iovbuf, sizeof(iovbuf));
 	dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iovbuf, sizeof(iovbuf), TRUE, 0);
+
 #if defined(AP) && !defined(WLP2P)
 	/* Turn off MPC in AP mode */
 	bcm_mkiovar("mpc", (char *)&mpc, 4, iovbuf, sizeof(iovbuf));
@@ -3101,17 +3096,13 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 #endif
 
 #if defined(KEEP_ALIVE)
-	{
 	/* Set Keep Alive : be sure to use FW with -keepalive */
-	int res;
-
 #if defined(SOFTAP)
 	if (ap_fw_loaded == FALSE)
 #endif
 		if ((res = dhd_keep_alive_onoff(dhd)) < 0)
 			DHD_ERROR(("%s set keeplive failed %d\n",
 			__FUNCTION__, res));
-	}
 #endif /* defined(KEEP_ALIVE) */
 
 	/* Read event_msgs mask */
@@ -3750,20 +3741,20 @@ dhd_module_init(void)
 	}
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27))
-		/*
-		 * Wait till MMC sdio_register_driver callback called and made driver attach.
-		 * It's needed to make sync up exit from dhd insmod  and
-		 * Kernel MMC sdio device callback registration
-		 */
+	/*
+	 * Wait till MMC sdio_register_driver callback called and made driver attach.
+	 * It's needed to make sync up exit from dhd insmod  and
+	 * Kernel MMC sdio device callback registration
+	 */
 	if (down_timeout(&dhd_registration_sem,  msecs_to_jiffies(DHD_REGISTRATION_TIMEOUT)) != 0) {
-		error = -EINVAL;
+		error = -ENODEV;
 		DHD_ERROR(("%s: sdio_register_driver timeout\n", __FUNCTION__));
 		goto fail_2;
 		}
 #endif
 #if defined(WL_CFG80211)
 	wl_android_post_init();
-#endif
+#endif /* defined(WL_CFG80211) */
 
 	return error;
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)) && 1
@@ -4388,6 +4379,8 @@ dhd_dev_get_pno_status(struct net_device *dev)
 
 #endif /* PNO_SUPPORT */
 
+struct work_struct work;
+
 int net_os_send_hang_message(struct net_device *dev)
 {
 	dhd_info_t *dhd = *(dhd_info_t **)netdev_priv(dev);
@@ -4422,7 +4415,6 @@ void dhd_bus_country_set(struct net_device *dev, wl_country_t *cspec)
 	if (dhd && dhd->pub.up)
 			memcpy(&dhd->pub.dhd_cspec, cspec, sizeof(wl_country_t));
 }
-
 
 void dhd_net_if_lock(struct net_device *dev)
 {

@@ -44,7 +44,7 @@ bcmdhd-objs += $(DHDOFILES)
 
 ifeq ($(CONFIG_BCMDHD_WEXT),y)
 bcmdhd-objs += wl_iw.o
-DHDCFLAGS += -DSOFTAP
+DHDCFLAGS += -DSOFTAP -DWL_WIRELESS_EXT
 endif
 
 ifeq ($(CONFIG_BCMDHD_CFG80211),y)
