@@ -1131,9 +1131,24 @@ static const struct dev_pm_ops baseband_xmm_power_dev_pm_ops = {
 };
 #endif
 
+static int baseband_xmm_power_driver_shutdown(struct platform_device *device)
+{
+	struct baseband_power_platform_data *data =
+		(struct baseband_power_platform_data *)
+			device->dev.platform_data;
+
+	pr_debug("%s\n", __func__);
+	disable_irq(gpio_to_irq(data->modem.xmm.ipc_ap_wake));
+	/* bb_on is already down, to make sure set 0 again */
+	gpio_set_value(data->modem.xmm.bb_on, 0);
+	gpio_set_value(data->modem.xmm.bb_rst, 0);
+	return 0;
+}
+
 static struct platform_driver baseband_power_driver = {
 	.probe = baseband_xmm_power_driver_probe,
 	.remove = baseband_xmm_power_driver_remove,
+	.shutdown = baseband_xmm_power_driver_shutdown,
 	.driver = {
 		.name = "baseband_xmm_power",
 #ifdef CONFIG_PM
