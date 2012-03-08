@@ -231,6 +231,7 @@ int __init cardhu_keys_init(void)
 		(board_info.board_id == BOARD_E1257) ||
 		(board_info.board_id == BOARD_PM305) ||
 		(board_info.board_id == BOARD_PM311) ||
+		(board_info.board_id == BOARD_PM267) ||
 		(board_info.board_id == BOARD_PM269)))
 		return 0;
 
@@ -291,6 +292,7 @@ int __init cardhu_keys_init(void)
 		(board_info.board_id == BOARD_E1186) ||
 		(board_info.board_id == BOARD_PM305) ||
 		(board_info.board_id == BOARD_PM311) ||
+		(board_info.board_id == BOARD_PM267) ||
 		(board_info.board_id == BOARD_PM269)) {
 		if (get_tegra_image_type() == rck_image)
 			cardhu_int_keys[0].code = KEY_ENTER;
