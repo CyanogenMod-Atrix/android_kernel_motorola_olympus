@@ -639,8 +639,8 @@ static void baseband_xmm_power_autopm_resume(struct work_struct *work)
 			usb_unlock_device(usbdev);
 			return;
 		}
-		usb_autopm_get_interface(intf);
-		usb_autopm_put_interface(intf);
+		if (usb_autopm_get_interface(intf) == 0)
+			usb_autopm_put_interface(intf);
 		usb_unlock_device(usbdev);
 	}
 }
