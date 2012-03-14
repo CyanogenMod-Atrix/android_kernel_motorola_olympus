@@ -813,7 +813,6 @@ static void __init tegra_kai_init(void)
 	kai_edp_init();
 #endif
 	kai_uart_init();
-	kai_tsensor_init();
 	kai_audio_init();
 	platform_add_devices(kai_devices, ARRAY_SIZE(kai_devices));
 	tegra_ram_console_debug_init();

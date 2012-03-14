@@ -95,6 +95,8 @@ int __init touch_init_synaptics_kai(void);
 #define KAI_TS_ID1_PG   TEGRA_PINGROUP_GMI_WAIT
 #define KAI_TS_ID2_PG   TEGRA_PINGROUP_GMI_WP_N
 
+#define KAI_TEMP_ALERT_GPIO	TEGRA_GPIO_PS3
+
 #define MPU_TYPE_MPU3050	1
 #define MPU_TYPE_MPU6050	2
 #define MPU_GYRO_TYPE		MPU_TYPE_MPU6050
