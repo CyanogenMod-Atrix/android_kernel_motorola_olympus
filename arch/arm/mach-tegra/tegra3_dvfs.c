@@ -783,19 +783,11 @@ static void core_cap_enable(bool enable)
 {
 	int i;
 
-	if (enable) {
+	if (enable)
 		tegra3_core_cap.refcnt++;
-		if (tegra3_core_cap.refcnt == 1)
-			for (i = 0; i < ARRAY_SIZE(core_cap_table); i++)
-				if (core_cap_table[i].cap_clk)
-					clk_enable(core_cap_table[i].cap_clk);
-	} else if (tegra3_core_cap.refcnt) {
+	else if (tegra3_core_cap.refcnt)
 		tegra3_core_cap.refcnt--;
-		if (tegra3_core_cap.refcnt == 0)
-			for (i = ARRAY_SIZE(core_cap_table) - 1; i >= 0; i--)
-				if (core_cap_table[i].cap_clk)
-					clk_disable(core_cap_table[i].cap_clk);
-	}
+
 	core_cap_update();
 }
 
