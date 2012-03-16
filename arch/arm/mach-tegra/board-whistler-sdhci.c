@@ -223,6 +223,20 @@ static struct platform_device tegra_sdhci_device3 = {
 	},
 };
 
+#ifdef TEGRA_PREPOWER_WIFI
+static int __init whistler_wifi_prepower(void)
+{
+	if (!machine_is_whistler())
+		return 0;
+
+	whistler_wifi_power(1);
+
+	return 0;
+}
+
+subsys_initcall_sync(whistler_wifi_prepower);
+#endif
+
 static int __init whistler_wifi_init(void)
 {
 	gpio_request(WHISTLER_WLAN_PWR, "wlan_power");

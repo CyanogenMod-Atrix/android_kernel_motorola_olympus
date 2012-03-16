@@ -231,6 +231,20 @@ static int ventana_wifi_reset(int on)
 	return 0;
 }
 
+#ifdef TEGRA_PREPOWER_WIFI
+static int __init ventana_wifi_prepower(void)
+{
+	if (!machine_is_ventana())
+		return 0;
+
+	ventana_wifi_power(1);
+
+	return 0;
+}
+
+subsys_initcall_sync(ventana_wifi_prepower);
+#endif
+
 static int __init ventana_wifi_init(void)
 {
 	wifi_32k_clk = clk_get_sys(NULL, "blink");

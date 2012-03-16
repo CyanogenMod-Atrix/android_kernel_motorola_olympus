@@ -286,6 +286,20 @@ static int __init cardhu_wifi_init(void)
 	return 0;
 }
 
+#ifdef TEGRA_PREPOWER_WIFI
+static int __init cardhu_wifi_prepower(void)
+{
+	if (!machine_is_cardhu())
+		return 0;
+
+	cardhu_wifi_power(1);
+
+	return 0;
+}
+
+subsys_initcall_sync(cardhu_wifi_prepower);
+#endif
+
 int __init cardhu_sdhci_init(void)
 {
 	struct board_info board_info;
