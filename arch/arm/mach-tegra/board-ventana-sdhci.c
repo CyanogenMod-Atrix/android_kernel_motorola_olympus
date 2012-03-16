@@ -108,6 +108,7 @@ static struct resource sdhci_resource3[] = {
 	},
 };
 
+#ifdef CONFIG_MMC_EMBEDDED_SDIO
 static struct embedded_sdio_data embedded_sdio_data0 = {
 	.cccr   = {
 		.sdio_vsn	= 2,
@@ -122,13 +123,19 @@ static struct embedded_sdio_data embedded_sdio_data0 = {
 		.device 	= 0x4329,
 	},
 };
+#endif
 
 static struct tegra_sdhci_platform_data tegra_sdhci_platform_data0 = {
 	.mmc_data = {
 		.register_status_notify	= ventana_wifi_status_register,
+#ifdef CONFIG_MMC_EMBEDDED_SDIO
 		.embedded_sdio = &embedded_sdio_data0,
+#endif
 		.built_in = 1,
 	},
+#ifndef CONFIG_MMC_EMBEDDED_SDIO
+	.pm_flags = MMC_PM_KEEP_POWER,
+#endif
 	.cd_gpio = -1,
 	.wp_gpio = -1,
 	.power_gpio = -1,
