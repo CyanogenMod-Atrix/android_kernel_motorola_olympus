@@ -62,6 +62,7 @@
 #include "board.h"
 #include "clock.h"
 #include "board-cardhu.h"
+#include "board-touch.h"
 #include "devices.h"
 #include "gpio-names.h"
 #include "fuse.h"
@@ -574,6 +575,10 @@ static struct platform_device *cardhu_spi_devices[] __initdata = {
 	&tegra_spi_device4,
 };
 
+static struct platform_device *touch_spi_device[] __initdata = {
+	&tegra_spi_device1,
+};
+
 struct spi_clk_parent spi_parent_clk[] = {
 	[0] = {.name = "pll_p"},
 #ifndef CONFIG_TEGRA_PLLM_RESTRICTED
@@ -595,9 +600,10 @@ static void __init cardhu_spi_init(void)
 {
 	int i;
 	struct clk *c;
-	struct board_info board_info;
+	struct board_info board_info, display_board_info;
 
 	tegra_get_board_info(&board_info);
+	tegra_get_display_board_info(&display_board_info);
 
 	for (i = 0; i < ARRAY_SIZE(spi_parent_clk); ++i) {
 		c = tegra_get_clock_by_name(spi_parent_clk[i].name);
@@ -615,6 +621,10 @@ static void __init cardhu_spi_init(void)
 	platform_add_devices(cardhu_spi_devices,
 				ARRAY_SIZE(cardhu_spi_devices));
 
+	if (display_board_info.board_id == BOARD_DISPLAY_PM313) {
+		platform_add_devices(touch_spi_device,
+				ARRAY_SIZE(touch_spi_device));
+	}
 	if (board_info.board_id == BOARD_E1198) {
 		tegra_spi_device2.dev.platform_data = &cardhu_spi_pdata;
 		platform_device_register(&tegra_spi_device2);
@@ -821,29 +831,42 @@ static struct i2c_board_info __initdata atmel_i2c_info[] = {
 	}
 };
 
+static __initdata struct tegra_clk_init_table spi_clk_init_table[] = {
+	/* name         parent          rate            enabled */
+	{ "sbc1",       "pll_p",        52000000,       true},
+	{ NULL,         NULL,           0,              0},
+};
+
 static int __init cardhu_touch_init(void)
 {
 	struct board_info BoardInfo;
 
-	tegra_gpio_enable(TEGRA_GPIO_PH4);
-	tegra_gpio_enable(TEGRA_GPIO_PH6);
+	tegra_get_display_board_info(&BoardInfo);
+	if (BoardInfo.board_id == BOARD_DISPLAY_PM313) {
+		tegra_clk_init_from_table(spi_clk_init_table);
 
-	gpio_request(TEGRA_GPIO_PH4, "atmel-irq");
-	gpio_direction_input(TEGRA_GPIO_PH4);
+		touch_init_raydium(TEGRA_GPIO_PH4, TEGRA_GPIO_PH6, 2);
+	} else {
+		tegra_gpio_enable(TEGRA_GPIO_PH4);
+		tegra_gpio_enable(TEGRA_GPIO_PH6);
 
-	gpio_request(TEGRA_GPIO_PH6, "atmel-reset");
-	gpio_direction_output(TEGRA_GPIO_PH6, 0);
-	msleep(1);
-	gpio_set_value(TEGRA_GPIO_PH6, 1);
-	msleep(100);
+		gpio_request(TEGRA_GPIO_PH4, "atmel-irq");
+		gpio_direction_input(TEGRA_GPIO_PH4);
 
-	tegra_get_board_info(&BoardInfo);
-	if ((BoardInfo.sku & SKU_TOUCH_MASK) == SKU_TOUCH_2000) {
-		atmel_mxt_info.config = config_sku2000;
-		atmel_mxt_info.config_crc = MXT_CONFIG_CRC_SKU2000;
+		gpio_request(TEGRA_GPIO_PH6, "atmel-reset");
+		gpio_direction_output(TEGRA_GPIO_PH6, 0);
+		msleep(1);
+		gpio_set_value(TEGRA_GPIO_PH6, 1);
+		msleep(100);
+
+		tegra_get_board_info(&BoardInfo);
+		if ((BoardInfo.sku & SKU_TOUCH_MASK) == SKU_TOUCH_2000) {
+			atmel_mxt_info.config = config_sku2000;
+			atmel_mxt_info.config_crc = MXT_CONFIG_CRC_SKU2000;
+		}
+
+		i2c_register_board_info(1, atmel_i2c_info, 1);
 	}
-
-	i2c_register_board_info(1, atmel_i2c_info, 1);
 
 	return 0;
 }
