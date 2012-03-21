@@ -53,7 +53,7 @@ config NVMAP_RECLAIM_UNPINNED_VM
 config NVMAP_ALLOW_SYSMEM
 	bool "Allow physical system memory to be used by nvmap"
 	depends on TEGRA_NVMAP
-	default y
+	default n
 	help
 	  Say Y here to allow nvmap to use physical system memory (i.e.,
 	  shared with the operating system but not translated through
