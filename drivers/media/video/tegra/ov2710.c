@@ -21,6 +21,8 @@
 #include <linux/uaccess.h>
 #include <media/ov2710.h>
 
+#define SIZEOF_I2C_TRANSBUF 32
+
 struct ov2710_reg {
 	u16 addr;
 	u16 val;
@@ -30,6 +32,7 @@ struct ov2710_info {
 	int mode;
 	struct i2c_client *i2c_client;
 	struct ov2710_platform_data *pdata;
+	u8 i2c_trans_buf[SIZEOF_I2C_TRANSBUF];
 };
 
 #define OV2710_TABLE_WAIT_MS 0
@@ -152,7 +155,7 @@ static struct ov2710_reg mode_1920x1080[] = {
 	{0x3704, 0x44},
 	{0x3801, 0xd2},
 
-	{0x3503, 0x17},
+	{0x3503, 0x33},
 	{0x3500, 0x00},
 	{0x3501, 0x00},
 	{0x3502, 0x00},
@@ -283,7 +286,7 @@ static struct ov2710_reg mode_1280x720[] = {
 	{0x3704, 0x40},
 	{0x3801, 0xbc},
 
-	{0x3503, 0x17},
+	{0x3503, 0x33},
 	{0x3500, 0x00},
 	{0x3501, 0x00},
 	{0x3502, 0x00},
@@ -400,14 +403,39 @@ static int ov2710_write_reg(struct i2c_client *client, u16 addr, u8 val)
 	return err;
 }
 
-static int ov2710_write_table(struct i2c_client *client,
+static int ov2710_write_bulk_reg(struct i2c_client *client, u8 *data, int len)
+{
+	int err;
+	struct i2c_msg msg;
+
+	if (!client->adapter)
+		return -ENODEV;
+
+	msg.addr = client->addr;
+	msg.flags = 0;
+	msg.len = len;
+	msg.buf = data;
+
+	err = i2c_transfer(client->adapter, &msg, 1);
+	if (err == 1)
+		return 0;
+
+	pr_err("ov2710: i2c bulk transfer failed at %x\n",
+		(int)data[0] << 8 | data[1]);
+
+	return err;
+}
+
+static int ov2710_write_table(struct ov2710_info *info,
 			      const struct ov2710_reg table[],
 			      const struct ov2710_reg override_list[],
 			      int num_override_regs)
 {
 	int err;
-	const struct ov2710_reg *next;
-	int i;
+	const struct ov2710_reg *next, *n_next;
+	u8 *b_ptr = info->i2c_trans_buf;
+	unsigned int buf_filled = 0;
+	unsigned int i;
 	u16 val;
 
 	for (next = table; next->addr != OV2710_TABLE_END; next++) {
@@ -416,9 +444,7 @@ static int ov2710_write_table(struct i2c_client *client,
 			continue;
 		}
 
-
 		val = next->val;
-
 		/* When an override list is passed in, replace the reg */
 		/* value to write if the reg is in the list            */
 		if (override_list) {
@@ -430,9 +456,28 @@ static int ov2710_write_table(struct i2c_client *client,
 			}
 		}
 
-		err = ov2710_write_reg(client, next->addr, val);
+		if (!buf_filled) {
+			b_ptr = info->i2c_trans_buf;
+			*b_ptr++ = next->addr >> 8;
+			*b_ptr++ = next->addr & 0xff;
+			buf_filled = 2;
+		}
+		*b_ptr++ = val;
+		buf_filled++;
+
+		n_next = next + 1;
+		if (n_next->addr != OV2710_TABLE_END &&
+			n_next->addr != OV2710_TABLE_WAIT_MS &&
+			buf_filled < SIZEOF_I2C_TRANSBUF &&
+			n_next->addr == next->addr + 1) {
+			continue;
+		}
+
+		err = ov2710_write_bulk_reg(info->i2c_client,
+			info->i2c_trans_buf, buf_filled);
 		if (err)
 			return err;
+		buf_filled = 0;
 	}
 	return 0;
 }
@@ -463,7 +508,7 @@ static int ov2710_set_mode(struct ov2710_info *info, struct ov2710_mode *mode)
 	ov2710_get_coarse_time_regs(reg_list + 2, mode->coarse_time);
 	ov2710_get_gain_reg(reg_list + 5, mode->gain);
 
-	err = ov2710_write_table(info->i2c_client, mode_table[sensor_mode],
+	err = ov2710_write_table(info, mode_table[sensor_mode],
 	reg_list, 6);
 	if (err)
 		return err;
@@ -474,51 +519,37 @@ static int ov2710_set_mode(struct ov2710_info *info, struct ov2710_mode *mode)
 
 static int ov2710_set_frame_length(struct ov2710_info *info, u32 frame_length)
 {
-	struct ov2710_reg reg_list[2];
-	int i = 0;
 	int ret;
+	struct ov2710_reg reg_list[2];
+	u8 *b_ptr = info->i2c_trans_buf;
 
 	ov2710_get_frame_length_regs(reg_list, frame_length);
 
-	for (i = 0; i < 2; i++)	{
-		ret = ov2710_write_reg(info->i2c_client, reg_list[i].addr,
-			reg_list[i].val);
-		if (ret)
-			return ret;
-	}
+	*b_ptr++ = reg_list[0].addr >> 8;
+	*b_ptr++ = reg_list[0].addr & 0xff;
+	*b_ptr++ = reg_list[0].val & 0xff;
+	*b_ptr++ = reg_list[1].val & 0xff;
+	ret = ov2710_write_bulk_reg(info->i2c_client, info->i2c_trans_buf, 4);
 
-	return 0;
+	return ret;
 }
 
 static int ov2710_set_coarse_time(struct ov2710_info *info, u32 coarse_time)
 {
 	int ret;
-
 	struct ov2710_reg reg_list[3];
-	int i = 0;
+	u8 *b_ptr = info->i2c_trans_buf;
 
 	ov2710_get_coarse_time_regs(reg_list, coarse_time);
 
-	ret = ov2710_write_reg(info->i2c_client, 0x3212, 0x01);
-	if (ret)
-		return ret;
+	*b_ptr++ = reg_list[0].addr >> 8;
+	*b_ptr++ = reg_list[0].addr & 0xff;
+	*b_ptr++ = reg_list[0].val & 0xff;
+	*b_ptr++ = reg_list[1].val & 0xff;
+	*b_ptr++ = reg_list[2].val & 0xff;
+	ret = ov2710_write_bulk_reg(info->i2c_client, info->i2c_trans_buf, 5);
 
-	for (i = 0; i < 3; i++)	{
-		ret = ov2710_write_reg(info->i2c_client, reg_list[i].addr,
-			reg_list[i].val);
-		if (ret)
-			return ret;
-	}
-
-	ret = ov2710_write_reg(info->i2c_client, 0x3212, 0x11);
-	if (ret)
-		return ret;
-
-	ret = ov2710_write_reg(info->i2c_client, 0x3212, 0xa1);
-	if (ret)
-		return ret;
-
-	return 0;
+	return ret;
 }
 
 static int ov2710_set_gain(struct ov2710_info *info, u16 gain)
@@ -532,6 +563,48 @@ static int ov2710_set_gain(struct ov2710_info *info, u16 gain)
 
 	return ret;
 }
+
+static int ov2710_set_group_hold(struct ov2710_info *info, struct ov2710_ae *ae)
+{
+	int ret;
+	int count = 0;
+	bool groupHoldEnabled = false;
+
+	if (ae->gain_enable)
+		count++;
+	if (ae->coarse_time_enable)
+		count++;
+	if (ae->frame_length_enable)
+		count++;
+	if (count >= 2)
+		groupHoldEnabled = true;
+
+	if (groupHoldEnabled) {
+		ret = ov2710_write_reg(info->i2c_client, 0x3212, 0x01);
+		if (ret)
+			return ret;
+	}
+
+	if (ae->gain_enable)
+		ov2710_set_gain(info, ae->gain);
+	if (ae->coarse_time_enable)
+		ov2710_set_coarse_time(info, ae->coarse_time);
+	if (ae->frame_length_enable)
+		ov2710_set_frame_length(info, ae->frame_length);
+
+	if (groupHoldEnabled) {
+		ret = ov2710_write_reg(info->i2c_client, 0x3212, 0x11);
+		if (ret)
+			return ret;
+
+		ret = ov2710_write_reg(info->i2c_client, 0x3212, 0xa1);
+		if (ret)
+			return ret;
+	}
+
+	return 0;
+}
+
 
 static int ov2710_get_status(struct ov2710_info *info, u8 *status)
 {
@@ -567,6 +640,17 @@ static long ov2710_ioctl(struct file *file,
 		return ov2710_set_coarse_time(info, (u32)arg);
 	case OV2710_IOCTL_SET_GAIN:
 		return ov2710_set_gain(info, (u16)arg);
+	case OV2710_IOCTL_SET_GROUP_HOLD:
+	{
+		struct ov2710_ae ae;
+		if (copy_from_user(&ae,
+				(const void __user *)arg,
+				sizeof(struct ov2710_ae))) {
+			pr_info("%s %d\n", __func__, __LINE__);
+			return -EFAULT;
+		}
+		return ov2710_set_group_hold(info, &ae);
+	}
 	case OV2710_IOCTL_GET_STATUS:
 	{
 		u8 status;
