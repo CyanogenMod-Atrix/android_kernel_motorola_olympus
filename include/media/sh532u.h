@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 NVIDIA Corporation.
+ * Copyright (C) 2011-2012 NVIDIA Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -19,25 +19,23 @@
 #ifndef __SH532U_H__
 #define __SH532U_H__
 
+#include <media/nvc.h>
 #include <media/nvc_focus.h>
 
+/* See notes in the nvc.h file on the GPIO usage */
+enum sh532u_gpio {
+	SH532U_GPIO_RESET = 0,
+	SH532U_GPIO_I2CMUX,
+	SH532U_GPIO_GP1,
+	SH532U_GPIO_GP2,
+	SH532U_GPIO_GP3,
+};
 
-struct sh532u_platform_data {
-	int cfg;
-	int num;
-	int sync;
-	const char *dev_name;
-	struct nvc_focus_nvc (*nvc);
-	struct nvc_focus_cap (*cap);
-	struct sh532u_pdata_info (*info);
-	__u8 i2c_addr_rom;
-	unsigned gpio_reset;
-/* Due to a Linux limitation, a GPIO is defined to "enable" the device.  This
- * workaround is for when the device's power GPIO's are behind an I2C expander.
- * The Linux limitation doesn't allow the I2C GPIO expander to be ready for
- * use when this device is probed.
- */
-	unsigned gpio_en;
+/* The enumeration must be in the order the regulators are to be enabled */
+/* See Power Requirements note in the driver */
+enum sh532u_vreg {
+	SH532U_VREG_DVDD = 0,
+	SH532U_VREG_AVDD,
 };
 
 struct sh532u_pdata_info {
@@ -50,6 +48,18 @@ struct sh532u_pdata_info {
 	__u32 focus_hyper_div;
 };
 
+struct sh532u_platform_data {
+	unsigned cfg;
+	unsigned num;
+	unsigned sync;
+	const char *dev_name;
+	unsigned gpio_count; /* see nvc.h GPIO notes */
+	struct nvc_gpio_pdata *gpio; /* see nvc.h GPIO notes */
+	struct nvc_focus_nvc (*nvc);
+	struct nvc_focus_cap (*cap);
+	struct sh532u_pdata_info (*info);
+	__u8 i2c_addr_rom;
+};
 
 /* Register Definition  : Sany Driver IC */
 /* EEPROM addresses */
