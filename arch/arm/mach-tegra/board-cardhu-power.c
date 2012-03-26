@@ -602,13 +602,13 @@ static struct regulator_consumer_supply fixed_reg_en_vdd_pnl1_supply[] = {
 /* CAM1_LDO_EN from AP GPIO KB_ROW6 R06*/
 static struct regulator_consumer_supply fixed_reg_cam1_ldo_en_supply[] = {
 	REGULATOR_SUPPLY("vdd_2v8_cam1", NULL),
-	REGULATOR_SUPPLY("vdd", "6-0072"),
+	REGULATOR_SUPPLY("avdd", "6-0072"),
 };
 
 /* CAM2_LDO_EN from AP GPIO KB_ROW7 R07*/
 static struct regulator_consumer_supply fixed_reg_cam2_ldo_en_supply[] = {
 	REGULATOR_SUPPLY("vdd_2v8_cam2", NULL),
-	REGULATOR_SUPPLY("vdd", "7-0072"),
+	REGULATOR_SUPPLY("avdd", "7-0072"),
 };
 
 /* CAM3_LDO_EN from AP GPIO KB_ROW8 S00*/
@@ -646,8 +646,8 @@ static struct regulator_consumer_supply fixed_reg_en_1v8_cam_supply[] = {
 	REGULATOR_SUPPLY("vdd_1v8_cam1", NULL),
 	REGULATOR_SUPPLY("vdd_1v8_cam2", NULL),
 	REGULATOR_SUPPLY("vdd_1v8_cam3", NULL),
-	REGULATOR_SUPPLY("vdd_i2c", "6-0072"),
-	REGULATOR_SUPPLY("vdd_i2c", "7-0072"),
+	REGULATOR_SUPPLY("dvdd", "6-0072"),
+	REGULATOR_SUPPLY("dvdd", "7-0072"),
 	REGULATOR_SUPPLY("vdd_i2c", "2-0033"),
 };
 

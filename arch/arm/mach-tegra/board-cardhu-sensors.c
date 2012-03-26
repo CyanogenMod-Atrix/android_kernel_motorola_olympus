@@ -471,33 +471,55 @@ static const struct i2c_board_info cardhu_i2c3_board_info[] = {
 	},
 };
 
+
+static struct nvc_gpio_pdata sh532u_gpio_pdata[] = {
+	{ SH532U_GPIO_RESET, TEGRA_GPIO_PBB0, false, 0, },
+};
+
 static struct sh532u_platform_data sh532u_left_pdata = {
+	.cfg		= NVC_CFG_NODEV,
 	.num		= 1,
 	.sync		= 2,
 	.dev_name	= "focuser",
-	.gpio_reset	= TEGRA_GPIO_PBB0,
+	.gpio_count	= ARRAY_SIZE(sh532u_gpio_pdata),
+	.gpio		= sh532u_gpio_pdata,
 };
 
 static struct sh532u_platform_data sh532u_right_pdata = {
+	.cfg		= NVC_CFG_NODEV,
 	.num		= 2,
 	.sync		= 1,
 	.dev_name	= "focuser",
-	.gpio_reset	= TEGRA_GPIO_PBB0,
+	.gpio_count	= ARRAY_SIZE(sh532u_gpio_pdata),
+	.gpio		= sh532u_gpio_pdata,
+};
+
+static struct nvc_gpio_pdata pm269_sh532u_left_gpio_pdata[] = {
+	{ SH532U_GPIO_RESET, CAM1_RST_L_GPIO, false, 0, },
 };
 
 static struct sh532u_platform_data pm269_sh532u_left_pdata = {
+	.cfg		= NVC_CFG_NODEV,
 	.num		= 1,
 	.sync		= 2,
 	.dev_name	= "focuser",
-	.gpio_reset	= CAM1_RST_L_GPIO,
+	.gpio_count	= ARRAY_SIZE(pm269_sh532u_left_gpio_pdata),
+	.gpio		= pm269_sh532u_left_gpio_pdata,
+};
+
+static struct nvc_gpio_pdata pm269_sh532u_right_gpio_pdata[] = {
+	{ SH532U_GPIO_RESET, CAM2_RST_L_GPIO, false, 0, },
 };
 
 static struct sh532u_platform_data pm269_sh532u_right_pdata = {
+	.cfg		= NVC_CFG_NODEV,
 	.num		= 2,
 	.sync		= 1,
 	.dev_name	= "focuser",
-	.gpio_reset	= CAM2_RST_L_GPIO,
+	.gpio_count	= ARRAY_SIZE(pm269_sh532u_right_gpio_pdata),
+	.gpio		= pm269_sh532u_right_gpio_pdata,
 };
+
 
 static struct nvc_torch_pin_state cardhu_tps61050_pinstate = {
 	.mask		= 0x0008, /*VGP3*/
