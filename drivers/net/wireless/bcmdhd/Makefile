@@ -8,8 +8,7 @@ DHDCFLAGS = -Wall -Wstrict-prototypes -Dlinux -DBCMDRIVER                     \
 	-DNEW_COMPAT_WIRELESS -DWIFI_ACT_FRAME -DARP_OFFLOAD_SUPPORT          \
 	-DKEEP_ALIVE -DPKT_FILTER_SUPPORT     \
 	-DEMBEDDED_PLATFORM           \
-	-DSET_RANDOM_MAC_SOFTAP	-DWL_ENABLE_P2P_IF -DDHD_USE_EARLYSUSPEND     \
-	-DWL_CFG80211_STA_EVENT							\
+	-DSET_RANDOM_MAC_SOFTAP -DWL_ENABLE_P2P_IF -DWL_CFG80211_STA_EVENT    \
 	-Idrivers/net/wireless/bcmdhd -Idrivers/net/wireless/bcmdhd/include
 
 ifeq ($(CONFIG_BCMDHD_WIFI_CONTROL_FUNC),y)
