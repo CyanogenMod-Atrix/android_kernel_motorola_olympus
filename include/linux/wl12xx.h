@@ -48,8 +48,8 @@ enum {
 };
 
 struct wl12xx_platform_data {
-	void (*set_power)(bool enable);
-	void (*set_carddetect)(bool enable);
+	int (*set_power)(int power_on);
+	int (*set_carddetect)(int val);
 	/* SDIO only: IRQ number if WLAN_IRQ line is used, 0 for SDIO IRQs */
 	int irq;
 	bool use_eeprom;

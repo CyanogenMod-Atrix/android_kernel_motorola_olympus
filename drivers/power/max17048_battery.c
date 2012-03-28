@@ -276,13 +276,18 @@ static int max17048_write_rcomp_seg(struct i2c_client *client,
 {
 	uint8_t rs1, rs2;
 	int ret;
+	uint8_t rcomp_seg_table[16];
 
 	rs2 = rcomp_seg | 0x00FF;
 	rs1 = rcomp_seg >> 8;
-	uint8_t rcomp_seg_table[16] = { rs1, rs2, rs1, rs2,
-					rs1, rs2, rs1, rs2,
-					rs1, rs2, rs1, rs2,
-					rs1, rs2, rs1, rs2};
+
+	rcomp_seg_table[0] = rcomp_seg_table[2] = rcomp_seg_table[4] =
+		rcomp_seg_table[6] = rcomp_seg_table[8] = rcomp_seg_table[10] =
+			rcomp_seg_table[12] = rcomp_seg_table[14] = rs1;
+
+	rcomp_seg_table[1] = rcomp_seg_table[3] = rcomp_seg_table[5] =
+		rcomp_seg_table[7] = rcomp_seg_table[9] = rcomp_seg_table[11] =
+			rcomp_seg_table[13] = rcomp_seg_table[15] = rs2;
 
 	ret = i2c_smbus_write_i2c_block_data(client, MAX17048_RCOMPSEG1,
 				16, (uint8_t *)rcomp_seg_table);

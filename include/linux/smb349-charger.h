@@ -26,6 +26,7 @@
 #include <linux/regulator/machine.h>
 #include <linux/platform_device.h>
 #include <linux/regulator/driver.h>
+#include <linux/usb/otg.h>
 
 struct smb349_charger_platform_data {
 	int regulator_id;

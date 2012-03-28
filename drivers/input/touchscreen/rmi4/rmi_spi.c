@@ -523,19 +523,16 @@ static int rmi_spi_v2_set_page(struct rmi_phys_device *phys, u8 page)
 static int acquire_attn_irq(struct rmi_spi_data *data)
 {
         int retval = 0;
-        pr_info("in function ____%s____  \n", __func__);
-        pr_info("          irq = %d\n", data->irq);
-        pr_info("          rmi_spi_hard_irq          = 0x%8x\n", rmi_spi_hard_irq);
-        pr_info("          rmi_spi_irq_thread        = 0x%8x\n", rmi_spi_irq_thread);
-        pr_info("          data->irq_flags           = 0x%8x\n", data->irq_flags);
-        pr_info("          dev_name(data->phys->dev) = %s\n", dev_name(data->phys->dev));
-        pr_info("          data->phys                = 0x%8x\n", data->phys);
+	pr_info("in function ____%s____\n", __func__);
+	pr_info("irq = %d\n", data->irq);
+	pr_info("data->irq_flags = 0x%8x\n", data->irq_flags);
+	pr_info("dev_name(data->phys->dev) = %s\n", dev_name(data->phys->dev));
 
 	retval =  request_threaded_irq(data->irq, rmi_spi_hard_irq,
 			rmi_spi_irq_thread, data->irq_flags,
 			dev_name(data->phys->dev), data->phys);
 
-        pr_info("          retval =                  = %d\n", retval);
+	pr_info("retval = %d\n", retval);
 	return retval;
 }
 

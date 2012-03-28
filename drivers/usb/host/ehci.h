@@ -762,7 +762,7 @@ static inline unsigned ehci_read_frame_index(struct ehci_hcd *ehci)
  * descriptor to memory.
  * */
 #ifdef	CONFIG_ARM_DMA_MEM_BUFFERABLE
-static inline void ehci_sync_mem()
+static inline void ehci_sync_mem(void)
 {
 	mb();
 }
