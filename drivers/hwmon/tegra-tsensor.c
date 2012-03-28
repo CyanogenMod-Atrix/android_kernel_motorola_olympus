@@ -38,7 +38,7 @@
 
 /* macro to enable tsensor hw reset */
 /* FIXME: till tsensor temperature is reliable this should be 0 */
-#define ENABLE_TSENSOR_HW_RESET 0
+#define ENABLE_TSENSOR_HW_RESET 1
 
 /* tsensor instance used for temperature calculation */
 #define TSENSOR_FUSE_REV1	8
