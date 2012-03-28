@@ -280,7 +280,7 @@ static int max77663_regulator_set_fps(struct max77663_regulator *reg)
 		fps_mask |= FPS_PD_PERIOD_MASK;
 	}
 
-	if (fps_val)
+	if (fps_val || fps_mask)
 		ret = max77663_regulator_cache_write(reg,
 					reg->regs[FPS_REG].addr, fps_mask,
 					fps_val, &reg->regs[FPS_REG].val);
