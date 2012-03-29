@@ -50,6 +50,13 @@ config DHD_USE_SCHED_SCAN
 	---help---
 	Use CFG80211 sched scan
 
+config DHD_ENABLE_P2P
+	bool "Enable Wifi Direct"
+	depends on BCMDHD && CFG80211
+	default n
+	---help---
+	Use Enable Wifi Direct
+
 config BCMDHD_CFG80211
 	bool "Enable CFG80211 support"
 	depends on CFG80211
