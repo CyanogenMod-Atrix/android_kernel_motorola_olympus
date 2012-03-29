@@ -890,15 +890,18 @@ static int tegra_aes_crypt(struct ablkcipher_request *req, unsigned long mode)
 
 	spin_lock_irqsave(&dd->lock, flags);
 	err = ablkcipher_enqueue_request(&dd->queue, req);
-	bsev_busy = test_and_set_bit(FLAGS_BUSY, &dd->bsev.busy);
-	bsea_busy = test_and_set_bit(FLAGS_BUSY, &dd->bsea.busy);
 	spin_unlock_irqrestore(&dd->lock, flags);
-
-	if (!bsev_busy)
+	bsev_busy = test_and_set_bit(FLAGS_BUSY, &dd->bsev.busy);
+	if (!bsev_busy) {
 		queue_work(bsev_wq, &bsev_work);
+		goto finish;
+	}
+
+	bsea_busy = test_and_set_bit(FLAGS_BUSY, &dd->bsea.busy);
 	if (!bsea_busy)
 		queue_work(bsea_wq, &bsea_work);
 
+finish:
 	return err;
 }
 
