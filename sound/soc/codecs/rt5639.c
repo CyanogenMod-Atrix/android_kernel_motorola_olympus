@@ -421,8 +421,18 @@ static int rt5639_readable_register(
 int rt5639_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 {
 	int jack_type;
+	int sclk_src;
 
 	if (jack_insert) {
+		if (SND_SOC_BIAS_OFF == codec->dapm.bias_level) {
+			snd_soc_write(codec, RT5639_PWR_ANLG1, 0x2004);
+			snd_soc_write(codec, RT5639_MICBIAS, 0x3830);
+			snd_soc_write(codec, RT5639_DUMMY1 , 0x3701);
+		}
+		sclk_src = snd_soc_read(codec, RT5639_GLB_CLK) &
+			RT5639_SCLK_SRC_MASK;
+		snd_soc_update_bits(codec, RT5639_GLB_CLK,
+			RT5639_SCLK_SRC_MASK, 0x3 << RT5639_SCLK_SRC_SFT);
 		snd_soc_update_bits(codec, RT5639_PWR_ANLG1,
 			RT5639_PWR_LDO2, RT5639_PWR_LDO2);
 		snd_soc_update_bits(codec, RT5639_PWR_ANLG2,
@@ -434,13 +444,15 @@ int rt5639_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 			RT5639_PWR_MB_PU | RT5639_PWR_CLK25M_PU);
 		snd_soc_update_bits(codec, RT5639_DUMMY1,
 			0x1, 0x1);
-		msleep(50);
+		msleep(100);
 		if (snd_soc_read(codec, RT5639_IRQ_CTRL2) & 0x8)
 			jack_type = RT5639_HEADPHO_DET;
 		else
 			jack_type = RT5639_HEADSET_DET;
 		snd_soc_update_bits(codec, RT5639_IRQ_CTRL2,
 			RT5639_MB1_OC_CLR, 0);
+		snd_soc_update_bits(codec, RT5639_GLB_CLK,
+			RT5639_SCLK_SRC_MASK, sclk_src);
 	} else {
 		snd_soc_update_bits(codec, RT5639_MICBIAS,
 			RT5639_MIC1_OVCD_MASK,
