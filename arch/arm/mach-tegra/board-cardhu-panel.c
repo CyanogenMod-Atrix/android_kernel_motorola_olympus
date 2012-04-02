@@ -250,13 +250,7 @@ static int cardhu_backlight_notify(struct device *unused, int brightness)
 	if (brightness > 255) {
 		pr_info("Error: Brightness > 255!\n");
 	} else {
-		/* This value depends on the panel.
-		  Current 19X12 panel with PM313 gets
-		  full brightness when the output is 0. */
-		if (display_board_info.board_id == BOARD_DISPLAY_PM313)
-			brightness = 255 - bl_output[brightness];
-		else
-			brightness = bl_output[brightness];
+		brightness = bl_output[brightness];
 	}
 
 	return brightness;
