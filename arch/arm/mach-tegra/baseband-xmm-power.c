@@ -31,6 +31,7 @@
 #include <linux/usb.h>
 #include <linux/pm_runtime.h>
 #include <linux/suspend.h>
+#include <linux/pm_qos_params.h>
 #include <mach/usb_phy.h>
 #include "board.h"
 #include "board-enterprise.h"
@@ -109,6 +110,9 @@ static DEFINE_MUTEX(xmm_onoff_mutex);
 static bool system_suspending;
 static struct regulator *enterprise_hsic_reg;
 static bool _hsic_reg_status;
+static struct pm_qos_request_list boost_cpu_freq_req;
+static struct delayed_work pm_qos_work;
+#define BOOST_CPU_FREQ_MIN	1500000
 
 /* driver specific data - same structure is used for flashless
  * & flashed modem drivers i.e. baseband-xmm-power2.c
@@ -189,6 +193,13 @@ static int baseband_modem_power_on(struct baseband_power_platform_data *data)
 	gpio_set_value(data->modem.xmm.bb_on, 1);
 	udelay(70);
 	gpio_set_value(data->modem.xmm.bb_on, 0);
+
+	pr_debug("%s: pm qos request CPU 1.5GHz\n", __func__);
+	pm_qos_update_request(&boost_cpu_freq_req, (s32)BOOST_CPU_FREQ_MIN);
+	/* Device enumeration should happen in 1 sec however in any case
+	 * we want to request it back to normal so schedule work to restore
+	 * CPU freq after 2 seconds */
+	schedule_delayed_work(&pm_qos_work, msecs_to_jiffies(2000));
 
 	return 0;
 }
@@ -356,6 +367,13 @@ static ssize_t xmm_onoff(struct device *dev, struct device_attribute *attr,
 	mutex_unlock(&xmm_onoff_mutex);
 
 	return count;
+}
+
+static void pm_qos_worker(struct work_struct *work)
+{
+	pr_debug("%s - pm qos CPU back to normal\n", __func__);
+	pm_qos_update_request(&boost_cpu_freq_req,
+			(s32)PM_QOS_CPU_FREQ_MIN_DEFAULT_VALUE);
 }
 
 static DEVICE_ATTR(xmm_onoff, S_IRUSR | S_IWUSR | S_IRGRP,
@@ -1144,6 +1162,11 @@ static struct platform_driver baseband_power_driver = {
 static int __init xmm_power_init(void)
 {
 	pr_debug("%s\n", __func__);
+
+	INIT_DELAYED_WORK(&pm_qos_work, pm_qos_worker);
+	pm_qos_add_request(&boost_cpu_freq_req, PM_QOS_CPU_FREQ_MIN,
+			(s32)PM_QOS_CPU_FREQ_MIN_DEFAULT_VALUE);
+
 	return platform_driver_register(&baseband_power_driver);
 }
 
@@ -1151,6 +1174,8 @@ static void __exit xmm_power_exit(void)
 {
 	pr_debug("%s\n", __func__);
 	platform_driver_unregister(&baseband_power_driver);
+
+	pm_qos_remove_request(&boost_cpu_freq_req);
 }
 
 module_init(xmm_power_init)
