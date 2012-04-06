@@ -14,13 +14,6 @@ static control main44_VOLUME_controls[] = {
 static char *main44_VOLUME_control_names[] = {
 };
 
-
-
-static char *main44_REG_Section_names[] = {
-    "miniDSP_A_reg_values",
-    "miniDSP_D_reg_values",
-};
-
 reg_value main44_REG_Section_init_program[] = {
     {  0,0x0},
     {  0x7F,0x00},

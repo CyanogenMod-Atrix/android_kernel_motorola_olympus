@@ -61,7 +61,8 @@ static void aic3262_dump_page(struct i2c_client *i2c, u8 page);
 /* externs */
 extern int aic3262_change_page(struct snd_soc_codec *codec, u8 new_page);
 extern int aic3262_change_book(struct snd_soc_codec *codec, u8 new_book);
-extern int aic3262_write(struct snd_soc_codec *codec, u16 reg, u8 value);
+extern int aic3262_write(struct snd_soc_codec *codec, unsigned int reg,
+						unsigned int value);
 int aic3262_driver_init(struct snd_soc_codec *codec);
 /************** Dynamic aic3262 driver, TI LOAD support  ***************/
 
@@ -236,7 +237,7 @@ static ssize_t tiload_write(struct file *file, const char __user * buf,
 	return i2c_master_send(i2c, wr_data, count);
 }
 
-static int tiload_ioctl( struct file *filp,
+static long tiload_ioctl(struct file *filp,
 			unsigned int cmd, unsigned long arg)
 {
 	int num = 0;

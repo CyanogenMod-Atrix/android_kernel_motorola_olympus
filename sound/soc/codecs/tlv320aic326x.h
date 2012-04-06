@@ -657,11 +657,12 @@ extern int aic326x_headset_detect(struct snd_soc_codec *codec,
 extern int aic326x_headset_button_init(struct snd_soc_codec *codec,
 	struct snd_soc_jack *jack, int jack_type);
 
-extern u8 aic3262_read(struct snd_soc_codec *codec, u16 reg);
+extern unsigned int aic3262_read(struct snd_soc_codec *codec, unsigned int reg);
 extern u16 aic3262_read_2byte(struct snd_soc_codec *codec, u16 reg);
 extern int aic3262_reset_cache(struct snd_soc_codec *codec);
 extern int aic3262_change_page(struct snd_soc_codec *codec, u8 new_page);
-extern int aic3262_write(struct snd_soc_codec *codec, u16 reg, u8 value);
+extern int aic3262_write(struct snd_soc_codec *codec, unsigned int reg,
+							unsigned int value);
 extern void aic3262_write_reg_cache(struct snd_soc_codec *codec,
 				    u16 reg, u8 value);
 extern int aic3262_change_book(struct snd_soc_codec *codec, u8 new_book);
