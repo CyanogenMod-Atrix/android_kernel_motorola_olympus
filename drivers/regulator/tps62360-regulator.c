@@ -319,7 +319,7 @@ static int __devinit tps62360_probe(struct i2c_client *client,
 	tps->desc.ops = &tps62360_dcdc_ops;
 	tps->desc.type = REGULATOR_VOLTAGE;
 	tps->desc.owner = THIS_MODULE;
-	tps->regmap = regmap_init_i2c(client, &tps62360_regmap_config);
+	tps->regmap = devm_regmap_init_i2c(client, &tps62360_regmap_config);
 	if (IS_ERR(tps->regmap)) {
 		ret = PTR_ERR(tps->regmap);
 		dev_err(&client->dev, "%s() Err: Failed to allocate register"
@@ -404,7 +404,6 @@ err_gpio1:
 	if (gpio_is_valid(tps->vsel0_gpio))
 		gpio_free(tps->vsel0_gpio);
 err_gpio0:
-	regmap_exit(tps->regmap);
 	return ret;
 }
 
@@ -425,7 +424,6 @@ static int __devexit tps62360_remove(struct i2c_client *client)
 		gpio_free(tps->vsel0_gpio);
 
 	regulator_unregister(tps->rdev);
-	regmap_exit(tps->regmap);
 	return 0;
 }
 
