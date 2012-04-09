@@ -279,7 +279,7 @@ static int tegra_snor_controller_init(struct tegra_nor_info *info)
 	info->timing0_default = chip_parm->timing_default.timing0;
 	info->timing0_read = chip_parm->timing_read.timing0;
 	info->timing1_default = chip_parm->timing_default.timing1;
-	info->timing1_read = chip_parm->timing_read.timing0;
+	info->timing1_read = chip_parm->timing_read.timing1;
 
 	snor_tegra_writel(info, info->timing1_default, TEGRA_SNOR_TIMING1_REG);
 	snor_tegra_writel(info, info->timing0_default, TEGRA_SNOR_TIMING0_REG);
