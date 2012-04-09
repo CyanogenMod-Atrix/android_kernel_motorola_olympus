@@ -194,20 +194,30 @@ TRACE_EVENT(nvhost_cdma_push_gather,
 );
 
 TRACE_EVENT(nvhost_channel_write_reloc,
-	TP_PROTO(const char *name),
+	TP_PROTO(const char *name, u32 cmdbuf_mem, u32 cmdbuf_offset,
+		u32 target, u32 target_offset),
 
-	TP_ARGS(name),
+	TP_ARGS(name, cmdbuf_mem, cmdbuf_offset, target, target_offset),
 
 	TP_STRUCT__entry(
 		__field(const char *, name)
+		__field(u32, cmdbuf_mem)
+		__field(u32, cmdbuf_offset)
+		__field(u32, target)
+		__field(u32, target_offset)
 	),
 
 	TP_fast_assign(
 		__entry->name = name;
+		__entry->cmdbuf_mem = cmdbuf_mem;
+		__entry->cmdbuf_offset = cmdbuf_offset;
+		__entry->target = target;
+		__entry->target_offset = target_offset;
 	),
 
-	TP_printk("name=%s",
-	  __entry->name)
+	TP_printk("name=%s, cmdbuf_mem=%08x, cmdbuf_offset=%04x, target=%08x, target_offset=%04x",
+	  __entry->name, __entry->cmdbuf_mem, __entry->cmdbuf_offset,
+	  __entry->target, __entry->target_offset)
 );
 
 TRACE_EVENT(nvhost_channel_write_waitchks,
