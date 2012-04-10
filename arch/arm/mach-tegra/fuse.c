@@ -2,7 +2,7 @@
  * arch/arm/mach-tegra/fuse.c
  *
  * Copyright (C) 2010 Google, Inc.
- * Copyright (C) 2010-2011 NVIDIA Corp.
+ * Copyright (C) 2010-2012 NVIDIA Corp.
  *
  * Author:
  *	Colin Cross <ccross@android.com>
@@ -441,21 +441,27 @@ static int __init tegra_bootloader_tegraid(char *str)
 	return 0;
 }
 
-static unsigned int get_chip_id(char *val, struct kernel_param *kp)
+static int get_chip_id(char *val, const struct kernel_param *kp)
 {
 	tegra_chip_id = (unsigned int)tegra_get_chipid();
 	return param_get_uint(val, kp);
 }
-static unsigned int get_chip_rev(char *val, struct kernel_param *kp)
+
+static int get_revision(char *val, const struct kernel_param *kp)
 {
 	tegra_chip_rev = (unsigned int)tegra_get_revision();
 	return param_get_uint(val, kp);
 }
 
-module_param_call(tegra_chip_id, NULL, get_chip_id, &tegra_chip_id, 0444);
-__MODULE_PARM_TYPE(tegra_chip_id, "uint");
-module_param_call(tegra_chip_rev, NULL, get_chip_rev, &tegra_chip_rev, 0444);
-__MODULE_PARM_TYPE(tegra_chip_rev, "uint");
+static struct kernel_param_ops tegra_chip_id_ops = {
+	.get = get_chip_id,
+};
+
+static struct kernel_param_ops tegra_revision_ops = {
+	.get = get_revision,
+};
 
 /* tegraid=chipid.major.minor.netlist.patch[.priv] */
 early_param("tegraid", tegra_bootloader_tegraid);
+module_param_cb(tegra_chip_id, &tegra_chip_id_ops, &tegra_chip_id, 0444);
+module_param_cb(tegra_chip_rev, &tegra_revision_ops, &tegra_chip_rev, 0444);
