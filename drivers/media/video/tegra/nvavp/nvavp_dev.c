@@ -1177,17 +1177,7 @@ static int tegra_nvavp_probe(struct nvhost_device *ndev)
 	switch (heap_mask) {
 	case NVMAP_HEAP_IOVMM:
 
-#ifdef CONFIG_TEGRA_SMMU_BASE_AT_E0000000
-		iovmm_addr = 0xeff00000;
-#else
 		iovmm_addr = 0x0ff00000;
-#endif
-
-		/* Tegra3 A01 has different SMMU address */
-		if (tegra_get_chipid() == TEGRA_CHIPID_TEGRA3
-			&& tegra_get_revision() == TEGRA_REVISION_A01) {
-			iovmm_addr = 0xeff00000;
-		}
 
 		nvavp->os_info.handle = nvmap_alloc_iovm(nvavp->nvmap, SZ_1M,
 						L1_CACHE_BYTES,
