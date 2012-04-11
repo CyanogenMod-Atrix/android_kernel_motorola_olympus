@@ -946,6 +946,16 @@ static int tegra_ehci_map_urb_for_dma(struct usb_hcd *hcd, struct urb *urb,
 
 static void tegra_ehci_unmap_urb_for_dma(struct usb_hcd *hcd, struct urb *urb)
 {
+	struct tegra_ehci_hcd *tegra = dev_get_drvdata(hcd->self.controller);
+
+	/* Fence read for coherency of AHB master intiated writes */
+	if (tegra->phy->instance == 0)
+		readb(IO_ADDRESS(IO_PPCS_PHYS + USB1_PREFETCH_ID));
+	else if (tegra->phy->instance == 1)
+		readb(IO_ADDRESS(IO_PPCS_PHYS + USB2_PREFETCH_ID));
+	else if (tegra->phy->instance == 2)
+		readb(IO_ADDRESS(IO_PPCS_PHYS + USB3_PREFETCH_ID));
+
 	usb_hcd_unmap_urb_for_dma(hcd, urb);
 	free_dma_aligned_buffer(urb);
 }
