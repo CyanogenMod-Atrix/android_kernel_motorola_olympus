@@ -551,6 +551,12 @@ __v7_setup:
 	mrcge	p15, 0, r10, c15, c0, 0		@ read power control register
 	orrge	r10, r10, #1			@ enable dynamic clock gating
 	mcrge	p15, 0, r10, c15, c0, 0		@ write power control register
+#ifdef CONFIG_ARM_ERRATA_716044
+	cmp     r6, #0x12                       @ present in r1p0 - r1p2
+	mrcle   p15, 0, r10, c1, c0, 0
+	orrle   r10, r10, #(1 << 14)            @ set SCTLR.RR
+	mcrle   p15, 0, r10, c1, c0, 0
+#endif
 #ifdef CONFIG_ARM_ERRATA_720791
 	teq	r5, #0x00100000			@ only present in r1p*
 	mrceq	p15, 0, r10, c15, c0, 2		@ read "chicken power ctrl" reg
