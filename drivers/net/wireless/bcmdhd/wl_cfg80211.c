@@ -4086,9 +4086,11 @@ static struct wireless_dev *wl_alloc_wdev(struct device *sdiofunc_dev)
 #endif
 		WIPHY_FLAG_4ADDR_STATION;
 
+#ifdef ENABLE_CUSTOM_REGULATORY_DOMAIN
 	WL_DBG(("Registering custom regulatory)\n"));
 	wdev->wiphy->flags |= WIPHY_FLAG_CUSTOM_REGULATORY;
 	wiphy_apply_custom_regulatory(wdev->wiphy, &brcm_regdom);
+#endif
 	/* Now we can register wiphy with cfg80211 module */
 	err = wiphy_register(wdev->wiphy);
 	if (unlikely(err < 0)) {
