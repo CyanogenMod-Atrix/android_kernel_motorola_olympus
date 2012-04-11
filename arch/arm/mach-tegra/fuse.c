@@ -343,19 +343,6 @@ static enum tegra_revision tegra_decode_revision(const struct tegra_id *id)
 		revision = tegra_chip_revisions[i].revision;
 		break;
 	}
-
-#elif defined(CONFIG_TEGRA_FPGA_PLATFORM)
-	if ((id->chipid & 0xf0) == TEGRA_CHIPID_TEGRA3) {
-		if ((id->major == 0) && (id->minor == 1)) {
-			unsigned int patch = id->patch & 0xF;
-			if ((id->netlist == 12) && (patch == 12))
-				revision = TEGRA_REVISION_A01;
-			else if ((id->netlist == 12) && (patch > 12))
-				revision = TEGRA_REVISION_A02;
-			else if (id->netlist > 12)
-				revision = TEGRA_REVISION_A02;
-		}
-	}
 #endif
 
 	return revision;
