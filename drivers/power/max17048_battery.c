@@ -177,7 +177,7 @@ static void max17048_get_vcell(struct i2c_client *client)
 	if (vcell < 0)
 		dev_err(&client->dev, "%s: err %d\n", __func__, vcell);
 	else
-		chip->vcell = (uint16_t)vcell;
+		chip->vcell = (uint16_t)(((vcell >> 4) * 125) / 100);
 }
 
 static void max17048_get_soc(struct i2c_client *client)
