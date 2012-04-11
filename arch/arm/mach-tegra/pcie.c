@@ -1201,8 +1201,12 @@ static int tegra_pci_probe(struct platform_device *pdev)
 
 static int tegra_pci_suspend(struct device *dev)
 {
+	int ret = 0;
 	struct pci_dev *pdev = NULL;
 	int i, size, ndev = 0;
+
+	if (!tegra_pcie.num_ports)
+		 return ret;
 
 	for_each_pci_dev(pdev) {
 		/* save state of pcie devices before powering off regulators */
@@ -1243,10 +1247,12 @@ static int tegra_pci_resume_noirq(struct device *dev)
 
 static int tegra_pci_resume(struct device *dev)
 {
-	int ret;
+	int ret = 0;
 	int i, size, ndev = 0;
 	struct pci_dev *pdev = NULL;
 
+	if (!tegra_pcie.num_ports)
+		 return ret;
 	ret = tegra_pcie_power_on();
 	tegra_pcie_enable_controller();
 	tegra_pcie_setup_translations();
