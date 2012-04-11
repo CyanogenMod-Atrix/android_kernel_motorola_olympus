@@ -155,6 +155,26 @@ static int sixaxis_set_operational_bt(struct hid_device *hdev)
 	return hdev->hid_output_raw_report(hdev, buf, sizeof(buf), HID_FEATURE_REPORT);
 }
 
+static void sixaxis_set_led_bt(struct hid_device *hdev)
+{
+	hid_info(hdev, "set LED BT\n");
+	/* set first LED on BT connection */
+	unsigned char led_data[] = {
+			0x01,
+			/* rumble values */
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			/* LED settings 0x02=LED1 .. 0x10=LED4 */
+			0x02,
+			0xff, 0x27, 0x10, 0x00, 0x32,	/* LED 4 */
+			0xff, 0x27, 0x10, 0x00, 0x32,	/* LED 3 */
+			0xff, 0x27, 0x10, 0x00, 0x32,	/* LED 2 */
+			0xff, 0x27, 0x10, 0x00, 0x32,	/* LED 1 */
+			0x00, 0x00, 0x00, 0x00, 0x00
+		};
+	hdev->hid_output_raw_report(hdev, led_data, sizeof(led_data),
+					HID_OUTPUT_REPORT);
+}
+
 static int sony_probe(struct hid_device *hdev, const struct hid_device_id *id)
 {
 	int ret;
@@ -187,8 +207,11 @@ static int sony_probe(struct hid_device *hdev, const struct hid_device_id *id)
 		hdev->hid_output_raw_report = sixaxis_usb_output_raw_report;
 		ret = sixaxis_set_operational_usb(hdev);
 	}
-	else if (sc->quirks & SIXAXIS_CONTROLLER_BT)
+	else if (sc->quirks & SIXAXIS_CONTROLLER_BT) {
 		ret = sixaxis_set_operational_bt(hdev);
+		if (ret >= 0)
+			sixaxis_set_led_bt(hdev);
+	}
 	else
 		ret = 0;
 
