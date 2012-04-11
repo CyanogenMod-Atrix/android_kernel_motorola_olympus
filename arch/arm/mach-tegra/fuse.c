@@ -70,8 +70,6 @@ struct tegra_id {
 };
 
 static struct tegra_id tegra_id;
-static unsigned int tegra_chip_id;
-static unsigned int tegra_chip_rev;
 
 static const char *tegra_revision_name[TEGRA_REVISION_MAX] = {
 	[TEGRA_REVISION_UNKNOWN] = "unknown",
@@ -383,60 +381,27 @@ static void tegra_get_tegraid_from_hw(void)
 
 enum tegra_chipid tegra_get_chipid(void)
 {
-	if (tegra_id.chipid == TEGRA_CHIPID_UNKNOWN) {
-		/* Boot loader did not pass a valid chip ID.
-		 * Get it from hardware */
+	if (tegra_id.chipid == TEGRA_CHIPID_UNKNOWN)
 		tegra_get_tegraid_from_hw();
-	}
 
 	return tegra_id.chipid;
 }
 
 enum tegra_revision tegra_get_revision(void)
 {
-	if (tegra_id.chipid == TEGRA_CHIPID_UNKNOWN) {
-		/* Boot loader did not pass a valid chip ID.
-		 * Get it from hardware */
+	if (tegra_id.chipid == TEGRA_CHIPID_UNKNOWN)
 		tegra_get_tegraid_from_hw();
-	}
 
 	return tegra_id.revision;
 }
 
-static char chippriv[16]; /* Permanent buffer for private string */
-static int __init tegra_bootloader_tegraid(char *str)
-{
-	u32 id[5];
-	int i = 0;
-	char *priv = NULL;
-
-	do {
-		id[i++] = simple_strtoul(str, &str, 16);
-	} while (*str++ && i < ARRAY_SIZE(id));
-
-	if (*(str - 1) == '.') {
-		strncpy(chippriv, str, sizeof(chippriv) - 1);
-		priv = chippriv;
-		if (strlen(str) > sizeof(chippriv) - 1)
-			pr_err("### tegraid.priv in kernel arg truncated\n");
-	}
-
-	while (i < ARRAY_SIZE(id))
-		id[i++] = 0;
-
-	tegra_set_tegraid(id[0], id[1], id[2], id[3], id[4], priv);
-	return 0;
-}
-
 static int get_chip_id(char *val, const struct kernel_param *kp)
 {
-	tegra_chip_id = (unsigned int)tegra_get_chipid();
 	return param_get_uint(val, kp);
 }
 
 static int get_revision(char *val, const struct kernel_param *kp)
 {
-	tegra_chip_rev = (unsigned int)tegra_get_revision();
 	return param_get_uint(val, kp);
 }
 
@@ -448,7 +413,5 @@ static struct kernel_param_ops tegra_revision_ops = {
 	.get = get_revision,
 };
 
-/* tegraid=chipid.major.minor.netlist.patch[.priv] */
-early_param("tegraid", tegra_bootloader_tegraid);
-module_param_cb(tegra_chip_id, &tegra_chip_id_ops, &tegra_chip_id, 0444);
-module_param_cb(tegra_chip_rev, &tegra_revision_ops, &tegra_chip_rev, 0444);
+module_param_cb(tegra_chip_id, &tegra_chip_id_ops, &tegra_id.chipid, 0444);
+module_param_cb(tegra_chip_rev, &tegra_revision_ops, &tegra_id.revision, 0444);
