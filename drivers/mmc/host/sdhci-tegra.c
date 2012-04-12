@@ -1084,8 +1084,8 @@ static int __devinit sdhci_tegra_probe(struct platform_device *pdev)
 	host->mmc->pm_caps |= MMC_PM_KEEP_POWER | MMC_PM_IGNORE_PM_NOTIFY;
 	if (plat->mmc_data.built_in) {
 		host->mmc->caps |= MMC_CAP_NONREMOVABLE;
-		host->mmc->pm_flags |= MMC_PM_IGNORE_PM_NOTIFY;
 	}
+	host->mmc->pm_flags |= MMC_PM_IGNORE_PM_NOTIFY;
 #ifdef CONFIG_MMC_EMBEDDED_SDIO
 	/* Do not turn OFF embedded sdio cards as it support Wake on Wireless */
 	if (plat->mmc_data.embedded_sdio)
