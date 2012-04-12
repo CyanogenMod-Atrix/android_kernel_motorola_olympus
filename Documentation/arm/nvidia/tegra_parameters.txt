@@ -167,3 +167,13 @@ Contains voltage state.
 
 /sys/kernel/debug/clock/mon.avp/rate
 ------------------------------------
+
+/sys/kernel/debug/clock/rails
+-----------------------------
+
+Contains the time at each voltage.
+
+/sys/devices/system/cpu/cpu0/cpufreq/stats/time_in_state
+--------------------------------------------------------
+
+Contains the time at each frequency.
