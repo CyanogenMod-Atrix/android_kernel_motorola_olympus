@@ -33,6 +33,7 @@
 #include <linux/suspend.h>
 #include <mach/usb_phy.h>
 #include "board.h"
+#include "board-enterprise.h"
 #include "devices.h"
 #include "gpio-names.h"
 #include "baseband-xmm-power.h"
@@ -107,10 +108,69 @@ static bool modem_sleep_flag;
 static spinlock_t xmm_lock;
 static DEFINE_MUTEX(xmm_onoff_mutex);
 static bool system_suspending;
+static struct regulator *enterprise_hsic_reg;
+static bool _hsic_reg_status;
 
 static void baseband_xmm_power_L2_resume(void);
 static int baseband_xmm_power_driver_handle_resume(
 			struct baseband_power_platform_data *data);
+
+static int tegra_baseband_rail_on(void)
+{
+	int ret;
+	struct board_info bi;
+	tegra_get_board_info(&bi);
+
+	/* only applicable to enterprise */
+	if (bi.board_id != BOARD_E1197)
+		return 0;
+
+	if (_hsic_reg_status == true)
+		return 0;
+
+	if (enterprise_hsic_reg == NULL) {
+		enterprise_hsic_reg = regulator_get(NULL, "avdd_hsic");
+		if (IS_ERR_OR_NULL(enterprise_hsic_reg)) {
+			pr_err("xmm: could not get regulator vddio_hsic\n");
+			enterprise_hsic_reg = NULL;
+			return PTR_ERR(enterprise_hsic_reg);
+		}
+	}
+	ret = regulator_enable(enterprise_hsic_reg);
+	if (ret < 0) {
+		pr_err("xmm: failed to enable regulator\n");
+		return ret;
+	}
+	_hsic_reg_status = true;
+	return 0;
+}
+
+static int tegra_baseband_rail_off(void)
+{
+	int ret;
+	struct board_info bi;
+	tegra_get_board_info(&bi);
+
+	/* only applicable to enterprise */
+	if (bi.board_id != BOARD_E1197)
+		return 0;
+
+	if (_hsic_reg_status == false)
+		return 0;
+
+	if (IS_ERR_OR_NULL(enterprise_hsic_reg)) {
+		pr_err("xmm: unbalanced disable on vddio_hsic regulator\n");
+		enterprise_hsic_reg = NULL;
+		return PTR_ERR(enterprise_hsic_reg);
+	}
+	ret = regulator_disable(enterprise_hsic_reg);
+	if (ret < 0) {
+		pr_err("xmm: failed to disable regulator\n");
+		return ret;
+	}
+	_hsic_reg_status = false;
+	return 0;
+}
 
 static int baseband_modem_power_on(struct baseband_power_platform_data *data)
 {
@@ -145,6 +205,8 @@ static int baseband_xmm_power_on(struct platform_device *device)
 	}
 	if (baseband_xmm_powerstate != BBXMM_PS_UNINIT)
 		return -EINVAL;
+
+	tegra_baseband_rail_on();
 
 	/* reset the state machine */
 	baseband_xmm_powerstate = BBXMM_PS_INIT;
@@ -245,6 +307,8 @@ static int baseband_xmm_power_off(struct platform_device *device)
 	spin_unlock_irqrestore(&xmm_lock, flags);
 	/* start registration process once again on xmm on */
 	register_hsic_device = true;
+
+	tegra_baseband_rail_off();
 	pr_debug("%s }\n", __func__);
 
 	return 0;
@@ -358,6 +422,10 @@ void baseband_xmm_set_power_status(unsigned int status)
 			}
 		}
 		pr_info("L3\n");
+		/* system is going to suspend */
+		if (baseband_xmm_powerstate == BBXMM_PS_L2)
+			tegra_baseband_rail_off();
+
 		baseband_xmm_powerstate = status;
 		spin_lock_irqsave(&xmm_lock, flags);
 		system_suspending = false;
@@ -381,6 +449,12 @@ void baseband_xmm_set_power_status(unsigned int status)
 			pr_debug("BB XMM POWER STATE = %d\n", status);
 			baseband_xmm_power_L2_resume();
 		}
+		baseband_xmm_powerstate = status;
+		break;
+	case BBXMM_PS_L3TOL0:
+		/* poweron rail for L3 -> L0 (system resume) */
+		pr_debug("L3 -> L0, turning on power rail.\n");
+		tegra_baseband_rail_on();
 		baseband_xmm_powerstate = status;
 		break;
 	default:

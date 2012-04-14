@@ -63,6 +63,7 @@
 
 #ifdef CONFIG_TEGRA_DC
 static struct regulator *enterprise_dsi_reg;
+static bool dsi_regulator_status;
 static struct regulator *enterprise_lcd_reg;
 
 static struct regulator *enterprise_hdmi_reg;
@@ -454,6 +455,51 @@ static struct tegra_dc_platform_data enterprise_disp2_pdata = {
 	.emc_clk_rate	= 300000000,
 };
 
+static int avdd_dsi_csi_rail_enable(void)
+{
+	int ret;
+
+	if (dsi_regulator_status == true)
+		return 0;
+
+	if (enterprise_dsi_reg == NULL) {
+		enterprise_dsi_reg = regulator_get(NULL, "avdd_dsi_csi");
+		if (IS_ERR_OR_NULL(enterprise_dsi_reg)) {
+			pr_err("dsi: Could not get regulator avdd_dsi_csi\n");
+			enterprise_dsi_reg = NULL;
+			return PTR_ERR(enterprise_dsi_reg);
+		}
+	}
+	ret = regulator_enable(enterprise_dsi_reg);
+	if (ret < 0) {
+		pr_err("DSI regulator avdd_dsi_csi could not be enabled\n");
+		return ret;
+	}
+	dsi_regulator_status = true;
+	return 0;
+}
+
+static int avdd_dsi_csi_rail_disable(void)
+{
+	int ret;
+
+	if (dsi_regulator_status == false)
+		return 0;
+
+	if (enterprise_dsi_reg == NULL) {
+		pr_warn("%s: unbalanced disable\n", __func__);
+		return -EIO;
+	}
+
+	ret = regulator_disable(enterprise_dsi_reg);
+	if (ret < 0) {
+		pr_err("DSI regulator avdd_dsi_csi cannot be disabled\n");
+		return ret;
+	}
+	dsi_regulator_status = false;
+	return 0;
+}
+
 static int enterprise_dsi_panel_enable(void)
 {
 	int ret;
@@ -461,20 +507,9 @@ static int enterprise_dsi_panel_enable(void)
 
 	tegra_get_board_info(&board_info);
 
-	if (enterprise_dsi_reg == NULL) {
-		enterprise_dsi_reg = regulator_get(NULL, "avdd_dsi_csi");
-		if (IS_ERR_OR_NULL(enterprise_dsi_reg)) {
-			pr_err("dsi: Could not get regulator avdd_dsi_csi\n");
-				enterprise_dsi_reg = NULL;
-				return PTR_ERR(enterprise_dsi_reg);
-		}
-	}
-	ret = regulator_enable(enterprise_dsi_reg);
-	if (ret < 0) {
-		printk(KERN_ERR
-			"DSI regulator avdd_dsi_csi could not be enabled\n");
+	ret = avdd_dsi_csi_rail_enable();
+	if (ret)
 		return ret;
-	}
 
 #if DSI_PANEL_RESET
 
@@ -562,8 +597,8 @@ static void enterprise_stereo_set_orientation(int mode)
 #ifdef CONFIG_TEGRA_DC
 static int enterprise_dsi_panel_postsuspend(void)
 {
-	/* Do nothing for enterprise dsi panel */
-	return 0;
+	/* Disable enterprise dsi rail */
+	return avdd_dsi_csi_rail_disable();
 }
 #endif
 
