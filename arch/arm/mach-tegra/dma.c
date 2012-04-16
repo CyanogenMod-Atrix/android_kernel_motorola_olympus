@@ -678,6 +678,12 @@ void tegra_dma_free_channel(struct tegra_dma_channel *ch)
 }
 EXPORT_SYMBOL(tegra_dma_free_channel);
 
+int tegra_dma_get_channel_id(struct tegra_dma_channel *ch)
+{
+	return ch->id;
+}
+EXPORT_SYMBOL(tegra_dma_get_channel_id);
+
 static bool tegra_dma_update_hw_partial(struct tegra_dma_channel *ch,
 	struct tegra_dma_req *req)
 {
