@@ -259,6 +259,13 @@ config TEGRA_CARDHU_DSI
 	help
 		Support for DSI Panel on Nvidia Cardhu
 
+config TEGRA_CARDHU_DUAL_DSI_PANEL
+	bool "Support Dual DSI panel on Cardhu"
+	default n
+	depends on TEGRA_CARDHU_DSI
+	help
+		Support for Dual DSI Panel on Nvidia Cardhu
+
 config TEGRA_EMC_SCALING_ENABLE
 	bool "Enable scaling the memory frequency"
 	depends on TEGRA_SILICON_PLATFORM
