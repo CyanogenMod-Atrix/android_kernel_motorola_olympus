@@ -279,7 +279,7 @@ static int tegra_rt5640_jack_notifier(struct notifier_block *self,
 	struct tegra_rt5640 *machine = snd_soc_card_get_drvdata(card);
 	struct tegra_rt5640_platform_data *pdata = machine->pdata;
 	enum headset_state state = BIT_NO_HEADSET;
-	unsigned char status_jack;
+	unsigned char status_jack = 0;
 
 	if (jack == &tegra_rt5640_hp_jack) {
 		if (action) {

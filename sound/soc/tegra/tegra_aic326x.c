@@ -1142,8 +1142,10 @@ static __devinit int tegra_aic326x_driver_probe(struct platform_device *pdev)
 	struct snd_soc_card *card = &snd_soc_tegra_aic326x;
 	struct tegra_aic326x *machine;
 	struct tegra_asoc_platform_data *pdata;
-	int ret, i;
-
+	int ret;
+#ifndef CONFIG_ARCH_TEGRA_2x_SOC
+	int i;
+#endif
 	pdata = pdev->dev.platform_data;
 	if (!pdata) {
 		dev_err(&pdev->dev, "No platform data supplied\n");

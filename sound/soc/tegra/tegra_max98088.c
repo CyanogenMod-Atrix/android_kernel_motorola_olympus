@@ -559,7 +559,7 @@ static void tegra_max98088_shutdown(struct snd_pcm_substream *substream)
 	 } else {
 
 		if (!i2s->is_call_mode_rec)
-			return 0;
+			return;
 
 		i2s->is_call_mode_rec = 0;
 
@@ -1065,7 +1065,7 @@ static struct snd_soc_dai_link tegra_max98088_dai[NUM_DAI_LINKS] = {
 };
 
 static int tegra30_soc_set_bias_level(struct snd_soc_card *card,
-					enum snd_soc_bias_level level)
+	struct snd_soc_dapm_context *dapm, enum snd_soc_bias_level level)
 {
 	struct tegra_max98088 *machine = snd_soc_card_get_drvdata(card);
 
@@ -1077,7 +1077,7 @@ static int tegra30_soc_set_bias_level(struct snd_soc_card *card,
 }
 
 static int tegra30_soc_set_bias_level_post(struct snd_soc_card *card,
-					enum snd_soc_bias_level level)
+	struct snd_soc_dapm_context *dapm, enum snd_soc_bias_level level)
 {
 	struct tegra_max98088 *machine = snd_soc_card_get_drvdata(card);
 

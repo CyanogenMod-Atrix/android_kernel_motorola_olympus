@@ -156,7 +156,6 @@ int tegra_asoc_utils_init(struct tegra_asoc_utils_data *data,
 			  struct device *dev)
 {
 	int ret;
-	int rate;
 
 	data->dev = dev;
 
