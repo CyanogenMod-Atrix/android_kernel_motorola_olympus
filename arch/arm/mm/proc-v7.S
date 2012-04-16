@@ -260,18 +260,19 @@ ENDPROC(cpu_v7_set_pte_ext)
 .equ	cpu_v7_suspend_size, (4 * 10) + cpu_v7_debug_suspend_size
 #ifdef CONFIG_PM_SLEEP
 ENTRY(cpu_v7_do_suspend)
-	stmfd	sp!, {r0, r3 - r10, lr}
+	stmfd	sp!, {r0, r3 - r11, lr}
 	mrc	p15, 0, r3, c15, c0, 1	@ diag
 	mrc	p15, 0, r4, c13, c0, 0	@ FCSE/PID
 	mrc	p15, 0, r5, c13, c0, 1	@ Context ID
 	mrc	p15, 0, r6, c13, c0, 3	@ User r/o thread ID
 	stmia	r0!, {r3 - r6}
 	mrc	p15, 0, r6, c3, c0, 0	@ Domain ID
-	mrc	p15, 0, r7, c2, c0, 1	@ TTB 1
-	mrc	p15, 0, r8, c1, c0, 0	@ Control register
-	mrc	p15, 0, r9, c1, c0, 1	@ Auxiliary control register
-	mrc	p15, 0, r10, c1, c0, 2	@ Co-processor access control
-	stmia	r0!, {r6 - r10}
+	mrc	p15, 0, r7, c2, c0, 0	@ TTB 0
+	mrc	p15, 0, r8, c2, c0, 1	@ TTB 1
+	mrc	p15, 0, r9, c1, c0, 0	@ Control register
+	mrc	p15, 0, r10, c1, c0, 1	@ Auxiliary control register
+	mrc	p15, 0, r11, c1, c0, 2	@ Co-processor access control
+	stmia	r0!, {r6 - r11}
 
 #ifdef CONFIG_ARM_SAVE_DEBUG_CONTEXT
 	/* Save CP14 debug controller context */
@@ -296,7 +297,7 @@ ENTRY(cpu_v7_do_suspend)
 
 	mrc	p14, 0, r8, c0, c0, 0   @ read IDR
 	mov	r3, r8, lsr #24
-	and	r3, r3, #0xf		@ r3 has the number of brkpt
+	and	r3, r3, #0xf            @ r3 has the number of brkpt
 	rsb	r3, r3, #0xf
 
 	/* r3 = (15 - #of brkpt) ;
@@ -323,7 +324,7 @@ ENTRY(cpu_v7_do_suspend)
 	save_brkpt	c1
 	save_brkpt	c0
 
-	mov	r3, r8, lsr #28		@ r3 has the number of wpt
+	mov	r3, r8, lsr #28         @ r3 has the number of wpt
 	rsb	r3, r3, #0xf
 
 	/* r3 = (15 - #of wpt) ;
@@ -350,7 +351,7 @@ ENTRY(cpu_v7_do_suspend)
 	save_wpt	c1
 	save_wpt	c0
 #endif
-	ldmfd	sp!, {r0, r3 - r10, pc}
+	ldmfd	sp!, {r0, r3 - r11, pc}
 ENDPROC(cpu_v7_do_suspend)
 
 ENTRY(cpu_v7_do_resume)
@@ -364,17 +365,15 @@ ENTRY(cpu_v7_do_resume)
 	mcr	p15, 0, r4, c13, c0, 0	@ FCSE/PID
 	mcr	p15, 0, r5, c13, c0, 1	@ Context ID
 	mcr	p15, 0, r6, c13, c0, 3	@ User r/o thread ID
-	ldmia	r0!, {r6 - r10}
+	ldmia	r0!, {r6 - r11}
 	mcr	p15, 0, r6, c3, c0, 0	@ Domain ID
-	ALT_SMP(orr	r1, r1, #TTB_FLAGS_SMP)
-	ALT_UP(orr	r1, r1, #TTB_FLAGS_UP)
-	mcr	p15, 0, r1, c2, c0, 0	@ TTB 0
-	mcr	p15, 0, r7, c2, c0, 1	@ TTB 1
+	mcr	p15, 0, r7, c2, c0, 0	@ TTB 0
+	mcr	p15, 0, r8, c2, c0, 1	@ TTB 1
 	mcr	p15, 0, ip, c2, c0, 2	@ TTB control register
 	mrc	p15, 0, r4, c1, c0, 1	@ Read Auxiliary control register
-	teq	r4, r9			@ Is it already set?
-	mcrne	p15, 0, r9, c1, c0, 1	@ No, so write it
-	mcr	p15, 0, r10, c1, c0, 2	@ Co-processor access control
+	teq	r4, r10			@ Is it already set?
+	mcrne	p15, 0, r10, c1, c0, 1	@ No, so write it
+	mcr	p15, 0, r11, c1, c0, 2	@ Co-processor access control
 	ldr	r4, =PRRR		@ PRRR
 	ldr	r5, =NMRR		@ NMRR
 	mcr	p15, 0, r4, c10, c2, 0	@ write PRRR
@@ -383,6 +382,7 @@ ENTRY(cpu_v7_do_resume)
 
 #ifdef CONFIG_ARM_SAVE_DEBUG_CONTEXT
 	/* Restore CP14 debug controller context */
+
 	ldmia	r0!, {r2 - r5}
 	mcr	p14, 0, r3, c0, c6, 0	@ DBGWFAR
 	mcr	p14, 0, r4, c0, c7, 0	@ DBGVCR
@@ -400,15 +400,14 @@ ENTRY(cpu_v7_do_resume)
 	ldrne	r4, [r0], #4
 	mcrne	p14, 0, r4, c0, c0, 2	@ DBGDTRRXext
 
-	mrc	p14, 0, r4, c0, c0, 0	@ read IDR
-	mov	r3, r4, lsr #24
-	and	r3, r3, #0xf		@ r3 has the number of brkpt
+	mrc	p14, 0, r8, c0, c0, 0   @ read IDR
+	mov	r3, r8, lsr #24
+	and	r3, r3, #0xf            @ r3 has the number of brkpt
 	rsb	r3, r3, #0xf
 
-	/*
-	 * r3 = (15 - # of wpt) ;
-	 * switch offset = r3*12 - 4 = (r3*3 - 1)<<2
-	 */
+	/* r3 = (15 - #of wpt) ;
+	   switch offset = r3*12 - 4 = (r3*3 - 1)<<2
+	*/
 	add     r3, r3, r3, lsl #1
 	sub	r3, r3, #1
 	add	pc, pc, r3, lsl #2
@@ -430,7 +429,7 @@ ENTRY(cpu_v7_do_resume)
 	restore_brkpt	c1
 	restore_brkpt	c0
 
-	mov	r3, r4, lsr #28		@ r3 has the number of wpt
+	mov	r3, r8, lsr #28         @ r3 has the number of wpt
 	rsb	r3, r3, #0xf
 
 	/* r3 = (15 - #of wpt) ;
@@ -463,7 +462,7 @@ start_restore_wpt:
 	isb
 #endif
 	dsb
-	mov	r0, r8			@ Control Register
+	mov	r0, r9			@ control register
 	b	cpu_resume_mmu
 ENDPROC(cpu_v7_do_resume)
 #endif
