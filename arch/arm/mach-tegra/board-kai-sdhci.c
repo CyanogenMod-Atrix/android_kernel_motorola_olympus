@@ -234,7 +234,7 @@ static int kai_wifi_power(int power_on)
 	return 0;
 }
 
-#ifdef TEGRA_PREPOWER_WIFI
+#ifdef CONFIG_TEGRA_PREPOWER_WIFI
 static int __init kai_wifi_prepower(void)
 {
 	if (!machine_is_kai())

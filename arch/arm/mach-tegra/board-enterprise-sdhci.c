@@ -230,10 +230,10 @@ static int enterprise_wifi_reset(int on)
 	return 0;
 }
 
-#ifdef TEGRA_PREPOWER_WIFI
+#ifdef CONFIG_TEGRA_PREPOWER_WIFI
 static int __init enterprise_wifi_prepower(void)
 {
-	if (!machine_is_enterprise())
+	if (!machine_is_tegra_enterprise())
 		return 0;
 
 	enterprise_wifi_power(1);

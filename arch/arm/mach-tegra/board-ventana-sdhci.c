@@ -231,7 +231,7 @@ static int ventana_wifi_reset(int on)
 	return 0;
 }
 
-#ifdef TEGRA_PREPOWER_WIFI
+#ifdef CONFIG_TEGRA_PREPOWER_WIFI
 static int __init ventana_wifi_prepower(void)
 {
 	if (!machine_is_ventana())

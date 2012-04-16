@@ -223,7 +223,7 @@ static struct platform_device tegra_sdhci_device3 = {
 	},
 };
 
-#ifdef TEGRA_PREPOWER_WIFI
+#ifdef CONFIG_TEGRA_PREPOWER_WIFI
 static int __init whistler_wifi_prepower(void)
 {
 	if (!machine_is_whistler())

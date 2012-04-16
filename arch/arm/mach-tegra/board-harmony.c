@@ -425,7 +425,7 @@ static struct tegra_sdhci_platform_data sdhci_pdata4 = {
 	.is_8bit	= 1,
 };
 
-#ifdef TEGRA_PREPOWER_WIFI
+#ifdef CONFIG_TEGRA_PREPOWER_WIFI
 static int __init harmony_wifi_prepower(void)
 {
         int gpio_pwr, gpio_rst;
