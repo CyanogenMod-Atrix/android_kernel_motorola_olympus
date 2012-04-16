@@ -394,7 +394,8 @@ skip_status:
 	spin_unlock_irqrestore(&ch->lock, irq_flags);
 
 	/* Callback should be called without any lock */
-	req->complete(req);
+	if(req->complete)
+		req->complete(req);
 	return 0;
 }
 EXPORT_SYMBOL(tegra_dma_dequeue_req);
@@ -757,7 +758,10 @@ static void tegra_dma_update_hw(struct tegra_dma_channel *ch,
 	u32 apb_ptr;
 	u32 csr;
 
-	csr = CSR_IE_EOC | CSR_FLOW;
+	csr = CSR_FLOW;
+	if (req->complete || req->threshold)
+		csr |= CSR_IE_EOC;
+
 	ahb_seq = AHB_SEQ_INTR_ENB;
 
 	switch (req->req_sel) {
