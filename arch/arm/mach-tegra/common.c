@@ -298,8 +298,6 @@ void tegra_init_cache(bool init)
 {
 	void __iomem *p = IO_ADDRESS(TEGRA_ARM_PERIF_BASE) + 0x3000;
 	u32 aux_ctrl;
-	u32 speedo;
-	u32 tmp;
 
 #ifdef CONFIG_TRUSTED_FOUNDATIONS
 	/* issue the SMC to enable the L2 */
@@ -326,6 +324,8 @@ void tegra_init_cache(bool init)
 		writel(0x221, p + L2X0_TAG_LATENCY_CTRL);
 		writel(0x221, p + L2X0_DATA_LATENCY_CTRL);
 	} else {
+		u32 speedo;
+
 		/* relax l2-cache latency for speedos 4,5,6 (T33's chips) */
 		speedo = tegra_cpu_speedo_id();
 		if (speedo == 4 || speedo == 5 || speedo == 6 ||
@@ -348,6 +348,8 @@ void tegra_init_cache(bool init)
 	if (init) {
 		l2x0_init(p, aux_ctrl, 0x8200c3fe);
 	} else {
+		u32 tmp;
+
 		tmp = aux_ctrl;
 		aux_ctrl = readl(p + L2X0_AUX_CTRL);
 		aux_ctrl &= 0x8200c3fe;

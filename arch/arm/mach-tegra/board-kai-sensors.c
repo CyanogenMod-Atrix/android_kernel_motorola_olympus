@@ -83,7 +83,7 @@ static int kai_ov2710_power_on(void)
 		kai_vdd_cam3 = regulator_get(NULL, "vdd_cam3");
 		if (WARN_ON(IS_ERR(kai_vdd_cam3))) {
 			pr_err("%s: couldn't get regulator vdd_cam3: %d\n",
-				__func__, PTR_ERR(kai_vdd_cam3));
+				__func__, (int)PTR_ERR(kai_vdd_cam3));
 			goto reg_get_vdd_cam3_fail;
 		}
 	}
@@ -93,7 +93,7 @@ static int kai_ov2710_power_on(void)
 		kai_1v8_cam3 = regulator_get(NULL, "vdd_1v8_cam3");
 		if (WARN_ON(IS_ERR(kai_1v8_cam3))) {
 			pr_err("%s: couldn't get regulator vdd_1v8_cam3: %d\n",
-				__func__, PTR_ERR(kai_1v8_cam3));
+				__func__, (int)PTR_ERR(kai_1v8_cam3));
 			goto reg_get_vdd_1v8_cam3_fail;
 		}
 	}

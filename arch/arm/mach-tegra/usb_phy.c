@@ -1667,8 +1667,11 @@ static int utmi_phy_preresume(struct tegra_usb_phy *phy, bool remote_wakeup)
 static int utmi_phy_postresume(struct tegra_usb_phy *phy, bool is_dpd)
 {
 	unsigned long val;
+#if defined(CONFIG_ARCH_TEGRA_2x_SOC)
 	void __iomem *base = phy->regs;
+#else
 	void __iomem *pmc_base = IO_ADDRESS(TEGRA_PMC_BASE);
+#endif
 	unsigned  int inst = phy->instance;
 
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC

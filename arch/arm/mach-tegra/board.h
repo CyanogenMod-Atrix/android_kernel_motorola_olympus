@@ -24,6 +24,7 @@
 
 #include <linux/types.h>
 #include <linux/power_supply.h>
+#include <linux/memory.h>
 
 #define ADD_FIXED_VOLTAGE_REG(_name)	(&_name##_fixed_voltage_device)
 
