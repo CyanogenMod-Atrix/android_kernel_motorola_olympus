@@ -1778,9 +1778,6 @@ static int wm8903_resume(struct snd_soc_codec *codec)
 	if (wm8903->irq)
 		enable_irq(wm8903->irq);
 
-	/* Bring the codec back up to standby first to minimise pop/clicks */
-	wm8903_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
-
 	/* Sync back everything else */
 	if (tmp_cache) {
 		for (i = 2; i < ARRAY_SIZE(wm8903_reg_defaults); i++)
@@ -1790,6 +1787,9 @@ static int wm8903_resume(struct snd_soc_codec *codec)
 	} else {
 		dev_err(codec->dev, "Failed to allocate temporary cache\n");
 	}
+
+	/* Bring the codec back up to standby first to minimise pop/clicks */
+	wm8903_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
 
 	return 0;
 }
