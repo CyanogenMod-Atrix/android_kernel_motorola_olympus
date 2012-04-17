@@ -335,6 +335,8 @@ static void __init l2x0_unlock(__u32 cache_id)
 	int lockregs;
 	int i;
 
+	cache_id &= L2X0_CACHE_ID_PART_MASK;
+
 	if (cache_id == L2X0_CACHE_ID_PART_L310)
 		lockregs = 8;
 	else
