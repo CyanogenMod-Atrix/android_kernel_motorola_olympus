@@ -275,6 +275,7 @@ static int max8907c_i2c_probe(struct i2c_client *i2c,
 	struct max8907c_platform_data *pdata = i2c->dev.platform_data;
 	int ret;
 	int i;
+	u8 tmp;
 
 	max8907c = kzalloc(sizeof(struct max8907c), GFP_KERNEL);
 	if (max8907c == NULL)
@@ -298,7 +299,7 @@ static int max8907c_i2c_probe(struct i2c_client *i2c,
 	ret = mfd_add_devices(max8907c->dev, -1, cells, ARRAY_SIZE(cells),
 			      NULL, 0);
 	if (ret != 0) {
-	  	i2c_unregister_device(max8907c->i2c_rtc);
+		i2c_unregister_device(max8907c->i2c_rtc);
 		kfree(max8907c);
 		pr_debug("max8907c: failed to add MFD devices   %X\n", ret);
 		return ret;
@@ -312,6 +313,18 @@ static int max8907c_i2c_probe(struct i2c_client *i2c,
 
 	if (pdata->use_power_off && !pm_power_off)
 		pm_power_off = max8907c_power_off;
+
+	ret = max8907c_i2c_read(i2c, MAX8907C_REG_SYSENSEL, 1, &tmp);
+	/*Mask HARD RESET, if enabled */
+	if (ret == 0) {
+		tmp &= ~(BIT(7));
+		ret = max8907c_i2c_write(i2c, MAX8907C_REG_SYSENSEL, 1, &tmp);
+	}
+
+	if (ret != 0) {
+		pr_err("Failed to write max8907c I2C driver: %d\n", ret);
+		return ret;
+	}
 
 	if (pdata->max8907c_setup)
 		return pdata->max8907c_setup();
