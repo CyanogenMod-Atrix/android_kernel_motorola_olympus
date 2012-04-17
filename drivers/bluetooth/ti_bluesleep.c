@@ -31,37 +31,17 @@
 */
 
 #include <linux/module.h>       /* kernel module definitions */
-#include <linux/errno.h>
 #include <linux/init.h>
 #include <linux/interrupt.h>
-#include <linux/kernel.h>
-#include <linux/notifier.h>
-#include <linux/proc_fs.h>
-#include <linux/spinlock.h>
-#include <linux/timer.h>
-#include <linux/uaccess.h>
-#include <linux/version.h>
-#include <linux/workqueue.h>
 #include <linux/platform_device.h>
 
-#include <linux/irq.h>
-#include <linux/ioport.h>
-#include <linux/param.h>
-#include <linux/bitops.h>
-#include <linux/termios.h>
-#include <linux/wakelock.h>
 #include <mach/gpio.h>
-#include <linux/serial_core.h>
-#include <linux/tegra_uart.h>
 
 #include <net/bluetooth/bluetooth.h>
-#include <net/bluetooth/hci_core.h> /* event notifications */
-#include "hci_uart.h"
 
 /*
  * Defines
  */
-
 #define VERSION	 "1.1"
 
 #define POLARITY_LOW 0
@@ -70,9 +50,7 @@
 struct bluesleep_info {
 	unsigned host_wake_irq;
 	struct uart_port *uport;
-	struct wake_lock wake_lock;
 	int irq_polarity;
-	int has_ext_wake;
 };
 
 
@@ -80,16 +58,6 @@ struct bluesleep_info {
 #define FLAG_RESET      	0x00
 #define BT_ACTIVE		0x02
 #define BT_SUSPEND		0x04
-
-
-/* work function */
-static void hostwake_sleep_work(struct work_struct *work);
-
-/* work queue */
-DECLARE_DELAYED_WORK(ti_sleep_workqueue, hostwake_sleep_work);
-
-/* Macros for handling sleep work */
-#define hostwake_workqueue()     schedule_delayed_work(&ti_sleep_workqueue, 0)
 
 static struct bluesleep_info *bsi;
 
@@ -102,66 +70,6 @@ static atomic_t open_count = ATOMIC_INIT(1);
 /** Global state flags */
 static unsigned long flags;
 
-/** Tasklet to respond to change in hostwake line */
-static struct tasklet_struct hostwake_task;
-
-/** Lock for state transitions */
-static spinlock_t rw_lock;
-
-/*
- * Local functions
- */
-static void hsuart_power(int on)
-{
-	pr_debug("%s", __func__);
-
-	if (on) {
-		tegra_uart_request_clock_on(bsi->uport);
-		tegra_uart_set_mctrl(bsi->uport, TIOCM_RTS);
-	} else {
-		tegra_uart_set_mctrl(bsi->uport, 0);
-		tegra_uart_request_clock_off(bsi->uport);
-	}
-}
-
-
-
-/**
- * @brief@  main sleep work handling function which update the flags
- * and activate and deactivate UART .
- */
-
-static void hostwake_sleep_work(struct work_struct *work)
-{
-	pr_debug("%s", __func__);
-	free_irq(bsi->host_wake_irq, "tibluesleep");
-	/*Activating UART */
-	if (test_bit(BT_SUSPEND, &flags)) {
-		BT_DBG("Activate UART");
-		hsuart_power(1);
-
-	}
-	bsi->has_ext_wake = 0;
-	clear_bit(BT_SUSPEND, &flags);
-	set_bit(BT_ACTIVE, &flags);
-
-}
-
-
-/**
- * A tasklet function that runs in tasklet context
- * @param data Not used.
- */
-static void bluesleep_hostwake_task(unsigned long data)
-{
-	pr_debug("%s", __func__);
-	disable_irq(bsi->host_wake_irq);
-	spin_lock(&rw_lock);
-	hostwake_workqueue();
-	spin_unlock(&rw_lock);
-}
-
-
 /**
  * Schedules a tasklet to run when receiving an interrupt on the
  * <code>HOST_WAKE</code> GPIO pin.
@@ -170,11 +78,8 @@ static void bluesleep_hostwake_task(unsigned long data)
  */
 static irqreturn_t bluesleep_hostwake_isr(int irq, void *dev_id)
 {
-
 	pr_debug("%s", __func__);
-	/* schedule a tasklet to handle the change in the host wake line */
-	bsi->has_ext_wake = 1;
-	tasklet_schedule(&hostwake_task);
+	disable_irq_nosync(bsi->host_wake_irq);
 	return IRQ_HANDLED;
 }
 
@@ -183,8 +88,7 @@ static irqreturn_t bluesleep_hostwake_isr(int irq, void *dev_id)
  * @return On success, 0. On error, -1, and <code>errno</code> is set
  * appropriately.
  */
-
-  int bluesleep_start(struct uart_port *uport)
+int bluesleep_start(struct uart_port *uport)
 {
 	int retval;
 	bsi->uport = uport;
@@ -224,9 +128,8 @@ fail:
 /**
  * Stops the Sleep-Mode Protocol on the Host.
  */
-  void bluesleep_stop(void)
+void bluesleep_stop(void)
 {
-
 	pr_debug("%s", __func__);
 
 	if (disable_irq_wake(bsi->host_wake_irq))
@@ -264,7 +167,6 @@ static int bluesleep_probe(struct platform_device *pdev)
 	else
 		bsi->irq_polarity = POLARITY_HIGH;/*anything else*/
 
-	wake_lock_init(&bsi->wake_lock, WAKE_LOCK_SUSPEND, "bluesleep");
 	clear_bit(BT_SUSPEND, &flags);
 	set_bit(BT_ACTIVE, &flags);
 
@@ -282,17 +184,11 @@ static int bluesleep_remove(struct platform_device *pdev)
 	return 0;
 }
 
-
 static int bluesleep_resume(struct platform_device *pdev)
 {
-
 	pr_debug("%s", __func__);
 	if (test_bit(BT_SUSPEND, &flags)) {
-
-		if ((bsi->uport != NULL) && (bsi->has_ext_wake)) {
-			tegra_uart_request_clock_on(bsi->uport);
-			tegra_uart_set_mctrl(bsi->uport, TIOCM_RTS);
-		}
+		free_irq(bsi->host_wake_irq, "tibluesleep");
 		clear_bit(BT_SUSPEND, &flags);
 		set_bit(BT_ACTIVE, &flags);
 	}
@@ -317,6 +213,7 @@ static struct platform_driver bluesleep_driver = {
 		.owner = THIS_MODULE,
 	},
 };
+
 /**
  * Initializes the module.
  * @return On success, 0. On error, -1, and <code>errno</code> is set
@@ -337,12 +234,6 @@ static int __init bluesleep_init(void)
 
 	flags = FLAG_RESET; /* clear all status bits */
 
-	/* Initialize spinlock. */
-	spin_lock_init(&rw_lock);
-
-	/* initialize host wake tasklet */
-	tasklet_init(&hostwake_task, bluesleep_hostwake_task, 0);
-
 	return 0;
 fail:
 	return retval;
@@ -351,7 +242,6 @@ fail:
 /**
  * Cleans up the module.
  */
-
 static void __exit bluesleep_exit(void)
 {
 	if (bsi == NULL)
