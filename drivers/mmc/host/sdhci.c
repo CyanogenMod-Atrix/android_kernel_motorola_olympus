@@ -1849,14 +1849,21 @@ static void sdhci_enable_preset_value(struct mmc_host *mmc, bool enable)
 int sdhci_enable(struct mmc_host *mmc)
 {
 	struct sdhci_host *host = mmc_priv(mmc);
+	u16 clk;
 
-	if (!mmc->card || mmc->card->type == MMC_TYPE_SDIO)
+	if (!mmc->card)
 		return 0;
 
 	if (mmc->ios.clock) {
-		if (host->ops->set_clock)
-			host->ops->set_clock(host, mmc->ios.clock);
-		sdhci_set_clock(host, mmc->ios.clock);
+		if (mmc->card->type != MMC_TYPE_SDIO) {
+			if (host->ops->set_clock)
+				host->ops->set_clock(host, mmc->ios.clock);
+			sdhci_set_clock(host, mmc->ios.clock);
+		} else {
+			clk = sdhci_readw(host, SDHCI_CLOCK_CONTROL);
+			clk |= SDHCI_CLOCK_CARD_EN;
+			sdhci_writew(host, clk, SDHCI_CLOCK_CONTROL);
+		}
 	}
 
 	return 0;
@@ -1865,13 +1872,21 @@ int sdhci_enable(struct mmc_host *mmc)
 int sdhci_disable(struct mmc_host *mmc, int lazy)
 {
 	struct sdhci_host *host = mmc_priv(mmc);
+	u16 clk;
 
-	if (!mmc->card || mmc->card->type == MMC_TYPE_SDIO)
+	if (!mmc->card)
 		return 0;
 
-	sdhci_set_clock(host, 0);
-	if (host->ops->set_clock)
-		host->ops->set_clock(host, 0);
+	/* For SDIO cards, only disable the card clock. */
+	if (mmc->card->type != MMC_TYPE_SDIO) {
+		sdhci_set_clock(host, 0);
+		if (host->ops->set_clock)
+			host->ops->set_clock(host, 0);
+	} else {
+		clk = sdhci_readw(host, SDHCI_CLOCK_CONTROL);
+		clk &= ~SDHCI_CLOCK_CARD_EN;
+		sdhci_writew(host, clk, SDHCI_CLOCK_CONTROL);
+	}
 
 	return 0;
 }
