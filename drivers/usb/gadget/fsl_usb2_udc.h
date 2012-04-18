@@ -640,8 +640,9 @@ struct fsl_udc {
 	struct delayed_work work;	/* delayed work for charger detection */
 	struct regulator *vbus_regulator;	/* regulator for drawing VBUS */
 	u32 current_limit;
-	struct work_struct charger_work; /* work for settting regulator current limit */
+	struct work_struct charger_work; /* work for setting regulator current limit */
 	struct work_struct boost_cpufreq_work; /* work for boosting cpu frequency */
+	struct work_struct irq_work; /* irq work for controlling the usb power*/
 };
 
 /*-------------------------------------------------------------------------*/
