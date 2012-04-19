@@ -19,6 +19,7 @@
  */
 
 #include <linux/kernel.h>
+#include <linux/module.h>
 #include <linux/clk.h>
 #include <linux/debugfs.h>
 #include <linux/delay.h>
@@ -493,6 +494,7 @@ bool tegra_powergate_is_powered(int id)
 	status = pmc_read(PWRGATE_STATUS) & (1 << id);
 	return !!status;
 }
+EXPORT_SYMBOL(tegra_powergate_is_powered);
 
 int tegra_powergate_remove_clamping(int id)
 {
