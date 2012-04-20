@@ -33,6 +33,8 @@
 
 #include <mach/dma.h>
 
+#define MAX_DMA_REQ_COUNT 2
+
 struct tegra_pcm_dma_params {
 	unsigned long addr;
 	unsigned long wrap;
@@ -48,8 +50,9 @@ struct tegra_runtime_data {
 	int dma_pos_end;
 	int period_index;
 	int dma_req_idx;
-	struct tegra_dma_req dma_req[2];
+	struct tegra_dma_req dma_req[MAX_DMA_REQ_COUNT];
 	struct tegra_dma_channel *dma_chan;
+	int dma_req_count;
 };
 
 #endif

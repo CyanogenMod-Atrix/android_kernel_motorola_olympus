@@ -66,7 +66,8 @@ static void tegra_pcm_queue_dma(struct tegra_runtime_data *prtd)
 	unsigned long addr;
 
 	dma_req = &prtd->dma_req[prtd->dma_req_idx];
-	prtd->dma_req_idx = 1 - prtd->dma_req_idx;
+	if (++prtd->dma_req_idx >= prtd->dma_req_count)
+		prtd->dma_req_idx -= prtd->dma_req_count;
 
 	addr = buf->addr + prtd->dma_pos;
 	prtd->dma_pos += dma_req->size;
@@ -137,6 +138,7 @@ static int tegra_pcm_open(struct snd_pcm_substream *substream)
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct tegra_pcm_dma_params * dmap;
 	int ret = 0;
+	int i = 0;
 
 	prtd = kzalloc(sizeof(struct tegra_runtime_data), GFP_KERNEL);
 	if (prtd == NULL)
@@ -148,10 +150,11 @@ static int tegra_pcm_open(struct snd_pcm_substream *substream)
 	spin_lock_init(&prtd->lock);
 
 	dmap = snd_soc_dai_get_dma_data(rtd->cpu_dai, substream);
+	prtd->dma_req_count = MAX_DMA_REQ_COUNT;
 
 	if (dmap) {
-		prtd->dma_req[0].dev = prtd;
-		prtd->dma_req[1].dev = prtd;
+		for (i = 0; i < prtd->dma_req_count; i++)
+			prtd->dma_req[i].dev = prtd;
 
 		prtd->dma_chan = tegra_dma_allocate_channel(
 					TEGRA_DMA_MODE_CONTINUOUS_SINGLE,
@@ -209,21 +212,25 @@ static int tegra_pcm_hw_params(struct snd_pcm_substream *substream,
 	struct tegra_runtime_data *prtd = runtime->private_data;
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct tegra_pcm_dma_params * dmap;
+	int i;
 
 	snd_pcm_set_runtime_buffer(substream, &substream->dma_buffer);
 
+	/* Limit dma_req_count to period count */
+	if (prtd->dma_req_count > params_periods(params))
+		prtd->dma_req_count = params_periods(params);
 	dmap = snd_soc_dai_get_dma_data(rtd->cpu_dai, substream);
 	if (dmap) {
 		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
-			setup_dma_tx_request(&prtd->dma_req[0], dmap);
-			setup_dma_tx_request(&prtd->dma_req[1], dmap);
+			for (i = 0; i < prtd->dma_req_count; i++)
+				setup_dma_tx_request(&prtd->dma_req[i], dmap);
 		} else {
-			setup_dma_rx_request(&prtd->dma_req[0], dmap);
-			setup_dma_rx_request(&prtd->dma_req[1], dmap);
+			for (i = 0; i < prtd->dma_req_count; i++)
+				setup_dma_rx_request(&prtd->dma_req[i], dmap);
 		}
 	}
-	prtd->dma_req[0].size = params_period_bytes(params);
-	prtd->dma_req[1].size = prtd->dma_req[0].size;
+	for (i = 0; i < prtd->dma_req_count; i++)
+		prtd->dma_req[i].size = params_period_bytes(params);
 
 	return 0;
 }
@@ -240,6 +247,7 @@ static int tegra_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct tegra_runtime_data *prtd = runtime->private_data;
 	unsigned long flags;
+	int i;
 
 	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_START:
@@ -253,8 +261,8 @@ static int tegra_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 		spin_lock_irqsave(&prtd->lock, flags);
 		prtd->running = 1;
 		spin_unlock_irqrestore(&prtd->lock, flags);
-		tegra_pcm_queue_dma(prtd);
-		tegra_pcm_queue_dma(prtd);
+		for (i = 0; i < prtd->dma_req_count; i++)
+			tegra_pcm_queue_dma(prtd);
 		break;
 	case SNDRV_PCM_TRIGGER_STOP:
 	case SNDRV_PCM_TRIGGER_SUSPEND:
@@ -263,10 +271,11 @@ static int tegra_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 		prtd->running = 0;
 		spin_unlock_irqrestore(&prtd->lock, flags);
 		tegra_dma_cancel(prtd->dma_chan);
-		if (prtd->dma_req[0].status == -TEGRA_DMA_REQ_ERROR_ABORTED)
-			prtd->dma_req[0].complete(&prtd->dma_req[0]);
-		if (prtd->dma_req[1].status == -TEGRA_DMA_REQ_ERROR_ABORTED)
-			prtd->dma_req[1].complete(&prtd->dma_req[1]);
+		for (i = 0; i < prtd->dma_req_count; i++) {
+			if (prtd->dma_req[i].status ==
+				-TEGRA_DMA_REQ_ERROR_ABORTED)
+				prtd->dma_req[i].complete(&prtd->dma_req[i]);
+		}
 		break;
 	default:
 		return -EINVAL;
