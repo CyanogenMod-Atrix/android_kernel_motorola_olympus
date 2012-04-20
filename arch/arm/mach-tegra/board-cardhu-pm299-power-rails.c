@@ -558,7 +558,7 @@ static struct regulator_consumer_supply fixed_reg_en_vddio_vid_oc_supply[] = {
 #define FIXED_REG(_id, _var, _name, _in_supply, _always_on, _boot_on,	\
 		 _gpio_nr, _active_high, _boot_state, _millivolts)	\
 	FIXED_REG_OD(_id, _var, _name, _in_supply, _always_on, _boot_on, \
-		 _gpio_nr, _active_high, _boot_state, _millivolts, true)
+		 _gpio_nr, _active_high, _boot_state, _millivolts, false)
 
 /* common to most of boards*/
 FIXED_REG(0, en_5v_cp,		en_5v_cp,	NULL,			1,	0,	TPS6591X_GPIO_0,	true,	1, 5000);
