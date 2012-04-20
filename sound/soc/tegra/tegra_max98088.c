@@ -1009,6 +1009,10 @@ static int tegra_max98088_init(struct snd_soc_pcm_runtime *rtd)
 	if (ret < 0)
 		return ret;
 
+	ret = tegra_asoc_utils_register_ctls(&machine->util_data);
+	if (ret < 0)
+		return ret;
+
 	snd_soc_dapm_nc_pin(dapm, "INA1");
 	snd_soc_dapm_nc_pin(dapm, "INA2");
 	snd_soc_dapm_nc_pin(dapm, "INB1");

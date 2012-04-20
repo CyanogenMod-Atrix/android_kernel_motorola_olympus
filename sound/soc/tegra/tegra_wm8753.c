@@ -782,6 +782,10 @@ static int tegra_wm8753_init(struct snd_soc_pcm_runtime *rtd)
 	if (ret < 0)
 		return ret;
 
+	ret = tegra_asoc_utils_register_ctls(&machine->util_data);
+	if (ret < 0)
+		return ret;
+
 	snd_soc_dapm_nc_pin(dapm, "ACIN");
 	snd_soc_dapm_nc_pin(dapm, "ACOP");
 	snd_soc_dapm_nc_pin(dapm, "OUT3");

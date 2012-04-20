@@ -547,6 +547,11 @@ static int tegra_rt5640_init(struct snd_soc_pcm_runtime *rtd)
 
 	snd_soc_dapm_add_routes(dapm, cardhu_audio_map,
 				ARRAY_SIZE(cardhu_audio_map));
+
+	ret = tegra_asoc_utils_register_ctls(&machine->util_data);
+	if (ret < 0)
+		return ret;
+
 	/* FIXME: Calculate automatically based on DAPM routes? */
 	snd_soc_dapm_nc_pin(dapm, "LOUTL");
 	snd_soc_dapm_nc_pin(dapm, "LOUTR");
