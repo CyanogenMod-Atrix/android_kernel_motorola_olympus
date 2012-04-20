@@ -101,29 +101,10 @@ static struct resource sdhci_resource3[] = {
 	},
 };
 
-#ifdef CONFIG_MMC_EMBEDDED_SDIO
-static struct embedded_sdio_data embedded_sdio_data2 = {
-	.cccr   = {
-		.sdio_vsn       = 2,
-		.multi_block    = 1,
-		.low_speed      = 0,
-		.wide_bus       = 0,
-		.high_power     = 1,
-		.high_speed     = 1,
-	},
-	.cis  = {
-		.vendor         = 0x0097,
-		.device         = 0x4076,
-	},
-};
-#endif
 
 static struct tegra_sdhci_platform_data tegra_sdhci_platform_data2 = {
 	.mmc_data = {
 		.register_status_notify	= kai_wifi_status_register,
-#ifdef CONFIG_MMC_EMBEDDED_SDIO
-		/* .embedded_sdio = &embedded_sdio_data2, */
-#endif
 		.built_in = 0,
 	},
 #ifndef CONFIG_MMC_EMBEDDED_SDIO
