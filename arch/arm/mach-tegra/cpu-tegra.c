@@ -469,7 +469,7 @@ unsigned int tegra_getspeed(unsigned int cpu)
 	return rate;
 }
 
-static int tegra_update_cpu_speed(unsigned long rate)
+int tegra_update_cpu_speed(unsigned long rate)
 {
 	int ret = 0;
 	struct cpufreq_freqs freqs;
