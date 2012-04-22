@@ -2489,6 +2489,8 @@ struct clk tegra_list_periph_clks[] = {
 	PERIPH_CLK("usb2",	"tegra-ehci.1",		NULL,	58,	0,	0x31E,	480000000, mux_clk_m,			0), /* requires min voltage */
 	PERIPH_CLK("usb3",	"tegra-ehci.2",		NULL,	59,	0,	0x31E,	480000000, mux_clk_m,			0), /* requires min voltage */
 	PERIPH_CLK("dsia",	"tegradc.0",		"dsia",	48,	0,	0x31E,	500000000, mux_plld_out0,		0), /* scales with voltage */
+	PERIPH_CLK("dsi1-fixed", "tegradc.0",		"dsi-fixed",	0,	0,	0x31E,	108000000, mux_pllp_out3,	PERIPH_NO_ENB),
+	PERIPH_CLK("dsi2-fixed", "tegradc.1",		"dsi-fixed",	0,	0,	0x31E,	108000000, mux_pllp_out3,	PERIPH_NO_ENB),
 	PERIPH_CLK("csi",	"tegra_camera",		"csi",	52,	0,	0x31E,	72000000,  mux_pllp_out3,		0),
 	PERIPH_CLK("isp",	"tegra_camera",		"isp",	23,	0,	0x31E,	150000000, mux_clk_m,			0), /* same frequency as VI */
 	PERIPH_CLK("csus",	"tegra_camera",		"csus",	92,	0,	0x31E,	150000000, mux_clk_m,			PERIPH_NO_RESET),
