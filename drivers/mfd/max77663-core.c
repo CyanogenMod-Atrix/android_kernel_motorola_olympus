@@ -905,6 +905,8 @@ static void max77663_irq_sync_unlock(struct irq_data *data)
 				irq_mask = irq_data->trigger_type;
 			else
 				irq_mask = GPIO_REFE_IRQ_EDGE_FALLING << shift;
+		} else {
+			irq_mask = GPIO_REFE_IRQ_NONE << shift;
 		}
 
 		ret = max77663_cache_write(chip->dev, GPIO_REG_ADDR(offset),
