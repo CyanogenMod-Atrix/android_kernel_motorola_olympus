@@ -49,6 +49,7 @@
 #include "pm.h"
 #include "sleep.h"
 #include "timer.h"
+#include "dvfs.h"
 
 static struct {
 	unsigned int cpu_ready_count[2];
@@ -221,6 +222,7 @@ static int tegra2_idle_lp2_cpu_0(struct cpuidle_device *dev,
 
 	idle_stats.tear_down_count++;
 	entry_time = ktime_get();
+	tegra_dvfs_rail_off(tegra_cpu_rail, entry_time);
 
 	if (request > state->target_residency) {
 		s64 sleep_time = request - tegra_lp2_exit_latency;
@@ -247,6 +249,8 @@ static int tegra2_idle_lp2_cpu_0(struct cpuidle_device *dev,
 	}
 
 	exit_time = ktime_get();
+	tegra_dvfs_rail_on(tegra_cpu_rail, exit_time);
+
 	if (sleep_completed) {
 		/*
 		 * Stayed in LP2 for the full time until the next tick,
