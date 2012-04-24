@@ -181,7 +181,8 @@ static struct regulator_consumer_supply ricoh583_ldo8_supply_0[] = {
 
 RICOH_PDATA_INIT(dc0, 0,         700,  1500, 0, 1, 1, 0, -1, 0, 0, 0,
 				RICOH583_EXT_PWRREQ2_CONTROL, 0);
-RICOH_PDATA_INIT(dc1, skubit0_0, 700,  1500, 0, 1, 1, 0, -1, 0, 0, 0, 0, 0);
+RICOH_PDATA_INIT(dc1, skubit0_0, 700,  1500, 0, 1, 1, 0, -1, 0, 0, 0,
+				RICOH583_EXT_PWRREQ1_CONTROL, 0);
 RICOH_PDATA_INIT(dc2, 0,         900,  2400, 0, 1, 1, 0, -1, 0, 0, 0, 0, 0);
 RICOH_PDATA_INIT(dc3, 0,         900,  2400, 0, 1, 1, 0, -1, 0, 0, 0, 0, 0);
 
