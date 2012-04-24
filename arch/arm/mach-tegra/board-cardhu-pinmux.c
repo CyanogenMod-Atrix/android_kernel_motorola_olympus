@@ -442,8 +442,8 @@ static __initdata struct tegra_pingroup_config cardhu_pinmux_cardhu[] = {
 
 	/* Power rails GPIO */
 	DEFAULT_PINMUX(GMI_CS2_N,       NAND,            NORMAL,    NORMAL,     OUTPUT),
-	DEFAULT_PINMUX(GMI_RST_N,       RSVD3,           PULL_UP,   TRISTATE,   INPUT),
-	DEFAULT_PINMUX(GMI_AD15,        NAND,            PULL_UP,   TRISTATE,   INPUT),
+	DEFAULT_PINMUX(GMI_RST_N,       RSVD3,           PULL_UP,   NORMAL,     INPUT),
+	DEFAULT_PINMUX(GMI_AD15,        NAND,            PULL_UP,   NORMAL,     INPUT),
 
 	DEFAULT_PINMUX(GMI_CS0_N,       GMI,             PULL_UP,   NORMAL,     INPUT),
 	DEFAULT_PINMUX(GMI_CS1_N,       GMI,             PULL_UP,   TRISTATE,   INPUT),
@@ -466,8 +466,8 @@ static __initdata struct tegra_pingroup_config cardhu_pinmux_cardhu_a03[] = {
 	/* Power rails GPIO */
 	DEFAULT_PINMUX(PEX_L0_PRSNT_N,  PCIE,            NORMAL,    NORMAL,     INPUT),
 	DEFAULT_PINMUX(PEX_L0_CLKREQ_N, PCIE,            NORMAL,    NORMAL,     INPUT),
-	DEFAULT_PINMUX(PEX_L1_CLKREQ_N, RSVD3,           PULL_UP,   TRISTATE,   INPUT),
-	DEFAULT_PINMUX(PEX_L1_PRSNT_N,  RSVD3,           PULL_UP,   TRISTATE,   INPUT),
+	DEFAULT_PINMUX(PEX_L1_CLKREQ_N, RSVD3,           PULL_UP,   NORMAL,     INPUT),
+	DEFAULT_PINMUX(PEX_L1_PRSNT_N,  RSVD3,           PULL_UP,   NORMAL,     INPUT),
 };
 
 static __initdata struct tegra_pingroup_config cardhu_pinmux_e1291_a04[] = {
