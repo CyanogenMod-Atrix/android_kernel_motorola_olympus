@@ -116,6 +116,15 @@ void tegra30_ahub_disable_clocks(void)
 	clk_disable(ahub->clk_d_audio);
 }
 
+/*
+ * for TDM mode, ahub has to run faster than I2S controller.  This will avoid
+ * FIFO overflow/underflow, the causes of slot-hopping symptoms
+ */
+void tegra30_ahub_clock_set_rate(int rate)
+{
+	clk_set_rate(ahub->clk_d_audio, rate);
+}
+
 #ifdef CONFIG_DEBUG_FS
 static inline u32 tegra30_ahub_read(u32 space, u32 reg)
 {
@@ -272,6 +281,116 @@ int tegra30_ahub_allocate_rx_fifo(enum tegra30_ahub_rxcif *rxcif,
 	return 0;
 }
 
+int tegra30_ahub_rx_fifo_is_busy(enum tegra30_ahub_rxcif rxcif)
+{
+	int channel = rxcif - TEGRA30_AHUB_RXCIF_APBIF_RX0;
+	int reg, val;
+
+	reg = TEGRA30_AHUB_CHANNEL_STATUS +
+	      (channel * TEGRA30_AHUB_CHANNEL_STATUS_STRIDE);
+
+	val = tegra30_apbif_read(reg);
+	val &= TEGRA30_AHUB_CHANNEL_STATUS_RX_TRIG;
+
+	return val;
+}
+
+int tegra30_ahub_tx_fifo_is_busy(enum tegra30_ahub_txcif txcif)
+{
+	int channel = txcif - TEGRA30_AHUB_TXCIF_APBIF_TX0;
+	int reg, val;
+
+	reg = TEGRA30_AHUB_CHANNEL_STATUS +
+	      (channel * TEGRA30_AHUB_CHANNEL_STATUS_STRIDE);
+
+	val = tegra30_apbif_read(reg);
+	val &= TEGRA30_AHUB_CHANNEL_STATUS_TX_TRIG;
+
+	return val;
+}
+
+int tegra30_ahub_rx_fifo_clear(enum tegra30_ahub_rxcif rxcif)
+{
+	int channel = rxcif - TEGRA30_AHUB_RXCIF_APBIF_RX0;
+	int reg, val;
+
+	reg = TEGRA30_AHUB_CHANNEL_CLEAR +
+	      (channel * TEGRA30_AHUB_CHANNEL_CLEAR_STRIDE);
+
+	val = tegra30_apbif_read(reg);
+	val |= TEGRA30_AHUB_CHANNEL_CLEAR_RX_SOFT_RESET;
+	tegra30_apbif_write(reg, val);
+
+	tegra30_ahub_disable_clocks();
+
+	return 0;
+}
+
+int tegra30_ahub_tx_fifo_clear(enum tegra30_ahub_txcif txcif)
+{
+	int channel = txcif - TEGRA30_AHUB_TXCIF_APBIF_TX0;
+	int reg, val;
+
+	reg = TEGRA30_AHUB_CHANNEL_CLEAR +
+	      (channel * TEGRA30_AHUB_CHANNEL_CLEAR_STRIDE);
+
+	val = tegra30_apbif_read(reg);
+	val |= TEGRA30_AHUB_CHANNEL_CLEAR_TX_SOFT_RESET;
+	tegra30_apbif_write(reg, val);
+
+	tegra30_ahub_disable_clocks();
+
+	return 0;
+}
+
+int tegra30_ahub_set_rx_fifo_pack_mode(enum tegra30_ahub_rxcif rxcif,
+							unsigned int pack_mode)
+{
+	int channel = rxcif - TEGRA30_AHUB_RXCIF_APBIF_RX0;
+	int reg, val;
+
+	tegra30_ahub_enable_clocks();
+	reg = TEGRA30_AHUB_CHANNEL_CTRL +
+	      (channel * TEGRA30_AHUB_CHANNEL_CTRL_STRIDE);
+	val = tegra30_apbif_read(reg);
+
+	val &= ~TEGRA30_AHUB_CHANNEL_CTRL_RX_PACK_MASK;
+	val &= ~TEGRA30_AHUB_CHANNEL_CTRL_RX_PACK_EN;
+
+	if ((pack_mode == TEGRA30_AHUB_CHANNEL_CTRL_RX_PACK_16) ||
+		(pack_mode == TEGRA30_AHUB_CHANNEL_CTRL_RX_PACK_8_4))
+		val |= (TEGRA30_AHUB_CHANNEL_CTRL_RX_PACK_EN |
+						pack_mode);
+	tegra30_apbif_write(reg, val);
+	tegra30_ahub_disable_clocks();
+
+	return 0;
+}
+
+int tegra30_ahub_set_tx_fifo_pack_mode(enum tegra30_ahub_txcif txcif,
+							unsigned int pack_mode)
+{
+	int channel = txcif - TEGRA30_AHUB_TXCIF_APBIF_TX0;
+	int reg, val;
+
+	tegra30_ahub_enable_clocks();
+	reg = TEGRA30_AHUB_CHANNEL_CTRL +
+	      (channel * TEGRA30_AHUB_CHANNEL_CTRL_STRIDE);
+	val = tegra30_apbif_read(reg);
+
+	val &= ~TEGRA30_AHUB_CHANNEL_CTRL_TX_PACK_MASK;
+	val &= ~TEGRA30_AHUB_CHANNEL_CTRL_TX_PACK_EN;
+
+	if ((pack_mode == TEGRA30_AHUB_CHANNEL_CTRL_TX_PACK_16) ||
+		(pack_mode == TEGRA30_AHUB_CHANNEL_CTRL_TX_PACK_8_4))
+		val |= (TEGRA30_AHUB_CHANNEL_CTRL_TX_PACK_EN |
+						pack_mode);
+	tegra30_apbif_write(reg, val);
+	tegra30_ahub_disable_clocks();
+
+	return 0;
+}
+
 int tegra30_ahub_enable_rx_fifo(enum tegra30_ahub_rxcif rxcif)
 {
 	int channel = rxcif - TEGRA30_AHUB_RXCIF_APBIF_RX0;
@@ -298,8 +417,6 @@ int tegra30_ahub_disable_rx_fifo(enum tegra30_ahub_rxcif rxcif)
 	val = tegra30_apbif_read(reg);
 	val &= ~TEGRA30_AHUB_CHANNEL_CTRL_RX_EN;
 	tegra30_apbif_write(reg, val);
-
-	tegra30_ahub_disable_clocks();
 
 	return 0;
 }
@@ -385,8 +502,6 @@ int tegra30_ahub_disable_tx_fifo(enum tegra30_ahub_txcif txcif)
 	val = tegra30_apbif_read(reg);
 	val &= ~TEGRA30_AHUB_CHANNEL_CTRL_TX_EN;
 	tegra30_apbif_write(reg, val);
-
-	tegra30_ahub_disable_clocks();
 
 	return 0;
 }
@@ -480,6 +595,54 @@ int tegra30_ahub_set_tx_cif_channels(enum tegra30_ahub_txcif txcif,
 	return 0;
 }
 
+int tegra30_ahub_set_rx_cif_bits(enum tegra30_ahub_rxcif rxcif,
+				     unsigned int audio_bits,
+				     unsigned int client_bits)
+{
+	int channel = rxcif - TEGRA30_AHUB_RXCIF_APBIF_RX0;
+	unsigned int reg, val;
+
+	tegra30_ahub_enable_clocks();
+
+	reg = TEGRA30_AHUB_CIF_RX_CTRL +
+	      (channel * TEGRA30_AHUB_CIF_RX_CTRL_STRIDE);
+	val = tegra30_apbif_read(reg);
+	val &= ~(TEGRA30_AUDIOCIF_CTRL_AUDIO_BITS_MASK |
+		TEGRA30_AUDIOCIF_CTRL_CLIENT_BITS_MASK);
+	val |= ((audio_bits) << TEGRA30_AUDIOCIF_CTRL_AUDIO_BITS_SHIFT) |
+	      ((client_bits) << TEGRA30_AUDIOCIF_CTRL_CLIENT_BITS_SHIFT);
+	tegra30_apbif_write(reg, val);
+
+	tegra30_ahub_disable_clocks();
+
+	return 0;
+}
+
+int tegra30_ahub_set_tx_cif_bits(enum tegra30_ahub_txcif txcif,
+				     unsigned int audio_bits,
+				     unsigned int client_bits)
+{
+	int channel = txcif - TEGRA30_AHUB_TXCIF_APBIF_TX0;
+	unsigned int reg, val;
+
+	tegra30_ahub_enable_clocks();
+
+	reg = TEGRA30_AHUB_CIF_TX_CTRL +
+	      (channel * TEGRA30_AHUB_CIF_TX_CTRL_STRIDE);
+	val = tegra30_apbif_read(reg);
+	val &= ~(TEGRA30_AUDIOCIF_CTRL_AUDIO_BITS_MASK |
+		TEGRA30_AUDIOCIF_CTRL_CLIENT_BITS_MASK);
+	val |= ((audio_bits) << TEGRA30_AUDIOCIF_CTRL_AUDIO_BITS_SHIFT) |
+	      ((client_bits) << TEGRA30_AUDIOCIF_CTRL_CLIENT_BITS_SHIFT);
+
+	tegra30_apbif_write(reg, val);
+
+	tegra30_ahub_disable_clocks();
+
+	return 0;
+}
+
+
 static int __devinit tegra30_ahub_probe(struct platform_device *pdev)
 {
 	struct resource *res0, *res1, *region;
@@ -507,6 +670,7 @@ static int __devinit tegra30_ahub_probe(struct platform_device *pdev)
 		goto err_free;
 	}
 	clkm_rate = clk_get_rate(clk_get_parent(ahub->clk_d_audio));
+
 	while (clkm_rate > 12000000)
 		clkm_rate >>= 1;
 
