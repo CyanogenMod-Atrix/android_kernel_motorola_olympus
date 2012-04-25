@@ -582,10 +582,26 @@ static struct snd_soc_dai_link tegra_rt5640_dai[] = {
 	},
 };
 
+static int tegra_rt5640_resume_pre(struct snd_soc_card *card)
+{
+	int val;
+	struct snd_soc_jack_gpio *gpio = &tegra_rt5640_hp_jack_gpio;
+
+	if (gpio_is_valid(gpio->gpio)) {
+		val = gpio_get_value(gpio->gpio);
+		val = gpio->invert ? !val : val;
+		snd_soc_jack_report(gpio->jack, val, gpio->report);
+	}
+
+	return 0;
+}
+
+
 static struct snd_soc_card snd_soc_tegra_rt5640 = {
 	.name = "tegra-rt5640",
 	.dai_link = tegra_rt5640_dai,
 	.num_links = ARRAY_SIZE(tegra_rt5640_dai),
+	.resume_pre = tegra_rt5640_resume_pre,
 };
 
 static __devinit int tegra_rt5640_driver_probe(struct platform_device *pdev)
