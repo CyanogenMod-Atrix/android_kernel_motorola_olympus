@@ -274,8 +274,13 @@ error:
 
 int update_charger_status(void)
 {
-	struct i2c_client *client = charger->client;
+	struct i2c_client *client;
 	int ret, val;
+
+	if (!charger)
+		return -ENODEV;
+	else
+		client = charger->client;
 
 	val =  smb349_read(client, SMB349_STS_REG_D);
 	if (val < 0) {
@@ -371,13 +376,8 @@ static void smb349_otg_status(enum usb_otg_state to, enum usb_otg_state from, vo
 static int smb349_enable_charging(struct regulator_dev *rdev,
 					int min_uA, int max_uA)
 {
-	struct i2c_client *client;
+	struct i2c_client *client = charger->client;
 	int ret;
-
-	if(!charger)
-		return -ENODEV;
-	else
-		client = charger->client;
 
 	if (!max_uA) {
 		charger->state = stopped;
