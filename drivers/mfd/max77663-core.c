@@ -118,6 +118,8 @@
 
 #define ONOFF_SLP_LPM_MASK		(1 << 5)
 
+#define ONOFF_IRQ_EN0_RISING		(1 << 3)
+
 enum {
 	CACHE_IRQ_LBT,
 	CACHE_IRQ_SD,
@@ -1131,6 +1133,10 @@ static int max77663_irq_init(struct max77663_chip *chip)
 	chip->cache_irq_mask[CACHE_IRQ_LBT] &= ~IRQ_GLBL_MASK;
 	max77663_write(chip->dev, MAX77663_REG_LBT_IRQ_MASK,
 		       &chip->cache_irq_mask[CACHE_IRQ_LBT], 1, 0);
+
+	chip->cache_irq_mask[CACHE_IRQ_ONOFF] &= ~ONOFF_IRQ_EN0_RISING;
+	max77663_write(chip->dev, MAX77663_REG_ONOFF_IRQ_MASK,
+		       &chip->cache_irq_mask[CACHE_IRQ_ONOFF], 1, 0);
 
 	return 0;
 }
