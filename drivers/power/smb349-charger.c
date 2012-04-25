@@ -388,6 +388,7 @@ static int smb349_enable_charging(struct regulator_dev *rdev,
 				"charger..\n", __func__);
 			return ret;
 		}
+		charger->chrg_type = NONE;
 	} else {
 		ret =  smb349_read(client, SMB349_STS_REG_D);
 		if (ret < 0) {

@@ -45,6 +45,7 @@ enum charging_states {
 };
 
 enum charger_type {
+	NONE,
 	AC,
 	USB,
 };
