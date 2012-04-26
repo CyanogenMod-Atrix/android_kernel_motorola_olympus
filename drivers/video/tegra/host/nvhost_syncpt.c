@@ -22,6 +22,7 @@
 #include <linux/platform_device.h>
 #include <linux/slab.h>
 #include "nvhost_syncpt.h"
+#include "nvhost_acm.h"
 #include "dev.h"
 
 #define MAX_STUCK_CHECK_COUNT 15
