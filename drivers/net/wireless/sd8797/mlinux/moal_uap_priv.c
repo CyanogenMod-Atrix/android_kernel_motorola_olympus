@@ -150,9 +150,9 @@ woal_uap_do_priv_ioctl(struct net_device *dev, struct ifreq *req, int cmd)
     return ret;
 }
 
-/** 
+/**
  *  @brief Handle get info resp
- *   
+ *
  *  @param priv 	Pointer to moal_private structure
  *  @param info 	Pointer to mlan_ds_get_info structure
  *

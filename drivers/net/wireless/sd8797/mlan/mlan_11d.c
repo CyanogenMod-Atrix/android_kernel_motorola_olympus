@@ -519,14 +519,14 @@ wlan_11d_process_country_info(mlan_private * pmpriv,
     }
 
     if (parsed_region_chan->no_of_chan != 0) {
-        /* 
+        /*
          * Check if the channel number already exists in the
          * chan-power table of parsed_region_chan
          */
         for (i = 0; (i < region_chan.no_of_chan && i < MAX_NO_OF_CHAN); i++) {
             for (j = 0; (j < parsed_region_chan->no_of_chan &&
                          j < MAX_NO_OF_CHAN); j++) {
-                /* 
+                /*
                  * Channel already exists, update the tx power with new tx
                  * power, since country IE is valid here.
                  */
@@ -541,7 +541,7 @@ wlan_11d_process_country_info(mlan_private * pmpriv,
             }
 
             if (j == parsed_region_chan->no_of_chan && j < MAX_NO_OF_CHAN) {
-                /* 
+                /*
                  * Channel does not exist in the channel power table,
                  * update this new chan and tx_power to the channel power table
                  */
@@ -959,7 +959,7 @@ wlan_11d_parse_domain_info(pmlan_adapter pmadapter,
 
     ENTER();
 
-    /* 
+    /*
      * Validation Rules:
      *    1. Valid Region Code
      *    2. First Chan increment
@@ -1330,7 +1330,7 @@ wlan_11d_parse_dnld_countryinfo(mlan_private * pmpriv,
 
                     for (j = 0; ((j < region_chan.no_of_chan)
                                  && (j < MAX_NO_OF_CHAN)); j++) {
-                        /* 
+                        /*
                          * Channel already exists, use minimum of existing
                          * tx power and tx_power received from
                          * country info of the current AP

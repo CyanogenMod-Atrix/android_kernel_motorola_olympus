@@ -196,11 +196,11 @@ typedef enum _KEY_INFO_WAPI
 /** The number of times to try when polling for status bits */
 #define MAX_POLL_TRIES			100
 
-/** The number of times to try when waiting for downloaded firmware to 
+/** The number of times to try when waiting for downloaded firmware to
      become active when multiple interface is present */
 #define MAX_MULTI_INTERFACE_POLL_TRIES  1000
 
-/** The number of times to try when waiting for downloaded firmware to 
+/** The number of times to try when waiting for downloaded firmware to
      become active. (polling the scratch register). */
 #define MAX_FIRMWARE_POLL_TRIES		100
 
@@ -2275,10 +2275,10 @@ typedef MLAN_PACK_START struct _AdHoc_BssDesc_t
     /** Supported data rates */
     t_u8 data_rates[HOSTCMD_SUPPORTED_RATES];
 
-    /* 
+    /*
      *  DO NOT ADD ANY FIELDS TO THIS STRUCTURE.
-     *  It is used in the Adhoc join command and will cause a 
-     *  binary layout mismatch with the firmware 
+     *  It is used in the Adhoc join command and will cause a
+     *  binary layout mismatch with the firmware
      */
 } MLAN_PACK_END AdHoc_BssDesc_t;
 
@@ -2676,9 +2676,9 @@ typedef MLAN_PACK_START struct
 } MLAN_PACK_END IEBody;
 #endif /* STA_SUPPORT */
 
-/* 
- * This scan handle Country Information IE(802.11d compliant) 
- * Define data structure for HostCmd_CMD_802_11_SCAN 
+/*
+ * This scan handle Country Information IE(802.11d compliant)
+ * Define data structure for HostCmd_CMD_802_11_SCAN
  */
 /** HostCmd_DS_802_11_SCAN */
 typedef MLAN_PACK_START struct _HostCmd_DS_802_11_SCAN
@@ -2689,9 +2689,9 @@ typedef MLAN_PACK_START struct _HostCmd_DS_802_11_SCAN
     t_u8 bssid[MLAN_MAC_ADDR_LENGTH];
     /** TLV buffer */
     t_u8 tlv_buffer[1];
-    /** MrvlIEtypes_SsIdParamSet_t      SsIdParamSet; 
+    /** MrvlIEtypes_SsIdParamSet_t      SsIdParamSet;
      *  MrvlIEtypes_ChanListParamSet_t  ChanListParamSet;
-     *  MrvlIEtypes_RatesParamSet_t     OpRateSet; 
+     *  MrvlIEtypes_RatesParamSet_t     OpRateSet;
      */
 } MLAN_PACK_END HostCmd_DS_802_11_SCAN;
 
@@ -2995,15 +2995,15 @@ typedef MLAN_PACK_START struct
 /**
  *  @brief Firmware command structure to retrieve the firmware WMM status.
  *
- *  Used to retrieve the status of each WMM AC Queue in TLV 
+ *  Used to retrieve the status of each WMM AC Queue in TLV
  *    format (MrvlIEtypes_WmmQueueStatus_t) as well as the current WMM
- *    parameter IE advertised by the AP.  
- *  
+ *    parameter IE advertised by the AP.
+ *
  *  Used in response to a EVENT_WMM_STATUS_CHANGE event signaling
  *    a QOS change on one of the ACs or a change in the WMM Parameter in
  *    the Beacon.
  *
- *  TLV based command, byte arrays used for max sizing purpose. There are no 
+ *  TLV based command, byte arrays used for max sizing purpose. There are no
  *    arguments sent in the command, the TLVs are returned by the firmware.
  */
 typedef MLAN_PACK_START struct
@@ -3051,7 +3051,7 @@ typedef MLAN_PACK_START struct
     mlan_wmm_ac_e access_category;         /**< WMM_AC_BK(0) to WMM_AC_VO(3) */
     /** @brief MSDU lifetime expiry per 802.11e
      *
-     *   - Ignored if 0 on a set command 
+     *   - Ignored if 0 on a set command
      *   - Set to the 802.11e specified 500 TUs when defaulted
      */
     t_u16 msdu_lifetime_expiry;
@@ -3334,7 +3334,7 @@ typedef MLAN_PACK_START struct _MrvlIEtypes_Cipher_t
     t_u8 group_cipher;
 } MLAN_PACK_END MrvlIEtypes_Cipher_t;
 
-/* rsnMode -    
+/* rsnMode -
  *      Bit 0    : No RSN
  *      Bit 1-2  : RFU
  *      Bit 3    : WPA
@@ -4196,8 +4196,8 @@ typedef MLAN_PACK_START struct
     t_u8 switch_count;  /**< Number of TBTTs until the switch is to occur */
 } MLAN_PACK_END HostCmd_DS_802_11_CHAN_SW_ANN;
 
-/**        
- * @brief Enumeration of measurement types, including max supported 
+/**
+ * @brief Enumeration of measurement types, including max supported
  *        enum for 11h/11k
  */
 typedef MLAN_PACK_START enum _MeasType_t
@@ -4208,7 +4208,7 @@ typedef MLAN_PACK_START enum _MeasType_t
 
 } MLAN_PACK_END MeasType_t;
 
-/**        
+/**
  * @brief Mode octet of the measurement request element (7.3.2.21)
  */
 typedef MLAN_PACK_START struct
@@ -4231,7 +4231,7 @@ typedef MLAN_PACK_START struct
 
 } MLAN_PACK_END MeasReqMode_t;
 
-/**        
+/**
  * @brief Common measurement request structure (7.3.2.21.1 to 7.3.2.21.3)
  */
 typedef MLAN_PACK_START struct
@@ -4242,23 +4242,23 @@ typedef MLAN_PACK_START struct
 
 } MLAN_PACK_END MeasReqCommonFormat_t;
 
-/**        
+/**
  * @brief Basic measurement request structure (7.3.2.21.1)
  */
 typedef MeasReqCommonFormat_t MeasReqBasic_t;
 
-/**        
+/**
  * @brief CCA measurement request structure (7.3.2.21.2)
  */
 typedef MeasReqCommonFormat_t MeasReqCCA_t;
 
-/**        
+/**
  * @brief RPI measurement request structure (7.3.2.21.3)
  */
 typedef MeasReqCommonFormat_t MeasReqRPI_t;
 
-/**        
- * @brief Union of the availble measurement request types.  Passed in the 
+/**
+ * @brief Union of the availble measurement request types.  Passed in the
  *        driver/firmware interface.
  */
 typedef union
@@ -4269,7 +4269,7 @@ typedef union
 
 } MeasRequest_t;
 
-/**        
+/**
  * @brief Mode octet of the measurement report element (7.3.2.22)
  */
 typedef MLAN_PACK_START struct
@@ -4288,7 +4288,7 @@ typedef MLAN_PACK_START struct
 
 } MLAN_PACK_END MeasRptMode_t;
 
-/**        
+/**
  * @brief Basic measurement report (7.3.2.22.1)
  */
 typedef MLAN_PACK_START struct
@@ -4300,7 +4300,7 @@ typedef MLAN_PACK_START struct
 
 } MLAN_PACK_END MeasRptBasic_t;
 
-/**        
+/**
  * @brief CCA measurement report (7.3.2.22.2)
  */
 typedef MLAN_PACK_START struct
@@ -4312,7 +4312,7 @@ typedef MLAN_PACK_START struct
 
 } MLAN_PACK_END MeasRptCCA_t;
 
-/**        
+/**
  * @brief RPI measurement report (7.3.2.22.3)
  */
 typedef MLAN_PACK_START struct
@@ -4324,8 +4324,8 @@ typedef MLAN_PACK_START struct
 
 } MLAN_PACK_END MeasRptRPI_t;
 
-/**        
- * @brief Union of the availble measurement report types.  Passed in the 
+/**
+ * @brief Union of the availble measurement report types.  Passed in the
  *        driver/firmware interface.
  */
 typedef union
@@ -4336,7 +4336,7 @@ typedef union
 
 } MeasReport_t;
 
-/**        
+/**
  * @brief Structure passed to firmware to perform a measurement
  */
 typedef MLAN_PACK_START struct
@@ -4349,7 +4349,7 @@ typedef MLAN_PACK_START struct
 
 } MLAN_PACK_END HostCmd_DS_MEASUREMENT_REQUEST;
 
-/**        
+/**
  * @brief Structure passed back from firmware with a measurement report,
  *        also can be to send a measurement report to another STA
  */

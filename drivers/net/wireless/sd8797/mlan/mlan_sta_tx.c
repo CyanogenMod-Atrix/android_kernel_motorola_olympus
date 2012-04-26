@@ -47,9 +47,9 @@ Change log:
 /********************************************************
 		Global functions
 ********************************************************/
-/** 
- *  @brief This function fill the txpd for tx packet  
- *  
+/**
+ *  @brief This function fill the txpd for tx packet
+ *
  *  @param priv	   A pointer to mlan_private structure
  *  @param pmbuf   A pointer to the mlan_buffer for process
  *
@@ -107,7 +107,7 @@ wlan_ops_sta_process_txpd(IN t_void * priv, IN pmlan_buffer pmbuf)
         wlan_wmm_compute_driver_packet_delay(pmpriv, pmbuf);
 
     if (plocal_tx_pd->priority < NELEMENTS(pmpriv->wmm.user_pri_pkt_tx_ctrl))
-        /* 
+        /*
          * Set the priority specific tx_control field, setting of 0 will
          *   cause the default value to be used later in this function
          */
@@ -147,9 +147,9 @@ wlan_ops_sta_process_txpd(IN t_void * priv, IN pmlan_buffer pmbuf)
     return head_ptr;
 }
 
-/** 
+/**
  *  @brief This function tells firmware to send a NULL data packet.
- *  
+ *
  *  @param priv     A pointer to mlan_private structure
  *  @param flags    Transmit Pkt Flags
  *
@@ -237,9 +237,9 @@ wlan_send_null_packet(pmlan_private priv, t_u8 flags)
     return ret;
 }
 
-/** 
+/**
  *  @brief This function checks if we need to send last packet indication.
- *  
+ *
  *  @param priv    A pointer to mlan_private structure
  *
  *  @return 	   MTRUE or MFALSE

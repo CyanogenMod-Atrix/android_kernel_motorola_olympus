@@ -66,7 +66,7 @@ extern t_u8 ac_to_tid[4][2];
  *  @param pmpriv   A pointer to mlan_private structure
  *  @param idx		index to check for in use
  *
- *  @return		MLAN_STATUS_SUCCESS --unused, otherwise used. 
+ *  @return		MLAN_STATUS_SUCCESS --unused, otherwise used.
  */
 static mlan_status
 wlan_is_custom_ie_index_unused(IN pmlan_private pmpriv, IN t_u16 idx)
@@ -150,7 +150,7 @@ wlan_custom_ioctl_get_autoidx(IN pmlan_private pmpriv,
         if (!insert) {
             for (index = 0; index < pmpriv->adapter->max_mgmt_ie_index; index++) {
                 if (pmpriv->mgmt_ie[index].ie_length == 0) {
-                    /* 
+                    /*
                      * Check if this index is in use by other interface
                      * If yes, move ahead to next index
                      */
@@ -255,7 +255,7 @@ wlan_custom_ioctl_auto_delete(IN pmlan_private pmpriv,
                 Global Functions
 ********************************************************/
 
-/** 
+/**
  *  @brief send host cmd
  *
  *  @param pmadapter	A pointer to mlan_adapter structure
@@ -334,7 +334,7 @@ wlan_misc_ioctl_init_shutdown(IN pmlan_adapter pmadapter,
     return ret;
 }
 
-/** 
+/**
  *  @brief Get debug information
  *
  *  @param pmadapter	A pointer to mlan_adapter structure
@@ -585,7 +585,7 @@ wlan_pm_reset_card(IN pmlan_adapter pmadapter)
     return ret;
 }
 
-/** 
+/**
  *  @brief Set/Get HS configuration
  *
  *  @param pmadapter	A pointer to mlan_adapter structure
@@ -662,13 +662,13 @@ wlan_pm_ioctl_hscfg(IN pmlan_adapter pmadapter, IN pmlan_ioctl_req pioctl_req)
     return status;
 }
 
-/** 
+/**
  *  @brief This function allocates a mlan_buffer.
  *
  *  @param pmadapter Pointer to mlan_adapter
  *  @param data_len   Data length
  *  @param head_room  head_room reserved in mlan_buffer
- *  @param malloc_flag  flag to user moal_malloc 
+ *  @param malloc_flag  flag to user moal_malloc
  *  @return           mlan_buffer pointer or MNULL
  */
 pmlan_buffer
@@ -729,7 +729,7 @@ wlan_alloc_mlan_buffer(mlan_adapter * pmadapter, t_u32 data_len,
     return pmbuf;
 }
 
-/** 
+/**
  *  @brief This function frees a mlan_buffer.
  *
  *  @param pmadapter  Pointer to mlan_adapter
@@ -754,9 +754,9 @@ wlan_free_mlan_buffer(mlan_adapter * pmadapter, pmlan_buffer pmbuf)
     return;
 }
 
-/** 
+/**
  *  @brief Delay function implementation
- *   
+ *
  *  @param pmadapter        A pointer to mlan_adapter structure
  *  @param delay            Delay value
  *  @param u                Units of delay (sec, msec or usec)
@@ -816,7 +816,7 @@ wlan_delay_func(mlan_adapter * pmadapter, t_u32 delay, t_delay_unit u)
 }
 
 #if defined(STA_SUPPORT) && defined(UAP_SUPPORT)
-/** 
+/**
  *  @brief Set/Get BSS role
  *
  *  @param pmadapter	A pointer to mlan_adapter structure
@@ -1047,7 +1047,7 @@ wlan_misc_ioctl_custom_ie_list(IN pmlan_adapter pmadapter,
                            pmpriv->mgmt_ie[index].ie_length +
                            MLAN_CUSTOM_IE_HDR_SIZE);
                 } else {
-                    /* 
+                    /*
                      * Check if this index is being used on any other
                      * interfaces. If yes, then the request needs to be rejected.
                      */
@@ -1119,7 +1119,7 @@ wlan_misc_ioctl_custom_ie_list(IN pmlan_adapter pmadapter,
 
 /**
  *  @brief This function will check if station list is empty
- *  
+ *
  *  @param priv    A pointer to mlan_private
  *
  *  @return	   MFALSE/MTRUE
@@ -1142,7 +1142,7 @@ wlan_is_station_list_empty(mlan_private * priv)
 /**
  *  @brief This function will return the pointer to station entry in station list
  *  		table which matches the give mac address
- *  
+ *
  *  @param priv    A pointer to mlan_private
  *  @param mac     mac address to find in station list table
  *
@@ -1183,7 +1183,7 @@ wlan_get_station_entry(mlan_private * priv, t_u8 * mac)
 /**
  *  @brief This function will add a pointer to station entry in station list
  *  		table with the give mac address, if it does not exist already
- *  
+ *
  *  @param priv    A pointer to mlan_private
  *  @param mac     mac address to find in station list table
  *
@@ -1224,10 +1224,10 @@ wlan_add_station_entry(mlan_private * priv, t_u8 * mac)
 
 /**
  *  @brief This function will delete a station entry from station list
- *  		
- *  
+ *
+ *
  *  @param priv    A pointer to mlan_private
- *  @param mac     station's mac address 
+ *  @param mac     station's mac address
  *
  *  @return	   N/A
  */
@@ -1283,7 +1283,7 @@ wlan_delete_station_list(pmlan_private priv)
 /**
  *  @brief This function will return the pointer to station entry in station list
  *  		table which in tx_pause state
- *  
+ *
  *  @param priv    A pointer to mlan_private
  *
  *  @return	   A pointer to structure sta_node
@@ -1315,7 +1315,7 @@ wlan_get_tx_pause_station_entry(mlan_private * priv)
     return MNULL;
 }
 
-/** 
+/**
  *  @brief Get extended version information
  *
  *  @param pmadapter    A pointer to mlan_adapter structure
@@ -1348,7 +1348,7 @@ wlan_get_info_ver_ext(IN pmlan_adapter pmadapter, IN pmlan_ioctl_req pioctl_req)
 }
 
 #ifdef DEBUG_LEVEL1
-/** 
+/**
  *  @brief Set driver debug bit masks in order to enhance performance
  *
  *  @param pmadapter    A pointer to mlan_adapter structure
@@ -1372,7 +1372,7 @@ wlan_set_drvdbg(IN pmlan_adapter pmadapter, IN pmlan_ioctl_req pioctl_req)
 }
 #endif
 
-/** 
+/**
  *  @brief Rx mgmt frame forward register
  *
  *  @param pmadapter    A pointer to mlan_adapter structure
@@ -1409,7 +1409,7 @@ wlan_reg_rx_mgmt_ind(IN pmlan_adapter pmadapter, IN pmlan_ioctl_req pioctl_req)
 
 /**
  *   @brief This function processes the 802.11 mgmt Frame
- *     
+ *
  *   @param priv      A pointer to mlan_private
  *   @param payload   A pointer to the received buffer
  *   @param payload_len Length of the received buffer
@@ -1497,8 +1497,8 @@ wlan_process_802dot11_mgmt_pkt(IN mlan_private * priv,
 
 /**
  *  @brief This function will search for the specific ie
- *  		
- *  
+ *
+ *
  *  @param priv    A pointer to mlan_private
  *  @param ie_buf  A pointer to ie_buf
  *  @param ie_len  total ie length
@@ -1582,7 +1582,7 @@ wlan_get_pm_info(IN pmlan_adapter pmadapter, IN pmlan_ioctl_req pioctl_req)
     return ret;
 }
 
-/** 
+/**
  *  @brief Set/Get radio status
  *
  *  @param pmadapter	A pointer to mlan_adapter structure
@@ -1632,7 +1632,7 @@ wlan_radio_ioctl_radio_ctl(IN pmlan_adapter pmadapter,
     return ret;
 }
 
-/** 
+/**
  *  @brief Set/Get antenna configuration
  *
  *  @param pmadapter    A pointer to mlan_adapter structure
@@ -1693,7 +1693,7 @@ wlan_radio_ioctl_ant_cfg(IN pmlan_adapter pmadapter,
     return ret;
 }
 
-/** 
+/**
  *  @brief Get rate value
  *
  *  @param pmadapter	A pointer to mlan_adapter structure
@@ -1754,7 +1754,7 @@ wlan_rate_ioctl_get_rate_value(IN pmlan_adapter pmadapter,
     return ret;
 }
 
-/** 
+/**
  *  @brief Set rate value
  *
  *  @param pmadapter	A pointer to mlan_adapter structure
@@ -1839,7 +1839,7 @@ wlan_rate_ioctl_set_rate_value(IN pmlan_adapter pmadapter,
     return ret;
 }
 
-/** 
+/**
  *  @brief Get rate index
  *
  *  @param pmadapter	A pointer to mlan_adapter structure
@@ -1868,7 +1868,7 @@ wlan_rate_ioctl_get_rate_index(IN pmlan_adapter pmadapter,
     return ret;
 }
 
-/** 
+/**
  *  @brief Set rate index
  *
  *  @param pmadapter	A pointer to mlan_adapter structure
@@ -1963,7 +1963,7 @@ wlan_rate_ioctl_set_rate_index(IN pmlan_adapter pmadapter,
     return ret;
 }
 
-/** 
+/**
  *  @brief Rate configuration command handler
  *
  *  @param pmadapter	A pointer to mlan_adapter structure
@@ -1996,9 +1996,9 @@ wlan_rate_ioctl_cfg(IN pmlan_adapter pmadapter, IN pmlan_ioctl_req pioctl_req)
     return status;
 }
 
-/** 
+/**
  *  @brief This function prepares command of rf_antenna.
- *  
+ *
  *  @param pmpriv   A pointer to mlan_private structure
  *  @param cmd      A pointer to HostCmd_DS_COMMAND structure
  *  @param cmd_action   The action: GET or SET
@@ -2071,7 +2071,7 @@ wlan_ret_802_11_rf_antenna(IN pmlan_private pmpriv,
 }
 
 #ifdef WIFI_DIRECT_SUPPORT
-/** 
+/**
  *  @brief Set/Get wifi_direct_mode
  *
  *  @param pmadapter	A pointer to mlan_adapter structure
@@ -2111,7 +2111,7 @@ wlan_bss_ioctl_wifi_direct_mode(IN pmlan_adapter pmadapter,
     return ret;
 }
 
-/** 
+/**
  *  @brief Set/Get remain on channel setting
  *
  *  @param pmadapter	A pointer to mlan_adapter structure

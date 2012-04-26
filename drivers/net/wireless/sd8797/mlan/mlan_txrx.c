@@ -51,7 +51,7 @@ Change Log:
 ********************************************************/
 /**
  *   @brief This function processes the received buffer
- *     
+ *
  *   @param pmadapter A pointer to mlan_adapter
  *   @param pmbuf     A pointer to the received buffer
  *
@@ -85,9 +85,9 @@ wlan_handle_rx_packet(pmlan_adapter pmadapter, pmlan_buffer pmbuf)
     return ret;
 }
 
-/** 
- *  @brief This function checks the conditions and sends packet to device 
- *  
+/**
+ *  @brief This function checks the conditions and sends packet to device
+ *
  *  @param priv	   A pointer to mlan_private structure
  *  @param pmbuf   A pointer to the mlan_buffer for process
  *  @param tx_param A pointer to mlan_tx_param structure

@@ -43,10 +43,10 @@ Change log:
 
 /*
  * Upper and Lower threshold for packet queuing in the driver
- 
+
  *    - When the number of packets queued reaches the upper limit,
  *      the driver will stop the net queue in the app/kernel space.
- 
+
  *    - When the number of packets drops beneath the lower limit after
  *      having reached the upper limit, the driver will restart the net
  *      queue.
@@ -84,7 +84,7 @@ static const t_u8 wmm_aci_to_qidx_map[] = { WMM_AC_BE,
     WMM_AC_VO
 };
 
-/** 
+/**
  * This table will be used to store the tid values based on ACs.
  * It is initialized to default values per TID.
  */
@@ -100,7 +100,7 @@ t_u8 tos_to_tid[] = {
     0x07                        /* 1 1 1 AC_VO */
 };
 
-/** 
+/**
  * This table inverses the tos_to_tid operation to get a priority
  * which is in sequential order, and can be compared.
  * Use this to compare the priority of two different TIDs.
@@ -115,7 +115,7 @@ t_u8 tos_to_tid_inv[] = { 0x02, /* from tos_to_tid[2] = 0 */
     0x07
 };
 
-/** 
+/**
  * This table will provide the tid value for given ac. This table does not
  * change and will be used to copy back the default values to tos_to_tid in
  * case of disconnect.
@@ -208,7 +208,7 @@ wlan_wmm_allocate_ralist_node(pmlan_adapter pmadapter, t_u8 * ra)
 }
 
 /**
- * @brief Map ACs to TID 
+ * @brief Map ACs to TID
  *
  * @param priv             Pointer to the mlan_private driver data struct
  * @param queue_priority   Queue_priority structure
@@ -270,7 +270,7 @@ wlan_wmm_eval_downgrade_ac(pmlan_private priv, mlan_wmm_ac_e eval_ac)
     /* Setup a default return value of the lowest priority */
     ret_ac = WMM_AC_BK;
 
-    /* 
+    /*
      *  Find the highest AC that is enabled and does not require admission
      *    control.  The spec disallows downgrading to an AC, which is enabled
      *    due to a completed admission control.  Unadmitted traffic is not
@@ -335,7 +335,7 @@ wlan_wmm_downgrade_tid(pmlan_private priv, t_u32 tid)
         priv->wmm.ac_down_graded_vals[wlan_wmm_convert_tos_to_ac(pmadapter,
                                                                  tid)];
     LEAVE();
-    /* 
+    /*
      * Send the index to tid array, picking from the array will be
      * taken care by dequeuing function
      */
@@ -470,11 +470,11 @@ wlan_wmm_delete_all_ralist(pmlan_private priv)
 
 /**
  *   @brief Get queue RA pointer
- *  
+ *
  *   @param priv     Pointer to the mlan_private driver data struct
  *   @param tid      TID
  *   @param ra_addr  Pointer to the route address
- * 
+ *
  *   @return         ra_list
  */
 static raListTbl *
@@ -580,7 +580,7 @@ wlan_send_wmmac_host_event(pmlan_private priv,
 
 /**
  *  @brief This function gets the highest priority list pointer
- *  
+ *
  *  @param pmadapter      A pointer to mlan_adapter
  *  @param priv           A pointer to mlan_private
  *  @param tid            A pointer to return tid
@@ -640,9 +640,9 @@ wlan_wmm_get_highest_priolist_ptr(pmlan_adapter pmadapter,
                     (pmadapter->pmoal_handle, &tid_ptr->ra_list, MNULL, MNULL))
                     continue;
 
-                /* 
-                 * Always choose the next ra we transmitted 
-                 * last time, this way we pick the ra's in 
+                /*
+                 * Always choose the next ra we transmitted
+                 * last time, this way we pick the ra's in
                  * round robin fashion.
                  */
                 head = ptr = tid_ptr->ra_list_curr->pnext;
@@ -711,7 +711,7 @@ wlan_wmm_get_highest_priolist_ptr(pmlan_adapter pmadapter,
 
 /**
  *  @brief This function gets the number of packets in the Tx queue
- *  
+ *
  *  @param priv         A pointer to mlan_private
  *  @param ptr          A pointer to RA list table
  *  @param maxBufSize   Maximum buffer size
@@ -742,7 +742,7 @@ wlan_num_pkts_in_txq(mlan_private * priv, raListTbl * ptr, int maxBufSize)
 
 /**
  *  @brief This function sends a single packet
- *  
+ *
  *  @param priv         A pointer to mlan_private
  *  @param ptr          A pointer to RA list table
  *  @param ptrindex     ptr's TID index
@@ -825,7 +825,7 @@ wlan_send_single_packet(pmlan_private priv, raListTbl * ptr, int ptrindex)
 
 /**
  *  @brief This function checks if this mlan_buffer is already processed.
- *  
+ *
  *  @param priv     A pointer to mlan_private
  *  @param ptr      A pointer to RA list table
  *
@@ -846,7 +846,7 @@ wlan_is_ptr_processed(mlan_private * priv, raListTbl * ptr)
 
 /**
  *  @brief This function sends a single packet that has been processed
- *  
+ *
  *  @param priv         A pointer to mlan_private
  *  @param ptr          A pointer to RA list table
  *  @param ptrindex     ptr's TID index
@@ -932,7 +932,7 @@ wlan_send_processed_packet(pmlan_private priv, raListTbl * ptr, int ptrindex)
 
 /**
  *  @brief This function dequeues a packet
- *  
+ *
  *  @param pmadapter  A pointer to mlan_adapter
  *
  *  @return 	    MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
@@ -963,7 +963,7 @@ wlan_dequeue_tx_packet(pmlan_adapter pmadapter)
        of both of function.  But, the the bulk of these function will execute
        w/o spinlock.  Unlocking the spinlock inside these function will help
        us avoid taking the spinlock again, check to see if the ptr is still
-       valid and then proceed. This is done purely to increase execution time. 
+       valid and then proceed. This is done purely to increase execution time.
      */
 
     /* Note:- Also, anybody adding code which does not get into
@@ -1498,11 +1498,11 @@ wlan_wmm_lists_empty(pmlan_adapter pmadapter)
 
 /**
  *   @brief Get ralist node
- *  
+ *
  *   @param priv     Pointer to the mlan_private driver data struct
  *   @param tid      TID
  *   @param ra_addr  Pointer to the route address
- * 
+ *
  *   @return         ra_list or MNULL
  */
 raListTbl *
@@ -1528,12 +1528,12 @@ wlan_wmm_get_ralist_node(pmlan_private priv, t_u8 tid, t_u8 * ra_addr)
 
 /**
  *   @brief Check if RA list is valid or not
- *  
+ *
  *   @param priv     Pointer to the mlan_private driver data struct
  *   @param ra_list  Pointer to raListTbl
  *   @param ptrindex TID pointer index
- * 
- *   @return         MTRUE- valid. MFALSE- invalid. 
+ *
+ *   @return         MTRUE- valid. MFALSE- invalid.
  */
 int
 wlan_is_ralist_valid(mlan_private * priv, raListTbl * ra_list, int ptrindex)
@@ -1686,7 +1686,7 @@ wlan_wmm_add_buf_txqueue(pmlan_adapter pmadapter, pmlan_buffer pmbuf)
                                       tos_to_tid_inv[tid_down], MNULL, MNULL);
     }
     /* Record the current time the packet was queued; used to determine the
-       amount of time the packet was queued in the driver before it was sent to 
+       amount of time the packet was queued in the driver before it was sent to
        the firmware.  The delay is then sent along with the packet to the
        firmware for aggregate delay calculation for stats and MSDU lifetime
        expiry. */
@@ -1761,7 +1761,7 @@ wlan_ret_wmm_get_status(pmlan_private priv, t_u8 * ptlv, int resp_len)
             break;
 
         case WMM_IE:
-            /* 
+            /*
              * Point the regular IEEE IE 2 bytes into the Marvell IE
              *   and setup the IEEE IE type and length byte fields
              */
@@ -1941,7 +1941,7 @@ wlan_wmm_compute_driver_packet_delay(pmlan_private priv,
     queue_delay = (out_ts_sec - pmbuf->in_ts_sec) * 1000;
     queue_delay += (out_ts_usec - pmbuf->in_ts_usec) / 1000;
 
-    /* 
+    /*
      * Queue delay is passed as a uint8 in units of 2ms (ms shifted
      *  by 1). Min value (other than 0) is therefore 2ms, max is 510ms.
      *
@@ -1979,7 +1979,7 @@ wlan_wmm_process_tx(pmlan_adapter pmadapter)
     return;
 }
 
-/** 
+/**
  *  @brief select wmm queue
  *
  *  @param pmpriv       A pointer to mlan_private structure
@@ -2219,7 +2219,7 @@ wlan_ret_wmm_addts_req(IN pmlan_private pmpriv,
         paddts->status_code = (t_u32) presp_addts->ieee_status_code;
 
         if (presp_addts->command_result == MLAN_CMD_RESULT_SUCCESS) {
-            /* The tspecData field is potentially variable in size due to extra 
+            /* The tspecData field is potentially variable in size due to extra
                IEs that may have been in the ADDTS response action frame.
                Calculate the data length from the firmware command response. */
             paddts->ie_data_len

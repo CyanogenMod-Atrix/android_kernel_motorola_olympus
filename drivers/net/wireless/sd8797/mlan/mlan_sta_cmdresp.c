@@ -47,9 +47,9 @@ Change log:
 /********************************************************
                 Local Functions
 ********************************************************/
-/** 
+/**
  *  @brief This function handles the command response error
- *  
+ *
  *  @param pmpriv       A pointer to mlan_private structure
  *  @param resp         A pointer to HostCmd_DS_COMMAND
  *  @param pioctl_buf   A pointer to command buffer
@@ -76,7 +76,7 @@ wlan_process_cmdresp_error(mlan_private * pmpriv, HostCmd_DS_COMMAND * resp,
             PRINTM(MERROR,
                    "PS_MODE_ENH command failed: result=0x%x action=0x%X\n",
                    resp->result, wlan_le16_to_cpu(pm->action));
-            /* 
+            /*
              * We do not re-try enter-ps command in ad-hoc mode.
              */
             if (wlan_le16_to_cpu(pm->action) == EN_AUTO_PS &&
@@ -98,7 +98,7 @@ wlan_process_cmdresp_error(mlan_private * pmpriv, HostCmd_DS_COMMAND * resp,
     default:
         break;
     }
-    /* 
+    /*
      * Handling errors here
      */
     wlan_insert_cmd_to_free_q(pmadapter, pmadapter->curr_cmd);
@@ -111,9 +111,9 @@ wlan_process_cmdresp_error(mlan_private * pmpriv, HostCmd_DS_COMMAND * resp,
     return;
 }
 
-/** 
+/**
  *  @brief This function handles the command response of RSSI info
- *  
+ *
  *  @param pmpriv       A pointer to mlan_private structure
  *  @param resp         A pointer to HostCmd_DS_COMMAND
  *  @param pioctl_buf   A pointer to mlan_ioctl_req structure
@@ -181,9 +181,9 @@ wlan_ret_802_11_rssi_info(IN pmlan_private pmpriv,
     return MLAN_STATUS_SUCCESS;
 }
 
-/** 
+/**
  *  @brief This function handles the command response of mac_control
- *  
+ *
  *  @param pmpriv       A pointer to mlan_private structure
  *  @param resp         A pointer to HostCmd_DS_COMMAND
  *  @param pioctl_buf   A pointer to mlan_ioctl_req structure
@@ -200,9 +200,9 @@ wlan_ret_mac_control(IN pmlan_private pmpriv,
     return MLAN_STATUS_SUCCESS;
 }
 
-/** 
+/**
  *  @brief This function handles the command response of snmp_mib
- *  
+ *
  *  @param pmpriv       A pointer to mlan_private structure
  *  @param resp         A pointer to HostCmd_DS_COMMAND
  *  @param pioctl_buf   A pointer to mlan_ioctl_req structure
@@ -301,9 +301,9 @@ wlan_ret_802_11_snmp_mib(IN pmlan_private pmpriv,
     return MLAN_STATUS_SUCCESS;
 }
 
-/** 
+/**
  *  @brief This function handles the command response of get_log
- *  
+ *
  *  @param pmpriv       A pointer to mlan_private structure
  *  @param resp         A pointer to HostCmd_DS_COMMAND
  *  @param pioctl_buf   A pointer to mlan_ioctl_req structure
@@ -356,12 +356,12 @@ wlan_ret_get_log(IN pmlan_private pmpriv,
     return MLAN_STATUS_SUCCESS;
 }
 
-/** 
+/**
  *  @brief Get power level and rate index
  *
  *  @param pmpriv       A pointer to mlan_private structure
  *  @param pdata_buf    Pointer to the data buffer
- * 
+ *
  *  @return             MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
  */
 static mlan_status
@@ -408,9 +408,9 @@ wlan_get_power_level(pmlan_private pmpriv, void *pdata_buf)
     return MLAN_STATUS_SUCCESS;
 }
 
-/** 
+/**
  *  @brief This function handles the command response of tx_power_cfg
- * 
+ *
  *  @param pmpriv       A pointer to mlan_private structure
  *  @param resp         A pointer to HostCmd_DS_COMMAND
  *  @param pioctl_buf   A pointer to mlan_ioctl_req structure
@@ -508,9 +508,9 @@ wlan_ret_tx_power_cfg(IN pmlan_private pmpriv,
     return MLAN_STATUS_SUCCESS;
 }
 
-/** 
+/**
  *  @brief This function handles the command response of rf_tx_power
- *    
+ *
  *  @param pmpriv       A pointer to mlan_private structure
  *  @param resp         A pointer to HostCmd_DS_COMMAND
  *  @param pioctl_buf   A pointer to mlan_ioctl_req structure
@@ -550,9 +550,9 @@ wlan_ret_802_11_rf_tx_power(IN pmlan_private pmpriv,
     return MLAN_STATUS_SUCCESS;
 }
 
-/** 
+/**
  *  @brief This function handles the command response of sleep_period
- *    
+ *
  *  @param pmpriv       A pointer to mlan_private structure
  *  @param resp         A pointer to HostCmd_DS_COMMAND
  *  @param pioctl_buf   A pointer to mlan_ioctl_req structure
@@ -591,9 +591,9 @@ wlan_ret_802_11_sleep_period(IN pmlan_private pmpriv,
     return MLAN_STATUS_SUCCESS;
 }
 
-/** 
+/**
  *  @brief This function handles the command response of sleep_params
- *    
+ *
  *  @param pmpriv       A pointer to mlan_private structure
  *  @param resp         A pointer to HostCmd_DS_COMMAND
  *  @param pioctl_buf   A pointer to mlan_ioctl_req structure
@@ -637,9 +637,9 @@ wlan_ret_802_11_sleep_params(IN pmlan_private pmpriv,
     return MLAN_STATUS_SUCCESS;
 }
 
-/** 
+/**
  *  @brief This function handles the command response of mac_address
- *  
+ *
  *  @param pmpriv       A pointer to mlan_private structure
  *  @param resp         A pointer to HostCmd_DS_COMMAND
  *  @param pioctl_buf   A pointer to mlan_ioctl_req structure
@@ -673,9 +673,9 @@ wlan_ret_802_11_mac_address(IN pmlan_private pmpriv,
     return MLAN_STATUS_SUCCESS;
 }
 
-/** 
+/**
  *  @brief This function handles the command response of multicast_address
- *  
+ *
  *  @param pmpriv       A pointer to mlan_private structure
  *  @param resp         A pointer to HostCmd_DS_COMMAND
  *  @param pioctl_buf   A pointer to mlan_ioctl_req structure
@@ -750,9 +750,9 @@ wlan_ret_802_11_ad_hoc_stop(IN pmlan_private pmpriv,
     return MLAN_STATUS_SUCCESS;
 }
 
-/** 
+/**
  *  @brief This function handles the command response of key_material
- *  
+ *
  *  @param pmpriv       A pointer to mlan_private structure
  *  @param resp         A pointer to HostCmd_DS_COMMAND
  *  @param pioctl_buf   A pointer to mlan_ioctl_req structure
@@ -966,9 +966,9 @@ wlan_ret_802_11_supplicant_profile(IN pmlan_private pmpriv,
     return MLAN_STATUS_SUCCESS;
 }
 
-/** 
+/**
  *  @brief This function handles the command response of rf_channel
- *  
+ *
  *  @param pmpriv       A pointer to mlan_private structure
  *  @param resp         A pointer to HostCmd_DS_COMMAND
  *  @param pioctl_buf   A pointer to mlan_ioctl_req structure
@@ -1061,13 +1061,13 @@ wlan_ret_ibss_coalescing_status(IN pmlan_private pmpriv,
     return MLAN_STATUS_SUCCESS;
 }
 
-/** 
+/**
  *  @brief This function handles the command response of MGMT_IE_LIST
  *
  *  @param pmpriv       A pointer to mlan_private structure
  *  @param resp         A pointer to HostCmd_DS_COMMAND
  *  @param pioctl_buf   A pointer to mlan_ioctl_req structure
- *  
+ *
  *  @return             MLAN_STATUS_SUCCESS
  */
 static mlan_status
@@ -1144,9 +1144,9 @@ wlan_ret_mgmt_ie_list(IN pmlan_private pmpriv,
     return MLAN_STATUS_SUCCESS;
 }
 
-/** 
+/**
  *  @brief This function handles the command response of sysclock
- *  
+ *
  *  @param pmpriv       A pointer to mlan_private structure
  *  @param resp         A pointer to HostCmd_DS_COMMAND
  *  @param pioctl_buf   A pointer to mlan_ioctl_req structure
@@ -1181,9 +1181,9 @@ wlan_ret_sysclock_cfg(IN pmlan_private pmpriv,
     return MLAN_STATUS_SUCCESS;
 }
 
-/** 
+/**
  *  @brief This function handles the command response of reg_access
- *  
+ *
  *  @param type         The type of reg access (MAC, BBP or RF)
  *  @param resp         A pointer to HostCmd_DS_COMMAND
  *  @param pioctl_buf   A pointer to command buffer
@@ -1274,9 +1274,9 @@ wlan_ret_reg_access(mlan_adapter * pmadapter,
     return MLAN_STATUS_SUCCESS;
 }
 
-/** 
+/**
  *  @brief This function handles the command response of mem_access
- *  
+ *
  *  @param pmpriv       A pointer to mlan_private structure
  *  @param resp         A pointer to HostCmd_DS_COMMAND
  *  @param pioctl_buf   A pointer to command buffer
@@ -1306,9 +1306,9 @@ wlan_ret_mem_access(IN pmlan_private pmpriv,
     return MLAN_STATUS_SUCCESS;
 }
 
-/** 
+/**
  *  @brief This function handles the command response of inactivity timeout
- *  
+ *
  *  @param pmpriv       A pointer to mlan_private structure
  *  @param resp	        A pointer to HostCmd_DS_COMMAND
  *  @param pioctl_buf   A pointer to command buffer
@@ -1342,10 +1342,10 @@ wlan_ret_inactivity_timeout(IN pmlan_private pmpriv,
     return MLAN_STATUS_SUCCESS;
 }
 
-/** 
+/**
  *  @brief This function handles the command response of
  *  subscribe event
- *  
+ *
  *  @param pmpriv       A pointer to mlan_private structure
  *  @param resp         A pointer to HostCmd_DS_COMMAND
  *  @param pioctl_buf   A pointer to command buffer
@@ -1377,9 +1377,9 @@ wlan_ret_subscribe_event(IN pmlan_private pmpriv,
 /********************************************************
                 Global Functions
 ********************************************************/
-/** 
+/**
  *  @brief This function handles the station command response
- *  
+ *
  *  @param priv             A pointer to mlan_private structure
  *  @param cmdresp_no       cmd no
  *  @param pcmd_buf         cmdresp buf

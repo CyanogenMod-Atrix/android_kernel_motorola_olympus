@@ -182,7 +182,7 @@ int drv_mode = DRV_MODE_UAP;
 /** Semaphore for add/remove card */
 struct semaphore AddRemoveCardSem;
 /**
- * the maximum number of adapter supported 
+ * the maximum number of adapter supported
  **/
 #define MAX_MLAN_ADAPTER    2
 /**
@@ -359,9 +359,9 @@ woal_update_drv_tbl(moal_handle * handle, int drv_mode_local)
     return ret;
 }
 
-/** 
+/**
  *  @brief This function initializes software
- *  
+ *
  *  @param handle A pointer to moal_handle structure
  *
  *  @return 	   MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
@@ -498,9 +498,9 @@ woal_init_sw(moal_handle * handle)
     return ret;
 }
 
-/** 
+/**
  *  @brief This function frees the structure of moal_handle
- *    
+ *
  *  @param handle   A pointer to moal_handle structure
  *
  *  @return 	    N/A
@@ -545,7 +545,7 @@ woal_free_moal_handle(moal_handle * handle)
 
 /**
  *    @brief WOAL get one line data from ASCII format data
- *   
+ *
  *    @param data         Source data
  *    @param size         Source data length
  *    @param line_pos     Destination data
@@ -582,7 +582,7 @@ parse_cfg_get_line(t_u8 * data, t_size size, t_u8 * line_pos)
     return strlen(line_pos);
 }
 
-/** 
+/**
  *  @brief Process register access request
  *  @param type_string     String format Register type
  *  @param offset_string   String format Register offset
@@ -650,7 +650,7 @@ woal_process_regrdwr(moal_handle * handle, t_u8 * type_string,
 
 /**
  *    @brief WOAL parse ASCII format data to MAC address
- *   
+ *
  *    @param handle       MOAL handle
  *    @param data         Source data
  *    @param size         data length
@@ -791,7 +791,7 @@ woal_process_init_cfg(moal_handle * handle, t_u8 * data, t_size size)
 
 /**
  *    @brief WOAL set user defined init data and param
- *   
+ *
  *    @param handle       MOAL handle structure
  *    @return             MLAN_STATUS_SUCCESS--success, otherwise--fail
  */
@@ -828,9 +828,9 @@ woal_set_user_init_data(moal_handle * handle)
     return ret;
 }
 
-/** 
+/**
  * @brief Add interfaces DPC
- *  
+ *
  * @param handle    A pointer to moal_handle structure
  *
  * @return        MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
@@ -880,9 +880,9 @@ woal_add_card_dpc(moal_handle * handle)
     return ret;
 }
 
-/** 
+/**
  * @brief Download and Initialize firmware DPC
- *    
+ *
  * @param handle    A pointer to moal_handle structure
  *
  * @return        MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
@@ -961,9 +961,9 @@ woal_init_fw_dpc(moal_handle * handle)
     return ret;
 }
 
-/** 
+/**
  * @brief Request firmware DPC
- * 
+ *
  * @param handle    A pointer to moal_handle structure
  * @param firmware  A pointer to firmware image
  *
@@ -1005,10 +1005,10 @@ woal_request_fw_dpc(moal_handle * handle, const struct firmware *firmware)
     return ret;
 }
 
-/** 
+/**
  * @brief Request firmware callback
  *        This function is invoked by request_firmware_nowait system call
- * 
+ *
  * @param firmware  A pointer to firmware image
  * @param context   A pointer to moal_handle structure
  *
@@ -1027,9 +1027,9 @@ woal_request_fw_callback(const struct firmware *firmware, void *context)
     return;
 }
 
-/** 
+/**
  * @brief   Download firmware using helper
- * 
+ *
  * @param handle  A pointer to moal_handle structure
  *
  * @return        MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
@@ -1104,9 +1104,9 @@ woal_request_fw(moal_handle * handle)
     return ret;
 }
 
-/** 
+/**
  *  @brief This function initializes firmware
- *  
+ *
  *  @param handle  A pointer to moal_handle structure
  *
  *  @return 	   MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
@@ -1129,11 +1129,11 @@ woal_init_fw(moal_handle * handle)
     return ret;
 }
 
-/** 
+/**
  *  @brief This function will fill in the mlan_buffer
- *  
+ *
  *  @param pmbuf   A pointer to mlan_buffer
- *  @param skb     A pointer to struct sk_buff 
+ *  @param skb     A pointer to struct sk_buff
  *
  *  @return        N/A
  */
@@ -1169,7 +1169,7 @@ woal_fill_mlan_buffer(moal_private * priv,
     skb->priority = tid;
 
     /* Record the current time the packet was queued; used to determine the
-       amount of time the packet was queued in the driver before it was sent to 
+       amount of time the packet was queued in the driver before it was sent to
        the firmware.  The delay is then sent along with the packet to the
        firmware for aggregate delay calculation for stats and MSDU lifetime
        expiry. */
@@ -1222,13 +1222,13 @@ const struct net_device_ops woal_netdev_ops = {
 #endif
 
 /**
- *  @brief This function initializes the private structure 
- *  		and dev structure for station mode
- *  
+ *  @brief This function initializes the private structure
+ *  and dev structure for station mode
+ *
  *  @param dev     A pointer to net_device structure
  *  @param priv    A pointer to moal_private structure
  *
- *  @return 	   MLAN_STATUS_SUCCESS 
+ *  @return 	   MLAN_STATUS_SUCCESS
  */
 static mlan_status
 woal_init_sta_dev(struct net_device *dev, moal_private * priv)
@@ -1299,9 +1299,9 @@ const struct net_device_ops woal_uap_netdev_ops = {
 #endif
 
 /**
- *  @brief This function initializes the private structure 
- *  		and dev structure for uap mode
- *  
+ *  @brief This function initializes the private structure
+ *  and dev structure for uap mode
+ *
  *  @param dev     A pointer to net_device structure
  *  @param priv    A pointer to moal_private structure
  *
@@ -1358,8 +1358,8 @@ woal_init_uap_dev(struct net_device *dev, moal_private * priv)
 
 /**
  * @brief This function adds a new interface. It will
- * 		allocate, initialize and register the device.
- *  
+ * allocate, initialize and register the device.
+ *
  *  @param handle    A pointer to moal_handle structure
  *  @param bss_index BSS index number
  *  @param bss_type  BSS type
@@ -1532,9 +1532,9 @@ woal_add_interface(moal_handle * handle, t_u8 bss_index, t_u8 bss_type)
     return NULL;
 }
 
-/** 
+/**
  *  @brief This function removes an interface.
- *  
+ *
  *  @param handle    A pointer to the moal_handle structure
  *  @param bss_index  BSS index number
  *
@@ -1605,9 +1605,9 @@ woal_remove_interface(moal_handle * handle, t_u8 bss_index)
     return;
 }
 
-/** 
+/**
  *  @brief Send FW shutdown command to MLAN
- *   
+ *
  *  @param priv          A pointer to moal_private structure
  *  @param wait_option   Wait option
  *
@@ -1647,7 +1647,7 @@ woal_shutdown_fw(moal_private * priv, t_u8 wait_option)
     return status;
 }
 
-/** 
+/**
  *  @brief Return hex value of a give character
  *
  *  @param chr	    Character to be converted
@@ -1673,7 +1673,7 @@ woal_hexval(char chr)
 /**
  *  @brief This function cancel all works in the queue
  *  and destroy the main workqueue.
- *  
+ *
  *  @param handle    A pointer to moal_handle
  *
  *  @return        N/A
@@ -1811,7 +1811,7 @@ wifi_add_dev(void)
 
 /**
  *  @brief Removes an wifi device
- *  
+ *
  *  @return     N/A
  */
 static void
@@ -1829,9 +1829,9 @@ wifi_del_dev(void)
 		Global Functions
 ********************************************************/
 
-/** 
+/**
  *  @brief This function opens the network device
- *  
+ *
  *  @param dev     A pointer to net_device structure
  *
  *  @return        0 --success, otherwise fail
@@ -1870,9 +1870,9 @@ woal_open(struct net_device *dev)
     return 0;
 }
 
-/** 
+/**
  *  @brief This function closes the network device
- *  
+ *
  *  @param dev     A pointer to net_device structure
  *
  *  @return        0
@@ -1892,9 +1892,9 @@ woal_close(struct net_device *dev)
     return 0;
 }
 
-/** 
+/**
  *  @brief This function sets the MAC address to firmware.
- *  
+ *
  *  @param dev     A pointer to mlan_private structure
  *  @param addr    MAC address to set
  *
@@ -2024,10 +2024,10 @@ woal_mlan_debug_info(moal_private * priv)
     LEAVE();
 }
 
-/** 
+/**
  *  @brief This function handles the timeout of packet
  *  		transmission
- *  
+ *
  *  @param dev     A pointer to net_device structure
  *
  *  @return        N/A
@@ -2052,9 +2052,9 @@ woal_tx_timeout(struct net_device *dev)
     LEAVE();
 }
 
-/** 
+/**
  *  @brief This function returns the network statistics
- *  
+ *
  *  @param dev     A pointer to net_device structure
  *
  *  @return        A pointer to net_device_stats structure
@@ -2067,9 +2067,9 @@ woal_get_stats(struct net_device *dev)
 }
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,34)
-/** 
+/**
  *  @brief This function handles wmm queue select
- *  
+ *
  *  @param dev     A pointer to net_device structure
  *  @param skb     A pointer to sk_buff structure
  *
@@ -2108,9 +2108,9 @@ woal_select_queue(struct net_device * dev, struct sk_buff * skb)
 }
 #endif
 
-/** 
+/**
  *  @brief This function handles packet transmission
- *  
+ *
  *  @param skb     A pointer to sk_buff structure
  *  @param dev     A pointer to net_device structure
  *
@@ -2189,14 +2189,14 @@ woal_hard_start_xmit(struct sk_buff *skb, struct net_device *dev)
     return 0;
 }
 
-/** 
+/**
  *  @brief Convert ascii string to Hex integer
- *     
+ *
  *  @param d   		A pointer to integer buf
- *  @param s   		A pointer to ascii string 
+ *  @param s   		A pointer to ascii string
  *  @param dlen		The byte number of ascii string in hex
  *
- *  @return    		Number of integer  
+ *  @return    		Number of integer
  */
 int
 woal_ascii2hex(t_u8 * d, char *s, t_u32 dlen)
@@ -2285,7 +2285,7 @@ woal_atox(char *a)
     return i;
 }
 
-/** 
+/**
  *  @brief Extension of strsep lib command. This function will also take care
  *	   escape character
  *
@@ -2309,7 +2309,7 @@ woal_strsep(char **s, char delim, char esc)
 
     for (sb = *s; *sb != '\0'; ++sb) {
         if (*sb == esc && *(sb + 1) == esc) {
-            /* 
+            /*
              * We get a esc + esc seq then keep the one esc
              * and chop off the other esc character
              */
@@ -2317,7 +2317,7 @@ woal_strsep(char **s, char delim, char esc)
             continue;
         }
         if (*sb == esc && *(sb + 1) == delim) {
-            /* 
+            /*
              * We get a delim + esc seq then keep the delim
              * and chop off the esc character
              */
@@ -2342,8 +2342,8 @@ woal_strsep(char **s, char delim, char esc)
 /**
  *  @brief Convert mac address from string to t_u8 buffer.
  *
- *  @param mac_addr The buffer to store the mac address in.	    
- *  @param buf      The source of mac address which is a string.	    
+ *  @param mac_addr The buffer to store the mac address in.
+ *  @param buf      The source of mac address which is a string.
  *
  *  @return 	    N/A
  */
@@ -2365,9 +2365,9 @@ woal_mac2u8(t_u8 * mac_addr, char *buf)
 }
 
 #ifdef STA_SUPPORT
-/** 
+/**
  *  @brief This function sets multicast addresses to firmware
- *  
+ *
  *  @param dev     A pointer to net_device structure
  *
  *  @return        N/A
@@ -2385,9 +2385,9 @@ woal_set_multicast_list(struct net_device *dev)
 /**
  *  @brief This function initializes the private structure
  *  		and set default value to the member of moal_private.
- *  
+ *
  *  @param priv             A pointer to moal_private structure
- *  @param wait_option      Wait option  
+ *  @param wait_option      Wait option
  *
  *  @return 	   N/A
  */
@@ -2440,7 +2440,7 @@ woal_init_priv(moal_private * priv, t_u8 wait_option)
 }
 
 /**
- *  @brief Reset all interfaces if all_intf flag is TRUE, 
+ *  @brief Reset all interfaces if all_intf flag is TRUE,
  *  	   otherwise specified interface only
  *
  *  @param priv          A pointer to moal_private structure
@@ -2448,7 +2448,7 @@ woal_init_priv(moal_private * priv, t_u8 wait_option)
  *  @param all_intf      TRUE  : all interfaces
  *                       FALSE : current interface only
  *
- *  @return             MLAN_STATUS_SUCCESS --success, otherwise fail  
+ *  @return             MLAN_STATUS_SUCCESS --success, otherwise fail
  */
 int
 woal_reset_intf(moal_private * priv, t_u8 wait_option, int all_intf)
@@ -2553,9 +2553,9 @@ woal_reset_intf(moal_private * priv, t_u8 wait_option, int all_intf)
     return ret;
 }
 
-/** 
- *  @brief This function return the point to structure moal_private 
- *  
+/**
+ *  @brief This function return the point to structure moal_private
+ *
  *  @param handle       Pointer to structure moal_handle
  *  @param bss_index    BSS index number
  *
@@ -2582,9 +2582,9 @@ woal_bss_index_to_priv(moal_handle * handle, t_u8 bss_index)
     return NULL;
 }
 
-/** 
+/**
  *  @brief This function alloc mlan_buffer.
- *  @param handle  A pointer to moal_handle structure 
+ *  @param handle  A pointer to moal_handle structure
  *  @param size	   buffer size to allocate
  *
  *  @return        mlan_buffer pointer or NULL
@@ -2615,7 +2615,7 @@ woal_alloc_mlan_buffer(moal_handle * handle, int size)
     return pmbuf;
 }
 
-/** 
+/**
  *  @brief This function alloc mlan_ioctl_req.
  *
  *  @param size	   buffer size to allocate
@@ -2648,9 +2648,9 @@ woal_alloc_mlan_ioctl_req(int size)
     return req;
 }
 
-/** 
+/**
  *  @brief This function frees mlan_buffer.
- *  @param handle  A pointer to moal_handle structure 
+ *  @param handle  A pointer to moal_handle structure
  *  @param pmbuf   Pointer to mlan_buffer
  *
  *  @return        N/A
@@ -2674,9 +2674,9 @@ woal_free_mlan_buffer(moal_handle * handle, pmlan_buffer pmbuf)
 #ifdef STA_WEXT
 #endif
 
-/** 
+/**
  *  @brief This function handles events generated by firmware
- *  
+ *
  *  @param priv    A pointer to moal_private structure
  *  @param payload A pointer to payload buffer
  *  @param len	   Length of the payload
@@ -2941,10 +2941,10 @@ woal_reassociation_thread(void *data)
     return MLAN_STATUS_SUCCESS;
 }
 
-/** 
+/**
  *  @brief This function triggers re-association by waking up
  *  re-assoc thread.
- *  
+ *
  *  @param context	A pointer to context
  *  @return		N/A
  */
@@ -2967,9 +2967,9 @@ woal_reassoc_timer_func(void *context)
 #endif /* REASSOCIATION */
 
 #ifdef STA_SUPPORT
-/** 
+/**
  *  @brief Sends disconnect event
- *  
+ *
  *  @param priv A pointer to moal_private struct
  *  @return		N/A
  */
@@ -2998,7 +2998,7 @@ woal_send_disconnect_to_system(moal_private * priv)
 
 /**
  *  @brief This function reads and displays SDIO registers for debugging
- *  
+ *
  *  @param phandle  A pointer to moal_handle
  *
  *  @return         N/A
@@ -3071,7 +3071,7 @@ woal_sdio_reg_dbg(moal_handle * phandle)
 
 /**
  *  @brief This function displays extra MOAL debug information
- *  
+ *
  *  @param priv     A pointer to moal_private
  *  @param handle   A pointer to moal_handle
  *  @param flag     Indicates whether register read can be done directly
@@ -3149,7 +3149,7 @@ woal_moal_debug_info(moal_private * priv, moal_handle * handle, u8 flag)
 
 /**
  *  @brief This workqueue function handles main_process
- *  
+ *
  *  @param work    A pointer to work_struct
  *
  *  @return        N/A
@@ -3186,9 +3186,9 @@ woal_main_work_queue(struct work_struct * work)
 
 /**
  * @brief Handles interrupt
- *  
+ *
  * @param handle  A pointer to moal_handle struct
- * 
+ *
  * @return        N/A
  */
 void
@@ -3212,8 +3212,8 @@ woal_interrupt(moal_handle * handle)
 
 /**
  * @brief This function adds the card. it will probe the
- * 		card, allocate the mlan_private and initialize the device. 
- *  
+ * 		card, allocate the mlan_private and initialize the device.
+ *
  *  @param card    A pointer to card
  *
  *  @return        A pointer to moal_handle structure
@@ -3387,9 +3387,9 @@ woal_add_card(void *card)
     return NULL;
 }
 
-/** 
+/**
  *  @brief This function removes the card.
- *  
+ *
  *  @param card    A pointer to card
  *
  *  @return        MLAN_STATUS_SUCCESS
@@ -3491,9 +3491,9 @@ woal_remove_card(void *card)
     return MLAN_STATUS_SUCCESS;
 }
 
-/** 
+/**
  *  @brief This function switch the drv_mode
- *  
+ *
  *  @param handle    A pointer to moal_handle structure
  *  @param mode     new drv_mode to switch.
  *
@@ -3579,9 +3579,9 @@ woal_switch_drv_mode(moal_handle * handle, t_u32 mode)
     return status;
 }
 
-/** 
+/**
  *  @brief This function initializes module.
- *  
+ *
  *  @return        MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
  */
 static int
@@ -3608,9 +3608,9 @@ woal_init_module(void)
     return ret;
 }
 
-/** 
+/**
  *  @brief This function cleans module
- *  
+ *
  *  @return        N/A
  */
 static void

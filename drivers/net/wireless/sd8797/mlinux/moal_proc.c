@@ -63,13 +63,13 @@ extern int drv_mode;
 /********************************************************
 		Local Functions
 ********************************************************/
-/** 
+/**
  *  @brief Proc read function for info
  *
  *  @param page	   Pointer to buffer
  *  @param start   Read data starting position
  *  @param offset  Offset
- *  @param count   Counter 
+ *  @param count   Counter
  *  @param eof     End of file flag
  *  @param data    Data to output
  *
@@ -164,8 +164,8 @@ woal_info_proc_read(char *page, char **start, off_t offset,
         p += sprintf(p, "channel=\"%d\"\n", (int) info.bss_chan);
         p += sprintf(p, "region_code = \"%02x\"\n", (t_u8) info.region_code);
 
-        /* 
-         * Put out the multicast list 
+        /*
+         * Put out the multicast list
          */
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,35)
         for (i = 0; i < netdev->mc_count; i++) {
@@ -298,7 +298,7 @@ parse_cmd52_string(const char __user * buffer, size_t len, int *func, int *reg,
     return ret;
 }
 
-/** 
+/**
  *  @brief config proc write function
  *
  *  @param f	   file pointer
@@ -364,13 +364,13 @@ woal_config_write(struct file *f, const char *buf, unsigned long cnt,
     return (int) cnt;
 }
 
-/** 
+/**
  *  @brief config proc read function
  *
  *  @param page	   pointer to buffer
  *  @param s       read data starting position
  *  @param off     offset
- *  @param cnt     counter 
+ *  @param cnt     counter
  *  @param eof     end of file flag
  *  @param data    data to output
  *  @return 	   number of output data
@@ -399,7 +399,7 @@ woal_config_read(char *page, char **s, off_t off, int cnt, int *eof, void *data)
 /********************************************************
 		Global Functions
 ********************************************************/
-/** 
+/**
  *  @brief Convert string to number
  *
  *  @param s   	   Pointer to numbered string
@@ -437,7 +437,7 @@ woal_string_to_number(char *s)
     return (r * pn);
 }
 
-/** 
+/**
  *  @brief Create the top level proc directory
  *
  *  @param handle   Pointer to woal_handle
@@ -512,7 +512,7 @@ woal_proc_init(moal_handle * handle)
     LEAVE();
 }
 
-/** 
+/**
  *  @brief Remove the top level proc directory
  *
  *  @param handle  pointer moal_handle
@@ -551,7 +551,7 @@ woal_proc_exit(moal_handle * handle)
     LEAVE();
 }
 
-/** 
+/**
  *  @brief Create proc file for interface
  *
  *  @param priv	   pointer moal_private
@@ -609,7 +609,7 @@ woal_create_proc_entry(moal_private * priv)
     LEAVE();
 }
 
-/** 
+/**
  *  @brief Remove proc file
  *
  *  @param priv	   Pointer moal_private

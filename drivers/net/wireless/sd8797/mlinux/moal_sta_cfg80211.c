@@ -438,7 +438,7 @@ woal_wps_cfg(moal_private * priv, int enable)
 }
 
 /**
- * @brief configure ASSOC IE 
+ * @brief configure ASSOC IE
  *
  * @param priv				A pointer to moal private structure
  * @param ie				A pointer to ie data
@@ -739,14 +739,14 @@ woal_set_rf_channel(struct wiphy *wiphy,
     return ret;
 }
 
-/** 
+/**
  *  @brief Set ewpa mode
  *
  *  @param priv                 A pointer to moal_private structure
  *  @param wait_option          Wait option
  *  @param ssid_bssid           A pointer to mlan_ssid_bssid structure
  *
- *  @return                     MLAN_STATUS_SUCCESS/MLAN_STATUS_PENDING -- success, otherwise fail          
+ *  @return                     MLAN_STATUS_SUCCESS/MLAN_STATUS_PENDING -- success, otherwise fail
  */
 mlan_status
 woal_set_ewpa_mode(moal_private * priv, t_u8 wait_option,
@@ -1295,7 +1295,7 @@ woal_cfg80211_assoc(struct wiphy *wiphy, void *sme)
 
         /* "privacy" is set only for ad-hoc mode */
         if (privacy) {
-            /* 
+            /*
              * Keep MLAN_ENCRYPTION_MODE_WEP40 for now so that
              * the firmware can find a matching network from the
              * scan. cfg80211 does not give us the encryption
@@ -1627,7 +1627,7 @@ woal_cfg80211_connect(struct wiphy *wiphy, struct net_device *dev,
     if (priv->bss_type == MLAN_BSS_TYPE_WIFIDIRECT
         && (priv->wdev->iftype == NL80211_IFTYPE_STATION
             || priv->wdev->iftype == NL80211_IFTYPE_P2P_CLIENT)) {
-        /* if bsstype == wifi direct, and iftype == station or p2p client, that 
+        /* if bsstype == wifi direct, and iftype == station or p2p client, that
            means wpa_supplicant wants to enable wifi direct functionality, so
            we should init p2p client. Note that due to kernel iftype check,
            ICS wpa_supplicant could not updaet iftype to init p2p client, so
@@ -2012,7 +2012,7 @@ woal_cfg80211_setup_sta_ht_cap(struct ieee80211_sta_ht_cap *ht_info,
  *
  * @param wiphy             A pointer to wiphy structure
  * @param wait_option       Wait option
- * @param cancel			cancel remain on channel flag            
+ * @param cancel			cancel remain on channel flag
  * @param status            A pointer to status, success, in process or reject
  * @param chan              A pointer to ieee80211_channel structure
  * @param channel_type      channel_type,

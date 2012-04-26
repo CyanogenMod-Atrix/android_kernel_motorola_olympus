@@ -112,7 +112,7 @@ mlan_status wlan_cmd_amsdu_aggr_ctrl(mlan_private * priv,
 void wlan_11n_cleanup_txbastream_tbl(mlan_private * priv, t_u8 * ra);
 /**
  *  @brief This function checks whether a station has 11N enabled or not
- *  
+ *
  *  @param priv     A pointer to mlan_private
  *  @param mac      station mac address
  *  @return 	    MTRUE or MFALSE
@@ -129,7 +129,7 @@ is_station_11n_enabled(mlan_private * priv, t_u8 * mac)
 
 /**
  *  @brief This function get station max amsdu size
- *  
+ *
  *  @param priv     A pointer to mlan_private
  *  @param mac      station mac address
  *  @return 	    max amsdu size statio supported
@@ -146,7 +146,7 @@ get_station_max_amsdu_size(mlan_private * priv, t_u8 * mac)
 
 /**
  *  @brief This function checks whether a station allows AMPDU or not
- *  
+ *
  *  @param priv     A pointer to mlan_private
  *  @param ptr      A pointer to RA list table
  *  @param tid      TID value for ptr
@@ -168,8 +168,8 @@ is_station_ampdu_allowed(mlan_private * priv, raListTbl * ptr, int tid)
 }
 
 /**
- *  @brief This function disable station ampdu for specific tid 
- *  
+ *  @brief This function disable station ampdu for specific tid
+ *
  *  @param priv     A pointer to mlan_private
  *  @param tid     tid index
  *  @param ra      station mac address
@@ -187,7 +187,7 @@ disable_station_ampdu(mlan_private * priv, t_u8 tid, t_u8 * ra)
 
 /**
  *  @brief This function checks whether current BA stream is high priority or not
- *  
+ *
  *  @param priv     A pointer to mlan_private
  *  @param tid	    TID
  *
@@ -226,7 +226,7 @@ wlan_is_cur_bastream_high_prio(mlan_private * priv, int tid)
 
 /**
  *  @brief This function checks whether AMPDU is allowed or not
- *  
+ *
  *  @param priv     A pointer to mlan_private
  *  @param ptr      A pointer to RA list table
  *  @param tid      TID value for ptr
@@ -249,7 +249,7 @@ wlan_is_ampdu_allowed(mlan_private * priv, raListTbl * ptr, int tid)
 
 /**
  *  @brief This function checks whether AMSDU is allowed for BA stream
- *  
+ *
  *  @param priv     A pointer to mlan_private
  *  @param ptr      A pointer to RA list table
  *  @param tid	    TID value for ptr
@@ -271,7 +271,7 @@ wlan_is_amsdu_in_ampdu_allowed(mlan_private * priv, raListTbl * ptr, int tid)
 
 /**
  *  @brief This function checks whether AMSDU is allowed or not
- *  
+ *
  *  @param priv     A pointer to mlan_private
  *  @param ptr      A pointer to RA list table
  *  @param tid      TID value for ptr
@@ -299,7 +299,7 @@ wlan_is_amsdu_allowed(mlan_private * priv, raListTbl * ptr, int tid)
 
 /**
  *  @brief This function checks whether a BA stream is available or not
- *  
+ *
  *  @param priv     A pointer to mlan_private
  *
  *  @return 	    MTRUE or MFALSE
@@ -322,7 +322,7 @@ wlan_is_bastream_avail(mlan_private * priv)
 
 /**
  *  @brief This function finds the stream to delete
- *  
+ *
  *  @param priv     A pointer to mlan_private
  *  @param ptr      A pointer to RA list table
  *  @param ptr_tid  TID value of ptr
@@ -372,7 +372,7 @@ wlan_find_stream_to_delete(mlan_private * priv,
 
 /**
  *  @brief This function checks whether BA stream is setup
- *  
+ *
  *  @param priv     A pointer to mlan_private
  *  @param ptr      A pointer to RA list table
  *  @param tid	    TID value for ptr
@@ -397,7 +397,7 @@ wlan_is_bastream_setup(mlan_private * priv, raListTbl * ptr, int tid)
 
 /**
  *  @brief This function checks whether 11n is supported
- *  
+ *
  *  @param priv     A pointer to mlan_private
  *  @param ra       Address of the receiver STA
  *

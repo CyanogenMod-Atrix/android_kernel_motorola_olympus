@@ -166,7 +166,7 @@ woal_set_ap_wps_p2p_ie(moal_private * priv, t_u8 * ie, size_t len)
     }
 
     /* Android cmd format: "SET_AP_WPS_P2P_IE 1" -- beacon IE
-       "SET_AP_WPS_P2P_IE 2" -- proberesp IE "SET_AP_WPS_P2P_IE 4" -- assocresp 
+       "SET_AP_WPS_P2P_IE 2" -- proberesp IE "SET_AP_WPS_P2P_IE 4" -- assocresp
        IE */
     if (*pos == '1') {
         PRINTM(MIOCTL, "Ignore set beacon ie\n");

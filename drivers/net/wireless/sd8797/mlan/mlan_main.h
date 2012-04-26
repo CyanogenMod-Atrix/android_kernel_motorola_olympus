@@ -1034,7 +1034,7 @@ typedef struct _mlan_private
     t_u32 assoc_rsp_size;
 
     /** Generic IEEE IEs passed from the application to be inserted into the
-     *    association request to firmware 
+     *    association request to firmware
      */
     t_u8 gen_ie_buf[MRVDRV_GENIE_BUF_SIZE];
     /** Length of the data stored in gen_ie_buf */
@@ -1336,8 +1336,8 @@ typedef struct
 
 /**
  * @brief Driver measurement state held in 'mlan_adapter' structure
- *  
- *  Used to record a measurement request that the driver is pending on 
+ *
+ *  Used to record a measurement request that the driver is pending on
  *    the result (received measurement report).
  */
 typedef struct
@@ -1537,22 +1537,22 @@ typedef struct _mlan_adapter
     t_u32 upld_len;
     /** Upload buffer*/
     t_u8 upld_buf[WLAN_UPLD_SIZE];
-    /** Data sent: 
+    /** Data sent:
      *       TRUE - Data is sent to fw, no Tx Done received
      *       FALSE - Tx done received for previous Tx
      */
     t_u8 data_sent;
-    /** CMD sent: 
+    /** CMD sent:
      *       TRUE - CMD is sent to fw, no CMD Done received
      *       FALSE - CMD done received for previous CMD
      */
     t_u8 cmd_sent;
-    /** CMD Response received: 
+    /** CMD Response received:
      *       TRUE - CMD is response is received from fw, and yet to process
      *       FALSE - No cmd response to process
      */
     t_u8 cmd_resp_received;
-    /** Event received: 
+    /** Event received:
      *       TRUE - Event received from fw, and yet to process
      *       FALSE - No events to process
      */
@@ -2298,7 +2298,7 @@ t_u8 *wlan_get_specific_ie(pmlan_private priv, t_u8 * ie_buf, t_u8 ie_len,
 
 /**
  *  @brief This function checks tx_pause flag for peer
- *  
+ *
  *  @param priv     A pointer to mlan_private
  *  @param ra       Address of the receiver STA
  *
@@ -2366,9 +2366,9 @@ mlan_status wlan_set_drvdbg(IN pmlan_adapter pmadapter,
                             IN pmlan_ioctl_req pioctl_req);
 #endif
 
-/** 
+/**
  *  @brief RA based queueing
- *   
+ *
  *  @param priv                 A pointer to mlan_private structure
  *
  *  @return 	   	        MTRUE or MFALSE
@@ -2376,7 +2376,7 @@ mlan_status wlan_set_drvdbg(IN pmlan_adapter pmadapter,
 static INLINE t_u8
 queuing_ra_based(pmlan_private priv)
 {
-    /* 
+    /*
      * Currently we assume if we are in Infra, then DA=RA. This might not be
      * true in the future
      */
@@ -2387,9 +2387,9 @@ queuing_ra_based(pmlan_private priv)
     return MTRUE;
 }
 
-/** 
+/**
  *  @brief Copy Rates
- *   
+ *
  *  @param dest                 A pointer to Dest Buf
  *  @param pos		        The position for copy
  *  @param src		        A pointer to Src Buf
@@ -2411,9 +2411,9 @@ wlan_copy_rates(t_u8 * dest, t_u32 pos, t_u8 * src, int len)
     return pos;
 }
 
-/** 
+/**
  *  @brief strlen
- *   
+ *
  *  @param str		        A pointer to string
  *
  *  @return 	   	        Length of string
@@ -2481,9 +2481,9 @@ t_void wlan_delay_func(mlan_adapter * pmadapter, t_u32 delay, t_delay_unit u);
 
 /** Get BSS number from priv */
 #define GET_BSS_NUM(priv)   (priv)->bss_num
-/** 
+/**
  *  @brief This function returns priv based on the BSS num and BSS type
- *  
+ *
  *  @param pmadapter A pointer to mlan_adapter
  *  @param bss_num   BSS number
  *  @param bss_type  BSS type
@@ -2505,10 +2505,10 @@ wlan_get_priv_by_id(mlan_adapter * pmadapter, t_u32 bss_num, t_u32 bss_type)
     return MNULL;
 }
 
-/** 
+/**
  *  @brief This function returns first available priv
  *  based on the BSS role
- *  
+ *
  *  @param pmadapter A pointer to mlan_adapter
  *  @param bss_role  BSS role or MLAN_BSS_ROLE_ANY
  *
@@ -2533,7 +2533,7 @@ wlan_get_priv(mlan_adapter * pmadapter, mlan_bss_role bss_role)
  *  @brief This function counts the number of occurences for a certain
  *  condition among privs.  Which privs are checked can be configured
  *  via a second condition.
- * 
+ *
  *  @param pmadapter  A pointer to mlan_adapter
  *  @param count_cond Function pointer to condition to count on privs
  *  @param check_cond Function pointer to condition to decide whether priv
@@ -2568,7 +2568,7 @@ wlan_count_priv_cond(mlan_adapter * pmadapter,
 /**
  *  @brief This function runs a procedure on each priv.
  *  Which privs it is run on can be configured via a condition.
- * 
+ *
  *  @param pmadapter  A pointer to mlan_adapter
  *  @param operation  Function pointer to produedure to operate on priv
  *  @param check_cond Function pointer to condition to decide whether priv

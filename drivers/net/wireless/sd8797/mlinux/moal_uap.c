@@ -44,9 +44,9 @@ Change log:
 /********************************************************
 		Local Functions
 ********************************************************/
-/** 
+/**
  *  @brief uap addba parameter handler
- *   
+ *
  *  @param dev      A pointer to net_device structure
  *  @param req      A pointer to ifreq structure
  *  @return         0 --success, otherwise fail
@@ -123,9 +123,9 @@ woal_uap_addba_param(struct net_device *dev, struct ifreq *req)
     return ret;
 }
 
-/** 
- *  @brief uap aggr priority tbl 
- *   
+/**
+ *  @brief uap aggr priority tbl
+ *
  *  @param dev      A pointer to net_device structure
  *  @param req      A pointer to ifreq structure
  *  @return         0 --success, otherwise fail
@@ -198,9 +198,9 @@ woal_uap_aggr_priotbl(struct net_device *dev, struct ifreq *req)
     return ret;
 }
 
-/** 
- *  @brief uap addba reject tbl 
- *   
+/**
+ *  @brief uap addba reject tbl
+ *
  *  @param dev      A pointer to net_device structure
  *  @param req      A pointer to ifreq structure
  *  @return         0 --success, otherwise fail
@@ -271,9 +271,9 @@ woal_uap_addba_reject(struct net_device *dev, struct ifreq *req)
     return ret;
 }
 
-/** 
+/**
  *  @brief uap get_fw_info handler
- *   
+ *
  *  @param dev      A pointer to net_device structure
  *  @param req      A pointer to ifreq structure
  *  @return         0 --success, otherwise fail
@@ -319,9 +319,9 @@ woal_uap_get_fw_info(struct net_device *dev, struct ifreq *req)
     return ret;
 }
 
-/** 
- *  @brief configure deep sleep 
- *   
+/**
+ *  @brief configure deep sleep
+ *
  *  @param dev      A pointer to net_device structure
  *  @param req      A pointer to ifreq structure
  *  @return         0 --success, otherwise fail
@@ -396,9 +396,9 @@ woal_uap_deep_sleep(struct net_device *dev, struct ifreq *req)
     return ret;
 }
 
-/** 
+/**
  *  @brief configure tx_pause settings
- *   
+ *
  *  @param dev      A pointer to net_device structure
  *  @param req      A pointer to ifreq structure
  *  @return         0 --success, otherwise fail
@@ -468,9 +468,9 @@ woal_uap_txdatapause(struct net_device *dev, struct ifreq *req)
     return ret;
 }
 
-/** 
+/**
  *  @brief uap sdcmd52rw ioctl handler
- *   
+ *
  *  @param dev      A pointer to net_device structure
  *  @param req      A pointer to ifreq structure
  *  @return         0 --success, otherwise fail
@@ -840,7 +840,7 @@ woal_uap_dfs_testing(struct net_device *dev, struct ifreq *req)
 
 /**
  *  @brief Configure TX beamforming support
- *   
+ *
  *  @param dev      A pointer to net_device structure
  *  @param req      A pointer to ifreq structure
  *  @return         0 --success, otherwise fail
@@ -903,9 +903,9 @@ woal_uap_tx_bf_cfg(struct net_device *dev, struct ifreq *req)
     return ret;
 }
 
-/** 
+/**
  *  @brief uap hs_cfg ioctl handler
- *   
+ *
  *  @param dev      A pointer to net_device structure
  *  @param req      A pointer to ifreq structure
  *  @return         0 --success, otherwise fail
@@ -1033,9 +1033,9 @@ woal_uap_hs_set_para(struct net_device *dev, struct ifreq *req)
     return ret;
 }
 
-/** 
+/**
  *  @brief uap mgmt_frame_control ioctl handler
- *   
+ *
  *  @param dev      A pointer to net_device structure
  *  @param req      A pointer to ifreq structure
  *  @return         0 --success, otherwise fail
@@ -1096,10 +1096,10 @@ woal_uap_mgmt_frame_control(struct net_device *dev, struct ifreq *req)
 
 /**
  * @brief Set/Get tx rate
- * 
+ *
  *  @param dev      A pointer to net_device structure
  *  @param req      A pointer to ifreq structure
- * 
+ *
  * @return           0 --success, otherwise fail
  */
 static int
@@ -1184,10 +1184,10 @@ woal_uap_tx_rate_cfg(struct net_device *dev, struct ifreq *req)
 
 /**
  * @brief Set/Get RF antenna mode
- * 
+ *
  *  @param dev      A pointer to net_device structure
  *  @param req      A pointer to ifreq structure
- * 
+ *
  * @return           0 --success, otherwise fail
  */
 static int
@@ -1250,9 +1250,9 @@ woal_uap_antenna_cfg(struct net_device *dev, struct ifreq *req)
     return ret;
 }
 
-/** 
+/**
  *  @brief uap ioctl handler
- *   
+ *
  *  @param dev      A pointer to net_device structure
  *  @param req      A pointer to ifreq structure
  *  @return         0 --success, otherwise fail
@@ -1335,9 +1335,9 @@ woal_uap_ioctl(struct net_device *dev, struct ifreq *req)
     return ret;
 }
 
-/** 
+/**
  *  @brief uap station deauth ioctl handler
- *   
+ *
  *  @param dev      A pointer to net_device structure
  *  @param req      A pointer to ifreq structure
  *  @return         0 --success, otherwise fail
@@ -1402,10 +1402,10 @@ woal_uap_sta_deauth_ioctl(struct net_device *dev, struct ifreq *req)
 
 /**
  * @brief Set/Get radio
- * 
+ *
  *  @param dev      A pointer to net_device structure
  *  @param req      A pointer to ifreq structure
- * 
+ *
  * @return           0 --success, otherwise fail
  */
 static int
@@ -1467,9 +1467,9 @@ woal_uap_radio_ctl(struct net_device *dev, struct ifreq *req)
     return ret;
 }
 
-/** 
+/**
  *  @brief uap bss control ioctl handler
- *   
+ *
  *  @param dev      A pointer to net_device structure
  *  @param req      A pointer to ifreq structure
  *  @return         0 --success, otherwise fail
@@ -1501,9 +1501,9 @@ woal_uap_bss_ctrl_ioctl(struct net_device *dev, struct ifreq *req)
     return ret;
 }
 
-/** 
+/**
  *  @brief uap power mode ioctl handler
- *   
+ *
  *  @param dev      A pointer to net_device structure
  *  @param req      A pointer to ifreq structure
  *  @return         0 --success, otherwise fail
@@ -1596,9 +1596,9 @@ woal_uap_power_mode_ioctl(struct net_device *dev, struct ifreq *req)
     return ret;
 }
 
-/** 
+/**
  *  @brief uap BSS config ioctl handler
- *   
+ *
  *  @param dev      A pointer to net_device structure
  *  @param req      A pointer to ifreq structure
  *  @return         0 --success, otherwise fail
@@ -1683,9 +1683,9 @@ woal_uap_bss_cfg_ioctl(struct net_device *dev, struct ifreq *req)
     return ret;
 }
 
-/** 
+/**
  *  @brief uap get station list handler
- *   
+ *
  *  @param dev      A pointer to net_device structure
  *  @param req      A pointer to ifreq structure
  *  @return         0 --success, otherwise fail
@@ -1742,9 +1742,9 @@ woal_uap_get_sta_list_ioctl(struct net_device *dev, struct ifreq *req)
     return ret;
 }
 
-/** 
+/**
  *  @brief uAP set WAPI key ioctl
- *   
+ *
  *  @param priv      A pointer to moal_private structure
  *  @param msg       A pointer to wapi_msg structure
  *
@@ -1796,9 +1796,9 @@ woal_uap_set_wapi_key_ioctl(moal_private * priv, wapi_msg * msg)
     return ret;
 }
 
-/** 
+/**
  *  @brief Enable/Disable wapi in firmware
- *   
+ *
  *  @param priv          A pointer to moal_private structure
  *  @param enable        MTRUE/MFALSE
  *
@@ -1858,9 +1858,9 @@ woal_enable_wapi(moal_private * priv, t_u8 enable)
     return status;
 }
 
-/** 
+/**
  *  @brief uAP set WAPI flag ioctl
- *   
+ *
  *  @param priv      A pointer to moal_private structure
  *  @param msg       A pointer to wapi_msg structure
  *
@@ -1927,9 +1927,9 @@ woal_uap_set_wapi_flag_ioctl(moal_private * priv, wapi_msg * msg)
     return ret;
 }
 
-/** 
+/**
  *  @brief set wapi ioctl function
- *   
+ *
  *  @param dev      A pointer to net_device structure
  *  @param req      A pointer to ifreq structure
  *  @return         0 --success, otherwise fail
@@ -2351,7 +2351,7 @@ woal_uap_set_ap_cfg(moal_private * priv, t_u8 * data, int len)
 
 /**
  *  @brief uap BSS control ioctl handler
- *   
+ *
  *  @param priv             A pointer to moal_private structure
  *  @param wait_option      Wait option
  *  @param data             BSS control type
@@ -2422,9 +2422,9 @@ woal_uap_bss_ctrl(moal_private * priv, t_u8 wait_option, int data)
     return ret;
 }
 
-/** 
+/**
  *  @brief This function sets multicast addresses to firmware
- *  
+ *
  *  @param dev     A pointer to net_device structure
  *  @return        N/A
  */
@@ -2501,9 +2501,9 @@ woal_uap_do_ioctl(struct net_device *dev, struct ifreq *req, int cmd)
     return ret;
 }
 
-/** 
- *  @brief Get version 
- *   
+/**
+ *  @brief Get version
+ *
  *  @param priv 		A pointer to moal_private structure
  *  @param version		A pointer to version buffer
  *  @param max_len		max length of version buffer
@@ -2545,14 +2545,14 @@ woal_uap_get_version(moal_private * priv, char *version, int max_len)
     return;
 }
 
-/** 
- *  @brief Get uap statistics 
- *   
+/**
+ *  @brief Get uap statistics
+ *
  *  @param priv 		        A pointer to moal_private structure
  *  @param wait_option          Wait option
  *  @param ustats               A pointer to mlan_ds_uap_stats structure
  *
- *  @return                     MLAN_STATUS_SUCCESS/MLAN_STATUS_PENDING -- success, otherwise fail 
+ *  @return                     MLAN_STATUS_SUCCESS/MLAN_STATUS_PENDING -- success, otherwise fail
  */
 mlan_status
 woal_uap_get_stats(moal_private * priv, t_u8 wait_option,

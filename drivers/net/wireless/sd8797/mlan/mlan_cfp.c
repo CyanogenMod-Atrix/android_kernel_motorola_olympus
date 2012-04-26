@@ -445,12 +445,12 @@ t_u8 SupportedRates_N[N_SUPPORTED_RATES] = { 0x02, 0x04, 0 };
 /********************************************************
     Local Functions
 ********************************************************/
-/** 
+/**
  *  @brief Find a character in a string.
- *   
+ *
  *  @param pmadapter    A pointer to mlan_adapter structure
  *  @param s            A pointer to string
- *  @param c            Character to be located 
+ *  @param c            Character to be located
  *  @param n            The length of string
  *
  *  @return        A pointer to the first occurrence of c in string, or MNULL if c is not found.
@@ -473,10 +473,10 @@ wlan_memchr(pmlan_adapter pmadapter, void *s, int c, int n)
     return MNULL;
 }
 
-/** 
- *  @brief This function finds the CFP in 
+/**
+ *  @brief This function finds the CFP in
  *  		cfp_table_BG/A based on region/code and band parameter.
- *  
+ *
  *  @param pmadapter  A pointer to mlan_adapter structure
  *  @param region     The region code
  *  @param band       The band
@@ -534,14 +534,14 @@ wlan_get_region_cfp_table(pmlan_adapter pmadapter, t_u8 region, t_u8 band,
 #ifdef STA_SUPPORT
 #endif /* STA_SUPPORT */
 
-/** 
+/**
  *  @brief Use index to get the data rate
- *   
+ *
  *  @param pmadapter    A pointer to mlan_adapter structure
  *  @param index        The index of data rate
  *  @param ht_info      ht info
  *
- *  @return                     Data rate or 0 
+ *  @return                     Data rate or 0
  */
 
 t_u32
@@ -595,13 +595,13 @@ wlan_index_to_data_rate(pmlan_adapter pmadapter, t_u8 index, t_u8 ht_info)
     return rate;
 }
 
-/** 
+/**
  *  @brief Use rate to get the index
- *   
+ *
  *  @param pmadapter    A pointer to mlan_adapter structure
  *  @param rate         Data rate
  *
- *  @return                     Index or 0 
+ *  @return                     Index or 0
  */
 t_u8
 wlan_data_rate_to_index(pmlan_adapter pmadapter, t_u32 rate)
@@ -619,9 +619,9 @@ wlan_data_rate_to_index(pmlan_adapter pmadapter, t_u32 rate)
     return 0;
 }
 
-/** 
+/**
  *  @brief Get active data rates
- *   
+ *
  *  @param pmpriv           A pointer to mlan_private structure
  *  @param bss_mode         The specified BSS mode (Infra/IBSS)
  *  @param config_bands     The specified band configuration
@@ -649,9 +649,9 @@ wlan_get_active_data_rates(mlan_private * pmpriv, t_u32 bss_mode,
 }
 
 #ifdef STA_SUPPORT
-/** 
- *  @brief This function search through all the regions cfp table to find the channel, 
- *            if the channel is found then gets the MIN txpower of the channel 
+/**
+ *  @brief This function search through all the regions cfp table to find the channel,
+ *            if the channel is found then gets the MIN txpower of the channel
  *            present in all the regions.
  *
  *  @param pmpriv       A pointer to mlan_private structure
@@ -707,9 +707,9 @@ wlan_get_txpwr_of_chan_from_cfp(mlan_private * pmpriv, t_u8 channel)
     return tx_power;
 }
 
-/** 
+/**
  *  @brief Get the channel frequency power info for a specific channel
- *   
+ *
  *  @param pmadapter            A pointer to mlan_adapter structure
  *  @param band                 It can be BAND_A, BAND_G or BAND_B
  *  @param channel              The channel to search for
@@ -784,9 +784,9 @@ wlan_get_cfp_by_band_and_channel(pmlan_adapter pmadapter,
     return cfp;
 }
 
-/** 
+/**
  *  @brief Find the channel frequency power info for a specific channel
- *   
+ *
  *  @param pmadapter    A pointer to mlan_adapter structure
  *  @param band         It can be BAND_A, BAND_G or BAND_B
  *  @param channel      The channel to search for
@@ -814,9 +814,9 @@ wlan_find_cfp_by_band_and_channel(mlan_adapter * pmadapter,
     return cfp;
 }
 
-/** 
+/**
  *  @brief Find the channel frequency power info for a specific frequency
- *   
+ *
  *  @param pmadapter    A pointer to mlan_adapter structure
  *  @param band         It can be BAND_A, BAND_G or BAND_B
  *  @param freq         The frequency to search for
@@ -888,9 +888,9 @@ wlan_find_cfp_by_band_and_freq(mlan_adapter * pmadapter, t_u8 band, t_u32 freq)
 }
 #endif /* STA_SUPPORT */
 
-/** 
+/**
  *  @brief Check if Rate Auto
- *   
+ *
  *  @param pmpriv               A pointer to mlan_private structure
  *
  *  @return                     MTRUE or MFALSE
@@ -914,9 +914,9 @@ wlan_is_rate_auto(mlan_private * pmpriv)
         return MFALSE;
 }
 
-/** 
+/**
  *  @brief Covert Rate Bitmap to Rate index
- *   
+ *
  *  @param pmadapter    Pointer to mlan_adapter structure
  *  @param rate_bitmap  Pointer to rate bitmap
  *  @param size         Size of the bitmap array
@@ -941,9 +941,9 @@ wlan_get_rate_index(pmlan_adapter pmadapter, t_u16 * rate_bitmap, int size)
     return -1;
 }
 
-/** 
+/**
  *  @brief Get supported data rates
- *   
+ *
  *  @param pmpriv           A pointer to mlan_private structure
  *  @param bss_mode         The specified BSS mode (Infra/IBSS)
  *  @param config_bands     The specified band configuration
@@ -1040,9 +1040,9 @@ wlan_get_supported_rates(mlan_private * pmpriv, t_u32 bss_mode,
     return k;
 }
 
-/** 
- *  @brief This function sets region table. 
- *  
+/**
+ *  @brief This function sets region table.
+ *
  *  @param pmpriv  A pointer to mlan_private structure
  *  @param region  The region code
  *  @param band    The band
@@ -1107,7 +1107,7 @@ wlan_set_regiontable(mlan_private * pmpriv, t_u8 region, t_u8 band)
  *  @param priv    Private driver information structure
  *  @param chnl Channel to determine radar detection requirements
  *
- *  @return 
+ *  @return
  *    - MTRUE if radar detection is required
  *    - MFALSE otherwise
  */

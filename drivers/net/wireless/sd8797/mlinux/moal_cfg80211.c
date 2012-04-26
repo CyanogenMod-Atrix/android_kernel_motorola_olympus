@@ -163,7 +163,7 @@ woal_get_wiphy_priv(struct wiphy *wiphy)
     return (void *) (*(unsigned long *) wiphy_priv(wiphy));
 }
 
-/** 
+/**
  *  @brief Set/Enable encryption key
  *
  *  @param priv             A pointer to moal_private structure
@@ -172,7 +172,7 @@ woal_get_wiphy_priv(struct wiphy *wiphy)
  *  @param key              A pointer to key
  *  @param key_len          Key length
  *  @param seq              A pointer to sequence
- *  @param seq_len          Sequence length 
+ *  @param seq_len          Sequence length
  *  @param key_index        Key index
  *  @param addr             Mac for which key is to be set
  *  @param disable          Key disabled or not
@@ -729,7 +729,7 @@ woal_cfg80211_change_virtual_intf(struct wiphy *wiphy,
             && (priv->wdev->iftype == NL80211_IFTYPE_AP
                 || priv->wdev->iftype == NL80211_IFTYPE_P2P_GO
                 || priv->wdev->iftype == NL80211_IFTYPE_P2P_CLIENT)) {
-            /* if we support wifi direct && priv->bss_type == wifi_direct, and 
+            /* if we support wifi direct && priv->bss_type == wifi_direct, and
                currently the interface type is AP or GO or client, that means
                wpa_supplicant deinit() wifi direct interface, so we should
                deinit bss_role and wifi direct mode, for other bss_type, we
@@ -1236,7 +1236,7 @@ woal_cfg80211_mgmt_tx(struct wiphy *wiphy,
         atomic_inc(&priv->phandle->tx_pending);
         queue_work(priv->phandle->workqueue, &priv->phandle->main_work);
 
-        /* delay 20ms to guarantee the packet has been already tx'ed becuase if 
+        /* delay 20ms to guarantee the packet has been already tx'ed becuase if
            we call cfg80211_mgmt_tx_status() immediately, then wpa_supplicant
            will call cancel_remain_on_channel(), which may affect the mgmt
            frame tx */

@@ -335,7 +335,7 @@ typedef struct _wlan_ioctl_get_scan_table_entry
      */
     wlan_get_scan_table_fixed fixed_fields;
 
-    /* 
+    /*
      *  Probe response or beacon scanned for the BSS.
      *
      *  Field layout:
@@ -832,7 +832,7 @@ typedef struct _mlan_uap_bss_param
     wpa_param wpa_cfg;
     /** Mgmt IE passthru mask */
     t_u32 mgmt_ie_passthru_mask;
-    /* 
+    /*
      * 11n HT Cap  HTCap_t  ht_cap
      */
     /** HT Capabilities Info field */
@@ -1162,7 +1162,7 @@ typedef struct _mlan_ds_uap_stats
 typedef struct _mlan_ds_get_signal
 {
     /** Selector of get operation */
-    /* 
+    /*
      * Bit0:  Last Beacon RSSI,  Bit1:  Average Beacon RSSI,
      * Bit2:  Last Data RSSI,    Bit3:  Average Data RSSI,
      * Bit4:  Last Beacon SNR,   Bit5:  Average Beacon SNR,
@@ -1826,7 +1826,7 @@ typedef struct _mlan_ds_hs_cfg
     /** Bit0: broadcast data
      *  Bit1: unicast data
      *  Bit2: mac event
-     *  Bit3: multicast data 
+     *  Bit3: multicast data
      */
     t_u32 conditions;
     /** GPIO pin or 0xff for interface */
@@ -2057,7 +2057,7 @@ typedef struct _mlan_ds_pm_cfg
 /**
  *  @brief IOCTL structure to send an ADDTS request and retrieve the response.
  *
- *  IOCTL structure from the application layer relayed to firmware to 
+ *  IOCTL structure from the application layer relayed to firmware to
  *    instigate an ADDTS management frame with an appropriate TSPEC IE as well
  *    as any additional IEs appended in the ADDTS Action frame.
  *
@@ -2078,7 +2078,7 @@ typedef struct
 /**
  *  @brief IOCTL structure to send a DELTS request.
  *
- *  IOCTL structure from the application layer relayed to firmware to 
+ *  IOCTL structure from the application layer relayed to firmware to
  *    instigate an DELTS management frame with an appropriate TSPEC IE.
  *
  *  @sa woal_wmm_delts_req_ioctl
@@ -2094,7 +2094,7 @@ typedef struct
 /**
  *  @brief IOCTL structure to configure a specific AC Queue's parameters
  *
- *  IOCTL structure from the application layer relayed to firmware to 
+ *  IOCTL structure from the application layer relayed to firmware to
  *    get, set, or default the WMM AC queue parameters.
  *
  *  - msdu_lifetime_expiry is ignored if set to 0 on a set command
@@ -2151,7 +2151,7 @@ typedef struct
 /** Type definition of mlan_ds_wmm_queue_stats for MLAN_OID_WMM_CFG_QUEUE_STATS */
   mlan_ds_wmm_queue_stats, *pmlan_ds_wmm_queue_stats;
 
-/** 
+/**
  *  @brief IOCTL sub structure for a specific WMM AC Status
  */
 typedef struct
@@ -2428,7 +2428,7 @@ typedef struct _mlan_ds_11n_tx_bf_cfg
     } body;
 } mlan_ds_11n_tx_bf_cfg, *pmlan_ds_11n_tx_bf_cfg;
 
-/** Type definition of mlan_ds_11n_amsdu_aggr_ctrl for 
+/** Type definition of mlan_ds_11n_amsdu_aggr_ctrl for
  * MLAN_OID_11N_AMSDU_AGGR_CTRL*/
 typedef struct _mlan_ds_11n_amsdu_aggr_ctrl
 {

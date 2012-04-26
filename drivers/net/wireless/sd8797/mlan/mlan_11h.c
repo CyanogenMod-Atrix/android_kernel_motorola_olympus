@@ -220,7 +220,7 @@ wlan_11h_set_ibss_dfs_ie(mlan_private * priv, IEEEtypes_IBSS_DFS_t * pdfs)
 
     memset(adapter, pdfs, 0x00, sizeof(IEEEtypes_IBSS_DFS_t));
 
-    /* 
+    /*
      * A basic measurement report is included with each channel in the
      *   map field.  Initial value for the map for each supported channel
      *   is with only the unmeasured bit set.
@@ -237,13 +237,13 @@ wlan_11h_set_ibss_dfs_ie(mlan_private * priv, IEEEtypes_IBSS_DFS_t * pdfs)
         pdfs->channel_map[num_chans].channel_number =
             adapter->parsed_region_chan.chan_pwr[num_chans].chan;
 
-        /* 
+        /*
          * Set the initial map field with a basic measurement
          */
         pdfs->channel_map[num_chans].rpt_map = initial_map;
     }
 
-    /* 
+    /*
      * If we have an established channel map, include it and return
      *   a valid DFS element
      */
@@ -300,7 +300,7 @@ wlan_11h_set_supp_channels_ie(mlan_private * priv,
     cfp_bg = cfp_a = priv->adapter->region_code;
 
     if ((band & BAND_B) || (band & BAND_G)) {
-        /* 
+        /*
          * Channels are contiguous in 2.4GHz, usually only one subband.
          */
         switch (cfp_bg) {
@@ -324,7 +324,7 @@ wlan_11h_set_supp_channels_ie(mlan_private * priv,
             break;
         }
     } else if (band & BAND_A) {
-        /* 
+        /*
          * Set the supported channel elements based on the region code,
          *   incrementing num_subbands for each sub-band we append to the
          *   element.
@@ -358,7 +358,7 @@ wlan_11h_set_supp_channels_ie(mlan_private * priv,
         }
     }
 
-    /* 
+    /*
      * If we have setup any supported subbands in the element, return a
      *    valid IE along with its size, else return 0.
      */
@@ -651,7 +651,7 @@ wlan_11h_process_infra_join(mlan_private * priv,
     /* Setup the Supported Channels IE */
     sup_chan_len = wlan_11h_set_supp_channels_ie(priv, band, &sup_chan_ie);
 
-    /* 
+    /*
      * If we returned a valid Supported Channels IE, wrap and append it
      */
     if (sup_chan_len) {
@@ -713,7 +713,7 @@ wlan_11h_process_adhoc(mlan_private * priv,
 #endif
 
     if (p11h_bss_info) {
-        /* 
+        /*
          * Copy the DFS Owner/Recovery Interval from the BSS we are joining
          */
         memcpy(adapter, dfs_elem.dfs_owner,
@@ -731,12 +731,12 @@ wlan_11h_process_adhoc(mlan_private * priv,
     *ppbuffer += size_appended;
     ret_len += size_appended;
 
-    /* 
+    /*
      * Check to see if we are joining a network.  Join is indicated by the
      *   BSS Info pointer being valid (not NULL)
      */
     if (p11h_bss_info) {
-        /* 
+        /*
          * If there was a quiet element, include it in adhoc join command
          */
         if (p11h_bss_info->quiet.element_id == QUIET) {
@@ -752,7 +752,7 @@ wlan_11h_process_adhoc(mlan_private * priv,
         /* Copy the local constraint from the network */
         local_constraint = p11h_bss_info->power_constraint.local_constraint;
     } else {
-        /* 
+        /*
          * If we are the adhoc starter, we can add a quiet element
          */
         if (adapter->state_11h.quiet_ie.quiet_period) {
@@ -1172,27 +1172,27 @@ wlan_11h_get_uap_start_channel(mlan_private * priv, t_u8 uap_band_cfg)
 
     ENTER();
 
-    /* 
+    /*
      * Set start_chn to the Default.  Used if 11h is disabled or the band
      *   does not require 11h support.
      */
     start_chn = DEFAULT_AD_HOC_CHANNEL;
 
-    /* 
+    /*
      * Check that we are looking for a channel in the A Band
      */
     if (uap_band_cfg & UAP_BAND_CONFIG_5GHZ) {
-        /* 
+        /*
          * Set default to the A Band default. Used if random selection fails
          *   or if 11h is not enabled
          */
         start_chn = DEFAULT_AD_HOC_CHANNEL_A;
 
-        /* 
+        /*
          * Check that 11h is enabled in the driver
          */
         if (wlan_11h_is_enabled(priv)) {
-            /* 
+            /*
              * Search the region_channel tables for a channel table
              *   that is marked for the A Band.
              */
@@ -1203,7 +1203,7 @@ wlan_11h_get_uap_start_channel(mlan_private * priv, t_u8 uap_band_cfg)
                 if (chn_tbl->valid
                     && chn_tbl->region == adapter->region_code
                     && chn_tbl->band & BAND_A) {
-                    /* 
+                    /*
                      * Set the start channel.  Get a random number and
                      *   use it to pick an entry in the table between 0
                      *   and the number of channels in the table (NumCFP).
@@ -1544,7 +1544,7 @@ wlan_11h_activate(mlan_private * priv, t_void * pioctl_buf, t_bool flag)
     /* add bits for master/slave radar detect into enable. */
     enable |= wlan_11h_get_current_radar_detect_flags(priv->adapter);
 
-    /* 
+    /*
      * Send cmd to FW to enable/disable 11h function in firmware
      */
     ret = wlan_prepare_cmd(priv,
@@ -1707,29 +1707,29 @@ wlan_11h_get_adhoc_start_channel(mlan_private * priv)
 
     ENTER();
 
-    /* 
+    /*
      * Set start_chn to the Default.  Used if 11h is disabled or the band
      *   does not require 11h support.
      */
     start_chn = DEFAULT_AD_HOC_CHANNEL;
 
-    /* 
+    /*
      * Check that we are looking for a channel in the A Band
      */
     if ((adapter->adhoc_start_band & BAND_A)
         || (adapter->adhoc_start_band & BAND_AN)
         ) {
-        /* 
+        /*
          * Set default to the A Band default. Used if random selection fails
          *   or if 11h is not enabled
          */
         start_chn = DEFAULT_AD_HOC_CHANNEL_A;
 
-        /* 
+        /*
          * Check that 11h is enabled in the driver
          */
         if (wlan_11h_is_enabled(priv)) {
-            /* 
+            /*
              * Search the region_channel tables for a channel table
              *   that is marked for the A Band.
              */
@@ -1740,7 +1740,7 @@ wlan_11h_get_adhoc_start_channel(mlan_private * priv)
                 if (chn_tbl->valid
                     && chn_tbl->region == adapter->region_code
                     && chn_tbl->band & BAND_A) {
-                    /* 
+                    /*
                      * Set the start channel.  Get a random number and
                      *   use it to pick an entry in the table between 0
                      *   and the number of channels in the table (NumCFP).
@@ -1792,7 +1792,7 @@ wlan_11h_radar_detect_required(mlan_private * priv, t_u8 channel)
 
     ENTER();
 
-    /* 
+    /*
      *   No checks for 11h or measurement code being enabled is placed here
      *   since regulatory requirements exist whether we support them or not.
      */
@@ -2310,7 +2310,7 @@ wlan_11h_process_bss_elem(mlan_adapter * pmadapter,
 
     case SUPPORTED_CHANNELS:
     case TPC_REQUEST:
-        /* 
+        /*
          * These elements are not in beacons/probe responses.  Included here
          *   to cover set of enumerated 11h elements.
          */
@@ -2703,8 +2703,8 @@ wlan_11h_radar_detected_handling(mlan_adapter * pmadapter)
 #endif
                 pstate_rdh->new_channel =
                     wlan_11h_get_adhoc_start_channel(pmpriv);
-        } while ((pstate_rdh->new_channel == pstate_rdh->curr_channel) && (++i < MAX_RANDOM_CHANNEL_RETRIES));  /* avoid 
-                                                                                                                   deadloop 
+        } while ((pstate_rdh->new_channel == pstate_rdh->curr_channel) && (++i < MAX_RANDOM_CHANNEL_RETRIES));  /* avoid
+                                                                                                                   deadloop
                                                                                                                  */
         if (i >= MAX_RANDOM_CHANNEL_RETRIES)    /* report error */
             PRINTM(MERROR, "%s():  ERROR - could not choose new_chan"
@@ -2793,7 +2793,7 @@ wlan_11h_radar_detected_handling(mlan_adapter * pmadapter)
                __FUNCTION__, pstate_rdh->stage,
                RDH_stage_str[pstate_rdh->stage], pstate_rdh->priv_curr_idx);
 
-        /* add CHAN_SW IE - firmware will accept on any interface, and apply to 
+        /* add CHAN_SW IE - firmware will accept on any interface, and apply to
            all */
         if (pstate_rdh->priv_curr_idx == RDH_STAGE_FIRST_ENTRY_PRIV_IDX) {
             mlan_ioctl_req *pioctl_req = MNULL;
@@ -2834,7 +2834,7 @@ wlan_11h_radar_detected_handling(mlan_adapter * pmadapter)
                __FUNCTION__, pstate_rdh->stage,
                RDH_stage_str[pstate_rdh->stage], pstate_rdh->priv_curr_idx);
 
-        /* remove CHAN_SW IE - firmware will accept on any interface, and apply 
+        /* remove CHAN_SW IE - firmware will accept on any interface, and apply
            to all */
         if (pstate_rdh->priv_curr_idx == RDH_STAGE_FIRST_ENTRY_PRIV_IDX) {
             mlan_ioctl_req *pioctl_req = MNULL;
@@ -2940,9 +2940,9 @@ wlan_11h_radar_detected_handling(mlan_adapter * pmadapter)
                 pmpriv->uap_state_chan_cb.get_chan_callback
                     = wlan_11h_radar_detected_callback;
                 pstate_rdh->uap_band_cfg |= UAP_BAND_CONFIG_5GHZ;       /* DFS
-                                                                           only 
+                                                                           only
                                                                            in
-                                                                           5GHz 
+                                                                           5GHz
                                                                          */
                 ret = wlan_uap_set_channel(pmpriv, pstate_rdh->uap_band_cfg,
                                            pstate_rdh->new_channel);

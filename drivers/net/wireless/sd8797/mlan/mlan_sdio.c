@@ -47,9 +47,9 @@ Change log:
 		Local Functions
 ********************************************************/
 
-/** 
+/**
  *  @brief This function initialize the SDIO port
- *  
+ *
  *  @param pmadapter  A pointer to mlan_adapter structure
  *  @return 	   	  MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
  */
@@ -112,9 +112,9 @@ wlan_sdio_init_ioport(mlan_adapter * pmadapter)
     return MLAN_STATUS_SUCCESS;
 }
 
-/** 
+/**
  *  @brief This function sends data to the card.
- *  
+ *
  *  @param pmadapter A pointer to mlan_adapter structure
  *  @param pmbuf     A pointer to mlan_buffer (pmbuf->data_len should include SDIO header)
  *  @param port      Port
@@ -153,9 +153,9 @@ wlan_write_data_sync(mlan_adapter * pmadapter, mlan_buffer * pmbuf, t_u32 port)
     return ret;
 }
 
-/** 
+/**
  *  @brief This function gets available SDIO port for reading cmd/data
- *  
+ *
  *  @param pmadapter  A pointer to mlan_adapter structure
  *  @param pport      A pointer to port number
  *  @return 	   	  MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
@@ -201,9 +201,9 @@ wlan_get_rd_port(mlan_adapter * pmadapter, t_u8 * pport)
     return MLAN_STATUS_SUCCESS;
 }
 
-/** 
+/**
  *  @brief This function gets available SDIO port for writing data
- *  
+ *
  *  @param pmadapter  A pointer to mlan_adapter structure
  *  @param pport      A pointer to port number
  *  @return 	   	  MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
@@ -248,9 +248,9 @@ wlan_get_wr_port_data(mlan_adapter * pmadapter, t_u8 * pport)
     return MLAN_STATUS_SUCCESS;
 }
 
-/** 
+/**
  *  @brief This function polls the card status register.
- *  
+ *
  *  @param pmadapter  A pointer to mlan_adapter structure
  *  @param bits    	  the bit mask
  *  @return 	   	  MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
@@ -282,9 +282,9 @@ wlan_sdio_poll_card_status(mlan_adapter * pmadapter, t_u8 bits)
     return MLAN_STATUS_FAILURE;
 }
 
-/** 
+/**
  *  @brief This function reads firmware status registers
- *  
+ *
  *  @param pmadapter A pointer to mlan_adapter structure
  *  @param dat	   A pointer to keep returned data
  *  @return 	   MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
@@ -316,7 +316,7 @@ wlan_sdio_read_fw_status(mlan_adapter * pmadapter, t_u16 * dat)
 }
 
 /**  @brief This function disables the host interrupts mask.
- *  
+ *
  *  @param pmadapter    A pointer to mlan_adapter structure
  *  @param mask	   the interrupt mask
  *  @return 	   MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
@@ -352,9 +352,9 @@ wlan_sdio_disable_host_int_mask(pmlan_adapter pmadapter, t_u8 mask)
     return MLAN_STATUS_SUCCESS;
 }
 
-/** 
+/**
  *  @brief This function enables the host interrupts mask
- *  
+ *
  *  @param pmadapter A pointer to mlan_adapter structure
  *  @param mask	   the interrupt mask
  *  @return 	   MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
@@ -378,9 +378,9 @@ wlan_sdio_enable_host_int_mask(pmlan_adapter pmadapter, t_u8 mask)
     return MLAN_STATUS_SUCCESS;
 }
 
-/** 
+/**
  *  @brief This function reads data from the card.
- *  
+ *
  *  @param pmadapter 	A pointer to mlan_adapter structure
  *  @param type	   	A pointer to keep type as data or command
  *  @param nb		A pointer to keep the data/cmd length returned in buffer
@@ -608,9 +608,9 @@ wlan_prog_fw_w_helper(IN pmlan_adapter pmadapter, IN pmlan_fw_image pmfw)
     return ret;
 }
 
-/** 
+/**
  *  @brief This function disables the host interrupts.
- *  
+ *
  *  @param pmadapter A pointer to mlan_adapter structure
  *  @return 	   MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
  */
@@ -625,10 +625,10 @@ wlan_disable_host_int(pmlan_adapter pmadapter)
     return ret;
 }
 
-/** 
- *  @brief This function decodes the rx packet & 
+/**
+ *  @brief This function decodes the rx packet &
  *  calls corresponding handlers according to the packet type
- *  
+ *
  *  @param pmadapter A pointer to mlan_adapter structure
  *  @param pmbuf      A pointer to the SDIO data/cmd buffer
  *  @param upld_typ  Type of rx packet
@@ -712,9 +712,9 @@ wlan_decode_rx_packet(mlan_adapter * pmadapter, mlan_buffer * pmbuf,
 }
 
 #ifdef SDIO_MULTI_PORT_RX_AGGR
-/** 
+/**
  *  @brief This function receives data from the card in aggregate mode.
- *  
+ *
  *  @param pmadapter A pointer to mlan_adapter structure
  *  @param pmbuf      A pointer to the SDIO data/cmd buffer
  *  @param port      Current port on which packet needs to be rxed
@@ -906,9 +906,9 @@ wlan_sdio_card_to_host_mp_aggr(mlan_adapter * pmadapter, mlan_buffer
 #endif
 
 #ifdef SDIO_MULTI_PORT_TX_AGGR
-/** 
+/**
  *  @brief This function sends data to the card in SDIO aggregated mode.
- *  
+ *
  *  @param pmadapter A pointer to mlan_adapter structure
  *  @param mbuf      A pointer to the SDIO data/cmd buffer
  *  @param port	     current port for aggregation
@@ -1040,14 +1040,14 @@ wlan_host_to_card_mp_aggr(mlan_adapter * pmadapter, mlan_buffer * mbuf,
 		Global functions
 ********************************************************/
 
-/** 
+/**
  *  @brief This function checks if the interface is ready to download
  *  or not while other download interface is present
- *  
+ *
  *  @param pmadapter  A pointer to mlan_adapter structure
  *  @param val        Winner status (0: winner)
  *  @return           MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
- * 
+ *
  */
 mlan_status
 wlan_check_winner_status(mlan_adapter * pmadapter, t_u32 * val)
@@ -1071,10 +1071,10 @@ wlan_check_winner_status(mlan_adapter * pmadapter, t_u32 * val)
     return MLAN_STATUS_SUCCESS;
 }
 
-/** 
+/**
  *  @brief This function checks if the firmware is ready to accept
  *  command or not.
- *  
+ *
  *  @param pmadapter  A pointer to mlan_adapter structure
  *  @param pollnum    Maximum polling number
  *  @return           MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
@@ -1136,9 +1136,9 @@ wlan_dnld_fw(IN pmlan_adapter pmadapter, IN pmlan_fw_image pmfw)
     return ret;
 }
 
-/** 
+/**
  *  @brief This function probes the driver
- *  
+ *
  *  @param pmadapter  A pointer to mlan_adapter structure
  *  @return 	      MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
  */
@@ -1150,10 +1150,10 @@ wlan_sdio_probe(pmlan_adapter pmadapter)
     pmlan_callbacks pcb = &pmadapter->callbacks;
 
     ENTER();
-    /* 
+    /*
      * Read the HOST_INT_STATUS_REG for ACK the first interrupt got
      * from the bootloader. If we don't do this we get a interrupt
-     * as soon as we register the irq. 
+     * as soon as we register the irq.
      */
     pcb->moal_read_reg(pmadapter->pmoal_handle, HOST_INT_STATUS_REG,
                        &sdio_ireg);
@@ -1171,9 +1171,9 @@ wlan_sdio_probe(pmlan_adapter pmadapter)
     return ret;
 }
 
-/** 
+/**
  *  @brief This function gets interrupt status.
- *  
+ *
  *  @param pmadapter    A pointer to mlan_adapter structure
  *  @return             N/A
  */
@@ -1202,9 +1202,9 @@ wlan_interrupt(pmlan_adapter pmadapter)
     sdio_ireg = pmadapter->mp_regs[HOST_INT_STATUS_REG];
     pmadapter->dbg.last_int_status = pmadapter->sdio_ireg | sdio_ireg;
     if (sdio_ireg) {
-        /* 
+        /*
          * DN_LD_HOST_INT_STATUS and/or UP_LD_HOST_INT_STATUS
-         * DN_LD_CMD_PORT_HOST_INT_STATUS and/or 
+         * DN_LD_CMD_PORT_HOST_INT_STATUS and/or
          * UP_LD_CMD_PORT_HOST_INT_STATUS
          * Clear the interrupt status register
          */
@@ -1219,9 +1219,9 @@ wlan_interrupt(pmlan_adapter pmadapter)
     LEAVE();
 }
 
-/** 
+/**
  *  @brief This function enables the host interrupts.
- *  
+ *
  *  @param pmadapter A pointer to mlan_adapter structure
  *  @return 	   MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
  */
@@ -1236,9 +1236,9 @@ wlan_enable_host_int(pmlan_adapter pmadapter)
     return ret;
 }
 
-/** 
+/**
  *  @brief This function checks the interrupt status and handle it accordingly.
- *  
+ *
  *  @param pmadapter A pointer to mlan_adapter structure
  *  @return 	   MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
  */
@@ -1394,9 +1394,9 @@ wlan_process_int_status(mlan_adapter * pmadapter)
     return ret;
 }
 
-/** 
+/**
  *  @brief This function sends data to the card.
- *  
+ *
  *  @param pmadapter A pointer to mlan_adapter structure
  *  @param type	     data or command
  *  @param pmbuf     A pointer to mlan_buffer (pmbuf->data_len should include SDIO header)
@@ -1422,10 +1422,10 @@ wlan_sdio_host_to_card(mlan_adapter * pmadapter, t_u8 type, mlan_buffer * pmbuf,
     *(t_u16 *) & payload[0] = wlan_cpu_to_le16((t_u16) pmbuf->data_len);
     *(t_u16 *) & payload[2] = wlan_cpu_to_le16(type);
 
-    /* 
+    /*
      * This is SDIO specific header
      *  t_u16 length,
-     *  t_u16 type (MLAN_TYPE_DATA = 0, MLAN_TYPE_CMD = 1, MLAN_TYPE_EVENT = 3) 
+     *  t_u16 type (MLAN_TYPE_DATA = 0, MLAN_TYPE_CMD = 1, MLAN_TYPE_EVENT = 3)
      */
     if (type == MLAN_TYPE_DATA) {
         ret = wlan_get_wr_port_data(pmadapter, &port);
@@ -1485,10 +1485,10 @@ wlan_sdio_host_to_card(mlan_adapter * pmadapter, t_u8 type, mlan_buffer * pmbuf,
 }
 
 #if defined(SDIO_MULTI_PORT_TX_AGGR) || defined(SDIO_MULTI_PORT_RX_AGGR)
-/** 
- *  @brief This function allocates buffer for the SDIO aggregation buffer 
- *  		related members of adapter structure 
- *  
+/**
+ *  @brief This function allocates buffer for the SDIO aggregation buffer
+ *  		related members of adapter structure
+ *
  *  @param pmadapter       A pointer to mlan_adapter structure
  *  @param mpa_tx_buf_size Tx buffer size to allocate
  *  @param mpa_rx_buf_size Rx buffer size to allocate
@@ -1544,9 +1544,9 @@ wlan_alloc_sdio_mpa_buffers(IN mlan_adapter * pmadapter,
     return ret;
 }
 
-/** 
+/**
  *  @brief This function frees buffers for the SDIO aggregation
- *  
+ *
  *  @param pmadapter       A pointer to mlan_adapter structure
  *
  *  @return        MLAN_STATUS_SUCCESS
@@ -1622,7 +1622,7 @@ wlan_set_sdio_gpio_int(IN pmlan_private priv)
 
 /**
  *  @brief This function prepares command of SDIO GPIO interrupt
- *  
+ *
  *  @param pmpriv	A pointer to mlan_private structure
  *  @param cmd	   	A pointer to HostCmd_DS_COMMAND structure
  *  @param cmd_action   The action: GET or SET

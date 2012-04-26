@@ -137,7 +137,7 @@ woal_sort_channels(struct iw_freq *freq, int num)
 }
 
 /**
- *  @brief Get frequency for channel in given band 
+ *  @brief Get frequency for channel in given band
  *
  *  @param channel      channel
  *  @param band         band
@@ -260,7 +260,7 @@ woal_set_wap(struct net_device *dev, struct iw_request_info *info,
            (t_u8) awrq->sa_data[2], (t_u8) awrq->sa_data[3],
            (t_u8) awrq->sa_data[4], (t_u8) awrq->sa_data[5]);
 
-    /* 
+    /*
      * Using this ioctl to start/stop the BSS, return if bss
      * is already started/stopped.
      */
@@ -555,7 +555,7 @@ woal_set_encode(struct net_device *dev, struct iw_request_info *info,
         /* Set current key index as default */
         pkey->is_default = MTRUE;
     } else {
-        /* 
+        /*
          * No key provided so it is either enable key,
          * on or off
          */
@@ -563,10 +563,10 @@ woal_set_encode(struct net_device *dev, struct iw_request_info *info,
             PRINTM(MINFO, "*** iwconfig mlanX key off ***\n");
             sys_cfg->protocol = PROTOCOL_NO_SECURITY;
         } else {
-            /* 
+            /*
              * iwconfig mlanX key [n]
-             * iwconfig mlanX key on 
-             * Do we want to just set the transmit key index ? 
+             * iwconfig mlanX key on
+             * Do we want to just set the transmit key index ?
              */
             if (key_index < 0) {
                 PRINTM(MINFO, "*** iwconfig mlanX key on ***\n");
@@ -659,8 +659,8 @@ woal_get_encode(struct net_device *dev, struct iw_request_info *info,
     }
 
     dwrq->flags = 0;
-    /* 
-     * Check encryption mode 
+    /*
+     * Check encryption mode
      */
     switch (ap_cfg.auth_mode) {
     case MLAN_AUTH_MODE_OPEN:
@@ -739,8 +739,8 @@ woal_get_gen_ie(struct net_device *dev, struct iw_request_info *info,
 /**
  *  @brief Set IE
  *
- *  Pass an opaque block of data, expected to be IEEE IEs, to the driver 
- *    for eventual passthrough to the firmware in an associate/join 
+ *  Pass an opaque block of data, expected to be IEEE IEs, to the driver
+ *    for eventual passthrough to the firmware in an associate/join
  *    (and potentially start) command.
  *
  *  @param dev                  A pointer to net_device structure
@@ -853,8 +853,8 @@ woal_set_gen_ie(struct net_device *dev, struct iw_request_info *info,
     return ret;
 }
 
-/** 
- *  @brief  Extended version of encoding configuration 
+/**
+ *  @brief  Extended version of encoding configuration
  *
  *  @param dev          A pointer to net_device structure
  *  @param info         A pointer to iw_request_info structure
@@ -984,8 +984,8 @@ woal_set_encode_ext(struct net_device *dev,
     return ret;
 }
 
-/** 
- *  @brief  Extended version of encoding configuration 
+/**
+ *  @brief  Extended version of encoding configuration
  *
  *  @param dev          A pointer to net_device structure
  *  @param info         A pointer to iw_request_info structure
@@ -1004,8 +1004,8 @@ woal_get_encode_ext(struct net_device *dev,
     return -EOPNOTSUPP;
 }
 
-/** 
- *  @brief  Request MLME operation 
+/**
+ *  @brief  Request MLME operation
  *
  *  @param dev          A pointer to net_device structure
  *  @param info         A pointer to iw_request_info structure
@@ -1427,7 +1427,7 @@ woal_get_range(struct net_device *dev, struct iw_request_info *info,
 
     woal_sort_channels(&range->freq[0], range->num_frequency);
 
-    /* 
+    /*
      * Set an indication of the max TCP throughput in bit/s that we can
      * expect using this interface
      */
@@ -1464,12 +1464,12 @@ woal_get_range(struct net_device *dev, struct iw_request_info *info,
     range->pmt_flags = IW_POWER_TIMEOUT;
     range->pm_capa = IW_POWER_PERIOD | IW_POWER_TIMEOUT | IW_POWER_ALL_R;
 
-    /* 
+    /*
      * Minimum version we recommend
      */
     range->we_version_source = 15;
 
-    /* 
+    /*
      * Version we are compiled with
      */
     range->we_version_compiled = WIRELESS_EXT;
@@ -1500,7 +1500,7 @@ woal_get_range(struct net_device *dev, struct iw_request_info *info,
 }
 
 /**
- *  @brief Set priv command 
+ *  @brief Set priv command
  *
  *  @param dev          A pointer to net_device structure
  *  @param info         A pointer to iw_request_info structure
@@ -1580,9 +1580,9 @@ woal_set_essid(struct net_device *dev, struct iw_request_info *info,
     return ret;
 }
 
-/** 
- *  @brief Get current essid 
- *   
+/**
+ *  @brief Get current essid
+ *
  *  @param dev      A pointer to net_device structure
  *  @param info     A pointer to iw_request_info structure
  *  @param dwrq     A pointer to iw_point structure
@@ -1744,7 +1744,7 @@ woal_get_uap_wireless_stats(struct net_device *dev)
 
     ENTER();
 
-    /* 
+    /*
      * Since schedule() is not allowed from an atomic context
      * such as when dev_base_lock for netdevices is acquired
      * for reading/writing in kernel before this call, HostCmd

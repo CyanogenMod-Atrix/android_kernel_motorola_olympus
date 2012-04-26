@@ -456,7 +456,7 @@ typedef MLAN_PACK_START struct _IEEEtypes_WmmInfo_t
     /**
      * WMM Info IE - Vendor Specific Header:
      *   element_id  [221/0xdd]
-     *   Len         [7] 
+     *   Len         [7]
      *   Oui         [00:50:f2]
      *   OuiType     [2]
      *   OuiSubType  [0]
@@ -475,7 +475,7 @@ typedef MLAN_PACK_START struct _IEEEtypes_WmmParameter_t
     /**
      * WMM Parameter IE - Vendor Specific Header:
      *   element_id  [221/0xdd]
-     *   Len         [24] 
+     *   Len         [24]
      *   Oui         [00:50:f2]
      *   OuiType     [2]
      *   OuiSubType  [1]
@@ -543,8 +543,8 @@ typedef MLAN_PACK_START struct
     IEEEtypes_WMM_TSPEC_TS_Info_PSB_e PowerSaveBehavior:1;      // !
                                                                 // Legacy/Trigg
     t_u8 Aggregation:1;         // ! Reserved
-    t_u8 AccessPolicy2:1;       // ! 
-    t_u8 AccessPolicy1:1;       // ! 
+    t_u8 AccessPolicy2:1;       // !
+    t_u8 AccessPolicy1:1;       // !
     IEEEtypes_WMM_TSPEC_TS_Info_Direction_e Direction:2;
     t_u8 TID:4;                 // ! Unique identifier
     IEEEtypes_WMM_TSPEC_TS_TRAFFIC_TYPE_e TrafficType:1;
@@ -552,8 +552,8 @@ typedef MLAN_PACK_START struct
     IEEEtypes_WMM_TSPEC_TS_TRAFFIC_TYPE_e TrafficType:1;
     t_u8 TID:4;                 // ! Unique identifier
     IEEEtypes_WMM_TSPEC_TS_Info_Direction_e Direction:2;
-    t_u8 AccessPolicy1:1;       // ! 
-    t_u8 AccessPolicy2:1;       // ! 
+    t_u8 AccessPolicy1:1;       // !
+    t_u8 AccessPolicy2:1;       // !
     t_u8 Aggregation:1;         // ! Reserved
     IEEEtypes_WMM_TSPEC_TS_Info_PSB_e PowerSaveBehavior:1;      // !
                                                                 // Legacy/Trigg
@@ -903,8 +903,8 @@ typedef MLAN_PACK_START struct
 } MLAN_PACK_END IEEEtypes_TPCReport_t;
 
 /*  IEEE Supported Channel sub-band description (7.3.2.19) */
-/**  
- *  Sub-band description used in the supported channels element. 
+/**
+ *  Sub-band description used in the supported channels element.
  */
 typedef MLAN_PACK_START struct
 {
@@ -932,7 +932,7 @@ typedef MLAN_PACK_START struct
 /**
  *  Provided in beacons and probe responses.  Used to advertise when
  *    and to which channel it is changing to.  Only starting STAs in
- *    an IBSS and APs are allowed to originate a chan switch element. 
+ *    an IBSS and APs are allowed to originate a chan switch element.
  */
 typedef MLAN_PACK_START struct
 {
@@ -946,9 +946,9 @@ typedef MLAN_PACK_START struct
 
 /*  IEEE Quiet Period Element (7.3.2.23) */
 /**
- *  Provided in beacons and probe responses.  Indicates times during 
+ *  Provided in beacons and probe responses.  Indicates times during
  *    which the STA should not be transmitting data.  Only starting STAs in
- *    an IBSS and APs are allowed to originate a quiet element. 
+ *    an IBSS and APs are allowed to originate a quiet element.
  */
 typedef MLAN_PACK_START struct
 {
@@ -986,8 +986,8 @@ typedef MLAN_PACK_START struct
 
 /*  IEEE DFS Channel Map field (7.3.2.24) */
 /**
- *  Used to list supported channels and provide a octet "map" field which 
- *    contains a basic measurement report for that channel in the 
+ *  Used to list supported channels and provide a octet "map" field which
+ *    contains a basic measurement report for that channel in the
  *    IEEEtypes_IBSS_DFS_t element
  */
 typedef MLAN_PACK_START struct
@@ -999,7 +999,7 @@ typedef MLAN_PACK_START struct
 
 /*  IEEE IBSS DFS Element (7.3.2.24) */
 /**
- *  IBSS DFS element included in ad hoc beacons and probe responses.  
+ *  IBSS DFS element included in ad hoc beacons and probe responses.
  *    Provides information regarding the IBSS DFS Owner as well as the
  *    originating STAs supported channels and basic measurement results.
  */
@@ -1018,7 +1018,7 @@ typedef MLAN_PACK_START struct
 /* 802.11h BSS information kept for each BSSID received in scan results */
 /**
  * IEEE BSS information needed from scan results for later processing in
- *    join commands 
+ *    join commands
  */
 typedef struct
 {
@@ -1048,7 +1048,7 @@ typedef struct
 
 /**
  *  IOCTL SSID List sub-structure sent in wlan_ioctl_user_scan_cfg
- * 
+ *
  *  Used to specify SSID specific filters as well as SSID pattern matching
  *    filters for scan result processing in firmware.
  */
@@ -1083,7 +1083,7 @@ typedef MLAN_PACK_START struct _wlan_user_scan_chan
 /**
  *  Input structure to configure an immediate scan cmd to firmware
  *
- *  Specifies a number of parameters to be used in general for the scan 
+ *  Specifies a number of parameters to be used in general for the scan
  *    as well as a channel list (wlan_user_scan_chan) for each scan period
  *    desired.
  */
@@ -1104,7 +1104,7 @@ typedef MLAN_PACK_START struct
      *
      *   - MLAN_SCAN_MODE_BSS  (infrastructure)
      *   - MLAN_SCAN_MODE_IBSS (adhoc)
-     *   - MLAN_SCAN_MODE_ANY  (unrestricted, adhoc and infrastructure)        
+     *   - MLAN_SCAN_MODE_ANY  (unrestricted, adhoc and infrastructure)
      */
     t_u8 bss_mode;
     /**
@@ -1158,10 +1158,10 @@ typedef MLAN_PACK_START struct
     t_u16 action;
     /** enable/disable */
     t_u8 enable;
-    /**  BSS type: 
+    /**  BSS type:
       *   MLAN_SCAN_MODE_BSS  (infrastructure)
       *   MLAN_SCAN_MODE_IBSS (adhoc)
-      *   MLAN_SCAN_MODE_ANY  (unrestricted, adhoc and infrastructure)        
+      *   MLAN_SCAN_MODE_ANY  (unrestricted, adhoc and infrastructure)
       */
     t_u8 bss_type;
     /** number of channel scanned during each scan */

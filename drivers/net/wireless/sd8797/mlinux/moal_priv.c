@@ -63,15 +63,15 @@ extern int cfg80211_wext;
 		Local Functions
 ********************************************************/
 
-/** 
+/**
  *  @brief Copy Rates
- *   
+ *
  *  @param dest    A pointer to destination buffer
  *  @param pos     The position for copy
  *  @param src     A pointer to source buffer
  *  @param len     Length of the source buffer
  *
- *  @return        Number of rates copied 
+ *  @return        Number of rates copied
  */
 static inline int
 woal_copy_rates(t_u8 * dest, int pos, t_u8 * src, int len)
@@ -91,7 +91,7 @@ woal_copy_rates(t_u8 * dest, int pos, t_u8 * src, int len)
  *
  *  @param priv         A pointer to moal_private structure
  *
- *  @return             0/MLAN_STATUS_SUCCESS --success, otherwise fail  
+ *  @return             0/MLAN_STATUS_SUCCESS --success, otherwise fail
  */
 static int
 woal_warm_reset(moal_private * priv)
@@ -1525,7 +1525,7 @@ woal_band_cfg(moal_private * priv, struct iwreq *wrq)
 }
 
 /**
- *  @brief Read/Write adapter registers value 
+ *  @brief Read/Write adapter registers value
  *
  *  @param priv         A pointer to moal_private structure
  *  @param wrq	        A pointer to iwreq structure
@@ -1596,7 +1596,7 @@ woal_reg_read_write(moal_private * priv, struct iwreq *wrq)
 }
 
 /**
- *  @brief Read the EEPROM contents of the card 
+ *  @brief Read the EEPROM contents of the card
  *
  *  @param priv         A pointer to moal_private structure
  *  @param wrq	        A pointer to iwreq structure
@@ -1665,7 +1665,7 @@ woal_read_eeprom(moal_private * priv, struct iwreq *wrq)
 }
 
 /**
- *  @brief Read/Write device memory value 
+ *  @brief Read/Write device memory value
  *
  *  @param priv         A pointer to moal_private structure
  *  @param wrq	        A pointer to iwreq structure
@@ -1855,10 +1855,10 @@ woal_deauth(moal_private * priv, struct iwreq *wrq)
 
 /**
  *  @brief Set/Get TX power configurations
- *  
+ *
  *  @param priv     A pointer to moal_private structure
  *  @param wrq      A pointer to iwreq structure
- *  
+ *
  *  @return         0 --success, otherwise fail
  */
 static int
@@ -1981,10 +1981,10 @@ woal_tx_power_cfg(moal_private * priv, struct iwreq *wrq)
 
 /**
  *  @brief Get Tx/Rx data rates
- *  
+ *
  *  @param priv     A pointer to moal_private structure
  *  @param wrq      A pointer to iwreq structure
- *  
+ *
  *  @return         0 --success, otherwise fail
  */
 static int
@@ -2027,10 +2027,10 @@ woal_get_txrx_rate(moal_private * priv, struct iwreq *wrq)
 
 /**
  *  @brief Turn on/off the sdio clock
- *  
+ *
  *  @param priv     A pointer to moal_private structure
  *  @param wrq      A pointer to iwreq structure
- *  
+ *
  *  @return         0/MLAN_STATUS_SUCCESS --success, otherwise fail
  */
 static int
@@ -2082,10 +2082,10 @@ woal_sdio_clock_ioctl(moal_private * priv, struct iwreq *wrq)
 
 /**
  *  @brief Set/Get beacon interval
- *  
+ *
  *  @param priv     A pointer to moal_private structure
  *  @param wrq      A pointer to iwreq structure
- *  
+ *
  *  @return         0 --success, otherwise fail
  */
 static int
@@ -2147,10 +2147,10 @@ woal_beacon_interval(moal_private * priv, struct iwreq *wrq)
 
 /**
  *  @brief Set/Get ATIM window
- *  
+ *
  *  @param priv     A pointer to moal_private structure
  *  @param wrq      A pointer to iwreq structure
- *  
+ *
  *  @return         0 --success, otherwise fail
  */
 static int
@@ -2210,10 +2210,10 @@ woal_atim_window(moal_private * priv, struct iwreq *wrq)
 
 /**
  * @brief Set/Get TX data rate
- * 
+ *
  * @param priv     A pointer to moal_private structure
  * @param wrq      A pointer to iwreq structure
- * 
+ *
  * @return           0 --success, otherwise fail
  */
 static int
@@ -2284,10 +2284,10 @@ woal_set_get_txrate(moal_private * priv, struct iwreq *wrq)
 
 /**
  * @brief Set/Get region code
- * 
+ *
  * @param priv     A pointer to moal_private structure
  * @param wrq      A pointer to iwreq structure
- * 
+ *
  * @return           0 --success, otherwise fail
  */
 static int
@@ -2344,10 +2344,10 @@ woal_set_get_regioncode(moal_private * priv, struct iwreq *wrq)
 
 /**
  * @brief Set/Get radio
- * 
+ *
  * @param priv     A pointer to moal_private structure
  * @param wrq      A pointer to iwreq structure
- * 
+ *
  * @return           0 --success, otherwise fail
  */
 static int
@@ -2387,7 +2387,7 @@ woal_set_get_radio(moal_private * priv, struct iwreq *wrq)
 }
 
 #ifdef DEBUG_LEVEL1
-/** 
+/**
  *  @brief Get/Set the bit mask of driver debug message control
  *
  *  @param priv			A pointer to moal_private structure
@@ -2464,10 +2464,10 @@ woal_drv_dbg(moal_private * priv, struct iwreq *wrq)
 
 /**
  * @brief Set/Get QoS configuration
- * 
+ *
  * @param priv     A pointer to moal_private structure
  * @param wrq      A pointer to iwreq structure
- * 
+ *
  * @return         0 --success, otherwise fail
  */
 static int
@@ -2518,10 +2518,10 @@ woal_set_get_qos_cfg(moal_private * priv, struct iwreq *wrq)
 
 /**
  * @brief Set/Get WWS mode
- * 
+ *
  * @param priv     A pointer to moal_private structure
  * @param wrq      A pointer to iwreq structure
- * 
+ *
  * @return         0 --success, otherwise fail
  */
 static int
@@ -2576,10 +2576,10 @@ woal_wws_cfg(moal_private * priv, struct iwreq *wrq)
 
 /**
  * @brief Set/Get sleep period
- * 
+ *
  * @param priv     A pointer to moal_private structure
  * @param wrq      A pointer to iwreq structure
- * 
+ *
  * @return         0 --success, otherwise fail
  */
 static int
@@ -2645,7 +2645,7 @@ woal_sleep_pd(moal_private * priv, struct iwreq *wrq)
  * @param priv         A pointer to moal_private structure
  * @param req          A pointer to ifreq structure
  *
- * @return             0 --success, otherwise fail  
+ * @return             0 --success, otherwise fail
  */
 static int
 woal_sleep_params_ioctl(moal_private * priv, struct iwreq *wrq)
@@ -2749,9 +2749,9 @@ woal_sleep_params_ioctl(moal_private * priv, struct iwreq *wrq)
     return ret;
 }
 
-/** 
+/**
  *  @brief Set/get user provisioned local power constraint
- *     
+ *
  *  @param priv     A pointer to moal_private structure
  *  @param wrq      A pointer to iwreq structure
  *  @return         0 --success, otherwise fail
@@ -2808,7 +2808,7 @@ woal_set_get_11h_local_pwr_constraint(moal_private * priv, struct iwreq *wrq)
     return ret;
 }
 
-/** 
+/**
  *  @brief Set/get HT stream configurations
  *
  *  @param priv     A pointer to moal_private structure
@@ -2870,7 +2870,7 @@ woal_ht_stream_cfg_ioctl(moal_private * priv, struct iwreq *wrq)
     return ret;
 }
 
-/** 
+/**
  *  @brief Set/get MAC control configuration
  *
  *  @param priv     A pointer to moal_private structure
@@ -2928,7 +2928,7 @@ woal_mac_control_ioctl(moal_private * priv, struct iwreq *wrq)
     return ret;
 }
 
-/** 
+/**
  *  @brief Get thermal reading
  *
  *  @param priv     A pointer to moal_private structure
@@ -2984,10 +2984,10 @@ woal_thermal_ioctl(moal_private * priv, struct iwreq *wrq)
 #if defined(REASSOCIATION)
 /**
  * @brief Set/Get reassociation settings
- * 
+ *
  * @param priv     A pointer to moal_private structure
  * @param wrq      A pointer to iwreq structure
- * 
+ *
  * @return         0 --success, otherwise fail
  */
 static int
@@ -3433,10 +3433,10 @@ woal_passphrase(moal_private * priv, struct iwreq *wrq)
 
 /**
  *  @brief Get esupp mode
- *  
+ *
  *  @param priv     A pointer to moal_private structure
  *  @param wrq      A pointer to iwreq structure
- *  
+ *
  *  @return         0 --success, otherwise fail
  */
 static int
@@ -3480,7 +3480,7 @@ woal_get_esupp_mode(moal_private * priv, struct iwreq *wrq)
 /** AES key length */
 #define AES_KEY_LEN 16
 /**
- *  @brief Adhoc AES control 
+ *  @brief Adhoc AES control
  *
  *  @param priv	    A pointer to moal_private structure
  *  @param wrq	    A pointer to user data
@@ -3634,9 +3634,9 @@ woal_adhoc_aes_ioctl(moal_private * priv, struct iwreq *wrq)
     return ret;
 }
 
-/** 
+/**
  *  @brief arpfilter ioctl function
- *   
+ *
  *  @param priv		A pointer to moal_private structure
  *  @param wrq 		A pointer to iwreq structure
  *  @return    		0 --success, otherwise fail
@@ -3681,9 +3681,9 @@ woal_arp_filter(moal_private * priv, struct iwreq *wrq)
     return ret;
 }
 
-/** 
+/**
  *  @brief Set/get IP address
- *   
+ *
  *  @param priv         A pointer to moal_private structure
  *  @param wrq          A pointer to iwreq structure
  *  @return             0 --success, otherwise fail
@@ -3769,13 +3769,13 @@ woal_set_get_ip_addr(moal_private * priv, struct iwreq *wrq)
     return ret;
 }
 
-/** 
+/**
  *  @brief Set/Get Transmit beamforming capabilities
  *
  *  @param priv     A pointer to moal_private structure
  *  @param wrq      A pointer to iwreq structure
  *
- *  @return         0 -- success, otherwise fail          
+ *  @return         0 -- success, otherwise fail
  */
 static int
 woal_tx_bf_cap_ioctl(moal_private * priv, struct iwreq *wrq)
@@ -3847,13 +3847,13 @@ woal_tx_bf_cap_ioctl(moal_private * priv, struct iwreq *wrq)
 #define BF_CFG_ACT_GET      0
 #define BF_CFG_ACT_SET      1
 
-/** 
+/**
  *  @brief Set/Get Transmit beamforming configuration
  *
  *  @param priv     A pointer to moal_private structure
  *  @param wrq      A pointer to iwreq structure
  *
- *  @return         0 -- success, otherwise fail          
+ *  @return         0 -- success, otherwise fail
  */
 static int
 woal_tx_bf_cfg_ioctl(moal_private * priv, struct iwreq *wrq)
@@ -3993,7 +3993,7 @@ woal_tx_bf_cfg_ioctl(moal_private * priv, struct iwreq *wrq)
             }
             break;
         case TX_BF_FOR_PEER_ENBL:
-            /* Handle only SET operation here First arg = 2 BfAction Second arg 
+            /* Handle only SET operation here First arg = 2 BfAction Second arg
                = 18 MAC "00:50:43:20:BF:64;" Third arg = 2 enable/disable bf
                Fourth arg = 2 enable/disable sounding Fifth arg = 1 FB Type */
             if (char_count != 25 && char_count != 1) {
@@ -4264,8 +4264,8 @@ wlan_scan_create_brief_table_entry(t_u8 ** ppbuffer,
     LEAVE();
 }
 
-/** 
- *  @brief Create a wlan_ioctl_get_scan_table_entry for a given BSS 
+/**
+ *  @brief Create a wlan_ioctl_get_scan_table_entry for a given BSS
  *         Descriptor for inclusion in the ioctl response to the user space
  *         application.
  *
@@ -4273,7 +4273,7 @@ wlan_scan_create_brief_table_entry(t_u8 ** ppbuffer,
  *  @param pbss_desc   Pointer to a BSS entry in the scan table to form
  *                     scan response from for delivery to the application layer
  *  @param ppbuffer    Output parameter: Buffer used to output scan return struct
- *  @param pspace_left Output parameter: Number of bytes available in the 
+ *  @param pspace_left Output parameter: Number of bytes available in the
  *                     response buffer.
  *
  *  @return MLAN_STATUS_SUCCESS, or < 0 with IOCTL error code
@@ -4353,7 +4353,7 @@ wlan_get_scan_table_ret_entry(BSSDescriptor_t * pbss_desc,
     tmp_rsp_entry.fixed_fields.network_tsf = pbss_desc->network_tsf;
     tmp_rsp_entry.bss_info_length = variable_size;
 
-    /* 
+    /*
      *  Copy fixed fields to user space
      */
     if (copy_to_user(pcurrent, &tmp_rsp_entry, fixed_size)) {
@@ -4365,7 +4365,7 @@ wlan_get_scan_table_ret_entry(BSSDescriptor_t * pbss_desc,
     pcurrent += fixed_size;
 
     if (pbss_desc->pbeacon_buf) {
-        /* 
+        /*
          *  Copy variable length elements to user space
          */
         if (copy_to_user(pcurrent, pbss_desc->pbeacon_buf,
@@ -4462,19 +4462,19 @@ moal_ret_get_scan_table_ioctl(struct iwreq *wrq,
 
     wrq->u.data.length = ret_len;
 
-    /* Return ret_code (EFAULT or E2BIG) in the case where no scan results were 
+    /* Return ret_code (EFAULT or E2BIG) in the case where no scan results were
        successfully encoded. */
     LEAVE();
     return (num_scans_done ? MLAN_STATUS_SUCCESS : ret_code);
 }
 
-/** 
+/**
  *  @brief Get scan table ioctl
  *
  *  @param priv     A pointer to moal_private structure
  *  @param wrq 		A pointer to iwreq structure
  *
- *  @return         MLAN_STATUS_SUCCESS/MLAN_STATUS_PENDING -- success, otherwise fail          
+ *  @return         MLAN_STATUS_SUCCESS/MLAN_STATUS_PENDING -- success, otherwise fail
  */
 static mlan_status
 woal_get_scan_table_ioctl(moal_private * priv, struct iwreq *wrq)
@@ -4524,13 +4524,13 @@ woal_get_scan_table_ioctl(moal_private * priv, struct iwreq *wrq)
     return status;
 }
 
-/** 
+/**
  *  @brief Set user scan
  *
  *  @param priv     A pointer to moal_private structure
  *  @param wrq 		A pointer to iwreq structure
  *
- *  @return         MLAN_STATUS_SUCCESS/MLAN_STATUS_PENDING -- success, otherwise fail          
+ *  @return         MLAN_STATUS_SUCCESS/MLAN_STATUS_PENDING -- success, otherwise fail
  */
 static mlan_status
 woal_set_user_scan_ioctl(moal_private * priv, struct iwreq *wrq)
@@ -4592,9 +4592,9 @@ woal_set_user_scan_ioctl(moal_private * priv, struct iwreq *wrq)
     return status;
 }
 
-/** 
+/**
  *  @brief Cmd52 read/write register
- *   
+ *
  *  @param priv         A pointer to moal_private structure
  *  @param wrq          A pointer to iwreq structure
  *  @return             MLAN_STATUS_SUCCESS --success, otherwise fail
@@ -4681,9 +4681,9 @@ woal_cmd52rdwr_ioctl(moal_private * priv, struct iwreq *wrq)
     return ret;
 }
 
-/** 
+/**
  *  @brief Cmd53 read/write register
- *     
+ *
  *  @param priv         A pointer to moal_private structure
  *  @param wrq          A pointer to iwreq structure
  *  @return             MLAN_STATUS_SUCCESS --success, otherwise fail
@@ -4789,10 +4789,10 @@ woal_cmd53rdwr_ioctl(moal_private * priv, struct iwreq *wrq)
 #if defined(SDIO_MULTI_PORT_TX_AGGR) || defined(SDIO_MULTI_PORT_RX_AGGR)
 /**
  * @brief Set SDIO Multi-point aggregation control parameters
- * 
+ *
  * @param priv     A pointer to moal_private structure
  * @param wrq      A pointer to iwreq structure
- * 
+ *
  * @return         0/MLAN_STATUS_PENDING --success, otherwise fail
  */
 static int
@@ -4822,7 +4822,7 @@ woal_do_sdio_mpa_ctrl(moal_private * priv, struct iwreq *wrq)
     misc->sub_command = MLAN_OID_MISC_SDIO_MPA_CTRL;
     req->req_id = MLAN_IOCTL_MISC_CFG;
 
-    /* Get the values first, then modify these values if user had modified them 
+    /* Get the values first, then modify these values if user had modified them
      */
 
     req->action = MLAN_ACT_GET;
@@ -4901,10 +4901,10 @@ woal_do_sdio_mpa_ctrl(moal_private * priv, struct iwreq *wrq)
 
 /**
  * @brief Set/Get scan configuration parameters
- * 
+ *
  * @param priv     A pointer to moal_private structure
  * @param wrq      A pointer to iwreq structure
- * 
+ *
  * @return         0 --success, otherwise fail
  */
 static int
@@ -4989,10 +4989,10 @@ woal_set_get_scan_cfg(moal_private * priv, struct iwreq *wrq)
 
 /**
  * @brief Set/Get PS configuration parameters
- * 
+ *
  * @param priv     A pointer to moal_private structure
  * @param wrq      A pointer to iwreq structure
- * 
+ *
  * @return         0 --success, otherwise fail
  */
 static int
@@ -5844,13 +5844,13 @@ woal_dfs_testing(moal_private * priv, struct iwreq *wrq)
 }
 #endif /* DFS_SUPPORT && DFS_TESTING_SUPPORT */
 
-/** 
+/**
  *  @brief Set/Get Mgmt Frame passthru mask
  *
  *  @param priv     A pointer to moal_private structure
  *  @param wrq      A pointer to iwreq structure
  *
- *  @return         0 -- success, otherwise fail          
+ *  @return         0 -- success, otherwise fail
  */
 static int
 woal_mgmt_frame_passthru_ctrl(moal_private * priv, struct iwreq *wrq)
@@ -5913,10 +5913,10 @@ woal_mgmt_frame_passthru_ctrl(moal_private * priv, struct iwreq *wrq)
 
 /**
  * @brief Set/Get Tx/Rx antenna
- * 
+ *
  * @param priv     A pointer to moal_private structure
  * @param wrq      A pointer to iwreq structure
- * 
+ *
  * @return         0 --success, otherwise fail
  */
 static int
@@ -6235,7 +6235,7 @@ woal_wext_do_ioctl(struct net_device *dev, struct ifreq *req, int cmd)
         break;
 
     case WOAL_SETNONE_GETTWELVE_CHAR:
-        /* 
+        /*
          * We've not used IW_PRIV_TYPE_FIXED so sub-ioctl number is
          * in flags of iwreq structure, otherwise it will be in
          * mode member of iwreq structure.
@@ -6338,11 +6338,11 @@ woal_wext_do_ioctl(struct net_device *dev, struct ifreq *req, int cmd)
     return ret;
 }
 
-/** 
+/**
  *  @brief Get mode
  *
  *  @param priv          A pointer to moal_private structure
- *  @param wait_option   Wait option (MOAL_WAIT or MOAL_NO_WAIT)   
+ *  @param wait_option   Wait option (MOAL_WAIT or MOAL_NO_WAIT)
  *
  *  @return              Wireless mode
  */
@@ -6391,14 +6391,14 @@ woal_get_mode(moal_private * priv, t_u8 wait_option)
     return mode;
 }
 
-/** 
+/**
  *  @brief Get statistics information
  *
  *  @param priv         A pointer to moal_private structure
  *  @param wait_option  Wait option
  *  @param stats        A pointer to mlan_ds_get_stats structure
  *
- *  @return             MLAN_STATUS_SUCCESS/MLAN_STATUS_PENDING -- success, otherwise fail          
+ *  @return             MLAN_STATUS_SUCCESS/MLAN_STATUS_PENDING -- success, otherwise fail
  */
 mlan_status
 woal_get_stats_info(moal_private * priv, t_u8 wait_option,
@@ -6439,14 +6439,14 @@ woal_get_stats_info(moal_private * priv, t_u8 wait_option,
     return status;
 }
 
-/** 
+/**
  *  @brief Get data rates
  *
  *  @param priv          A pointer to moal_private structure
  *  @param wait_option   Wait option
  *  @param m_rates       A pointer to moal_802_11_rates structure
  *
- *  @return              MLAN_STATUS_SUCCESS/MLAN_STATUS_PENDING -- success, otherwise fail          
+ *  @return              MLAN_STATUS_SUCCESS/MLAN_STATUS_PENDING -- success, otherwise fail
  */
 mlan_status
 woal_get_data_rates(moal_private * priv, t_u8 wait_option,
@@ -6486,14 +6486,14 @@ woal_get_data_rates(moal_private * priv, t_u8 wait_option,
     return status;
 }
 
-/** 
+/**
  *  @brief Get channel list
  *
  *  @param priv            A pointer to moal_private structure
  *  @param wait_option     Wait option
  *  @param chan_list       A pointer to mlan_chan_list structure
  *
- *  @return                MLAN_STATUS_SUCCESS/MLAN_STATUS_PENDING -- success, otherwise fail          
+ *  @return                MLAN_STATUS_SUCCESS/MLAN_STATUS_PENDING -- success, otherwise fail
  */
 mlan_status
 woal_get_channel_list(moal_private * priv, t_u8 wait_option,
@@ -6532,9 +6532,9 @@ woal_get_channel_list(moal_private * priv, t_u8 wait_option,
     return status;
 }
 
-/** 
- *  @brief Handle get info resp 
- *   
+/**
+ *  @brief Handle get info resp
+ *
  *  @param priv 	Pointer to moal_private structure
  *  @param info 	Pointer to mlan_ds_get_info structure
  *
@@ -6562,9 +6562,9 @@ woal_ioctl_get_info_resp(moal_private * priv, mlan_ds_get_info * info)
     LEAVE();
 }
 
-/** 
- *  @brief Handle get BSS resp 
- *   
+/**
+ *  @brief Handle get BSS resp
+ *
  *  @param priv 	Pointer to moal_private structure
  *  @param bss 		Pointer to mlan_ds_bss structure
  *

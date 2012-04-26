@@ -68,7 +68,7 @@ wlan_11n_form_amsdu_pkt(pmlan_adapter pmadapter, t_u8 * amsdu_buf, t_u8 * data,
         0x03,                   /* LLC CTRL */
         {0x00, 0x00, 0x00},     /* SNAP OUI */
         0x0000                  /* SNAP type */
-            /* 
+            /*
              * This field will be overwritten
              * later with ethertype
              */
@@ -105,7 +105,7 @@ wlan_11n_form_amsdu_pkt(pmlan_adapter pmadapter, t_u8 * amsdu_buf, t_u8 * data,
  *  @brief Add TxPD to AMSDU header
  *
  *  @param priv     A pointer to mlan_private structure
- *  @param mbuf		Pointer to buffer where the TxPD will be formed 
+ *  @param mbuf		Pointer to buffer where the TxPD will be formed
  *
  *  @return		N/A
  */
@@ -120,8 +120,8 @@ wlan_11n_form_amsdu_txpd(mlan_private * priv, mlan_buffer * mbuf)
     ptx_pd = (TxPD *) mbuf->pbuf;
     memset(pmadapter, ptx_pd, 0, sizeof(TxPD));
 
-    /* 
-     * Original priority has been overwritten 
+    /*
+     * Original priority has been overwritten
      */
     ptx_pd->priority = (t_u8) mbuf->priority;
     ptx_pd->pkt_delay_2ms = wlan_wmm_compute_driver_packet_delay(priv, mbuf);
@@ -202,7 +202,7 @@ wlan_11n_get_num_aggrpkts(t_u8 * data, int total_pkt_len)
 ********************************************************/
 
 /**
- *  @brief Deaggregate the received AMSDU packet 
+ *  @brief Deaggregate the received AMSDU packet
  *
  *  @param priv		A pointer to mlan_private structure
  *  @param pmbuf	A pointer to aggregated data packet
@@ -317,7 +317,7 @@ wlan_11n_deaggregate_pkt(mlan_private * priv, pmlan_buffer pmbuf)
  *  @param priv 	A pointer to mlan_private structure
  *  @param pra_list	Pointer to the RA List table containing the pointers
  *  			    to packets.
- *  @param headroom	Any interface specific headroom that may be need. TxPD 
+ *  @param headroom	Any interface specific headroom that may be need. TxPD
  *  				will be formed leaving this headroom.
  *  @param ptrindex	Pointer index
  *

@@ -29,7 +29,7 @@ Change log:
 
 /**
  *  @brief This function gets the TID
- *  
+ *
  *  @param pmadapter    A pointer to mlan_adapter structure
  *  @param ptr          A pointer to RA list table
  *
@@ -51,7 +51,7 @@ wlan_get_tid(pmlan_adapter pmadapter, raListTbl * ptr)
 
 /**
  *  @brief This function gets the length of a list
- *  
+ *
  *  @param pmadapter    A pointer to mlan_adapter structure
  *  @param head         A pointer to mlan_list_head
  *
@@ -127,7 +127,7 @@ t_void wlan_wmm_delete_peer_ralist(pmlan_private priv, t_u8 * mac);
 #endif
 
 #ifdef STA_SUPPORT
-/* 
+/*
  *  Functions used in the cmd handling routine
  */
 /** WMM ADDTS request command handler */
@@ -151,7 +151,7 @@ extern mlan_status wlan_cmd_wmm_ts_status(IN pmlan_private pmpriv,
                                           OUT HostCmd_DS_COMMAND * cmd,
                                           IN t_void * pdata_buf);
 
-/* 
+/*
  *  Functions used in the cmdresp handling routine
  */
 /** WMM get status command response handler */

@@ -402,8 +402,8 @@ woal_parse_ie_tlv(const t_u8 * ie, int len, t_u8 id)
  * @param assocresp_ies_data    Assoc resp ie
  * @param assocresp_index       The index for assoc resp when auto index
  * @param probereq_ies_data     Probe req ie
- * @param probereq_index        The index for probe req when auto index * 
- * 
+ * @param probereq_index        The index for probe req when auto index *
+ *
  * @return              0 -- success, otherwise fail
  */
 static int
@@ -530,10 +530,10 @@ woal_cfg80211_custom_ie(moal_private * priv,
     return ret;
 }
 
-/** 
+/**
  *  @brief This function returns priv
  *  based on mgmt ie index
- *  
+ *
  *  @param handle    A pointer to moal_handle
  *  @param index     mgmt ie index
  *
@@ -564,9 +564,9 @@ woal_get_priv_by_mgmt_index(moal_handle * handle, t_u16 index)
  * @param assocresp_ies         A pointer to probe resp ies
  * @param assocresp_ies_len     Assoc resp ies length
  * @param probereq_ies          A pointer to probe req ies
- * @param probereq_ies_len      Probe req ies length * 
+ * @param probereq_ies_len      Probe req ies length *
  * @param mask					Mgmt frame mask
- * 
+ *
  * @return                      0 -- success, otherwise fail
  */
 int
@@ -803,7 +803,7 @@ woal_cfg80211_mgmt_frame_ie(moal_private * priv,
  * @brief initialize AP or GO bss config
  *
  * @param priv            A pointer to moal private structure
- * @param params          A pointer to beacon_parameters structure 
+ * @param params          A pointer to beacon_parameters structure
  * @return                0 -- success, otherwise fail
  */
 static int
@@ -1322,7 +1322,7 @@ woal_uap_cfg80211_disconnect(struct wiphy *wiphy, struct net_device *dev,
  *
  * @param wiphy           A pointer to wiphy structure
  * @param dev             A pointer to net_device structure
- * @param params          A pointer to beacon_parameters structure 
+ * @param params          A pointer to beacon_parameters structure
  * @return                0 -- success, otherwise fail
  */
 int
@@ -1394,7 +1394,7 @@ woal_cfg80211_add_beacon(struct wiphy *wiphy,
  *
  * @param wiphy           A pointer to wiphy structure
  * @param dev             A pointer to net_device structure
- * @param params          A pointer to beacon_parameters structure 
+ * @param params          A pointer to beacon_parameters structure
  * @return                0 -- success, otherwise fail
  */
 int

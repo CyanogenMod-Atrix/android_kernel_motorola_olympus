@@ -177,9 +177,9 @@ typedef struct _moal_drv_timer
     t_u32 timer_is_canceled;
 } moal_drv_timer, *pmoal_drv_timer;
 
-/** 
+/**
  *  @brief Timer handler
- *  
+ *
  *  @param fcontext	Timer context
  *
  *  @return		N/A
@@ -199,9 +199,9 @@ woal_timer_handler(unsigned long fcontext)
     }
 }
 
-/** 
+/**
  *  @brief Initialize timer
- *  
+ *
  *  @param timer		Timer structure
  *  @param TimerFunction	Timer function
  *  @param FunctionContext	Timer function context
@@ -226,9 +226,9 @@ woal_initialize_timer(pmoal_drv_timer timer,
     timer->timer_is_periodic = MFALSE;
 }
 
-/** 
+/**
  *  @brief Modify timer
- *  
+ *
  *  @param timer		Timer structure
  *  @param MillisecondPeriod	Time period in millisecond
  *
@@ -242,9 +242,9 @@ woal_mod_timer(pmoal_drv_timer timer, t_u32 MillisecondPeriod)
     timer->timer_is_canceled = MFALSE;
 }
 
-/** 
+/**
  *  @brief Cancel timer
- *  
+ *
  *  @param timer	Timer structure
  *
  *  @return		N/A
@@ -277,9 +277,9 @@ typedef struct _moal_thread
     void *handle;
 } moal_thread;
 
-/** 
+/**
  *  @brief Activate thread
- *  
+ *
  *  @param thr			Thread structure
  *  @return			N/A
  */
@@ -293,9 +293,9 @@ woal_activate_thread(moal_thread * thr)
     thr->pid = current->pid;
 }
 
-/** 
+/**
  *  @brief De-activate thread
- *  
+ *
  *  @param thr			Thread structure
  *  @return			N/A
  */
@@ -306,7 +306,7 @@ woal_deactivate_thread(moal_thread * thr)
     thr->pid = 0;
 }
 
-/** 
+/**
  *  @brief Create and run the thread
  *
  *  @param threadfunc		Thread function
@@ -345,9 +345,9 @@ woal_create_thread(int (*threadfunc) (void *), moal_thread * thr, char *name)
 #define MLAN_DELAYED_CONTAINER_OF(_ptr, _type, _m)  container_of(_ptr, _type, _m.work)
 #endif /* LINUX_VERSION_CODE < KERNEL_VERSION(2,6,20) */
 
-/** 
+/**
  *  @brief Schedule timeout
- *  
+ *
  *  @param millisec	Timeout duration in milli second
  *
  *  @return		N/A
@@ -487,10 +487,10 @@ in4_pton(const char *src, int srclen, u8 * dst, int delim, const char **end)
 #define MRVDRV_DEFAULT_WATCHDOG_TIMEOUT (5 * HZ)
 
 #ifdef UAP_SUPPORT
-/** Default watchdog timeout 
-    Increase the value to avoid kernel Tx timeout message in case 
+/** Default watchdog timeout
+    Increase the value to avoid kernel Tx timeout message in case
     station in PS mode or left.
-    The default value of PS station ageout timer is 40 seconds. 
+    The default value of PS station ageout timer is 40 seconds.
     Hence, the watchdog timer is set to a value higher than it.
 */
 #define MRVDRV_DEFAULT_UAP_WATCHDOG_TIMEOUT (41 * HZ)
@@ -929,9 +929,9 @@ struct _moal_handle
 #endif
 };
 
-/** 
- *  @brief set trans_start for each TX queue. 
- *  
+/**
+ *  @brief set trans_start for each TX queue.
+ *
  *  @param dev		A pointer to net_device structure
  *
  *  @return			N/A
@@ -948,9 +948,9 @@ woal_set_trans_start(struct net_device *dev)
     dev->trans_start = jiffies;
 }
 
-/** 
+/**
  *  @brief Start queue
- *  
+ *
  *  @param dev		A pointer to net_device structure
  *
  *  @return			N/A
@@ -965,9 +965,9 @@ woal_start_queue(struct net_device *dev)
 #endif
 }
 
-/** 
+/**
  *  @brief Stop queue
- *  
+ *
  *  @param dev		A pointer to net_device structure
  *
  *  @return			N/A
@@ -990,9 +990,9 @@ woal_stop_queue(struct net_device *dev)
 #endif
 }
 
-/** 
+/**
  *  @brief wake queue
- *  
+ *
  *  @param dev		A pointer to net_device structure
  *
  *  @return			N/A
@@ -1143,10 +1143,10 @@ hexdump(char *prompt, t_u8 * buf, int len)
 #define woal_cpu_to_le64(x) x
 #endif
 
-/** 
+/**
  *  @brief This function returns first available priv
  *  based on the BSS role
- *  
+ *
  *  @param handle    A pointer to moal_handle
  *  @param bss_role  BSS role or MLAN_BSS_ROLE_ANY
  *

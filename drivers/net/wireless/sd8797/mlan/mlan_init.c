@@ -48,7 +48,7 @@ Change log:
 
 /**
  *  @brief This function adds a BSS priority table
- *  
+ *
  *  @param priv		A pointer to mlan_private structure
  *
  *  @return		MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
@@ -92,7 +92,7 @@ wlan_add_bsspriotbl(pmlan_private priv)
 
 /**
  *  @brief This function deletes the BSS priority table
- *  
+ *
  *  @param priv		A pointer to mlan_private structure
  *
  *  @return		N/A
@@ -147,10 +147,10 @@ wlan_delete_bsspriotbl(pmlan_private priv)
         Global Functions
 ********************************************************/
 
-/** 
+/**
  *  @brief This function allocates buffer for the members of adapter
  *  		structure like command buffer and BSSID list.
- *  
+ *
  *  @param pmadapter A pointer to mlan_adapter structure
  *
  *  @return        MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
@@ -234,7 +234,7 @@ wlan_allocate_adapter(pmlan_adapter pmadapter)
 /**
  *  @brief This function initializes the private structure
  *  		and sets default values to the members of mlan_private.
- *  
+ *
  *  @param priv    A pointer to mlan_private structure
  *
  *  @return        MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
@@ -354,7 +354,7 @@ wlan_init_priv(pmlan_private priv)
 /**
  *  @brief This function initializes the adapter structure
  *  		and sets default values to the members of adapter.
- *  
+ *
  *  @param pmadapter	A pointer to mlan_adapter structure
  *
  *  @return		N/A
@@ -571,9 +571,9 @@ wlan_init_adapter(pmlan_adapter pmadapter)
 }
 
 /**
- *  @brief This function intializes the lock variables and 
+ *  @brief This function intializes the lock variables and
  *  the list heads.
- *  
+ *
  *  @param pmadapter  A pointer to a mlan_adapter structure
  *
  *  @return           MLAN_STATUS_SUCCESS -- on success,
@@ -698,10 +698,10 @@ wlan_init_lock_list(IN pmlan_adapter pmadapter)
 
 /**
  *  @brief This function releases the lock variables
- *  
+ *
  *  @param pmadapter  A pointer to a mlan_adapter structure
  *
- *  @return           None 
+ *  @return           None
  *
  */
 t_void
@@ -793,7 +793,7 @@ wlan_free_lock_list(IN pmlan_adapter pmadapter)
 
 /**
  *  @brief This function intializes the timers
- *  
+ *
  *  @param pmadapter  A pointer to a mlan_adapter structure
  *
  *  @return           MLAN_STATUS_SUCCESS -- on success,
@@ -822,10 +822,10 @@ wlan_init_timer(IN pmlan_adapter pmadapter)
 
 /**
  *  @brief This function releases the timers
- *  
+ *
  *  @param pmadapter  A pointer to a mlan_adapter structure
  *
- *  @return           None 
+ *  @return           None
  *
  */
 t_void
@@ -903,9 +903,9 @@ wlan_init_fw(IN pmlan_adapter pmadapter)
     return ret;
 }
 
-/** 
+/**
  *  @brief This function frees the structure of adapter
- *    
+ *
  *  @param pmadapter      A pointer to mlan_adapter structure
  *
  *  @return             N/A
@@ -965,9 +965,9 @@ wlan_free_adapter(pmlan_adapter pmadapter)
     return;
 }
 
-/** 
+/**
  *  @brief This function frees the structure of priv
- *    
+ *
  *  @param pmpriv  A pointer to mlan_private structure
  *
  *  @return        N/A

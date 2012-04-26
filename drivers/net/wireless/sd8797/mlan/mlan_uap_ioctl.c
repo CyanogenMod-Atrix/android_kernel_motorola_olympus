@@ -3,7 +3,7 @@
  *  @brief This file contains the handling of AP mode ioctls 
  * 
  *  Copyright (C) 2009-2011, Marvell International Ltd. 
- *   
+ *
  *  This software file (the "File") is distributed by Marvell International 
  *  Ltd. under the terms of the GNU General Public License Version 2, June 1991 
  *  (the "License").  You may use, redistribute and/or modify this File in 
@@ -44,7 +44,7 @@ extern t_u8 tos_to_tid_inv[];
 /********************************************************
     Local Functions
 ********************************************************/
-/** 
+/**
  *  @brief Stop BSS
  *
  *  @param pmadapter	A pointer to mlan_adapter structure
@@ -94,7 +94,7 @@ wlan_uap_callback_bss_ioctl_start(IN t_void * priv)
     /* clear callback now that we're here */
     puap_state_chan_cb->get_chan_callback = MNULL;
 
-    /* 
+    /*
      * Check if the region and channel requires we check for radar.
      */
     if ((puap_state_chan_cb->band_config & BAND_CONFIG_5GHZ) &&
@@ -170,7 +170,7 @@ wlan_uap_callback_bss_ioctl_start(IN t_void * priv)
     return ret;
 }
 
-/** 
+/**
  *  @brief Start BSS
  *
  *  @param pmadapter	A pointer to mlan_adapter structure
@@ -205,7 +205,7 @@ wlan_uap_bss_ioctl_start(IN pmlan_adapter pmadapter,
     return ret;
 }
 
-/** 
+/**
  *  @brief reset BSS
  *
  *  @param pmadapter	A pointer to mlan_adapter structure
@@ -223,7 +223,7 @@ wlan_uap_bss_ioctl_reset(IN pmlan_adapter pmadapter,
 
     ENTER();
 
-    /* 
+    /*
      * Reset any uap private parameters here
      */
     for (i = 0; i < pmadapter->max_mgmt_ie_index; i++) {
@@ -254,7 +254,7 @@ wlan_uap_bss_ioctl_reset(IN pmlan_adapter pmadapter,
     return ret;
 }
 
-/** 
+/**
  *  @brief Set/Get MAC address
  *
  *  @param pmadapter	A pointer to mlan_adapter structure
@@ -291,7 +291,7 @@ wlan_uap_bss_ioctl_mac_address(IN pmlan_adapter pmadapter,
     return ret;
 }
 
-/** 
+/**
  *  @brief Get Uap statistics
  *
  *  @param pmadapter	A pointer to mlan_adapter structure
@@ -318,7 +318,7 @@ wlan_uap_get_stats(IN pmlan_adapter pmadapter, IN pmlan_ioctl_req pioctl_req)
     return ret;
 }
 
-/** 
+/**
  *  @brief Set/Get AP config
  *
  *  @param pmadapter	A pointer to mlan_adapter structure
@@ -352,7 +352,7 @@ wlan_uap_bss_ioctl_config(IN pmlan_adapter pmadapter,
     return ret;
 }
 
-/** 
+/**
  *  @brief deauth sta
  *
  *  @param pmadapter	A pointer to mlan_adapter structure
@@ -384,8 +384,8 @@ wlan_uap_bss_ioctl_deauth_sta(IN pmlan_adapter pmadapter,
     return ret;
 }
 
-/** 
- *  @brief Get station list 
+/**
+ *  @brief Get station list
  *
  *  @param pmadapter	A pointer to mlan_adapter structure
  *  @param pioctl_req	A pointer to ioctl request buffer
@@ -413,7 +413,7 @@ wlan_uap_get_sta_list(IN pmlan_adapter pmadapter, IN pmlan_ioctl_req pioctl_req)
     return ret;
 }
 
-/** 
+/**
  *  @brief soft_reset
  *
  *  @param pmadapter	A pointer to mlan_adapter structure
@@ -441,7 +441,7 @@ wlan_uap_misc_ioctl_soft_reset(IN pmlan_adapter pmadapter,
     return ret;
 }
 
-/** 
+/**
  *  @brief Tx data pause
  *
  *  @param pmadapter	A pointer to mlan_adapter structure
@@ -476,7 +476,7 @@ wlan_uap_misc_ioctl_txdatapause(IN pmlan_adapter pmadapter,
     return ret;
 }
 
-/** 
+/**
  *  @brief Set/Get Power mode
  *
  *  @param pmadapter	A pointer to mlan_adapter structure
@@ -530,8 +530,8 @@ wlan_uap_pm_ioctl_mode(IN pmlan_adapter pmadapter,
     return ret;
 }
 
-/** 
- *  @brief Set WAPI IE   
+/**
+ *  @brief Set WAPI IE
  *
  *  @param priv         A pointer to mlan_private structure
  *  @param pioctl_req	A pointer to ioctl request buffer
@@ -581,7 +581,7 @@ wlan_uap_set_wapi_ie(mlan_private * priv, pmlan_ioctl_req pioctl_req)
     return ret;
 }
 
-/** 
+/**
  *  @brief Set generic IE
  *
  *  @param pmadapter	A pointer to mlan_adapter structure
@@ -620,7 +620,7 @@ wlan_uap_misc_ioctl_gen_ie(IN pmlan_adapter pmadapter,
     return ret;
 }
 
-/** 
+/**
  *  @brief Set/Get WAPI status
  *
  *  @param pmadapter	A pointer to mlan_adapter structure
@@ -657,7 +657,7 @@ wlan_uap_sec_ioctl_wapi_enable(IN pmlan_adapter pmadapter,
     return ret;
 }
 
-/** 
+/**
  *  @brief Set encrypt key
  *
  *  @param pmadapter	A pointer to mlan_adapter structure
@@ -697,7 +697,7 @@ wlan_uap_sec_ioctl_set_encrypt_key(IN pmlan_adapter pmadapter,
     return ret;
 }
 
-/** 
+/**
  *  @brief Get BSS information
  *
  *  @param pmadapter	A pointer to mlan_adapter structure
@@ -732,7 +732,7 @@ wlan_uap_get_bss_info(IN pmlan_adapter pmadapter, IN pmlan_ioctl_req pioctl_req)
     return ret;
 }
 
-/** 
+/**
  *  @brief Set Host Sleep configurations
  *
  *  @param pmadapter	A pointer to mlan_adapter structure
@@ -956,7 +956,7 @@ wlan_uap_callback_11h_channel_check_req(IN t_void * priv)
     /* clear early to avoid race condition */
     puap_state_chan_cb->pioctl_req_curr = MNULL;
 
-    /* 
+    /*
      * Check if the region and channel requires a channel availability
      * check.
      */
@@ -965,7 +965,7 @@ wlan_uap_callback_11h_channel_check_req(IN t_void * priv)
         !wlan_11h_is_channel_under_nop(pmpriv->adapter,
                                        puap_state_chan_cb->channel)) {
 
-        /* 
+        /*
          * Radar detection is required for this channel, make sure
          * 11h is activated in the firmware
          */
@@ -1228,7 +1228,7 @@ wlan_uap_get_beacon_dtim(IN pmlan_private pmpriv)
     return ret;
 }
 
-/** 
+/**
  *  @brief MLAN uap ioctl handler
  *
  *  @param adapter	A pointer to mlan_adapter structure

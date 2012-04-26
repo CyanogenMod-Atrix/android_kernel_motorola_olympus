@@ -47,9 +47,9 @@ typedef struct _mlan_list_head
     t_void *plock;
 } mlan_list_head, *pmlan_list_head;
 
-/** 
+/**
  *  @brief This function initializes a list without locking
- *  
+ *
  *  @param phead		List head
  *
  *  @return			N/A
@@ -61,9 +61,9 @@ util_init_list(pmlan_linked_list phead)
     phead->pprev = phead->pnext = (pmlan_linked_list) phead;
 }
 
-/** 
+/**
  *  @brief This function initializes a list
- *  
+ *
  *  @param phead		List head
  *  @param lock_required	A flag for spinlock requirement
  *  @param moal_init_lock	A pointer to init lock handler
@@ -85,9 +85,9 @@ util_init_list_head(t_void * pmoal_handle,
         phead->plock = 0;
 }
 
-/** 
+/**
  *  @brief This function frees a list
- *  
+ *
  *  @param phead		List head
  *  @param moal_free_lock	A pointer to free lock handler
  *
@@ -104,9 +104,9 @@ util_free_list_head(t_void * pmoal_handle,
         moal_free_lock(pmoal_handle, phead->plock);
 }
 
-/** 
+/**
  *  @brief This function peeks into a list
- *  
+ *
  *  @param phead		List head
  *  @param moal_spin_lock	A pointer to spin lock handler
  *  @param moal_spin_unlock	A pointer to spin unlock handler
@@ -131,9 +131,9 @@ util_peek_list(t_void * pmoal_handle,
     return pnode;
 }
 
-/** 
+/**
  *  @brief This function queues a node at the list tail
- *  
+ *
  *  @param phead		List head
  *  @param pnode		List node to queue
  *  @param moal_spin_lock	A pointer to spin lock handler
@@ -163,9 +163,9 @@ util_enqueue_list_tail(t_void * pmoal_handle,
         moal_spin_unlock(pmoal_handle, phead->plock);
 }
 
-/** 
+/**
  *  @brief This function adds a node at the list head
- *  
+ *
  *  @param phead		List head
  *  @param pnode		List node to add
  *  @param moal_spin_lock	A pointer to spin lock handler
@@ -195,9 +195,9 @@ util_enqueue_list_head(t_void * pmoal_handle,
         moal_spin_unlock(pmoal_handle, phead->plock);
 }
 
-/** 
+/**
  *  @brief This function removes a node from the list
- *  
+ *
  *  @param phead		List head
  *  @param pnode		List node to remove
  *  @param moal_spin_lock	A pointer to spin lock handler
@@ -228,9 +228,9 @@ util_unlink_list(t_void * pmoal_handle,
         moal_spin_unlock(pmoal_handle, phead->plock);
 }
 
-/** 
+/**
  *  @brief This function dequeues a node from the list
- *  
+ *
  *  @param phead		List head
  *  @param moal_spin_lock	A pointer to spin lock handler
  *  @param moal_spin_unlock	A pointer to spin unlock handler
@@ -285,9 +285,9 @@ typedef enum _MLAN_SCALAR_CONDITIONAL
     MLAN_SCALAR_COND_LESS_OR_EQUAL
 } MLAN_SCALAR_CONDITIONAL;
 
-/** 
+/**
  *  @brief This function initializes a scalar
- *  
+ *
  *  @param pscalar			Pointer to scalar
  *  @param val				Initial scalar value
  *  @param plock_to_use		A new lock is created if NULL, else lock to use
@@ -314,9 +314,9 @@ util_scalar_init(t_void * pmoal_handle,
     }
 }
 
-/** 
+/**
  *  @brief This function frees a scalar
- *  
+ *
  *  @param pscalar			Pointer to scalar
  *  @param moal_free_lock	A pointer to free lock handler
  *
@@ -331,9 +331,9 @@ util_scalar_free(t_void * pmoal_handle,
         moal_free_lock(pmoal_handle, &pscalar->plock);
 }
 
-/** 
+/**
  *  @brief This function reads value from scalar
- *  
+ *
  *  @param pscalar			Pointer to scalar
  *  @param moal_spin_lock	A pointer to spin lock handler
  *  @param moal_spin_unlock	A pointer to spin unlock handler
@@ -358,9 +358,9 @@ util_scalar_read(t_void * pmoal_handle,
     return val;
 }
 
-/** 
+/**
  *  @brief This function writes value to scalar
- *  
+ *
  *  @param pscalar			Pointer to scalar
  *  @param val				Value to write
  *  @param moal_spin_lock	A pointer to spin lock handler
@@ -384,9 +384,9 @@ util_scalar_write(t_void * pmoal_handle,
         moal_spin_unlock(pmoal_handle, pscalar->plock);
 }
 
-/** 
+/**
  *  @brief This function increments the value in scalar
- *  
+ *
  *  @param pscalar			Pointer to scalar
  *  @param moal_spin_lock	A pointer to spin lock handler
  *  @param moal_spin_unlock	A pointer to spin unlock handler
@@ -408,9 +408,9 @@ util_scalar_increment(t_void * pmoal_handle,
         moal_spin_unlock(pmoal_handle, pscalar->plock);
 }
 
-/** 
+/**
  *  @brief This function decrements the value in scalar
- *  
+ *
  *  @param pscalar			Pointer to scalar
  *  @param moal_spin_lock	A pointer to spin lock handler
  *  @param moal_spin_unlock	A pointer to spin unlock handler
@@ -432,10 +432,10 @@ util_scalar_decrement(t_void * pmoal_handle,
         moal_spin_unlock(pmoal_handle, pscalar->plock);
 }
 
-/** 
+/**
  *  @brief This function adds an offset to the value in scalar,
- *         and returns the new value
- *  
+ *        and returns the new value
+ *
  *  @param pscalar			Pointer to scalar
  *  @param offset			Offset value (can be negative)
  *  @param moal_spin_lock	A pointer to spin lock handler
@@ -463,10 +463,10 @@ util_scalar_offset(t_void * pmoal_handle,
     return newval;
 }
 
-/** 
+/**
  *  @brief This function writes the value to the scalar
  *         if existing value compared with other value is true.
- *  
+ *
  *  @param pscalar			Pointer to scalar
  *  @param condition		Condition to check
  *  @param val_compare		Value to compare against current value

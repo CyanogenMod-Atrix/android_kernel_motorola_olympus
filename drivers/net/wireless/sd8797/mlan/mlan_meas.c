@@ -53,12 +53,12 @@ static const char *meas_type_str[WLAN_MEAS_NUM_TYPES] = {
                 Local Functions
 ********************************************************/
 
-/** 
+/**
  *  @brief Retrieve the measurement string representation of a meas_type enum
  *  Used for debug display only
  *
  *  @param meas_type Measurement type enumeration input for string lookup
- * 
+ *
  *  @return         Constant string representing measurement type
  */
 static const char *
@@ -182,18 +182,18 @@ wlan_meas_dump_meas_rpt(const HostCmd_DS_MEASUREMENT_REPORT * pmeas_rpt)
 
 /**
  *  @brief Retrieve a measurement report from the firmware
- * 
+ *
  *  Callback from command processing when a measurement report is received
  *    from the firmware.  Perform the following when a report is received:
  *
  *   -# Debug displays the report if compiled with the appropriate flags
- *   -# If we are pending on a specific measurement report token, and it 
+ *   -# If we are pending on a specific measurement report token, and it
  *      matches the received report's token, store the report and wake up
  *      any pending threads
  *
  *  @param pmpriv Private driver information structure
  *  @param resp HostCmd_DS_COMMAND struct returned from the firmware command
- *              passing a HostCmd_DS_MEASUREMENT_REPORT structure.    
+ *              passing a HostCmd_DS_MEASUREMENT_REPORT structure.
  *
  *  @return     MLAN_STATUS_SUCCESS
  */
@@ -212,8 +212,8 @@ wlan_meas_cmdresp_get_report(mlan_private * pmpriv,
     /* Debug displays the measurement report */
     wlan_meas_dump_meas_rpt(pmeas_rpt);
 
-    /* 
-     * Check if we are pending on a measurement report and it matches 
+    /*
+     * Check if we are pending on a measurement report and it matches
      *  the dialog token of the received report:
      */
     if (pmadapter->state_meas.meas_rpt_pend_on
@@ -228,7 +228,7 @@ wlan_meas_cmdresp_get_report(mlan_private * pmpriv,
         memcpy(pmadapter, &pmadapter->state_meas.meas_rpt_returned, pmeas_rpt,
                sizeof(pmadapter->state_meas.meas_rpt_returned));
 
-        /* 
+        /*
          * Wake up any threads pending on the wait queue
          */
         wlan_recv_event(pmpriv, MLAN_EVENT_ID_DRV_MEAS_REPORT, MNULL);
@@ -243,7 +243,7 @@ wlan_meas_cmdresp_get_report(mlan_private * pmpriv,
  *  @brief Prepare CMD_MEASURMENT_REPORT firmware command
  *
  *  @param pmpriv     Private driver information structure
- *  @param pcmd_ptr   Output parameter: Pointer to the command being prepared 
+ *  @param pcmd_ptr   Output parameter: Pointer to the command being prepared
  *                    for the firmware
  *  @param pinfo_buf  HostCmd_DS_MEASUREMENT_REQUEST passed as void data block
  *
@@ -278,13 +278,13 @@ wlan_meas_cmd_request(mlan_private * pmpriv,
 /**
  *  @brief  Retrieve a measurement report from the firmware
  *
- *  The firmware will send a EVENT_MEAS_REPORT_RDY event when it 
+ *  The firmware will send a EVENT_MEAS_REPORT_RDY event when it
  *    completes or receives a measurement report.  The event response
  *    handler will then start a HostCmd_CMD_MEASUREMENT_REPORT firmware command
  *    which gets completed for transmission to the firmware in this routine.
  *
  *  @param pmpriv    Private driver information structure
- *  @param pcmd_ptr  Output parameter: Pointer to the command being prepared 
+ *  @param pcmd_ptr  Output parameter: Pointer to the command being prepared
  *                   for the firmware
  *
  *  @return        MLAN_STATUS_SUCCESS
@@ -300,7 +300,7 @@ wlan_meas_cmd_get_report(mlan_private * pmpriv, HostCmd_DS_COMMAND * pcmd_ptr)
     memset(pmpriv->adapter, &pcmd_ptr->params.meas_rpt, 0x00,
            sizeof(pcmd_ptr->params.meas_rpt));
 
-    /* 
+    /*
      * Set the meas_rpt.mac_addr to our mac address to get a meas report,
      *   setting the mac to another STA address instructs the firmware
      *   to transmit this measurement report frame instead
@@ -317,16 +317,16 @@ wlan_meas_cmd_get_report(mlan_private * pmpriv, HostCmd_DS_COMMAND * pcmd_ptr)
                 Global functions
 ********************************************************/
 
-/** 
+/**
  *  @brief Send the input measurement request to the firmware.
  *
  *  If the dialog token in the measurement request is set to 0, the function
  *    will use an local static auto-incremented token in the measurement
  *    request.  This ensures the dialog token is always set.
  *
- *  If wait_for_resp_timeout is set, the function will block its return on 
+ *  If wait_for_resp_timeout is set, the function will block its return on
  *     a timeout or returned measurement report that matches the requests
- *     dialog token. 
+ *     dialog token.
  *
  *  @param pmpriv                  Private driver information structure
  *  @param pmeas_req               Pointer to the measurement request to send
@@ -362,11 +362,11 @@ wlan_meas_util_send_req(mlan_private * pmpriv,
     pmeas_req->dialog_token = (pmeas_req->dialog_token ?
                                pmeas_req->dialog_token : 1);
 
-    /* 
+    /*
      * If the request is to pend waiting for the result, set the dialog token
      * of this measurement request in the state structure.  The measurement
      * report handling routines can then check the incoming measurement
-     * reports for a match with this dialog token.  
+     * reports for a match with this dialog token.
      */
     if (wait_for_resp_timeout) {
         pmeas_state->meas_rpt_pend_on = pmeas_req->dialog_token;
@@ -393,7 +393,7 @@ wlan_meas_util_send_req(mlan_private * pmpriv,
  *        - HostCmd_CMD_MEASUREMENT_REPORT
  *
  *  @param pmpriv     Private driver information structure
- *  @param pcmd_ptr   Output parameter: Pointer to the command being prepared 
+ *  @param pcmd_ptr   Output parameter: Pointer to the command being prepared
  *                    for the firmware
  *  @param pinfo_buf  Void buffer passthrough with data necessary for a
  *                    specific command type
@@ -426,7 +426,7 @@ wlan_meas_cmd_process(mlan_private * pmpriv,
 }
 
 /**
- *  @brief Handle the command response from the firmware for a measurement 
+ *  @brief Handle the command response from the firmware for a measurement
  *         command
  *
  *  Use the Command field to determine if the command response being

@@ -197,7 +197,7 @@ typedef struct _ds_hs_cfg
     /** Bit0: non-unicast data
      *  Bit1: unicast data
      *  Bit2: mac events
-     *  Bit3: magic packet 
+     *  Bit3: magic packet
      */
     t_u32 conditions;
     /** GPIO */
