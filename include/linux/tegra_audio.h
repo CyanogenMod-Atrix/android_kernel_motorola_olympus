@@ -78,7 +78,7 @@ struct dam_srate {
 #ifdef CONFIG_SND_SOC_TEGRA
 extern bool tegra_is_voice_call_active();
 #else
-inline bool tegra_is_voice_call_active()
+static inline bool tegra_is_voice_call_active()
 {
 	return false;
 }
