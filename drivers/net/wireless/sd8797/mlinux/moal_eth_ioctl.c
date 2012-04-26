@@ -1133,7 +1133,12 @@ woal_do_ioctl(struct net_device *dev, struct ifreq *req, int cmd)
         ret = -EINVAL;
 #endif
 #else
-        ret = -EINVAL;
+	/*
+	 * FIXME Some of the IOCTLs are not supported by Marvel driver
+	 * for CFG80211 and hence it is failing to turn on from UI,
+	 * so returing 0(Sucess) for the time being.
+	 */
+        ret = 0;
 #endif
         break;
     }
