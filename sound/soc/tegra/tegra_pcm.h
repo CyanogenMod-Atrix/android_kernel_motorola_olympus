@@ -55,4 +55,19 @@ struct tegra_runtime_data {
 	int dma_req_count;
 };
 
+int tegra_pcm_trigger(struct snd_pcm_substream *substream, int cmd);
+int tegra_pcm_allocate(struct snd_pcm_substream *substream,
+					int dma_mode,
+					const struct snd_pcm_hardware *pcm_hardware);
+int tegra_pcm_close(struct snd_pcm_substream *substream);
+int tegra_pcm_hw_params(struct snd_pcm_substream *substream,
+				struct snd_pcm_hw_params *params);
+int tegra_pcm_trigger(struct snd_pcm_substream *substream, int cmd);
+int tegra_pcm_mmap(struct snd_pcm_substream *substream,
+				struct vm_area_struct *vma);
+int tegra_pcm_dma_allocate(struct snd_soc_pcm_runtime *rtd, size_t size);
+void tegra_pcm_free(struct snd_pcm *pcm);
+snd_pcm_uframes_t tegra_pcm_pointer(struct snd_pcm_substream *substream);
+int tegra_pcm_hw_free(struct snd_pcm_substream *substream);
+
 #endif
