@@ -141,6 +141,7 @@ void tegra_assert_system_reset(char mode, const char *cmd)
 #endif
 }
 static int modem_id;
+static int commchip_id;
 static int sku_override;
 static int debug_uart_port_id;
 static enum audio_codec_type audio_codec_name;
@@ -709,6 +710,22 @@ int tegra_get_modem_id(void)
 }
 
 __setup("modem_id=", tegra_modem_id);
+
+static int __init tegra_commchip_id(char *id)
+{
+	char *p = id;
+
+	if (get_option(&p, &commchip_id) != 1)
+		return 0;
+	return 1;
+}
+
+int tegra_get_commchip_id(void)
+{
+	return commchip_id;
+}
+
+__setup("commchip_id=", tegra_commchip_id);
 
 /*
  * Tegra has a protected aperture that prevents access by most non-CPU
