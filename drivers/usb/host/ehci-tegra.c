@@ -1257,8 +1257,6 @@ static int tegra_ehci_resume_noirq(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct tegra_ehci_hcd *tegra = platform_get_drvdata(pdev);
-	struct usb_hcd *hcd = ehci_to_hcd(tegra->ehci);
-	int ret;
 
 	mutex_lock(&tegra->tegra_ehci_hcd_mutex);
 	if ((tegra->bus_suspended) && (tegra->power_down_on_bus_suspend)) {
@@ -1271,12 +1269,29 @@ static int tegra_ehci_resume_noirq(struct device *dev)
 	if (tegra->default_enable)
 		clk_enable(tegra->clk);
 
+	mutex_unlock(&tegra->tegra_ehci_hcd_mutex);
+	return 0;
+}
+
+static int tegra_ehci_resume(struct device *dev)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct tegra_ehci_hcd *tegra = platform_get_drvdata(pdev);
+	struct usb_hcd *hcd = ehci_to_hcd(tegra->ehci);
+	int ret;
+
+	mutex_lock(&tegra->tegra_ehci_hcd_mutex);
+	if ((tegra->bus_suspended) && (tegra->power_down_on_bus_suspend)) {
+		mutex_unlock(&tegra->tegra_ehci_hcd_mutex);
+		return 0;
+	}
+
 	ret = tegra_usb_resume(hcd, true);
 	mutex_unlock(&tegra->tegra_ehci_hcd_mutex);
 	return ret;
 }
 
-static int tegra_ehci_suspend_noirq(struct device *dev)
+static int tegra_ehci_suspend(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct tegra_ehci_hcd *tegra = platform_get_drvdata(pdev);
@@ -1318,8 +1333,9 @@ static int tegra_ehci_suspend_noirq(struct device *dev)
 }
 
 static struct dev_pm_ops tegra_ehci_dev_pm_ops = {
-	.suspend_noirq = tegra_ehci_suspend_noirq,
-	.resume_noirq = tegra_ehci_resume_noirq,
+	.suspend	= tegra_ehci_suspend,
+	.resume		= tegra_ehci_resume,
+	.resume_noirq	= tegra_ehci_resume_noirq,
 };
 
 #endif
