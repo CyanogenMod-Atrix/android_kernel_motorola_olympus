@@ -516,7 +516,8 @@ irqreturn_t xmm_power_ipc_ap_wake_irq(int irq, void *dev_id)
 			pr_info("Set wakeup_pending = 1 in system_"
 					" suspending!!!\n");
 		} else {
-			if (baseband_xmm_powerstate == BBXMM_PS_L3) {
+			if ((baseband_xmm_powerstate == BBXMM_PS_L3) ||
+				(baseband_xmm_powerstate == BBXMM_PS_L3TOL0)) {
 				spin_unlock(&xmm_lock);
 				pr_info(" CP L3 -> L0\n");
 			} else if (baseband_xmm_powerstate == BBXMM_PS_L2) {
