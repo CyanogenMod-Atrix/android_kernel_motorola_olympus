@@ -374,8 +374,8 @@ static struct tps80031_bg_platform_data battery_gauge_data = {
 
 
 static struct tps80031_subdev_info tps80031_devs_a02[] = {
-	TPS80031_DEVS_COMMON,
 	TPS_REG(VIO, vio, a02),
+	TPS80031_DEVS_COMMON,
 	TPS_REG(SMPS4, smps4, a02),
 	TPS_REG(LDO1, ldo1, a02),
 	TPS_REG(LDO4, ldo4, a02),
@@ -387,8 +387,8 @@ static struct tps80031_subdev_info tps80031_devs_a02[] = {
 };
 
 static struct tps80031_subdev_info tps80031_devs_a03[] = {
-	TPS80031_DEVS_COMMON,
 	TPS_REG(VIO, vio, a03),
+	TPS80031_DEVS_COMMON,
 	TPS_REG(SMPS4, smps4, a03),
 	TPS_REG(LDO1, ldo1, a03),
 	TPS_REG(LDO4, ldo4, a03),
