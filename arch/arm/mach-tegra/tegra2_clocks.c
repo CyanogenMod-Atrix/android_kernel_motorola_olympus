@@ -2899,10 +2899,169 @@ static struct syscore_ops tegra_clk_syscore_ops = {
 	.resume = tegra_clk_resume,
 };
 
+#ifdef CONFIG_TEGRA_PREINIT_CLOCKS
+
+#define RST_DEVICES_L			RST_DEVICES
+#define CLK_OUT_ENB_L			0x010
+#define CLK_RSTENB_L_HOST1X_BIT 	(1 << 28)
+#define CLK_RSTENB_L_DISP1_BIT		(1 << 27)
+#define CLK_RSTENB_L_3D_BIT		(1 << 24)
+#define CLK_RSTENB_L_2D_BIT		(1 << 21)
+#define CLK_RSTENB_L_VI_BIT		(1 << 20)
+#define CLK_RSTENB_L_EPP_BIT		(1 << 19)
+
+#define RST_DEVICES_H			0x008
+#define CLK_OUT_ENB_H			0x014
+#define CLK_RSTENB_H_MPE_BIT		(1 << 28)
+
+#define GCLK_SRC_SHIFT			30
+#define GCLK_SRC_MASK			(0x3 << GCLK_SRC_SHIFT)
+#define GCLK_SRC_PLLM_OUT0		0
+#define GCLK_SRC_PLLC_OUT0		1
+#define GCLK_SRC_PLLP_OUT0		2
+#define GCLK_SRC_PLLA_OUT0		3
+#define GCLK_IDLE_DIV_SHIFT		8
+#define GCLK_IDLE_DIV_MASK		(0xff << GCLK_IDLE_DIV_SHIFT)
+#define GCLK_DIV_SHIFT			0
+#define GCLK_DIV_MASK			(0xff << GCLK_DIV_SHIFT)
+
+#define DISP1_CLK_REG			0x138
+#define DCLK_SRC_PLLP_OUT0		0
+#define DCLK_SRC_PLLD_OUT0		1
+#define DCLK_SRC_PLLC_OUT0		2
+#define DCLK_SRC_CLKM			3
+#define DISP1_CLK_SRC			(DCLK_SRC_PLLC_OUT0 << GCLK_SRC_SHIFT)
+
+#define HOST1X_CLK_REG			0x180
+#define HOST1X_CLK_SRC			(GCLK_SRC_PLLP_OUT0 << GCLK_SRC_SHIFT)
+#define HOST1X_CLK_IDLE_DIV		(0 << GCLK_IDLE_DIV_SHIFT)
+#define HOST1X_CLK_DIV			(3 << GCLK_DIV_SHIFT)
+
+#define G3D_CLK_REG			0x158
+#define G3D_CLK_SRC			(GCLK_SRC_PLLC_OUT0 << GCLK_SRC_SHIFT)
+#define G3D_CLK_IDLE_DIV		(0 << GCLK_IDLE_DIV_SHIFT)
+#define G3D_CLK_DIV			(0xa << GCLK_DIV_SHIFT)
+
+#define G2D_CLK_REG			0x15c
+#define G2D_CLK_SRC			(GCLK_SRC_PLLC_OUT0 << GCLK_SRC_SHIFT)
+#define G2D_CLK_IDLE_DIV		(0 << GCLK_IDLE_DIV_SHIFT)
+#define G2D_CLK_DIV			(0xa << GCLK_DIV_SHIFT)
+
+#define VI_CLK_REG			0x148
+#define VI_CLK_SRC			(GCLK_SRC_PLLC_OUT0 << GCLK_SRC_SHIFT)
+#define VI_CLK_DIV			(0xa << GCLK_DIV_SHIFT)
+
+#define EPP_CLK_REG			0x16c
+#define EPP_CLK_SRC			(GCLK_SRC_PLLC_OUT0 << GCLK_SRC_SHIFT)
+#define EPP_CLK_DIV			(0xa << GCLK_DIV_SHIFT)
+
+#define MPE_CLK_REG			0x170
+#define MPE_CLK_SRC			(GCLK_SRC_PLLC_OUT0 << GCLK_SRC_SHIFT)
+#define MPE_CLK_DIV			(0xa << GCLK_DIV_SHIFT)
+
+static void __init clk_setbit(u32 reg, u32 bit)
+{
+	u32 val = clk_readl(reg);
+
+	if ((val & bit) == bit)
+		return;
+	val |= bit;
+	clk_writel(val, reg);
+	udelay(2);
+}
+
+static void __init clk_clrbit(u32 reg, u32 bit)
+{
+	u32 val = clk_readl(reg);
+
+	if ((val & bit) == 0)
+		return;
+	val &= ~bit;
+	clk_writel(val, reg);
+	udelay(2);
+}
+
+static void __init clk_setbits(u32 reg, u32 bits, u32 mask)
+{
+	u32 val = clk_readl(reg);
+
+	if ((val & mask) == bits)
+		return;
+	val &= ~mask;
+	val |= bits;
+	clk_writel(val, reg);
+	udelay(2);
+}
+
+static int __init tegra_soc_preinit_clocks(void)
+{
+	/* vi: */
+	clk_setbit(RST_DEVICES_L, CLK_RSTENB_L_VI_BIT);
+	clk_setbit(CLK_OUT_ENB_L, CLK_RSTENB_L_VI_BIT);
+	clk_setbits(VI_CLK_REG, VI_CLK_SRC, GCLK_SRC_MASK);
+	clk_setbits(VI_CLK_REG, VI_CLK_DIV, GCLK_DIV_MASK);
+	clk_clrbit(RST_DEVICES_L, CLK_RSTENB_L_VI_BIT);
+
+	/* 3d: */
+	clk_setbit(RST_DEVICES_L, CLK_RSTENB_L_3D_BIT);
+	clk_setbit(CLK_OUT_ENB_L, CLK_RSTENB_L_3D_BIT);
+	clk_setbits(G3D_CLK_REG, G3D_CLK_SRC, GCLK_SRC_MASK);
+	clk_setbits(G3D_CLK_REG, G3D_CLK_IDLE_DIV, GCLK_IDLE_DIV_MASK);
+	clk_setbits(G3D_CLK_REG, G3D_CLK_DIV, GCLK_DIV_MASK);
+	clk_clrbit(RST_DEVICES_L, CLK_RSTENB_L_3D_BIT);
+
+	/* 2d: */
+	clk_setbit(RST_DEVICES_L, CLK_RSTENB_L_2D_BIT);
+	clk_setbit(CLK_OUT_ENB_L, CLK_RSTENB_L_2D_BIT);
+	clk_setbits(G2D_CLK_REG, G2D_CLK_SRC, GCLK_SRC_MASK);
+	clk_setbits(G2D_CLK_REG, G2D_CLK_IDLE_DIV, GCLK_IDLE_DIV_MASK);
+	clk_setbits(G2D_CLK_REG, G2D_CLK_DIV, GCLK_DIV_MASK);
+	clk_clrbit(RST_DEVICES_L, CLK_RSTENB_L_2D_BIT);
+
+	/* epp: */
+	clk_setbit(RST_DEVICES_L, CLK_RSTENB_L_EPP_BIT);
+	clk_setbit(CLK_OUT_ENB_L, CLK_RSTENB_L_EPP_BIT);
+	clk_setbits(EPP_CLK_REG, EPP_CLK_SRC, GCLK_SRC_MASK);
+	clk_setbits(EPP_CLK_REG, EPP_CLK_DIV, GCLK_DIV_MASK);
+	clk_clrbit(RST_DEVICES_L, CLK_RSTENB_L_EPP_BIT);
+
+	/* mpe: */
+	clk_setbit(RST_DEVICES_H, CLK_RSTENB_H_MPE_BIT);
+	clk_setbit(CLK_OUT_ENB_H, CLK_RSTENB_H_MPE_BIT);
+	clk_setbits(MPE_CLK_REG, MPE_CLK_SRC, GCLK_SRC_MASK);
+	clk_setbits(MPE_CLK_REG, MPE_CLK_DIV, GCLK_DIV_MASK);
+	clk_clrbit(RST_DEVICES_H, CLK_RSTENB_H_MPE_BIT);
+
+	/*
+	 * Make sure host1x clock configuration has:
+	 *	HOST1X_CLK_SRC    : PLLP_OUT0.
+	 *	HOST1X_CLK_DIVISOR: >2 to start from safe enough frequency.
+	 */
+	clk_setbit(RST_DEVICES_L, CLK_RSTENB_L_HOST1X_BIT);
+	clk_setbit(CLK_OUT_ENB_L, CLK_RSTENB_L_HOST1X_BIT);
+	clk_setbits(HOST1X_CLK_REG, HOST1X_CLK_DIV, GCLK_DIV_MASK);
+	clk_setbits(HOST1X_CLK_REG, HOST1X_CLK_IDLE_DIV, GCLK_IDLE_DIV_MASK);
+	clk_setbits(HOST1X_CLK_REG, HOST1X_CLK_SRC, GCLK_SRC_MASK);
+	clk_clrbit(RST_DEVICES_L, CLK_RSTENB_L_HOST1X_BIT);
+
+	/* DISP1_CLK_SRC: DCLK_SRC_PLLP_OUT0 */
+	clk_setbit(RST_DEVICES_L, CLK_RSTENB_L_DISP1_BIT);
+	clk_setbit(CLK_OUT_ENB_L, CLK_RSTENB_L_DISP1_BIT);
+	clk_setbits(DISP1_CLK_REG, DISP1_CLK_SRC, GCLK_SRC_MASK);
+	clk_clrbit(RST_DEVICES_L, CLK_RSTENB_L_DISP1_BIT);
+
+	return 0;
+}
+#endif /* CONFIG_TEGRA_PREINIT_CLOCKS */
+
 void __init tegra_soc_init_clocks(void)
 {
 	int i;
 	struct clk *c;
+
+#ifdef CONFIG_TEGRA_PREINIT_CLOCKS
+	tegra_soc_preinit_clocks();
+#endif /* CONFIG_TEGRA_PREINIT_CLOCKS */
 
 	for (i = 0; i < ARRAY_SIZE(tegra_ptr_clks); i++)
 		tegra2_init_one_clock(tegra_ptr_clks[i]);
