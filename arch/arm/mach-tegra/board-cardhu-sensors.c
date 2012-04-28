@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-cardhu-sensors.c
  *
- * Copyright (c) 2010-2011, NVIDIA CORPORATION, All rights reserved.
+ * Copyright (c) 2010-2012, NVIDIA CORPORATION, All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -40,6 +40,7 @@
 #include <mach/fb.h>
 #include <mach/gpio.h>
 #include <media/ov5650.h>
+#include <media/ov5640.h>
 #include <media/ov14810.h>
 #include <media/ov2710.h>
 #include <media/tps61050.h>
@@ -464,6 +465,86 @@ struct ov2710_platform_data cardhu_ov2710_data = {
 	.power_off = cardhu_ov2710_power_off,
 };
 
+static int cardhu_ov5640_power_on(void)
+{
+	/* CSI-B and front sensor are muxed on cardhu */
+	gpio_direction_output(CAMERA_CSI_MUX_SEL_GPIO, 1);
+
+	/* Boards E1198 and E1291 are of Cardhu personality
+	 * and donot have TCA6416 exp for camera */
+	if ((board_info.board_id == BOARD_E1198) ||
+		(board_info.board_id == BOARD_E1291)) {
+
+		gpio_direction_output(CAM1_POWER_DWN_GPIO, 0);
+		gpio_direction_output(CAM2_POWER_DWN_GPIO, 0);
+		gpio_direction_output(CAM3_POWER_DWN_GPIO, 0);
+		mdelay(10);
+
+		if (cardhu_vdd_cam3 == NULL) {
+			cardhu_vdd_cam3 = regulator_get(NULL, "vdd_cam3");
+			if (WARN_ON(IS_ERR(cardhu_vdd_cam3))) {
+				pr_err("%s: couldn't get regulator vdd_cam3: %ld\n",
+					__func__, PTR_ERR(cardhu_vdd_cam3));
+				goto reg_alloc_fail;
+			}
+		}
+		regulator_enable(cardhu_vdd_cam3);
+	}
+
+	/* Enable VDD_1V8_Cam3 */
+	if (cardhu_1v8_cam3 == NULL) {
+		cardhu_1v8_cam3 = regulator_get(NULL, "vdd_1v8_cam3");
+		if (WARN_ON(IS_ERR(cardhu_1v8_cam3))) {
+			pr_err("%s: couldn't get regulator vdd_1v8_cam3: %ld\n",
+				__func__, PTR_ERR(cardhu_1v8_cam3));
+			goto reg_alloc_fail;
+		}
+	}
+	regulator_enable(cardhu_1v8_cam3);
+	mdelay(5);
+
+	return 0;
+
+reg_alloc_fail:
+	if (cardhu_1v8_cam3) {
+		regulator_put(cardhu_1v8_cam3);
+		cardhu_1v8_cam3 = NULL;
+	}
+	if (cardhu_vdd_cam3) {
+		regulator_put(cardhu_vdd_cam3);
+		cardhu_vdd_cam3 = NULL;
+	}
+
+	return -ENODEV;
+}
+
+static int cardhu_ov5640_power_off(void)
+{
+	/* CSI-B and front sensor are muxed on cardhu */
+	gpio_direction_output(CAMERA_CSI_MUX_SEL_GPIO, 1);
+
+	/* Boards E1198 and E1291 are of Cardhu personality
+	 * and donot have TCA6416 exp for camera */
+	if ((board_info.board_id == BOARD_E1198) ||
+		(board_info.board_id == BOARD_E1291)) {
+		gpio_direction_output(CAM1_POWER_DWN_GPIO, 1);
+		gpio_direction_output(CAM2_POWER_DWN_GPIO, 1);
+		gpio_direction_output(CAM3_POWER_DWN_GPIO, 1);
+	}
+
+	if (cardhu_1v8_cam3)
+		regulator_disable(cardhu_1v8_cam3);
+	if (cardhu_vdd_cam3)
+		regulator_disable(cardhu_vdd_cam3);
+
+	return 0;
+}
+
+struct ov5640_platform_data cardhu_ov5640_data = {
+	.power_on = cardhu_ov5640_power_on,
+	.power_off = cardhu_ov5640_power_off,
+};
+
 static const struct i2c_board_info cardhu_i2c3_board_info[] = {
 	{
 		I2C_BOARD_INFO("pca9546", 0x70),
@@ -586,6 +667,10 @@ static struct i2c_board_info cardhu_i2c8_board_info[] = {
 	{
 		I2C_BOARD_INFO("ov2710", 0x36),
 		.platform_data = &cardhu_ov2710_data,
+	},
+	{
+		I2C_BOARD_INFO("ov5640", 0x3C),
+		.platform_data = &cardhu_ov5640_data,
 	},
 };
 
