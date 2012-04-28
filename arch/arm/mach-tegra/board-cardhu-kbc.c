@@ -196,8 +196,8 @@ static struct gpio_keys_button cardhu_int_keys[] = {
 };
 
 static struct gpio_keys_button cardhu_pm298_int_keys[] = {
-	[0] = GPIO_IKEY(KEY_POWER, MAX77663_IRQ_BASE + MAX77663_IRQ_ONOFF_EN0_FALLING, 1, 100),
-	[1] = GPIO_IKEY(KEY_POWER, MAX77663_IRQ_BASE + MAX77663_IRQ_ONOFF_EN0_1SEC, 1, 3000),
+	[0] = GPIO_IKEY(KEY_POWER, MAX77663_IRQ_BASE + MAX77663_IRQ_ONOFF_EN0_FALLING, 0, 100),
+	[1] = GPIO_IKEY(KEY_POWER, MAX77663_IRQ_BASE + MAX77663_IRQ_ONOFF_EN0_1SEC, 0, 3000),
 };
 
 static struct gpio_keys_button cardhu_pm299_int_keys[] = {
