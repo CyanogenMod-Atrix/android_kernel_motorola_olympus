@@ -469,6 +469,7 @@ static void __init kai_pinmux_audio_init(void)
 static struct gpio_init_pin_info init_gpio_mode_kai_common[] = {
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PDD7, false, 0),
 	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PCC6, false, 0),
+	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PCC7, false, 1),
 };
 
 static void __init kai_gpio_init_configure(void)
