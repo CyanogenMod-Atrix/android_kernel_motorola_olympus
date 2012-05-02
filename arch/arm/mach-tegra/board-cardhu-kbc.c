@@ -174,7 +174,7 @@ static struct gpio_keys_button cardhu_keys_e1291_a04[] = {
 	[3] = GPIO_KEY(KEY_SEARCH, PQ3, 0),
 	[4] = GPIO_KEY(KEY_BACK, PQ0, 0),
 	[5] = GPIO_KEY(KEY_MENU, PQ1, 0),
-	[6] = GPIO_IKEY(KEY_POWER, TPS6591X_IRQ_BASE + TPS6591X_INT_PWRON, 1, 100),
+	[6] = GPIO_KEY(KEY_POWER, PV0, 1),
 };
 
 static struct gpio_keys_platform_data cardhu_keys_e1291_pdata = {
