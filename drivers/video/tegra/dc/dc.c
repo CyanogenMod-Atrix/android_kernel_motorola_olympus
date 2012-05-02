@@ -64,20 +64,6 @@
 #endif
 
 static int no_vsync;
-static struct fb_videomode tegra_dc_hdmi_fallback_mode = {
-	.refresh = 60,
-	.xres = 640,
-	.yres = 480,
-	.pixclock = KHZ2PICOS(25200),
-	.hsync_len = 96,	/* h_sync_width */
-	.vsync_len = 2,		/* v_sync_width */
-	.left_margin = 48,	/* h_back_porch */
-	.upper_margin = 33,	/* v_back_porch */
-	.right_margin = 16,	/* h_front_porch */
-	.lower_margin = 10,	/* v_front_porch */
-	.vmode = 0,
-	.sync = 0,
-};
 
 static void _tegra_dc_controller_disable(struct tegra_dc *dc);
 
@@ -2636,19 +2622,10 @@ static bool _tegra_dc_controller_reset_enable(struct tegra_dc *dc)
 }
 #endif
 
-static int _tegra_dc_set_default_videomode(struct tegra_dc *dc)
-{
-	return tegra_dc_set_fb_mode(dc, &tegra_dc_hdmi_fallback_mode, 0);
-}
-
 static bool _tegra_dc_enable(struct tegra_dc *dc)
 {
-	if (dc->mode.pclk == 0) {
-		/*  DC enable called but no videomode is loaded.
-		     Set fallback mode to enable driver with.*/
-		if (_tegra_dc_set_default_videomode(dc))
-			return false;
-	}
+	if (dc->mode.pclk == 0)
+		return false;
 
 	if (!dc->out)
 		return false;
