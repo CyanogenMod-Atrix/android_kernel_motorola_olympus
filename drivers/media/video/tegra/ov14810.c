@@ -1387,4 +1387,4 @@ static void __exit ov14810_exit(void)
 
 module_init(ov14810_init);
 module_exit(ov14810_exit);
-
+MODULE_LICENSE("GPL v2");

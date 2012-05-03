@@ -228,4 +228,4 @@ static void __exit ad5820_exit(void)
 
 module_init(ad5820_init);
 module_exit(ad5820_exit);
-
+MODULE_LICENSE("GPL v2");
