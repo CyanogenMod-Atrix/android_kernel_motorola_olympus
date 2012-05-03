@@ -77,7 +77,7 @@ static struct snd_soc_dai_driver dit_stub_dai = {
 
 static int spdif_dit_probe(struct platform_device *pdev)
 {
-	if(machine_is_kai())
+	if(machine_is_kai() || machine_is_tegra_enterprise())
 		return snd_soc_register_codec(&pdev->dev,
 			&soc_codec_spdif_dit1, &dit_stub_dai, 1);
 	else
