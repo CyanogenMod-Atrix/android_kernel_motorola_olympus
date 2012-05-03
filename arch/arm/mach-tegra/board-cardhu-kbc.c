@@ -200,7 +200,7 @@ static struct gpio_keys_button cardhu_pm298_int_keys[] = {
 };
 
 static struct gpio_keys_button cardhu_pm299_int_keys[] = {
-	[0] = GPIO_IKEY(KEY_POWER, RICOH583_IRQ_BASE + RICOH583_IRQ_ONKEY, 1, 100),
+	[0] = GPIO_KEY(KEY_POWER, PV0, 1),
 };
 
 static struct gpio_keys_platform_data cardhu_int_keys_pdata = {
