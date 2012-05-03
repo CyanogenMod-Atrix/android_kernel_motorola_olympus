@@ -8,3 +8,14 @@ config TEGRA_NVAVP
 	  /dev/tegra_avpchannel.
 
 	  If unsure, say N
+
+config TEGRA_NVAVP_AUDIO
+	bool "Enable Audio Channel support for Tegra NVAVP driver"
+	depends on TEGRA_NVAVP
+	default n
+	help
+	  Enables support for the push-buffer mechanism based driver for the Tegra
+	  audio multimedia framework. Exports the Tegra nvavp interface on device node
+	  /dev/tegra_audio_avpchannel.
+
+	  If unsure, say N
