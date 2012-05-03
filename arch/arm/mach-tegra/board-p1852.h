@@ -90,16 +90,27 @@
 
 #define AC_PRESENT_INT		(TPS6591X_INT_GPIO4 + TPS6591X_IRQ_BASE)
 
+/* List of P1852 skus - replicated from core/include/nvmachtypes.h */
+#define TEGRA_P1852_SKU2_A00  0x020000UL
+#define TEGRA_P1852_SKU2_B00  0x020200UL
+#define TEGRA_P1852_SKU5_A00  0x050000UL
+#define TEGRA_P1852_SKU5_B00  0x050200UL
+#define TEGRA_P1852_SKU8_A00  0x080000UL
+#define TEGRA_P1852_SKU8_B00  0x080200UL
+
 int p1852_sdhci_init(void);
 int p1852_pinmux_init(void);
 int p1852_panel_init(void);
 int p1852_gpio_init(void);
 int p1852_pins_state_init(void);
 
+int p1852_get_skuid(void);
+
 #ifdef CONFIG_TOUCHSCREEN_ATMEL_MXT
 #define TOUCH_GPIO_IRQ_ATMEL_T9 TEGRA_GPIO_PEE1
 #define TOUCH_GPIO_RST_ATMEL_T9 TEGRA_GPIO_PW2
 #define TOUCH_BUS_ATMEL_T9  0
 #endif
+
 
 #endif

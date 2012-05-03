@@ -1698,6 +1698,43 @@ struct nvhost_device tegra_disp1_device = {
 	.num_resources	= ARRAY_SIZE(tegra_disp1_resources),
 };
 
+static struct resource tegra_disp2_resources[] = {
+	{
+		.name	= "irq",
+		.start	= INT_DISPLAY_B_GENERAL,
+		.end	= INT_DISPLAY_B_GENERAL,
+		.flags	= IORESOURCE_IRQ,
+	},
+	{
+		.name	= "regs",
+		.start	= TEGRA_DISPLAY2_BASE,
+		.end	= TEGRA_DISPLAY2_BASE + TEGRA_DISPLAY2_SIZE - 1,
+		.flags	= IORESOURCE_MEM,
+	},
+	{
+		.name	= "fbmem",
+		.flags	= IORESOURCE_MEM,
+		.start	= 0,
+		.end	= 0,
+	},
+	{
+		.name	= "hdmi_regs",
+		.start	= TEGRA_HDMI_BASE,
+		.end	= TEGRA_HDMI_BASE + TEGRA_HDMI_SIZE - 1,
+		.flags	= IORESOURCE_MEM,
+	},
+};
+
+struct nvhost_device tegra_disp2_device = {
+	.name		= "tegradc",
+	.id		= 1,
+	.resource	= tegra_disp2_resources,
+	.num_resources	= ARRAY_SIZE(tegra_disp2_resources),
+	.dev = {
+		.platform_data = 0,
+	},
+};
+
 struct platform_device tegra_nvmap_device = {
 	.name	= "tegra-nvmap",
 	.id	= -1,
