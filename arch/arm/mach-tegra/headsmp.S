@@ -83,7 +83,9 @@ ENTRY(tegra_resume)
 	ldr	r1, [r0]
 	orr	r1, r1, #1
 #if defined(CONFIG_HAVE_ARM_SCU)
-	orr	r1, r1, #(1 << 3)	@ Enabled SCU speculative line fill.
+	orr	r1, r1, #(1 << 3)	@ Enable SCU speculative line fill.
+	orr	r1, r1, #(1 << 5)	@ Enable IC standby.
+	orr	r1, r1, #(1 << 6)	@ Enable SCU standby.
 #endif
 	str	r1, [r0]
 
