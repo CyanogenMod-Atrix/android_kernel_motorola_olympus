@@ -85,7 +85,7 @@ static void nct1008_probe_callback(struct nct1008_data *data)
 		return;
 	}
 
-	thermal_device->name = "nct1008";
+	thermal_device->name = "nct72";
 	thermal_device->data = data;
 	thermal_device->offset = TDIODE_OFFSET;
 	thermal_device->get_temp = nct_get_temp;
@@ -110,7 +110,7 @@ static struct nct1008_platform_data kai_nct1008_pdata = {
 
 static struct i2c_board_info kai_i2c4_nct1008_board_info[] = {
 	{
-		I2C_BOARD_INFO("nct1008", 0x4C),
+		I2C_BOARD_INFO("nct72", 0x4C),
 		.platform_data = &kai_nct1008_pdata,
 		.irq = -1,
 	}
