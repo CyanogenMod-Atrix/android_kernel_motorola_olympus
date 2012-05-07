@@ -141,6 +141,7 @@ static __initdata struct tegra_clk_init_table p1852_clk_init_table[] = {
 	{ "i2c4",		"pll_p",	3200000,	true},
 	{ "i2c5",		"pll_p",	3200000,	true},
 	{ "sdmmc2",		"pll_p",	104000000,	false},
+	{"wake.sclk",		NULL,		334000000,	true },
 	{ NULL,			NULL,		0,		0},
 };
 
