@@ -2547,13 +2547,13 @@ static const struct snd_kcontrol_new hpl_output_mixer_controls[] = {
 	SOC_DAPM_SINGLE("MAL Switch", HP_AMP_CNTL_R1, 7, 1, 0),
 	SOC_DAPM_SINGLE("LDAC Switch", HP_AMP_CNTL_R1, 5, 1, 0),
 	SOC_DAPM_SINGLE_TLV("LOL-B1 Volume", HP_AMP_CNTL_R2, 0,
-							0x7f, 1, lo_hp_tlv),
+							0x7f, 0, lo_hp_tlv),
 };
 
 /* Right HPR Mixer */
 static const struct snd_kcontrol_new hpr_output_mixer_controls[] = {
 	SOC_DAPM_SINGLE_TLV("LOR-B1 Volume", HP_AMP_CNTL_R3, 0,
-							0x7f, 1, lo_hp_tlv),
+							0x7f, 0, lo_hp_tlv),
 	SOC_DAPM_SINGLE("LDAC Switch", HP_AMP_CNTL_R1,	 2, 1, 0),
 	SOC_DAPM_SINGLE("RDAC Switch", HP_AMP_CNTL_R1, 4, 1, 0),
 	SOC_DAPM_SINGLE("MAR Switch", HP_AMP_CNTL_R1, 6, 1, 0),
