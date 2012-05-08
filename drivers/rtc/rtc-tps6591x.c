@@ -3,7 +3,7 @@
  *
  * RTC driver for TI TPS6591x
  *
- * Copyright (c) 2011, NVIDIA Corporation.
+ * Copyright (c) 2011-2012, NVIDIA Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -276,6 +276,42 @@ static int tps6591x_rtc_set_time(struct device *dev, struct rtc_time *tm)
 	return 0;
 }
 
+static int tps6591x_rtc_alarm_irq_enable(struct device *dev,
+					 unsigned int enable)
+{
+	struct tps6591x_rtc *rtc = dev_get_drvdata(dev);
+	u8 reg;
+	int err;
+
+	if (rtc->irq == -1)
+		return -EIO;
+
+	if (enable) {
+		if (rtc->irq_en == true)
+			return 0;
+		err = tps6591x_read_regs(dev, RTC_INT, 1, &reg);
+		if (err)
+			return err;
+		reg |= 0x8;
+		err = tps6591x_write_regs(dev, RTC_INT, 1, &reg);
+		if (err)
+			return err;
+		rtc->irq_en = true;
+	} else {
+		if (rtc->irq_en == false)
+			return 0;
+		err = tps6591x_read_regs(dev, RTC_INT, 1, &reg);
+		if (err)
+			return err;
+		reg &= ~0x8;
+		err = tps6591x_write_regs(dev, RTC_INT, 1, &reg);
+		if (err)
+			return err;
+		rtc->irq_en = false;
+	}
+	return 0;
+}
+
 static int tps6591x_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *alrm)
 {
 	struct tps6591x_rtc *rtc = dev_get_drvdata(dev);
@@ -298,10 +334,10 @@ static int tps6591x_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *alrm)
 		return -EINVAL;
 	}
 
-	if (alrm->enabled && !rtc->irq_en) {
-		rtc->irq_en = true;
-	} else if (!alrm->enabled && rtc->irq_en) {
-		rtc->irq_en = false;
+	err = tps6591x_rtc_alarm_irq_enable(dev, alrm->enabled);
+	if(err) {
+		dev_err(dev->parent, "\n can't set alarm irq\n");
+		return err;
 	}
 
 	buff[0] = alrm->time.tm_sec;
@@ -338,42 +374,6 @@ static int tps6591x_rtc_read_alarm(struct device *dev, struct rtc_wkalrm *alrm)
 	dev_info(dev->parent, "\n getting alarm time::\n");
 	print_time(dev, &alrm->time);
 
-	return 0;
-}
-
-static int tps6591x_rtc_alarm_irq_enable(struct device *dev,
-					 unsigned int enable)
-{
-	struct tps6591x_rtc *rtc = dev_get_drvdata(dev);
-	u8 reg;
-	int err;
-
-	if (rtc->irq == -1)
-		return -EIO;
-
-	if (enable) {
-		if (rtc->irq_en == true)
-			return 0;
-		err = tps6591x_read_regs(dev, RTC_INT, 1, &reg);
-		if (err)
-			return err;
-		reg |= 0x8;
-		err = tps6591x_write_regs(dev, RTC_INT, 1, &reg);
-		if (err)
-			return err;
-		rtc->irq_en = true;
-	} else {
-		if (rtc->irq_en == false)
-			return 0;
-		err = tps6591x_read_regs(dev, RTC_INT, 1, &reg);
-		if (err)
-			return err;
-		reg &= ~0x8;
-		err = tps6591x_write_regs(dev, RTC_INT, 1, &reg);
-		if (err)
-			return err;
-		rtc->irq_en = false;
-	}
 	return 0;
 }
 
