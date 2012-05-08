@@ -36,7 +36,7 @@
 /* Enable register caching on write */
 #define EN_REG_CACHE 1
 
-#define MULTIBYTE_CONFIG_SUPPORT
+//#define MULTIBYTE_CONFIG_SUPPORT
 
 /*Setting all codec reg/write locally*/
 /* This definition is added as the snd_ direct call are
@@ -45,12 +45,12 @@ page, so fix that before commenting this line*/
 #define LOCAL_REG_ACCESS 1
 
 /* Macro to enable the inclusion of tiload kernel driver */
-#define AIC3262_TiLoad
+//#define AIC3262_TiLoad
 
 
 /* Macro enables or disables support for miniDSP in the driver */
 /* Enable the AIC3262_TiLoad macro first before enabling these macros */
-#define CONFIG_MINI_DSP
+//#define CONFIG_MINI_DSP
 /*#undef CONFIG_MINI_DSP*/
 
 /* Enable or disable controls to have Input routing*/
