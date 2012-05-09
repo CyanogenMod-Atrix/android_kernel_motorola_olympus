@@ -138,7 +138,28 @@ TRACE_EVENT(nvhost_channel_write_cmdbuf,
 	  __entry->words, __entry->offset)
 );
 
-TRACE_EVENT(nvhost_channel_write_cmdbuf_data,
+TRACE_EVENT(nvhost_cdma_push,
+	TP_PROTO(const char *name, u32 op1, u32 op2),
+
+	TP_ARGS(name, op1, op2),
+
+	TP_STRUCT__entry(
+		__field(const char *, name)
+		__field(u32, op1)
+		__field(u32, op2)
+	),
+
+	TP_fast_assign(
+		__entry->name = name;
+		__entry->op1 = op1;
+		__entry->op2 = op2;
+	),
+
+	TP_printk("name=%s, op1=%08x, op2=%08x",
+		__entry->name, __entry->op1, __entry->op2)
+);
+
+TRACE_EVENT(nvhost_cdma_push_gather,
 	TP_PROTO(const char *name, u32 mem_id,
 			u32 words, u32 offset, void *cmdbuf),
 
