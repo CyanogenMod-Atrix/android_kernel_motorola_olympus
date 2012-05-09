@@ -217,6 +217,8 @@ static void tegra_flash_dma(struct map_info *map,
 				bytes_remaining += (word32_count << 2);
 				break;
 			}
+			dma_sync_single_for_cpu(c->dev, c->dma_phys_buffer,
+				(current_transfer << 2), DMA_FROM_DEVICE);
 			memcpy((char *)(copy_to), (char *)(c->dma_virt_buffer),
 				(current_transfer << 2));
 
