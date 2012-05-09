@@ -878,6 +878,8 @@ int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
 
 	local_fiq_disable();
 
+	trace_cpu_suspend(CPU_SUSPEND_START);
+
 	cpu_pm_enter();
 	cpu_complex_pm_enter();
 
@@ -940,6 +942,8 @@ int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
 
 	if (pdata && pdata->board_resume)
 		pdata->board_resume(mode, TEGRA_RESUME_AFTER_CPU);
+
+	trace_cpu_suspend(CPU_SUSPEND_DONE);
 
 	local_fiq_enable();
 
