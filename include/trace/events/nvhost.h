@@ -453,6 +453,48 @@ TRACE_EVENT(nvhost_wait_cdma,
 	TP_printk("name=%s, event=%d", __entry->name, __entry->eventid)
 );
 
+TRACE_EVENT(nvhost_syncpt_update_min,
+	TP_PROTO(u32 id, u32 val),
+
+	TP_ARGS(id, val),
+
+	TP_STRUCT__entry(
+		__field(u32, id)
+		__field(u32, val)
+	),
+
+	TP_fast_assign(
+		__entry->id = id;
+		__entry->val = val;
+	),
+
+	TP_printk("id=%d, val=%d", __entry->id, __entry->val)
+);
+
+TRACE_EVENT(nvhost_syncpt_wait_check,
+	TP_PROTO(u32 mem_id, u32 offset, u32 syncpt_id, u32 val),
+
+	TP_ARGS(mem_id, offset, syncpt_id, val),
+
+	TP_STRUCT__entry(
+		__field(u32, mem_id)
+		__field(u32, offset)
+		__field(u32, syncpt_id)
+		__field(u32, val)
+	),
+
+	TP_fast_assign(
+		__entry->mem_id = mem_id;
+		__entry->offset = offset;
+		__entry->syncpt_id = syncpt_id;
+		__entry->val = val;
+	),
+
+	TP_printk("mem_id=%08x, offset=%05x, id=%d, val=%d",
+		__entry->mem_id, __entry->offset,
+		__entry->syncpt_id, __entry->val)
+);
+
 #endif /*  _TRACE_NVHOST_H */
 
 /* This part must be outside protection */
