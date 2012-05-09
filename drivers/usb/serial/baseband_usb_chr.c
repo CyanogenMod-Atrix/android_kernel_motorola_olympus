@@ -3,7 +3,7 @@
  *
  * USB character driver to communicate with baseband modems.
  *
- * Copyright (c) 2012, NVIDIA Corporation.
+ * Copyright (c) 2012, NVIDIA Corporation.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -40,16 +40,32 @@
 
 MODULE_LICENSE("GPL");
 
-unsigned long baseband_usb_chr_vid = 0x058b;
-unsigned long baseband_usb_chr_pid = 0x0041;
-unsigned long baseband_usb_chr_intf = 0x01;
+/* To add new usb devices, update
+ * (1) baseband_usb_driver_id_table
+ *     - usb vendor id / product id
+ * (2) baseband_usb_driver_intf_table
+ *     - usb interface number
+ */
 
-module_param(baseband_usb_chr_vid, ulong, 0644);
-MODULE_PARM_DESC(baseband_usb_chr_vid, "baseband (usb chr) - USB VID");
-module_param(baseband_usb_chr_pid, ulong, 0644);
-MODULE_PARM_DESC(baseband_usb_chr_pid, "baseband (usb chr) - USB PID");
-module_param(baseband_usb_chr_intf, ulong, 0644);
-MODULE_PARM_DESC(baseband_usb_chr_intf, "baseband (usb chr) - USB interface");
+static struct usb_device_id baseband_usb_driver_id_table[] = {
+	/* XMM modem #1 BOOT ROM */
+	{ USB_DEVICE(0x058b, 0x0041), },
+	/* XMM modem #2 BOOT ROM */
+	{ USB_DEVICE(0x8087, 0x0716), },
+	/* empty entry required to terminate list */
+	{ },
+};
+
+static unsigned int baseband_usb_driver_intf_table[] = {
+	/* XMM modem #1 BOOT ROM */
+	0x01,
+	/* XMM modem #2 BOOT ROM */
+	0x00,
+	/* empty entry required to terminate list */
+	0x00,
+};
+
+MODULE_DEVICE_TABLE(usb, baseband_usb_driver_id_table);
 
 static struct baseband_usb *baseband_usb_chr;
 static struct usb_interface *probe_usb_intf;
@@ -400,7 +416,7 @@ static ssize_t baseband_ipc_file_write(struct baseband_ipc *ipc,
 
 	/* do not accept write if previous tx not finished */
 	if (peek_ipc_tx_bufsiz(ipc, USB_CHR_TX_BUFSIZ) != 0) {
-		pr_info("%s: not accepting write of %u bytes"
+		pr_debug("%s: not accepting write of %u bytes"
 			" - previous tx not finished\n",
 			__func__, count);
 		return 0;
@@ -792,6 +808,8 @@ static void find_usb_pipe(struct baseband_usb *usb)
 static int baseband_usb_driver_probe(struct usb_interface *intf,
 	const struct usb_device_id *id)
 {
+	int i;
+
 	pr_debug("%s(%d) { intf %p id %p\n", __func__, __LINE__, intf, id);
 
 	pr_debug("intf->cur_altsetting->desc.bInterfaceNumber %02x\n",
@@ -810,10 +828,14 @@ static int baseband_usb_driver_probe(struct usb_interface *intf,
 		intf->cur_altsetting->desc.iInterface);
 
 	/* usb interface mismatch */
-	if (baseband_usb_chr_intf !=
-		intf->cur_altsetting->desc.bInterfaceNumber) {
-		pr_debug("%s(%d) } -ENODEV\n", __func__, __LINE__);
-		return -ENODEV;
+	for (i = 0; baseband_usb_driver_id_table[i].match_flags; i++) {
+		if (id == &baseband_usb_driver_id_table[i]) {
+			if (baseband_usb_driver_intf_table[i] !=
+				intf->cur_altsetting->desc.bInterfaceNumber) {
+				pr_debug("%s(%d) } -ENODEV\n", __func__, __LINE__);
+				return -ENODEV;
+			}
+		}
 	}
 
 	/* usb interface match */
@@ -849,12 +871,8 @@ static void baseband_usb_driver_disconnect(struct usb_interface *intf)
 	pr_debug("%s(%d) }\n", __func__, __LINE__);
 }
 
-static char baseband_usb_driver_name[32];
-
-static struct usb_device_id baseband_usb_driver_id_table[2];
-
 static struct usb_driver baseband_usb_driver = {
-	.name = baseband_usb_driver_name,
+	.name = "bb_usb_chr",
 	.probe = baseband_usb_driver_probe,
 	.disconnect = baseband_usb_driver_disconnect,
 	.id_table = baseband_usb_driver_id_table,
@@ -970,10 +988,7 @@ static void baseband_usb_close(struct baseband_usb *usb)
 	pr_debug("baseband_usb_close }\n");
 }
 
-static struct baseband_usb *baseband_usb_open(unsigned int vid,
-	unsigned int pid,
-	unsigned int intf,
-	work_func_t work_func,
+static struct baseband_usb *baseband_usb_open(work_func_t work_func,
 	work_func_t rx_work_func,
 	work_func_t tx_work_func)
 {
@@ -1001,13 +1016,6 @@ static struct baseband_usb *baseband_usb_open(unsigned int vid,
 
 	/* open usb driver */
 	probe_usb_intf = (struct usb_interface *) 0;
-	sprintf(baseband_usb_driver_name,
-		"baseband_usb_%x_%x_%x",
-		vid, pid, intf);
-	baseband_usb_driver_id_table[0].match_flags
-		= USB_DEVICE_ID_MATCH_DEVICE;
-	baseband_usb_driver_id_table[0].idVendor = vid;
-	baseband_usb_driver_id_table[0].idProduct = pid;
 	usb->usb.driver = &baseband_usb_driver;
 	err = usb_register(&baseband_usb_driver);
 	if (err < 0) {
@@ -1098,10 +1106,7 @@ static int baseband_usb_chr_open(struct inode *inode, struct file *file)
 	}
 
 	/* open baseband usb */
-	baseband_usb_chr = baseband_usb_open(baseband_usb_chr_vid,
-				baseband_usb_chr_pid,
-				baseband_usb_chr_intf,
-				baseband_usb_chr_work,
+	baseband_usb_chr = baseband_usb_open(baseband_usb_chr_work,
 				baseband_usb_chr_rx_urb_comp_work,
 				(work_func_t) 0);
 	if (!baseband_usb_chr) {
