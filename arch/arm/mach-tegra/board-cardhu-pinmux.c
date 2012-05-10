@@ -495,6 +495,11 @@ static __initdata struct tegra_pingroup_config cardhu_pinmux_e1198[] = {
 	DEFAULT_PINMUX(SPI2_CS2_N,      SPI2,            PULL_UP,    NORMAL,     INPUT),
 };
 
+static __initdata struct tegra_pingroup_config cardhu_pinmux_pm269_e1506[] = {
+	DEFAULT_PINMUX(LCD_M1,          DISPLAYA,        NORMAL,    NORMAL,     OUTPUT),
+	DEFAULT_PINMUX(LCD_DC1,         DISPLAYA,        NORMAL,    NORMAL,     OUTPUT),
+};
+
 static __initdata struct tegra_pingroup_config unused_pins_lowpower[] = {
 	DEFAULT_PINMUX(GMI_WAIT,        NAND,           PULL_UP,    TRISTATE,     OUTPUT),
 	DEFAULT_PINMUX(GMI_ADV_N,       NAND,           NORMAL,     TRISTATE,     OUTPUT),
@@ -619,6 +624,7 @@ static void __init cardhu_gpio_init_configure(void)
 int __init cardhu_pinmux_init(void)
 {
 	struct board_info board_info;
+	struct board_info display_board_info;
 
 	cardhu_gpio_init_configure();
 
@@ -627,6 +633,7 @@ int __init cardhu_pinmux_init(void)
 					ARRAY_SIZE(cardhu_drive_pinmux));
 
 	tegra_get_board_info(&board_info);
+	tegra_get_display_board_info(&display_board_info);
 	switch (board_info.board_id) {
 	case BOARD_E1198:
 		tegra_pinmux_config_table(cardhu_pinmux_e1198,
@@ -663,6 +670,12 @@ int __init cardhu_pinmux_init(void)
 			tegra_pinmux_config_table(cardhu_pinmux_e118x,
 					ARRAY_SIZE(cardhu_pinmux_e118x));
 		}
+
+		if (display_board_info.board_id == BOARD_DISPLAY_E1506) {
+			tegra_pinmux_config_table(cardhu_pinmux_pm269_e1506,
+					ARRAY_SIZE(cardhu_pinmux_pm269_e1506));
+		}
+
 		tegra_pinmux_config_table(unused_pins_lowpower,
 					ARRAY_SIZE(unused_pins_lowpower));
 		tegra_pinmux_config_table(gmi_pins_269,
@@ -720,6 +733,10 @@ struct gpio_init_pin_info vddio_gmi_pins_pm269[] = {
 struct gpio_init_pin_info vddio_gmi_pins_pm269_wo_pm313[] = {
 	PIN_GPIO_LPM("GMI_CS2",   TEGRA_GPIO_PK3, 1, 0),
 	PIN_GPIO_LPM("GMI_AD9",   TEGRA_GPIO_PH1, 0, 0),
+};
+
+struct gpio_init_pin_info vddio_gmi_pins_pm269_e1506[] = {
+	PIN_GPIO_LPM("GMI_CS2",   TEGRA_GPIO_PK3, 1, 0),
 };
 
 static void set_unused_pin_gpio(struct gpio_init_pin_info *lpm_pin_info,
@@ -781,7 +798,10 @@ int __init cardhu_pins_state_init(void)
 			set_unused_pin_gpio(&vddio_gmi_pins_pm269[0],
 				ARRAY_SIZE(vddio_gmi_pins_pm269));
 
-			if (display_board_info.board_id != BOARD_DISPLAY_PM313) {
+			if (display_board_info.board_id == BOARD_DISPLAY_E1506) {
+				set_unused_pin_gpio(&vddio_gmi_pins_pm269_e1506[0],
+						ARRAY_SIZE(vddio_gmi_pins_pm269_e1506));
+			} else if (display_board_info.board_id != BOARD_DISPLAY_PM313) {
 				set_unused_pin_gpio(&vddio_gmi_pins_pm269_wo_pm313[0],
 						ARRAY_SIZE(vddio_gmi_pins_pm269_wo_pm313));
 			}
