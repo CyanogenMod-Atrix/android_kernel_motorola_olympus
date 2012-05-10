@@ -339,7 +339,7 @@ struct smmu_device {
  * must have these read-back to ensure the APB/AHB bus transaction is
  * complete before initiating activity on the PPSB block.
  */
-#define FLUSH_SMMU_REGS(smmu) (void)readl((smmu)->regs + MC_SMMU_CONFIG_0)
+#define FLUSH_SMMU_REGS(smmu) (void)readl((smmu)->regs + MC_SMMU_PTB_DATA_0)
 
 /*
  * Flush all TLB entries and all PTC entries
