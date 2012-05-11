@@ -463,7 +463,7 @@ static struct regulator_consumer_supply fixed_reg_vdd_fuse_en_supply[] = {
 static struct regulator_consumer_supply gpio_reg_sdmmc3_vdd_sel_supply[] = {
 	REGULATOR_SUPPLY("vddio_sdmmc3_2v85_1v8", NULL),
 	REGULATOR_SUPPLY("sdmmc3_compu_pu", NULL),
-	REGULATOR_SUPPLY("vddio_sdmmc3", NULL),
+	REGULATOR_SUPPLY("vddio_sdmmc", "sdhci-tegra.2"),
 	REGULATOR_SUPPLY("vsys_3v7", NULL),
 };
 
