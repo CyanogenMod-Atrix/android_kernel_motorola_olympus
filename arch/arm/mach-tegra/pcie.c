@@ -1099,13 +1099,14 @@ static bool tegra_pcie_check_link(struct tegra_pcie_port *pp, int idx,
 		}
 
 retry:
-		/* Pulse the PEX reset */
-		reg = afi_readl(reset_reg) & ~AFI_PEX_CTRL_RST;
-		afi_writel(reg, reset_reg);
-		reg = afi_readl(reset_reg) | AFI_PEX_CTRL_RST;
-		afi_writel(reg, reset_reg);
+		if (--retries) {
+			/* Pulse the PEX reset */
+			reg = afi_readl(reset_reg) & ~AFI_PEX_CTRL_RST;
+			afi_writel(reg, reset_reg);
+			reg = afi_readl(reset_reg) | AFI_PEX_CTRL_RST;
+			afi_writel(reg, reset_reg);
+		}
 
-		retries--;
 	} while (retries);
 
 	return false;
