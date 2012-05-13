@@ -117,6 +117,15 @@ config REGULATOR_MAX8952
 	  via I2C bus. Maxim 8952 has one voltage output and supports 4 DVS
 	  modes ranging from 0.77V to 1.40V by 0.01V steps.
 
+config REGULATOR_MAX8973
+	tristate "Maxim MAX8973 Power Regulator"
+	depends on I2C
+	select REGMAP_I2C
+	help
+	  This driver supports MAX8973 voltage regulator chip.
+	  The MAX8973 high-efficiency, three-phase, DC-DC step-down switching
+	  regulator delivers up to 9A of output current.
+
 config REGULATOR_MAX8997
 	tristate "Maxim 8997/8966 regulator"
 	depends on MFD_MAX8997
