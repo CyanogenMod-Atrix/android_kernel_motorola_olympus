@@ -970,7 +970,7 @@ wlan_misc_ioctl_custom_ie_list(IN pmlan_adapter pmadapter,
                         goto done;
                     }
                     memset(pmadapter, ie_data, 0,
-                           sizeof(custom_ie) * MAX_MGMT_IE_INDEX);
+                           sizeof(custom_ie) * MAX_MGMT_IE_INDEX_TO_FW);
                     len = 0;
                     for (i = 0; i < pmadapter->max_mgmt_ie_index; i++) {
                         memcpy(pmadapter, (t_u8 *) ie_data + len, &i,
@@ -1042,7 +1042,7 @@ wlan_misc_ioctl_custom_ie_list(IN pmlan_adapter pmadapter,
                         goto done;
                     }
                     memset(pmadapter, ie_data, 0,
-                           sizeof(custom_ie) * MAX_MGMT_IE_INDEX);
+                           sizeof(custom_ie) * MAX_MGMT_IE_INDEX_TO_FW);
                     memcpy(pmadapter, (t_u8 *) ie_data, &pmpriv->mgmt_ie[index],
                            pmpriv->mgmt_ie[index].ie_length +
                            MLAN_CUSTOM_IE_HDR_SIZE);
@@ -1281,41 +1281,6 @@ wlan_delete_station_list(pmlan_private priv)
 }
 
 /**
- *  @brief This function will return the pointer to station entry in station list
- *  		table which in tx_pause state
- *
- *  @param priv    A pointer to mlan_private
- *
- *  @return	   A pointer to structure sta_node
- */
-sta_node *
-wlan_get_tx_pause_station_entry(mlan_private * priv)
-{
-    sta_node *sta_ptr;
-
-    ENTER();
-
-    if (!(sta_ptr = (sta_node *) util_peek_list(priv->adapter->pmoal_handle,
-                                                &priv->sta_list,
-                                                priv->adapter->callbacks.
-                                                moal_spin_lock,
-                                                priv->adapter->callbacks.
-                                                moal_spin_unlock))) {
-        LEAVE();
-        return MNULL;
-    }
-    while (sta_ptr != (sta_node *) & priv->sta_list) {
-        if (sta_ptr->tx_pause) {
-            LEAVE();
-            return sta_ptr;
-        }
-        sta_ptr = sta_ptr->pnext;
-    }
-    LEAVE();
-    return MNULL;
-}
-
-/**
  *  @brief Get extended version information
  *
  *  @param pmadapter    A pointer to mlan_adapter structure
@@ -1493,6 +1458,44 @@ wlan_process_802dot11_mgmt_pkt(IN mlan_private * priv,
         pcb->moal_mfree(pmadapter->pmoal_handle, event_buf);
     LEAVE();
     return MLAN_STATUS_SUCCESS;
+}
+
+/**
+ *  @brief Get OTP user data
+ *
+ *  @param pmadapter    A pointer to mlan_adapter structure
+ *  @param pioctl_req   A pointer to ioctl request buffer
+ *
+ *  @return             MLAN_STATUS_PENDING --success, otherwise fail
+ */
+mlan_status
+wlan_misc_otp_user_data(IN pmlan_adapter pmadapter,
+                        IN pmlan_ioctl_req pioctl_req)
+{
+    pmlan_private pmpriv = pmadapter->priv[pioctl_req->bss_index];
+    mlan_ds_misc_cfg *misc = (mlan_ds_misc_cfg *) pioctl_req->pbuf;
+    mlan_status ret = MLAN_STATUS_FAILURE;
+
+    ENTER();
+
+    if (misc->param.otp_user_data.user_data_length > MAX_OTP_USER_DATA_LEN) {
+        PRINTM(MERROR, "Invalid OTP user data length\n");
+        pioctl_req->status_code = MLAN_ERROR_INVALID_PARAMETER;
+        LEAVE();
+        return ret;
+    }
+
+    ret = wlan_prepare_cmd(pmpriv,
+                           HostCmd_CMD_OTP_READ_USER_DATA,
+                           HostCmd_ACT_GEN_GET,
+                           0,
+                           (t_void *) pioctl_req, &misc->param.otp_user_data);
+
+    if (ret == MLAN_STATUS_SUCCESS)
+        ret = MLAN_STATUS_PENDING;
+
+    LEAVE();
+    return ret;
 }
 
 /**
@@ -1718,26 +1721,26 @@ wlan_rate_ioctl_get_rate_value(IN pmlan_adapter pmadapter,
 
     /* If not connected, set rate to the lowest in each band */
     if (pmpriv->media_connected != MTRUE) {
-        if (pmadapter->config_bands & (BAND_B | BAND_G)) {
+        if (pmpriv->config_bands & (BAND_B | BAND_G)) {
             /* Return the lowest supported rate for BG band */
             rate->param.rate_cfg.rate = SupportedRates_BG[0] & 0x7f;
-        } else if (pmadapter->config_bands & (BAND_A | BAND_B)) {
+        } else if (pmpriv->config_bands & (BAND_A | BAND_B)) {
             /* Return the lowest supported rate for A band */
             rate->param.rate_cfg.rate = SupportedRates_BG[0] & 0x7f;
-        } else if (pmadapter->config_bands & BAND_A) {
+        } else if (pmpriv->config_bands & BAND_A) {
             /* Return the lowest supported rate for A band */
             rate->param.rate_cfg.rate = SupportedRates_A[0] & 0x7f;
-        } else if (pmadapter->config_bands & BAND_G) {
+        } else if (pmpriv->config_bands & BAND_G) {
             /* Return the lowest supported rate for G band */
             rate->param.rate_cfg.rate = SupportedRates_G[0] & 0x7f;
-        } else if (pmadapter->config_bands & BAND_B) {
+        } else if (pmpriv->config_bands & BAND_B) {
             /* Return the lowest supported rate for B band */
             rate->param.rate_cfg.rate = SupportedRates_B[0] & 0x7f;
-        } else if (pmadapter->config_bands & BAND_GN) {
+        } else if (pmpriv->config_bands & BAND_GN) {
             /* Return the lowest supported rate for N band */
             rate->param.rate_cfg.rate = SupportedRates_N[0] & 0x7f;
         } else {
-            PRINTM(MMSG, "Invalid Band 0x%x\n", pmadapter->config_bands);
+            PRINTM(MMSG, "Invalid Band 0x%x\n", pmpriv->config_bands);
         }
 
     } else {
@@ -1793,7 +1796,7 @@ wlan_rate_ioctl_set_rate_value(IN pmlan_adapter pmadapter,
         memset(pmadapter, rates, 0, sizeof(rates));
         wlan_get_active_data_rates(pmpriv, pmpriv->bss_mode,
                                    (pmpriv->bss_mode == MLAN_BSS_MODE_INFRA) ?
-                                   pmadapter->config_bands : pmadapter->
+                                   pmpriv->config_bands : pmadapter->
                                    adhoc_start_band, rates);
         rate = rates;
         for (i = 0; (rate[i] && i < WLAN_SUPPORTED_RATES); i++) {

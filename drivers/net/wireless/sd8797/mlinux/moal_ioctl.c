@@ -2,7 +2,7 @@
   *
   * @brief This file contains ioctl function to MLAN
   * 
-  * Copyright (C) 2008-2011, Marvell International Ltd. 
+  * Copyright (C) 2008-2012, Marvell International Ltd. 
   *
   * This software file (the "File") is distributed by Marvell International 
   * Ltd. under the terms of the GNU General Public License Version 2, June 1991 
@@ -792,7 +792,7 @@ woal_set_get_retry(moal_private * priv, t_u32 action,
 #ifdef STA_CFG80211
     /* If set is invoked from other than iw i.e iwconfig, wiphy retry count
        should be updated as well */
-    if (IS_STA_CFG80211(cfg80211_wext) &&
+    if (IS_STA_CFG80211(cfg80211_wext) && priv->wdev && priv->wdev->wiphy &&
         (GET_BSS_ROLE(priv) == MLAN_BSS_ROLE_STA) && (action == MLAN_ACT_SET)) {
         priv->wdev->wiphy->retry_long = (t_u8) * value;
         priv->wdev->wiphy->retry_short = (t_u8) * value;
@@ -854,7 +854,7 @@ woal_set_get_rts(moal_private * priv, t_u32 action,
 #ifdef STA_CFG80211
     /* If set is invoked from other than iw i.e iwconfig, wiphy RTS threshold
        should be updated as well */
-    if (IS_STA_CFG80211(cfg80211_wext) &&
+    if (IS_STA_CFG80211(cfg80211_wext) && priv->wdev && priv->wdev->wiphy &&
         (GET_BSS_ROLE(priv) == MLAN_BSS_ROLE_STA) && (action == MLAN_ACT_SET))
         priv->wdev->wiphy->rts_threshold = *value;
 #endif
@@ -914,7 +914,7 @@ woal_set_get_frag(moal_private * priv, t_u32 action,
 #ifdef STA_CFG80211
     /* If set is invoked from other than iw i.e iwconfig, wiphy fragment
        threshold should be updated as well */
-    if (IS_STA_CFG80211(cfg80211_wext) &&
+    if (IS_STA_CFG80211(cfg80211_wext) && priv->wdev && priv->wdev->wiphy &&
         (GET_BSS_ROLE(priv) == MLAN_BSS_ROLE_STA) && (action == MLAN_ACT_SET))
         priv->wdev->wiphy->frag_threshold = *value;
 #endif
@@ -1096,7 +1096,7 @@ woal_set_get_power_mgmt(moal_private * priv,
 #ifdef STA_CFG80211
     /* If set is invoked from other than iw i.e iwconfig, wiphy IEEE power save
        mode should be updated */
-    if (IS_STA_CFG80211(cfg80211_wext) &&
+    if (IS_STA_CFG80211(cfg80211_wext) && priv->wdev &&
         (GET_BSS_ROLE(priv) == MLAN_BSS_ROLE_STA) && (action == MLAN_ACT_SET)) {
         if (*disabled)
             priv->wdev->ps = MFALSE;
@@ -1780,20 +1780,22 @@ woal_get_bss_type(struct net_device *dev, struct ifreq *req)
 #if defined(STA_SUPPORT) && defined(UAP_SUPPORT)
 #if defined(STA_WEXT) || defined(UAP_WEXT)
 /**
- * @brief Set/Get BSS role
+ * @brief Swithces BSS role of WFD interface
  *
- * @param priv     A pointer to moal_private structure
- * @param wrq      A pointer to iwreq structure
+ * @param priv          A pointer to moal_private structure
+ * @param action        Action: set or get
+ * @param wait_option   Wait option (MOAL_WAIT or MOAL_NO_WAIT)
+ * @param bss_role      A pointer to bss role
  *
  * @return         0 --success, otherwise fail
  */
-int
-woal_set_get_bss_role(moal_private * priv, struct iwreq *wrq)
+mlan_status
+woal_bss_role_cfg(moal_private * priv, t_u8 action,
+                  t_u8 wait_option, t_u8 * bss_role)
 {
     int ret = 0;
     mlan_ds_bss *bss = NULL;
     mlan_ioctl_req *req = NULL;
-    int bss_role = 0;
     struct net_device *dev = priv->netdev;
 
     ENTER();
@@ -1812,55 +1814,26 @@ woal_set_get_bss_role(moal_private * priv, struct iwreq *wrq)
     bss = (mlan_ds_bss *) req->pbuf;
     bss->sub_command = MLAN_OID_BSS_ROLE;
     req->req_id = MLAN_IOCTL_BSS;
-    if (wrq->u.data.length) {
-        if (copy_from_user(&bss_role, wrq->u.data.pointer, sizeof(int))) {
-            PRINTM(MERROR, "Copy from user failed\n");
-            ret = -EFAULT;
-            goto done;
-        }
-        if (bss_role != MLAN_BSS_ROLE_STA && bss_role != MLAN_BSS_ROLE_UAP) {
-            PRINTM(MWARN, "Invalid BSS role\n");
-            ret = -EINVAL;
-            goto done;
-        }
-        if (bss_role == GET_BSS_ROLE(priv)) {
-            PRINTM(MWARN, "Already BSS is in desired role\n");
-            ret = -EINVAL;
-            goto done;
-        }
-        req->action = MLAN_ACT_SET;
-        bss->param.bss_role = (t_u8) bss_role;
-    } else {
-        req->action = MLAN_ACT_GET;
+    req->action = action;
+    if (action == MLAN_ACT_SET) {
+        bss->param.bss_role = *bss_role;
     }
-
-    if (req->action == MLAN_ACT_SET) {
-        /* Reset interface */
-        woal_reset_intf(priv, MOAL_IOCTL_WAIT, MFALSE);
-    }
-    if (MLAN_STATUS_SUCCESS != woal_request_ioctl(priv, req, MOAL_IOCTL_WAIT)) {
+    if (MLAN_STATUS_SUCCESS != woal_request_ioctl(priv, req, wait_option)) {
         ret = -EFAULT;
         goto done;
     }
-    if (!wrq->u.data.length) {
-        bss_role = (int) bss->param.bss_role;
-        if (copy_to_user(wrq->u.data.pointer, &bss_role, sizeof(int))) {
-            ret = -EFAULT;
-            goto done;
-        }
-        wrq->u.data.length = 1;
+
+    if (action == MLAN_ACT_GET) {
+        *bss_role = bss->param.bss_role;
     } else {
         /* Update moal_private */
-        priv->bss_role = bss_role;
+        priv->bss_role = *bss_role;
         if (priv->bss_type == MLAN_BSS_TYPE_UAP)
             priv->bss_type = MLAN_BSS_TYPE_STA;
         else if (priv->bss_type == MLAN_BSS_TYPE_STA)
             priv->bss_type = MLAN_BSS_TYPE_UAP;
 
-        /* Initialize private structures */
-        woal_init_priv(priv, MOAL_IOCTL_WAIT);
-
-        if (bss_role == MLAN_BSS_ROLE_UAP) {
+        if (*bss_role == MLAN_BSS_ROLE_UAP) {
             /* Switch: STA -> uAP */
             /* Setup the OS Interface to our functions */
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,29)
@@ -1881,7 +1854,7 @@ woal_set_get_bss_role(moal_private * priv, struct iwreq *wrq)
                 init_waitqueue_head(&priv->w_stats_wait_q);
             }
 #endif /* UAP_WEXT */
-        } else if (bss_role == MLAN_BSS_ROLE_STA) {
+        } else if (*bss_role == MLAN_BSS_ROLE_STA) {
             /* Switch: uAP -> STA */
             /* Setup the OS Interface to our functions */
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,29)
@@ -1903,9 +1876,6 @@ woal_set_get_bss_role(moal_private * priv, struct iwreq *wrq)
             }
 #endif /* STA_WEXT */
         }
-        /* Enable interfaces */
-        netif_device_attach(dev);
-        woal_start_queue(dev);
     }
 
   done:
@@ -1914,8 +1884,75 @@ woal_set_get_bss_role(moal_private * priv, struct iwreq *wrq)
     LEAVE();
     return ret;
 }
-#endif
-#endif
+
+/**
+ * @brief Set/Get BSS role
+ *
+ * @param priv     A pointer to moal_private structure
+ * @param wrq      A pointer to iwreq structure
+ *
+ * @return         0 --success, otherwise fail
+ */
+int
+woal_set_get_bss_role(moal_private * priv, struct iwreq *wrq)
+{
+    int ret = 0;
+    int bss_role = 0;
+    t_u8 action = MLAN_ACT_GET;
+
+    ENTER();
+
+    if (wrq->u.data.length) {
+        if (copy_from_user(&bss_role, wrq->u.data.pointer, sizeof(int))) {
+            PRINTM(MERROR, "Copy from user failed\n");
+            ret = -EFAULT;
+            goto done;
+        }
+        if ((bss_role != MLAN_BSS_ROLE_STA &&
+             bss_role != MLAN_BSS_ROLE_UAP) ||
+            (priv->bss_type != MLAN_BSS_TYPE_WIFIDIRECT)) {
+            PRINTM(MWARN, "Invalid BSS role\n");
+            ret = -EINVAL;
+            goto done;
+        }
+        if (bss_role == GET_BSS_ROLE(priv)) {
+            PRINTM(MWARN, "Already BSS is in desired role\n");
+            ret = -EINVAL;
+            goto done;
+        }
+        action = MLAN_ACT_SET;
+        /* Reset interface */
+        woal_reset_intf(priv, MOAL_IOCTL_WAIT, MFALSE);
+    }
+
+    if (MLAN_STATUS_SUCCESS != woal_bss_role_cfg(priv,
+                                                 action, MOAL_IOCTL_WAIT,
+                                                 (t_u8 *) & bss_role)) {
+        ret = -EFAULT;
+        goto done;
+    }
+
+    if (!wrq->u.data.length) {
+        if (copy_to_user(wrq->u.data.pointer, &bss_role, sizeof(int))) {
+            ret = -EFAULT;
+            goto done;
+        }
+        wrq->u.data.length = 1;
+    } else {
+        /* Initialize private structures */
+        woal_init_priv(priv, MOAL_IOCTL_WAIT);
+
+        /* Enable interfaces */
+        netif_device_attach(priv->netdev);
+        woal_start_queue(priv->netdev);
+    }
+
+  done:
+    LEAVE();
+    return ret;
+}
+#endif /* STA_WEXT || UAP_WEXT */
+#endif /* STA_SUPPORT && UAP_SUPPORT */
 #endif /* WIFI_DIRECT_SUPPORT && V14_FEATURE */
 
 /**
@@ -1993,6 +2030,7 @@ woal_cancel_hs(moal_private * priv, t_u8 wait_option)
     return ret;
 }
 
+#if defined(SDIO_SUSPEND_RESUME)
 /**  @brief This function enables the host sleep
  *
  *  @param priv   A Pointer to the moal_private structure
@@ -2074,6 +2112,7 @@ woal_enable_hs(moal_private * priv)
     LEAVE();
     return hs_actived;
 }
+#endif
 
 /**
  *  @brief This function send soft_reset command to firmware
@@ -2525,6 +2564,48 @@ woal_get_pm_info(moal_private * priv, mlan_ds_ps_info * pm_info)
 }
 
 /**
+ *  @brief Get Deep Sleep
+ *
+ *  @param priv      Pointer to the moal_private driver data struct
+ *  @param data      Pointer to return deep_sleep setting
+ *
+ *  @return          0 --success, otherwise fail
+ */
+int
+woal_get_deep_sleep(moal_private * priv, t_u32 * data)
+{
+    int ret = 0;
+    mlan_ioctl_req *req = NULL;
+    mlan_ds_pm_cfg *pm = NULL;
+
+    ENTER();
+
+    req = woal_alloc_mlan_ioctl_req(sizeof(mlan_ds_pm_cfg));
+    if (req == NULL) {
+        LEAVE();
+        return -ENOMEM;
+    }
+    pm = (mlan_ds_pm_cfg *) req->pbuf;
+    pm->sub_command = MLAN_OID_PM_CFG_DEEP_SLEEP;
+    req->req_id = MLAN_IOCTL_PM_CFG;
+
+    req->action = MLAN_ACT_GET;
+    if (MLAN_STATUS_SUCCESS != woal_request_ioctl(priv, req, MOAL_IOCTL_WAIT)) {
+        ret = -EFAULT;
+        goto done;
+    }
+    *data = pm->param.auto_deep_sleep.auto_ds;
+    *(data + 1) = pm->param.auto_deep_sleep.idletime;
+
+  done:
+    if (req)
+        kfree(req);
+
+    LEAVE();
+    return ret;
+}
+
+/**
  *  @brief Set Deep Sleep
  *
  *  @param priv         Pointer to the moal_private driver data struct
@@ -2665,8 +2746,7 @@ woal_11h_channel_check_ioctl(moal_private * priv)
  *  @return                     MLAN_STATUS_SUCCESS -- success, otherwise fail
  */
 mlan_status
-woal_cfg80211_wifi_direct_mode_cfg(moal_private * priv, t_u16 action,
-                                   t_u16 * mode)
+woal_wifi_direct_mode_cfg(moal_private * priv, t_u16 action, t_u16 * mode)
 {
     mlan_status ret = MLAN_STATUS_SUCCESS;
     mlan_ioctl_req *req = NULL;
@@ -3640,6 +3720,13 @@ woal_set_bg_scan(moal_private * priv, char *buf, int length)
             ptr += 2;
             buf_left -= 2;
             break;
+        case WEXT_BGSCAN_REPEAT_SECTION:
+            priv->scan_cfg.repeat_count = (t_u16) ptr[1];
+            PRINTM(MIOCTL, "BG scan: repeat_count=%d\n",
+                   (int) priv->scan_cfg.repeat_count);
+            ptr += 2;
+            buf_left -= 2;
+            break;
         case WEXT_BGSCAN_INTERVAL_SECTION:
             priv->scan_cfg.scan_interval = (ptr[2] << 8 | ptr[1]) * 1000;
             PRINTM(MIOCTL, "BG scan: scan_interval=%d\n",
@@ -3728,7 +3815,7 @@ woal_reconfig_bgscan(moal_handle * handle)
  *  @brief set rssi low threshold
  *
  *  @param priv                 A pointer to moal_private structure
- *  @param scan_type            MLAN_SCAN_TYPE_ACTIVE/MLAN_SCAN_TYPE_PASSIVE
+ *  @param rssi 	A pointer to low rssi
  *
  *  @return                     MLAN_STATUS_SUCCESS -- success, otherwise fail
  */
@@ -3754,10 +3841,16 @@ woal_set_rssi_low_threshold(moal_private * priv, char *rssi)
     misc->sub_command = MLAN_OID_MISC_SUBSCRIBE_EVENT;
     req->action = MLAN_ACT_SET;
     misc->param.subscribe_event.evt_bitmap = SUBSCRIBE_EVT_RSSI_LOW;
+    misc->param.subscribe_event.evt_bitmap |= SUBSCRIBE_EVT_PRE_BEACON_LOST;
+    misc->param.subscribe_event.pre_beacon_miss = DEFAULT_PRE_BEACON_MISS;
+
     if (MLAN_STATUS_SUCCESS != woal_atoi(&low_rssi, rssi)) {
         ret = -EFAULT;
         goto done;
     }
+#ifdef STA_CFG80211
+    priv->mrvl_rssi_low = low_rssi;
+#endif
     misc->param.subscribe_event.low_rssi = low_rssi;
     misc->param.subscribe_event.low_rssi_freq = 0;
     if (MLAN_STATUS_SUCCESS != woal_request_ioctl(priv, req, MOAL_IOCTL_WAIT)) {
@@ -3770,6 +3863,69 @@ woal_set_rssi_low_threshold(moal_private * priv, char *rssi)
     LEAVE();
     return ret;
 }
+
+#ifdef STA_CFG80211
+/**
+ *  @brief set rssi low threshold
+ *
+ *  @param priv                 A pointer to moal_private structure
+ *  @param event_id				event id.
+ *
+ *  @return                     MLAN_STATUS_SUCCESS -- success, otherwise fail
+ */
+mlan_status
+woal_set_rssi_threshold(moal_private * priv, t_u32 event_id)
+{
+    mlan_status ret = MLAN_STATUS_SUCCESS;
+    mlan_ioctl_req *req = NULL;
+    mlan_ds_misc_cfg *misc = NULL;
+
+    ENTER();
+    if (priv->media_connected == MFALSE)
+        goto done;
+    if (priv->mrvl_rssi_low)
+        goto done;
+    if (event_id == MLAN_EVENT_ID_FW_BCN_RSSI_LOW) {
+        if (priv->last_rssi_low < 100)
+            priv->last_rssi_low += priv->cqm_rssi_hyst;
+        priv->last_rssi_high = abs(priv->cqm_rssi_thold);
+    } else if (event_id == MLAN_EVENT_ID_FW_BCN_RSSI_HIGH) {
+        priv->last_rssi_low = abs(priv->cqm_rssi_thold);
+        if (priv->last_rssi_high > priv->cqm_rssi_hyst)
+            priv->last_rssi_high -= priv->cqm_rssi_hyst;
+    } else {
+        priv->last_rssi_low = abs(priv->cqm_rssi_thold);
+        priv->last_rssi_high = abs(priv->cqm_rssi_thold);
+    }
+
+    req = woal_alloc_mlan_ioctl_req(sizeof(mlan_ds_misc_cfg));
+    if (req == NULL) {
+        ret = -ENOMEM;
+        goto done;
+    }
+    misc = (mlan_ds_misc_cfg *) req->pbuf;
+    req->req_id = MLAN_IOCTL_MISC_CFG;
+    misc->sub_command = MLAN_OID_MISC_SUBSCRIBE_EVENT;
+    req->action = MLAN_ACT_SET;
+    misc->param.subscribe_event.evt_bitmap =
+        SUBSCRIBE_EVT_RSSI_LOW | SUBSCRIBE_EVT_RSSI_HIGH;
+    misc->param.subscribe_event.low_rssi_freq = 0;
+    misc->param.subscribe_event.low_rssi = priv->last_rssi_low;
+    misc->param.subscribe_event.high_rssi_freq = 0;
+    misc->param.subscribe_event.high_rssi = priv->last_rssi_high;
+    PRINTM(MIOCTL, "rssi_low=%d, rssi_high=%d\n", (int) priv->last_rssi_low,
+           (int) priv->last_rssi_high);
+    if (MLAN_STATUS_SUCCESS != woal_request_ioctl(priv, req, MOAL_IOCTL_WAIT)) {
+        ret = -EFAULT;
+        goto done;
+    }
+  done:
+    if (req)
+        kfree(req);
+    LEAVE();
+    return ret;
+}
+#endif
 
 /**
  *  @brief  Get power mode

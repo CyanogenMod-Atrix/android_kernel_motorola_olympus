@@ -3,7 +3,7 @@
  *  @brief This file contains AP mode transmit and receive functions
  * 
  *  Copyright (C) 2009-2011, Marvell International Ltd. 
- *
+ *   
  *  This software file (the "File") is distributed by Marvell International 
  *  Ltd. under the terms of the GNU General Public License Version 2, June 1991 
  *  (the "License").  You may use, redistribute and/or modify this File in 

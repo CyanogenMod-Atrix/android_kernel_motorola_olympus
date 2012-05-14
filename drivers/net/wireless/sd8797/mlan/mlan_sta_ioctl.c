@@ -222,6 +222,9 @@ wlan_get_info_bss_info(IN pmlan_adapter pmadapter,
     /* Channel */
     info->param.bss_info.bss_chan = pbss_desc->channel;
 
+    /* Beacon interval */
+    info->param.bss_info.beacon_interval = pbss_desc->beacon_period;
+
     /* Band */
     info->param.bss_info.bss_band = (t_u8) pbss_desc->bss_band;
 
@@ -396,6 +399,10 @@ wlan_snmp_mib_ioctl(IN pmlan_adapter pmadapter, IN pmlan_ioctl_req pioctl_req)
         value = mib->param.retry_count;
         cmd_oid = ShortRetryLim_i;
         break;
+    case MLAN_OID_SNMP_MIB_DTIM_PERIOD:
+        value = mib->param.dtim_period;
+        cmd_oid = DtimPeriod_i;
+        break;
     }
 
     /* Send request to firmware */
@@ -509,6 +516,7 @@ wlan_radio_ioctl_band_cfg(IN pmlan_adapter pmadapter,
             }
             pmpriv->adhoc_channel = (t_u8) adhoc_channel;
         }
+
         if ((adhoc_band & BAND_GN)
             || (adhoc_band & BAND_AN)
             ) {
@@ -993,6 +1001,7 @@ wlan_bss_ioctl_start(IN pmlan_adapter pmadapter, IN pmlan_ioctl_req pioctl_req)
        CLOSED state */
     if (pmpriv->port_ctrl_mode == MTRUE) {
         PRINTM(MINFO, "bss_ioctl_start(): port_state=CLOSED\n");
+        pmpriv->prior_port_status = pmpriv->port_open;
         pmpriv->port_open = MFALSE;
     }
     pmpriv->scan_block = MFALSE;
@@ -1437,7 +1446,7 @@ wlan_rate_ioctl_get_supported_rate(IN pmlan_adapter pmadapter,
     else
         wlan_get_active_data_rates(pmpriv, pmpriv->bss_mode,
                                    (pmpriv->bss_mode == MLAN_BSS_MODE_INFRA) ?
-                                   pmadapter->config_bands : pmadapter->
+                                   pmpriv->config_bands : pmadapter->
                                    adhoc_start_band, rate->param.rates);
     pioctl_req->data_read_written =
         MLAN_SUPPORTED_RATES + MLAN_SUB_COMMAND_SIZE;
@@ -3306,20 +3315,61 @@ wlan_sec_ioctl_esupp_mode(IN pmlan_adapter pmadapter,
 {
     mlan_status ret = MLAN_STATUS_SUCCESS;
     mlan_private *pmpriv = pmadapter->priv[pioctl_req->bss_index];
+    t_u16 cmd_action = 0;
+    mlan_ds_sec_cfg *sec = MNULL;
 
     ENTER();
 
-    if (pmpriv->media_connected != MTRUE) {
-        pioctl_req->status_code = MLAN_ERROR_IOCTL_INVALID;
-        ret = MLAN_STATUS_FAILURE;
-        goto exit;
+    sec = (mlan_ds_sec_cfg *) pioctl_req->pbuf;
+    if (pioctl_req->action == MLAN_ACT_SET) {
+        cmd_action = HostCmd_ACT_GEN_SET;
+        if (pmpriv->media_connected == MTRUE) {
+            PRINTM(MERROR,
+                   "Cannot set esupplicant mode configuration while connected.\n");
+            pioctl_req->status_code = MLAN_ERROR_IOCTL_INVALID;
+            ret = MLAN_STATUS_FAILURE;
+            goto exit;
+        }
+        if (!sec->param.esupp_mode.rsn_mode ||
+            (sec->param.esupp_mode.rsn_mode & RSN_TYPE_VALID_BITS)
+            != sec->param.esupp_mode.rsn_mode) {
+            PRINTM(MERROR, "Invalid RSN mode\n");
+            pioctl_req->status_code = MLAN_ERROR_IOCTL_INVALID;
+            ret = MLAN_STATUS_FAILURE;
+            goto exit;
+        }
+        if (!sec->param.esupp_mode.act_paircipher ||
+            (sec->param.esupp_mode.act_paircipher & EMBED_CIPHER_VALID_BITS)
+            != sec->param.esupp_mode.act_paircipher) {
+            PRINTM(MERROR, "Invalid pairwise cipher\n");
+            pioctl_req->status_code = MLAN_ERROR_IOCTL_INVALID;
+            ret = MLAN_STATUS_FAILURE;
+            goto exit;
+        }
+        if (!sec->param.esupp_mode.act_groupcipher ||
+            (sec->param.esupp_mode.act_groupcipher & EMBED_CIPHER_VALID_BITS)
+            != sec->param.esupp_mode.act_groupcipher) {
+            PRINTM(MERROR, "Invalid group cipher\n");
+            pioctl_req->status_code = MLAN_ERROR_IOCTL_INVALID;
+            ret = MLAN_STATUS_FAILURE;
+            goto exit;
+        }
+    } else {
+        cmd_action = HostCmd_ACT_GEN_GET_CURRENT;
     }
 
     /* Send request to firmware */
-    ret = wlan_prepare_cmd(pmpriv,
-                           HostCmd_CMD_SUPPLICANT_PROFILE,
-                           HostCmd_ACT_GEN_GET_CURRENT,
-                           0, (t_void *) pioctl_req, MNULL);
+    if (sec) {
+        ret = wlan_prepare_cmd(pmpriv,
+                               HostCmd_CMD_SUPPLICANT_PROFILE,
+                               cmd_action,
+                               0,
+                               (t_void *) pioctl_req, &sec->param.esupp_mode);
+    } else {
+        ret = wlan_prepare_cmd(pmpriv,
+                               HostCmd_CMD_SUPPLICANT_PROFILE,
+                               cmd_action, 0, (t_void *) pioctl_req, MNULL);
+    }
     if (ret == MLAN_STATUS_SUCCESS)
         ret = MLAN_STATUS_PENDING;
 
@@ -4137,6 +4187,8 @@ wlan_misc_ioctl_region(IN pmlan_adapter pmadapter,
             LEAVE();
             return MLAN_STATUS_FAILURE;
         }
+        pmadapter->cfp_code_bg = misc->param.region_code;
+        pmadapter->cfp_code_a = misc->param.region_code;
         if (wlan_set_regiontable(pmpriv, (t_u8) pmadapter->region_code,
                                  pmadapter->config_bands | pmadapter->
                                  adhoc_start_band)) {
@@ -4827,6 +4879,158 @@ wlan_misc_ioctl_ipaddr_cfg(IN pmlan_adapter pmadapter,
 }
 
 /**
+ *  @brief CFP code configuration
+ *
+ *  @param pmadapter    A pointer to mlan_adapter structure
+ *  @param pioctl_req   A pointer to ioctl request buffer
+ *
+ *  @return             MLAN_STATUS_PENDING --success, otherwise fail
+ */
+mlan_status
+wlan_misc_ioctl_cfp_code_cfg(IN pmlan_adapter pmadapter,
+                             IN pmlan_ioctl_req pioctl_req)
+{
+    mlan_status ret = MLAN_STATUS_SUCCESS;
+    mlan_private *pmpriv = pmadapter->priv[pioctl_req->bss_index];
+    mlan_ds_misc_cfg *misc = (mlan_ds_misc_cfg *) pioctl_req->pbuf;
+    mlan_ds_misc_cfp_code *cfp_code = MNULL;
+    t_u32 region_bg = 0;
+    t_u32 region_a = 0;
+    int i;
+
+    ENTER();
+
+    cfp_code = &misc->param.cfp_code;
+    if (pioctl_req->action == MLAN_ACT_SET) {
+        /* Save the values in MLAN */
+        if (!cfp_code->cfp_code_bg)
+            cfp_code->cfp_code_bg = pmadapter->cfp_code_bg;
+        for (i = 0; i < MRVDRV_MAX_REGION_CODE; i++) {
+            /* Use the region code to search for the index */
+            if (cfp_code->cfp_code_bg == region_code_index[i]) {
+                region_bg = cfp_code->cfp_code_bg;
+                break;
+            }
+        }
+        if (!region_bg) {
+            for (i = 0; i < MRVDRV_MAX_CFP_CODE_BG; i++) {
+                /* Use the CFP code to search for the index */
+                if (cfp_code->cfp_code_bg == cfp_code_index_bg[i])
+                    break;
+            }
+            if (i >= MRVDRV_MAX_CFP_CODE_BG) {
+                PRINTM(MERROR, "CFP Code not identified for BG\n");
+                pioctl_req->status_code = MLAN_ERROR_INVALID_PARAMETER;
+                ret = MLAN_STATUS_FAILURE;
+                goto done;
+            }
+        }
+        if (!cfp_code->cfp_code_a)
+            cfp_code->cfp_code_a = pmadapter->cfp_code_a;
+        for (i = 0; i < MRVDRV_MAX_REGION_CODE; i++) {
+            /* Use the region code to search for the index */
+            if (cfp_code->cfp_code_a == region_code_index[i]) {
+                region_a = cfp_code->cfp_code_a;
+                break;
+            }
+        }
+        if (!region_a) {
+            for (i = 0; i < MRVDRV_MAX_CFP_CODE_A; i++) {
+                /* Use the CFP code to search for the index */
+                if (cfp_code->cfp_code_a == cfp_code_index_a[i])
+                    break;
+            }
+            if (i >= MRVDRV_MAX_CFP_CODE_A) {
+                PRINTM(MERROR, "CFP Code not identified for A\n");
+                pioctl_req->status_code = MLAN_ERROR_INVALID_PARAMETER;
+                ret = MLAN_STATUS_FAILURE;
+                goto done;
+            }
+        }
+        pmadapter->cfp_code_bg = (t_u8) cfp_code->cfp_code_bg;
+        pmadapter->cfp_code_a = (t_u8) cfp_code->cfp_code_a;
+        if (region_bg && region_a && (region_bg == region_a))
+            pmadapter->region_code = pmadapter->cfp_code_a;
+        else
+            pmadapter->region_code = 0;
+        if (wlan_set_regiontable(pmpriv, (t_u8) pmadapter->region_code,
+                                 pmadapter->config_bands | pmadapter->
+                                 adhoc_start_band)) {
+            pioctl_req->status_code = MLAN_ERROR_INVALID_PARAMETER;
+            ret = MLAN_STATUS_FAILURE;
+            goto done;
+        }
+    } else {
+        /* GET operation */
+        cfp_code->cfp_code_bg = pmadapter->cfp_code_bg;
+        cfp_code->cfp_code_a = pmadapter->cfp_code_a;
+    }
+
+  done:
+    LEAVE();
+    return ret;
+}
+
+/**
+ *  @brief This function sets up country code and downloads CMD to FW
+ *
+ *  @param pmadapter    A pointer to mlan_adapter structure
+ *  @param pioctl_req   Pointer to the IOCTL request buffer
+ *
+ *  @return             MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
+ */
+mlan_status
+wlan_misc_ioctl_country_code(IN pmlan_adapter pmadapter,
+                             IN mlan_ioctl_req * pioctl_req)
+{
+    mlan_status ret = MLAN_STATUS_SUCCESS;
+    mlan_private *pmpriv = pmadapter->priv[pioctl_req->bss_index];
+    mlan_ds_misc_country_code *country_code = MNULL;
+    mlan_ds_misc_cfg *cfg_misc = MNULL;
+    t_u8 cfp_bg = 0, cfp_a = 0;
+
+    ENTER();
+
+    cfg_misc = (mlan_ds_misc_cfg *) pioctl_req->pbuf;
+    country_code = &cfg_misc->param.country_code;
+
+    if (pioctl_req->action == MLAN_ACT_SET) {
+        /* Update region code and table based on country code */
+        if (wlan_misc_country_2_cfp_table_code(pmadapter,
+                                               country_code->country_code,
+                                               &cfp_bg, &cfp_a)) {
+            PRINTM(MERROR, "Country code not found!\n");
+            pioctl_req->status_code = MLAN_ERROR_INVALID_PARAMETER;
+            ret = MLAN_STATUS_FAILURE;
+            goto done;
+        }
+        pmadapter->cfp_code_bg = cfp_bg;
+        pmadapter->cfp_code_a = cfp_a;
+        if (cfp_bg && cfp_a && (cfp_bg == cfp_a))
+            pmadapter->region_code = cfp_a;
+        else
+            pmadapter->region_code = 0;
+        if (wlan_set_regiontable(pmpriv, pmadapter->region_code,
+                                 pmadapter->config_bands | pmadapter->
+                                 adhoc_start_band)) {
+            pioctl_req->status_code = MLAN_ERROR_INVALID_PARAMETER;
+            ret = MLAN_STATUS_FAILURE;
+            goto done;
+        }
+        memcpy(pmadapter, pmadapter->country_code,
+               country_code->country_code, COUNTRY_CODE_LEN);
+    } else {
+        /* GET operation */
+        memcpy(pmadapter, country_code->country_code,
+               pmadapter->country_code, COUNTRY_CODE_LEN);
+    }
+
+  done:
+    LEAVE();
+    return ret;
+}
+
+/**
  *  @brief Miscellaneous configuration handler
  *
  *  @param pmadapter	A pointer to mlan_adapter structure
@@ -4906,11 +5110,20 @@ wlan_misc_cfg_ioctl(IN pmlan_adapter pmadapter, IN pmlan_ioctl_req pioctl_req)
     case MLAN_OID_MISC_IP_ADDR:
         status = wlan_misc_ioctl_ipaddr_cfg(pmadapter, pioctl_req);
         break;
+    case MLAN_OID_MISC_CFP_CODE:
+        status = wlan_misc_ioctl_cfp_code_cfg(pmadapter, pioctl_req);
+        break;
+    case MLAN_OID_MISC_COUNTRY_CODE:
+        status = wlan_misc_ioctl_country_code(pmadapter, pioctl_req);
+        break;
     case MLAN_OID_MISC_THERMAL:
         status = wlan_misc_ioctl_thermal(pmadapter, pioctl_req);
         break;
     case MLAN_OID_MISC_SUBSCRIBE_EVENT:
         status = wlan_misc_ioctl_subscribe_evt(pmadapter, pioctl_req);
+        break;
+    case MLAN_OID_MISC_OTP_USER_DATA:
+        status = wlan_misc_otp_user_data(pmadapter, pioctl_req);
         break;
     default:
         if (pioctl_req)
@@ -5070,13 +5283,31 @@ wlan_scan_ioctl(IN pmlan_adapter pmadapter, IN pmlan_ioctl_req pioctl_req)
             pioctl_req->data_read_written =
                 sizeof(mlan_scan_resp) + MLAN_SUB_COMMAND_SIZE;
         } else {
-            pscan->param.scan_resp.pscan_table =
-                (t_u8 *) pmadapter->pscan_table;
-            pscan->param.scan_resp.num_in_scan_table =
-                pmadapter->num_in_scan_table;
-            pscan->param.scan_resp.age_in_secs = pmadapter->age_in_secs;
-            pioctl_req->data_read_written = sizeof(mlan_scan_resp) +
-                MLAN_SUB_COMMAND_SIZE;
+            if (pmadapter->bgscan_reported) {
+                pmadapter->bgscan_reported = MFALSE;
+                /* Clear the previous scan result */
+                memset(pmadapter, pmadapter->pscan_table, 0x00,
+                       sizeof(BSSDescriptor_t) * MRVDRV_MAX_BSSID_LIST);
+                pmadapter->num_in_scan_table = 0;
+                pmadapter->pbcn_buf_end = pmadapter->bcn_buf;
+                status = wlan_prepare_cmd(pmpriv,
+                                          HostCmd_CMD_802_11_BG_SCAN_QUERY,
+                                          HostCmd_ACT_GEN_GET,
+                                          0, (t_void *) pioctl_req, MNULL);
+                if (status == MLAN_STATUS_SUCCESS) {
+                    PRINTM(MINFO,
+                           "wlan_scan_ioctl: return MLAN_STATUS_PENDING\n");
+                    status = MLAN_STATUS_PENDING;
+                }
+            } else {
+                pscan->param.scan_resp.pscan_table =
+                    (t_u8 *) pmadapter->pscan_table;
+                pscan->param.scan_resp.num_in_scan_table =
+                    pmadapter->num_in_scan_table;
+                pscan->param.scan_resp.age_in_secs = pmadapter->age_in_secs;
+                pioctl_req->data_read_written = sizeof(mlan_scan_resp) +
+                    MLAN_SUB_COMMAND_SIZE;
+            }
         }
     }
 
@@ -5198,6 +5429,7 @@ wlan_ops_sta_ioctl(t_void * adapter, pmlan_ioctl_req pioctl_req)
     mlan_status status = MLAN_STATUS_SUCCESS;
 
     ENTER();
+
     switch (pioctl_req->req_id) {
     case MLAN_IOCTL_SCAN:
         status = wlan_scan_ioctl(pmadapter, pioctl_req);

@@ -108,6 +108,12 @@ t_void(*assert_callback) (IN t_void * pmoal_handle, IN t_u32 cond) = MNULL;
 /** Global moal_print callback */
 t_void(*print_callback) (IN t_void * pmoal_handle,
                          IN t_u32 level, IN t_s8 * pformat, IN ...) = MNULL;
+
+/** Global moal_get_system_time callback */
+mlan_status(*get_sys_time_callback) (IN t_void * pmoal_handle,
+                                     OUT t_u32 * psec,
+                                     OUT t_u32 * pusec) = MNULL;
+
 /** Global driver debug mit masks */
 t_u32 drvdbg = DEFAULT_DEBUG_MASK;
 #endif
@@ -161,6 +167,7 @@ mlan_register(IN pmlan_device pmdevice, OUT t_void ** ppmlan_adapter)
     MASSERT(pmdevice->callbacks.moal_print);
 #ifdef DEBUG_LEVEL1
     print_callback = pmdevice->callbacks.moal_print;
+    get_sys_time_callback = pmdevice->callbacks.moal_get_system_time;
 #endif
     assert_callback = pmdevice->callbacks.moal_assert;
 

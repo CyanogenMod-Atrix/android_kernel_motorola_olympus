@@ -2,7 +2,7 @@
  *
  *  @brief This file contains functions for 802.11H.
  *
- *  Copyright (C) 2008-2011, Marvell International Ltd.
+ *  Copyright (C) 2008-2012, Marvell International Ltd.
  *
  *  This software file (the "File") is distributed by Marvell International
  *  Ltd. under the terms of the GNU General Public License Version 2, June 1991
@@ -298,6 +298,11 @@ wlan_11h_set_supp_channels_ie(mlan_private * priv,
            sizeof(IEEEtypes_SupportedChannels_t));
 
     cfp_bg = cfp_a = priv->adapter->region_code;
+    if (!priv->adapter->region_code) {
+        /* Invalid region code, use CFP code */
+        cfp_bg = priv->adapter->cfp_code_bg;
+        cfp_a = priv->adapter->cfp_code_a;
+    }
 
     if ((band & BAND_B) || (band & BAND_G)) {
         /*
@@ -354,6 +359,23 @@ wlan_11h_set_supp_channels_ie(mlan_private * priv,
             psup_chan->subband[num_subbands++] = wlan_11h_unii_lower_band;
             psup_chan->subband[num_subbands++] = wlan_11h_unii_middle_band;
             psup_chan->subband[num_subbands++] = wlan_11h_unii_mid_upper_band;
+            break;
+        case 0x1:              /* Low band (5150-5250 MHz) channels */
+            psup_chan->subband[num_subbands++] = wlan_11h_unii_lower_band;
+            break;
+        case 0x2:              /* Lower middle band (5250-5350 MHz) channels */
+            psup_chan->subband[num_subbands++] = wlan_11h_unii_middle_band;
+            break;
+        case 0x3:              /* Upper middle band (5470-5725 MHz) channels */
+            psup_chan->subband[num_subbands++] = wlan_11h_unii_mid_upper_band;
+            break;
+        case 0x4:              /* High band (5725-5850 MHz) channels */
+            psup_chan->subband[num_subbands++] = wlan_11h_unii_upper_band;
+            break;
+        case 0x5:              /* Low band (5150-5250 MHz) and High band
+                                   (5725-5850 MHz) channels */
+            psup_chan->subband[num_subbands++] = wlan_11h_unii_lower_band;
+            psup_chan->subband[num_subbands++] = wlan_11h_unii_upper_band;
             break;
         }
     }
@@ -1799,9 +1821,15 @@ wlan_11h_radar_detect_required(mlan_private * priv, t_u8 channel)
 
     required = wlan_get_cfp_radar_detect(priv, channel);
 
-    PRINTM(MINFO, "11h: Radar detection in region %#02x "
-           "is %srequired for channel %d\n",
-           priv->adapter->region_code, (required ? "" : "not "), channel);
+    if (!priv->adapter->region_code)
+        PRINTM(MINFO, "11h: Radar detection in CFP code[BG:%#x, A:%#x] "
+               "is %srequired for channel %d\n",
+               priv->adapter->cfp_code_bg, priv->adapter->cfp_code_a,
+               (required ? "" : "not "), channel);
+    else
+        PRINTM(MINFO, "11h: Radar detection in region %#02x "
+               "is %srequired for channel %d\n",
+               priv->adapter->region_code, (required ? "" : "not "), channel);
 
     if (required == MTRUE && priv->media_connected == MTRUE
         && priv->curr_bss_params.bss_descriptor.channel == channel) {
@@ -3153,13 +3181,13 @@ wlan_11h_switch_non_dfs_chan(mlan_private * priv, t_u8 * chan)
         def_chan = (t_u8) chn_tbl->pcfp[rand_entry].channel;
         rand_tries++;
     } while ((wlan_11h_is_channel_under_nop(pmadapter, def_chan) ||
-              chn_tbl->pcfp[rand_entry].radar_detect == MTRUE) &&
-             (rand_tries < MAX_SWITCH_CHANNEL_RETRIES));
+              chn_tbl->pcfp[rand_entry].passive_scan_or_radar_detect == MTRUE)
+             && (rand_tries < MAX_SWITCH_CHANNEL_RETRIES));
 
     /* meet max retries, use the lowest non-dfs channel */
     if (rand_tries == MAX_SWITCH_CHANNEL_RETRIES) {
         for (i = 0; i < chn_tbl->num_cfp; i++) {
-            if (chn_tbl->pcfp[i].radar_detect == MFALSE &&
+            if (chn_tbl->pcfp[i].passive_scan_or_radar_detect == MFALSE &&
                 !wlan_11h_is_channel_under_nop(pmadapter,
                                                (t_u8) chn_tbl->pcfp[i].
                                                channel)) {

@@ -2,7 +2,7 @@
  *
  *  @brief This file contains functions for 802.11D.
  *
- *  Copyright (C) 2008-2011, Marvell International Ltd.
+ *  Copyright (C) 2008-2012, Marvell International Ltd.
  *
  *  This software file (the "File") is distributed by Marvell International
  *  Ltd. under the terms of the GNU General Public License Version 2, June 1991
@@ -55,6 +55,7 @@ static region_code_mapping_t region_code_mapping[] = {
     {"JP ", 0x40},              /* Japan */
     {"JP ", 0x41},              /* Japan */
     {"CN ", 0x50},              /* China */
+    {"JP ", 0xFE},              /* Japan */
     {"JP ", 0xFF},              /* Japan special */
 };
 

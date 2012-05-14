@@ -218,8 +218,9 @@ wlan_get_wr_port_data(mlan_adapter * pmadapter, t_u8 * pport)
     PRINTM(MIF_D, "wlan_get_wr_port_data: mp_wr_bitmap=0x%08x\n", wr_bitmap);
 
     if (!(wr_bitmap & pmadapter->mp_data_port_mask)) {
+        pmadapter->data_sent = MTRUE;
         LEAVE();
-        return MLAN_STATUS_FAILURE;
+        return MLAN_STATUS_RESOURCE;
     }
 
     if (pmadapter->mp_wr_bitmap & (1 << pmadapter->curr_wr_port)) {
@@ -1431,7 +1432,6 @@ wlan_sdio_host_to_card(mlan_adapter * pmadapter, t_u8 type, mlan_buffer * pmbuf,
         ret = wlan_get_wr_port_data(pmadapter, &port);
         if (ret != MLAN_STATUS_SUCCESS) {
             PRINTM(MERROR, "no wr_port available: %d\n", ret);
-            pmbuf->status_code = MLAN_ERROR_PKT_INVALID;
             goto exit;
         }
         /* Transfer data to card */

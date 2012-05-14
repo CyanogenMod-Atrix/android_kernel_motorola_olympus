@@ -164,6 +164,19 @@ woal_get_wiphy_priv(struct wiphy *wiphy)
 }
 
 /**
+ * @brief Get the private structure from net device
+ *
+ * @param wiphy     A pointer to net_device structure
+ *
+ * @return          Pointer to moal_private
+ */
+void *
+woal_get_netdev_priv(struct net_device *dev)
+{
+    return (void *) netdev_priv(dev);
+}
+
+/**
  *  @brief Set/Enable encryption key
  *
  *  @param priv             A pointer to moal_private structure
@@ -270,8 +283,12 @@ woal_cfg80211_set_key(moal_private * priv, t_u8 is_enable_wep,
             }
         }
     } else {
-        sec->param.encrypt_key.key_remove = MTRUE;
-        sec->param.encrypt_key.key_index = key_index;
+        if (key_index == KEY_INDEX_CLEAR_ALL)
+            sec->param.encrypt_key.key_disable = MTRUE;
+        else {
+            sec->param.encrypt_key.key_remove = MTRUE;
+            sec->param.encrypt_key.key_index = key_index;
+        }
         sec->param.encrypt_key.key_flags = KEY_FLAG_REMOVE_KEY;
         if (addr)
             memcpy(sec->param.encrypt_key.mac_addr, addr, ETH_ALEN);
@@ -343,96 +360,30 @@ static int
 woal_cfg80211_bss_role_cfg(moal_private * priv, t_u16 action, t_u8 * bss_role)
 {
     int ret = 0;
-    mlan_ds_bss *bss = NULL;
-    mlan_ioctl_req *req = NULL;
-    struct net_device *dev = priv->netdev;
 
     ENTER();
 
-    req = woal_alloc_mlan_ioctl_req(sizeof(mlan_ds_bss));
-    if (req == NULL) {
-        ret = -ENOMEM;
-        goto done;
-    }
-    bss = (mlan_ds_bss *) req->pbuf;
-    bss->sub_command = MLAN_OID_BSS_ROLE;
-    req->req_id = MLAN_IOCTL_BSS;
-    req->action = action;
-    bss->param.bss_role = *bss_role;
-
-    if (req->action == MLAN_ACT_SET) {
+    if (action == MLAN_ACT_SET) {
         /* Reset interface */
         woal_reset_intf(priv, MOAL_IOCTL_WAIT, MFALSE);
     }
-    if (MLAN_STATUS_SUCCESS != woal_request_ioctl(priv, req, MOAL_IOCTL_WAIT)) {
+
+    if (MLAN_STATUS_SUCCESS !=
+        woal_bss_role_cfg(priv, action, MOAL_IOCTL_WAIT, bss_role)) {
         ret = -EFAULT;
         goto done;
     }
 
-    if (req->action == MLAN_ACT_GET) {
-        *bss_role = bss->param.bss_role;
-    } else {
-        /* Update moal_private */
-        priv->bss_role = *bss_role;
-        if (priv->bss_type == MLAN_BSS_TYPE_UAP)
-            priv->bss_type = MLAN_BSS_TYPE_STA;
-        else if (priv->bss_type == MLAN_BSS_TYPE_STA)
-            priv->bss_type = MLAN_BSS_TYPE_UAP;
-
+    if (action == MLAN_ACT_SET) {
         /* Initialize private structures */
         woal_init_priv(priv, MOAL_IOCTL_WAIT);
 
-        if (*bss_role == MLAN_BSS_ROLE_UAP) {
-            /* Switch: STA -> uAP */
-            /* Setup the OS Interface to our functions */
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,29)
-            dev->do_ioctl = woal_uap_do_ioctl;
-            dev->set_multicast_list = woal_uap_set_multicast_list;
-#else
-            dev->netdev_ops = &woal_uap_netdev_ops;
-#endif
-#ifdef WIRELESS_EXT
-#ifdef UAP_WEXT
-            if (IS_UAP_WEXT(cfg80211_wext)) {
-#if WIRELESS_EXT < 21
-                dev->get_wireless_stats = woal_get_uap_wireless_stats;
-#endif
-                dev->wireless_handlers =
-                    (struct iw_handler_def *) &woal_uap_handler_def;
-                init_waitqueue_head(&priv->w_stats_wait_q);
-            }
-#endif /* UAP_WEXT */
-#endif /* WIRELESS_EXT */
-        } else if (*bss_role == MLAN_BSS_ROLE_STA) {
-            /* Switch: uAP -> STA */
-            /* Setup the OS Interface to our functions */
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,29)
-            dev->do_ioctl = woal_do_ioctl;
-            dev->set_multicast_list = woal_set_multicast_list;
-#else
-            dev->netdev_ops = &woal_netdev_ops;
-#endif
-#ifdef  WIRELESS_EXT
-#ifdef STA_WEXT
-            if (IS_STA_WEXT(cfg80211_wext)) {
-#if WIRELESS_EXT < 21
-                dev->get_wireless_stats = woal_get_wireless_stats;
-#endif
-                dev->wireless_handlers =
-                    (struct iw_handler_def *) &woal_handler_def;
-                init_waitqueue_head(&priv->w_stats_wait_q);
-            }
-#endif /* STA_WEXT */
-#endif
-        }
         /* Enable interfaces */
-        netif_device_attach(dev);
-        woal_start_queue(dev);
+        netif_device_attach(priv->netdev);
+        woal_start_queue(priv->netdev);
     }
 
   done:
-    if (req)
-        kfree(req);
     LEAVE();
     return ret;
 }
@@ -478,8 +429,7 @@ woal_cfg80211_init_p2p_client(moal_private * priv)
 
     wifi_direct_mode = WIFI_DIRECT_MODE_DISABLE;
     if (MLAN_STATUS_SUCCESS !=
-        woal_cfg80211_wifi_direct_mode_cfg(priv,
-                                           MLAN_ACT_SET, &wifi_direct_mode)) {
+        woal_wifi_direct_mode_cfg(priv, MLAN_ACT_SET, &wifi_direct_mode)) {
         ret = -EFAULT;
         goto done;
     }
@@ -487,8 +437,7 @@ woal_cfg80211_init_p2p_client(moal_private * priv)
     /* first, init wifi direct to listen mode */
     wifi_direct_mode = WIFI_DIRECT_MODE_LISTEN;
     if (MLAN_STATUS_SUCCESS !=
-        woal_cfg80211_wifi_direct_mode_cfg(priv, MLAN_ACT_SET,
-                                           &wifi_direct_mode)) {
+        woal_wifi_direct_mode_cfg(priv, MLAN_ACT_SET, &wifi_direct_mode)) {
         ret = -EFAULT;
         goto done;
     }
@@ -496,8 +445,7 @@ woal_cfg80211_init_p2p_client(moal_private * priv)
     /* second, init wifi direct client */
     wifi_direct_mode = WIFI_DIRECT_MODE_CLIENT;
     if (MLAN_STATUS_SUCCESS !=
-        woal_cfg80211_wifi_direct_mode_cfg(priv,
-                                           MLAN_ACT_SET, &wifi_direct_mode)) {
+        woal_wifi_direct_mode_cfg(priv, MLAN_ACT_SET, &wifi_direct_mode)) {
         ret = -EFAULT;
         goto done;
     }
@@ -531,8 +479,7 @@ woal_cfg80211_init_p2p_go(moal_private * priv)
 
     wifi_direct_mode = WIFI_DIRECT_MODE_DISABLE;
     if (MLAN_STATUS_SUCCESS !=
-        woal_cfg80211_wifi_direct_mode_cfg(priv,
-                                           MLAN_ACT_SET, &wifi_direct_mode)) {
+        woal_wifi_direct_mode_cfg(priv, MLAN_ACT_SET, &wifi_direct_mode)) {
         ret = -EFAULT;
         goto done;
     }
@@ -540,8 +487,7 @@ woal_cfg80211_init_p2p_go(moal_private * priv)
     /* first, init wifi direct to listen mode */
     wifi_direct_mode = WIFI_DIRECT_MODE_LISTEN;
     if (MLAN_STATUS_SUCCESS !=
-        woal_cfg80211_wifi_direct_mode_cfg(priv, MLAN_ACT_SET,
-                                           &wifi_direct_mode)) {
+        woal_wifi_direct_mode_cfg(priv, MLAN_ACT_SET, &wifi_direct_mode)) {
         ret = -EFAULT;
         goto done;
     }
@@ -549,8 +495,7 @@ woal_cfg80211_init_p2p_go(moal_private * priv)
     /* second, init wifi direct to GO mode */
     wifi_direct_mode = WIFI_DIRECT_MODE_GO;
     if (MLAN_STATUS_SUCCESS !=
-        woal_cfg80211_wifi_direct_mode_cfg(priv,
-                                           MLAN_ACT_SET, &wifi_direct_mode)) {
+        woal_wifi_direct_mode_cfg(priv, MLAN_ACT_SET, &wifi_direct_mode)) {
         ret = -EFAULT;
         goto done;
     }
@@ -603,8 +548,7 @@ woal_cfg80211_deinit_p2p(moal_private * priv)
     /* cancel previous remain on channel */
     if (priv->phandle->remain_on_channel) {
         if (woal_cfg80211_remain_on_channel_cfg
-            (priv->wdev->wiphy, MOAL_IOCTL_WAIT, MTRUE, &channel_status, NULL,
-             0, 0)) {
+            (priv, MOAL_IOCTL_WAIT, MTRUE, &channel_status, NULL, 0, 0)) {
             PRINTM(MERROR, "Fail to cancel remain on channel\n");
             ret = -EFAULT;
             goto done;
@@ -640,8 +584,7 @@ woal_cfg80211_deinit_p2p(moal_private * priv)
 
     wifi_direct_mode = WIFI_DIRECT_MODE_DISABLE;
     if (MLAN_STATUS_SUCCESS !=
-        woal_cfg80211_wifi_direct_mode_cfg(priv,
-                                           MLAN_ACT_SET, &wifi_direct_mode)) {
+        woal_wifi_direct_mode_cfg(priv, MLAN_ACT_SET, &wifi_direct_mode)) {
         ret = -EFAULT;
         goto done;
     }
@@ -670,7 +613,7 @@ woal_cfg80211_change_virtual_intf(struct wiphy *wiphy,
                                   struct vif_params *params)
 {
     int ret = 0;
-    moal_private *priv = (moal_private *) woal_get_wiphy_priv(wiphy);
+    moal_private *priv = (moal_private *) woal_get_netdev_priv(dev);
     mlan_ds_bss *bss = NULL;
     mlan_ioctl_req *req = NULL;
 
@@ -687,7 +630,7 @@ woal_cfg80211_change_virtual_intf(struct wiphy *wiphy,
     if (priv->phandle->remain_on_channel) {
         t_u8 channel_status;
         if (woal_cfg80211_remain_on_channel_cfg
-            (wiphy, MOAL_IOCTL_WAIT, MTRUE, &channel_status, NULL, 0, 0)) {
+            (priv, MOAL_IOCTL_WAIT, MTRUE, &channel_status, NULL, 0, 0)) {
             PRINTM(MERROR, "Fail to cancel remain on channel\n");
             ret = -EFAULT;
             goto done;
@@ -908,7 +851,7 @@ woal_cfg80211_add_key(struct wiphy *wiphy, struct net_device *netdev,
 #endif
                       const t_u8 * mac_addr, struct key_params *params)
 {
-    moal_private *priv = (moal_private *) woal_get_wiphy_priv(wiphy);
+    moal_private *priv = (moal_private *) woal_get_netdev_priv(netdev);
 
     ENTER();
 
@@ -945,7 +888,7 @@ woal_cfg80211_del_key(struct wiphy *wiphy, struct net_device *netdev,
 #endif
                       const t_u8 * mac_addr)
 {
-    moal_private *priv = (moal_private *) woal_get_wiphy_priv(wiphy);
+    moal_private *priv = (moal_private *) woal_get_netdev_priv(netdev);
 
     ENTER();
 
@@ -981,7 +924,7 @@ woal_cfg80211_set_default_key(struct wiphy *wiphy,
     )
 {
     int ret = 0;
-    moal_private *priv = (moal_private *) woal_get_wiphy_priv(wiphy);
+    moal_private *priv = (moal_private *) woal_get_netdev_priv(netdev);
     mlan_bss_info bss_info;
 
     ENTER();
@@ -1019,9 +962,15 @@ woal_cfg80211_set_channel(struct wiphy *wiphy,
                           enum nl80211_channel_type channel_type)
 {
     int ret = 0;
-    moal_private *priv = (moal_private *) woal_get_wiphy_priv(wiphy);
+    moal_private *priv = NULL;
 
     ENTER();
+#if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,34) || defined(COMPAT_WIRELESS)
+    if (dev)
+        priv = woal_get_netdev_priv(dev);
+    else
+#endif
+        priv = (moal_private *) woal_get_wiphy_priv(wiphy);
 #ifdef STA_CFG80211
 #ifdef STA_SUPPORT
     if (GET_BSS_ROLE(priv) == MLAN_BSS_ROLE_STA) {
@@ -1031,7 +980,7 @@ woal_cfg80211_set_channel(struct wiphy *wiphy,
             LEAVE();
             return -EINVAL;
         }
-        ret = woal_set_rf_channel(wiphy, chan, channel_type);
+        ret = woal_set_rf_channel(priv, chan, channel_type);
     }
 #endif
 #endif
@@ -1055,7 +1004,7 @@ woal_cfg80211_mgmt_frame_register(struct wiphy *wiphy,
                                   struct net_device *dev, u16 frame_type,
                                   bool reg)
 {
-    moal_private *priv = (moal_private *) woal_get_wiphy_priv(wiphy);
+    moal_private *priv = (moal_private *) woal_get_netdev_priv(dev);
     mlan_status status = MLAN_STATUS_SUCCESS;
     t_u32 mgmt_subtype_mask = 0x0;
     static t_u32 last_mgmt_subtype_mask = 0x0;
@@ -1112,7 +1061,7 @@ woal_cfg80211_mgmt_tx(struct wiphy *wiphy,
 #endif
                       u64 * cookie)
 {
-    moal_private *priv = (moal_private *) woal_get_wiphy_priv(wiphy);
+    moal_private *priv = (moal_private *) woal_get_netdev_priv(dev);
     int ret = 0;
     pmlan_buffer pmbuf = NULL;
     mlan_status status = MLAN_STATUS_SUCCESS;
@@ -1151,7 +1100,7 @@ woal_cfg80211_mgmt_tx(struct wiphy *wiphy,
                 /** cancel previous remain on channel */
         if (priv->phandle->remain_on_channel) {
             if (woal_cfg80211_remain_on_channel_cfg
-                (wiphy, MOAL_IOCTL_WAIT, MTRUE, &channel_status, NULL, 0, 0)) {
+                (priv, MOAL_IOCTL_WAIT, MTRUE, &channel_status, NULL, 0, 0)) {
                 PRINTM(MERROR, "Fail to cancel remain on channel\n");
                 ret = -EFAULT;
                 goto done;
@@ -1171,13 +1120,13 @@ woal_cfg80211_mgmt_tx(struct wiphy *wiphy,
             duration = MGMT_TX_DEFAULT_WAIT_TIME;
         if (channel_type_valid)
             ret =
-                woal_cfg80211_remain_on_channel_cfg(wiphy, MOAL_IOCTL_WAIT,
+                woal_cfg80211_remain_on_channel_cfg(priv, MOAL_IOCTL_WAIT,
                                                     MFALSE, &channel_status,
                                                     chan, channel_type,
                                                     duration);
         else
             ret =
-                woal_cfg80211_remain_on_channel_cfg(wiphy, MOAL_IOCTL_WAIT,
+                woal_cfg80211_remain_on_channel_cfg(priv, MOAL_IOCTL_WAIT,
                                                     MFALSE, &channel_status,
                                                     chan, 0, duration);
         if (ret) {
@@ -1259,5 +1208,480 @@ woal_cfg80211_mgmt_tx(struct wiphy *wiphy,
 
   done:
     LEAVE();
+    return ret;
+}
+
+/**
+ * @brief Look up specific IE in a buf
+ *
+ * @param ie              Pointer to IEs
+ * @param len             Total length of ie
+ * @param id              Element id to lookup
+ *
+ * @return                Pointer of the specific IE -- success, NULL -- fail
+ */
+const t_u8 *
+woal_parse_ie_tlv(const t_u8 * ie, int len, t_u8 id)
+{
+    int left_len = len;
+    const t_u8 *pos = ie;
+    int length;
+
+    /* IE format: | u8 | id | | u8 | len | | var | data | */
+    while (left_len >= 2) {
+        length = *(pos + 1);
+        if ((*pos == id) && (length + 2) <= left_len)
+            return pos;
+        pos += (length + 2);
+        left_len -= (length + 2);
+    }
+
+    return NULL;
+}
+
+/**
+ *  @brief This function returns priv
+ *  based on mgmt ie index
+ *
+ *  @param handle    A pointer to moal_handle
+ *  @param index     mgmt ie index
+ *
+ *  @return          Pointer to moal_private
+ */
+static moal_private *
+woal_get_priv_by_mgmt_index(moal_handle * handle, t_u16 index)
+{
+    int i;
+
+    for (i = 0; i < MIN(handle->priv_num, MLAN_MAX_BSS_NUM); i++) {
+        if (handle->priv[i]) {
+            if (handle->priv[i]->probereq_index == index)
+                return (handle->priv[i]);
+        }
+    }
+    return NULL;
+}
+
+/**
+ * @brief Add custom ie to mgmt frames.
+ *
+ * @param priv                  A pointer to moal private structure
+ * @param beacon_ies_data       Beacon ie
+ * @param beacon_index          The index for beacon when auto index
+ * @param proberesp_ies_data    Probe resp ie
+ * @param proberesp_index       The index for probe resp when auto index
+ * @param assocresp_ies_data    Assoc resp ie
+ * @param assocresp_index       The index for assoc resp when auto index
+ * @param probereq_ies_data     Probe req ie
+ * @param probereq_index        The index for probe req when auto index *
+ *
+ * @return              0 -- success, otherwise fail
+ */
+static int
+woal_cfg80211_custom_ie(moal_private * priv,
+                        custom_ie * beacon_ies_data, t_u16 * beacon_index,
+                        custom_ie * proberesp_ies_data, t_u16 * proberesp_index,
+                        custom_ie * assocresp_ies_data, t_u16 * assocresp_index,
+                        custom_ie * probereq_ies_data, t_u16 * probereq_index)
+{
+    mlan_ioctl_req *ioctl_req = NULL;
+    mlan_ds_misc_cfg *misc = NULL;
+    mlan_ds_misc_custom_ie *custom_ie = NULL;
+    t_u8 *pos = NULL;
+    t_u16 len = 0;
+    int ret = 0;
+
+    ENTER();
+
+    if (!(custom_ie = kmalloc(sizeof(mlan_ds_misc_custom_ie), GFP_KERNEL))) {
+        ret = -ENOMEM;
+        goto done;
+    }
+
+    memset(custom_ie, 0x00, sizeof(mlan_ds_misc_custom_ie));
+    custom_ie->type = TLV_TYPE_MGMT_IE;
+
+    pos = (t_u8 *) custom_ie->ie_data_list;
+    if (beacon_ies_data) {
+        len = sizeof(*beacon_ies_data) - MAX_IE_SIZE
+            + beacon_ies_data->ie_length;
+        memcpy(pos, beacon_ies_data, len);
+        pos += len;
+        custom_ie->len += len;
+    }
+
+    if (proberesp_ies_data) {
+        len = sizeof(*proberesp_ies_data) - MAX_IE_SIZE
+            + proberesp_ies_data->ie_length;
+        memcpy(pos, proberesp_ies_data, len);
+        pos += len;
+        custom_ie->len += len;
+    }
+
+    if (assocresp_ies_data) {
+        len = sizeof(*assocresp_ies_data) - MAX_IE_SIZE
+            + assocresp_ies_data->ie_length;
+        memcpy(pos, assocresp_ies_data, len);
+        custom_ie->len += len;
+    }
+
+    if (probereq_ies_data) {
+        len = sizeof(*probereq_ies_data) - MAX_IE_SIZE
+            + probereq_ies_data->ie_length;
+        memcpy(pos, probereq_ies_data, len);
+        pos += len;
+        custom_ie->len += len;
+    }
+
+    ioctl_req = woal_alloc_mlan_ioctl_req(sizeof(mlan_ds_misc_cfg));
+    if (ioctl_req == NULL) {
+        ret = -ENOMEM;
+        goto done;
+    }
+
+    misc = (mlan_ds_misc_cfg *) ioctl_req->pbuf;
+    misc->sub_command = MLAN_OID_MISC_CUSTOM_IE;
+    ioctl_req->req_id = MLAN_IOCTL_MISC_CFG;
+    ioctl_req->action = MLAN_ACT_SET;
+
+    memcpy(&misc->param.cust_ie, custom_ie, sizeof(mlan_ds_misc_custom_ie));
+
+    if (MLAN_STATUS_SUCCESS !=
+        woal_request_ioctl(priv, ioctl_req, MOAL_IOCTL_WAIT)) {
+        ret = -EFAULT;
+        goto done;
+    }
+
+    /* get the assigned index */
+    pos = (t_u8 *) (&misc->param.cust_ie.ie_data_list[0].ie_index);
+    if (beacon_ies_data && beacon_ies_data->ie_length
+        && beacon_ies_data->ie_index == MLAN_CUSTOM_IE_AUTO_IDX_MASK) {
+        /* save beacon ie index after auto-indexing */
+        *beacon_index = misc->param.cust_ie.ie_data_list[0].ie_index;
+        len = sizeof(*beacon_ies_data) - MAX_IE_SIZE
+            + beacon_ies_data->ie_length;
+        pos += len;
+    }
+
+    if (proberesp_ies_data && proberesp_ies_data->ie_length
+        && proberesp_ies_data->ie_index == MLAN_CUSTOM_IE_AUTO_IDX_MASK) {
+        /* save probe resp ie index after auto-indexing */
+        *proberesp_index = *((t_u16 *) pos);
+        len = sizeof(*proberesp_ies_data) - MAX_IE_SIZE
+            + proberesp_ies_data->ie_length;
+        pos += len;
+    }
+
+    if (assocresp_ies_data && assocresp_ies_data->ie_length
+        && assocresp_ies_data->ie_index == MLAN_CUSTOM_IE_AUTO_IDX_MASK) {
+        /* save assoc resp ie index after auto-indexing */
+        *assocresp_index = *((t_u16 *) pos);
+        len = sizeof(*assocresp_ies_data) - MAX_IE_SIZE
+            + assocresp_ies_data->ie_length;
+        pos += len;
+    }
+    if (probereq_ies_data && probereq_ies_data->ie_length
+        && probereq_ies_data->ie_index == MLAN_CUSTOM_IE_AUTO_IDX_MASK) {
+        /* save probe resp ie index after auto-indexing */
+        *probereq_index = *((t_u16 *) pos);
+        len = sizeof(*probereq_ies_data) - MAX_IE_SIZE
+            + probereq_ies_data->ie_length;
+        pos += len;
+    }
+
+    if (ioctl_req->status_code == MLAN_ERROR_IOCTL_FAIL)
+        ret = -EFAULT;
+
+  done:
+    if (ioctl_req)
+        kfree(ioctl_req);
+    if (custom_ie)
+        kfree(custom_ie);
+    LEAVE();
+    return ret;
+}
+
+/**
+ * @brief Filter specific IE in ie buf
+ *
+ * @param ie              Pointer to IEs
+ * @param len             Total length of ie
+ * @param ie_out		  Pointer to out IE buf
+ *
+ * @return                out IE length
+ */
+static t_u16
+woal_filter_beacon_ies(const t_u8 * ie, int len, t_u8 * ie_out)
+{
+    int left_len = len;
+    const t_u8 *pos = ie;
+    int length;
+    t_u8 id = 0;
+    t_u16 out_len = 0;
+
+    /* ERP_INFO and RSN IE will be fileter out */
+    while (left_len >= 2) {
+        length = *(pos + 1);
+        id = *pos;
+        if ((length + 2) > left_len)
+            break;
+        switch (id) {
+        case WLAN_EID_ERP_INFO:
+        case RSN_IE:
+            break;
+        default:
+            memcpy(ie_out + out_len, pos, length + 2);
+            out_len += length + 2;
+            break;
+        }
+        pos += (length + 2);
+        left_len -= (length + 2);
+    }
+    return out_len;
+}
+
+/**
+ * @brief config AP or GO for mgmt frame ies.
+ *
+ * @param priv                  A pointer to moal private structure
+ * @param beacon_ies            A pointer to beacon ies
+ * @param beacon_ies_len        Beacon ies length
+ * @param proberesp_ies         A pointer to probe resp ies
+ * @param proberesp_ies_len     Probe resp ies length
+ * @param assocresp_ies         A pointer to probe resp ies
+ * @param assocresp_ies_len     Assoc resp ies length
+ * @param probereq_ies          A pointer to probe req ies
+ * @param probereq_ies_len      Probe req ies length *
+ * @param mask					Mgmt frame mask
+ *
+ * @return                      0 -- success, otherwise fail
+ */
+int
+woal_cfg80211_mgmt_frame_ie(moal_private * priv,
+                            const t_u8 * beacon_ies, size_t beacon_ies_len,
+                            const t_u8 * proberesp_ies,
+                            size_t proberesp_ies_len,
+                            const t_u8 * assocresp_ies,
+                            size_t assocresp_ies_len, const t_u8 * probereq_ies,
+                            size_t probereq_ies_len, t_u16 mask)
+{
+    int ret = 0;
+    t_u8 *pos = NULL;
+    custom_ie *beacon_ies_data = NULL;
+    custom_ie *proberesp_ies_data = NULL;
+    custom_ie *assocresp_ies_data = NULL;
+    custom_ie *probereq_ies_data = NULL;
+
+    /* static variables for mgmt frame ie auto-indexing */
+    static t_u16 beacon_index = MLAN_CUSTOM_IE_AUTO_IDX_MASK;
+    static t_u16 proberesp_index = MLAN_CUSTOM_IE_AUTO_IDX_MASK;
+    static t_u16 assocresp_index = MLAN_CUSTOM_IE_AUTO_IDX_MASK;
+    static t_u16 probereq_index = MLAN_CUSTOM_IE_AUTO_IDX_MASK;
+    moal_private *pmpriv = NULL;
+    static t_u16 rsn_index = MLAN_CUSTOM_IE_AUTO_IDX_MASK;
+    const t_u8 *rsn_ie;
+
+    ENTER();
+
+    if (mask & MGMT_MASK_BEACON) {
+        if (!(beacon_ies_data = kmalloc(sizeof(custom_ie), GFP_KERNEL))) {
+            ret = -ENOMEM;
+            goto done;
+        }
+        if (beacon_ies && beacon_ies_len) {
+            rsn_ie =
+                woal_parse_ie_tlv((t_u8 *) beacon_ies, (int) beacon_ies_len,
+                                  RSN_IE);
+            if (rsn_ie) {
+                beacon_ies_data->ie_index = rsn_index;
+                beacon_ies_data->mgmt_subtype_mask =
+                    MGMT_MASK_BEACON | MGMT_MASK_PROBE_RESP |
+                    MGMT_MASK_ASSOC_RESP;
+                beacon_ies_data->ie_length = rsn_ie[1] + 2;
+                memcpy(beacon_ies_data->ie_buffer, rsn_ie, rsn_ie[1] + 2);
+                if (MLAN_STATUS_SUCCESS !=
+                    woal_cfg80211_custom_ie(priv, beacon_ies_data, &rsn_index,
+                                            NULL, &proberesp_index, NULL,
+                                            &assocresp_index, NULL,
+                                            &probereq_index)) {
+                    ret = -EFAULT;
+                    goto done;
+                }
+            }
+        } else {
+            /* clear rsn_ie */
+            if (rsn_index <= MAX_MGMT_IE_INDEX) {
+                beacon_ies_data->ie_index = rsn_index;
+                beacon_ies_data->mgmt_subtype_mask = MLAN_CUSTOM_IE_DELETE_MASK;
+                beacon_ies_data->ie_length = 0;
+                rsn_index = MLAN_CUSTOM_IE_AUTO_IDX_MASK;
+                if (MLAN_STATUS_SUCCESS !=
+                    woal_cfg80211_custom_ie(priv, beacon_ies_data, &rsn_index,
+                                            NULL, &proberesp_index, NULL,
+                                            &assocresp_index, NULL,
+                                            &probereq_index)) {
+                    ret = -EFAULT;
+                    goto done;
+                }
+            }
+        }
+    }
+
+    if (mask & MGMT_MASK_PROBE_RESP) {
+        if (!(proberesp_ies_data = kmalloc(sizeof(custom_ie), GFP_KERNEL))) {
+            ret = -ENOMEM;
+            goto done;
+        }
+    }
+
+    if (mask & MGMT_MASK_ASSOC_RESP) {
+        if (!(assocresp_ies_data = kmalloc(sizeof(custom_ie), GFP_KERNEL))) {
+            ret = -ENOMEM;
+            goto done;
+        }
+    }
+    if (mask & MGMT_MASK_PROBE_REQ) {
+        if (!(probereq_ies_data = kmalloc(sizeof(custom_ie), GFP_KERNEL))) {
+            ret = -ENOMEM;
+            goto done;
+        }
+    }
+
+    if (beacon_ies_data) {
+        memset(beacon_ies_data, 0x00, sizeof(custom_ie));
+        if (beacon_ies && beacon_ies_len) {
+            /* set the beacon ies */
+            beacon_ies_data->ie_index = beacon_index;
+            beacon_ies_data->mgmt_subtype_mask = MGMT_MASK_BEACON;
+            beacon_ies_data->mgmt_subtype_mask |= MGMT_MASK_ASSOC_RESP;
+            beacon_ies_data->ie_length = woal_filter_beacon_ies(beacon_ies,
+                                                                beacon_ies_len,
+                                                                beacon_ies_data->
+                                                                ie_buffer);
+        } else {
+            /* clear the beacon ies */
+            if (beacon_index > MAX_MGMT_IE_INDEX) {
+                PRINTM(MERROR, "Invalid beacon index for mgmt frame ie.\n");
+                goto done;
+            }
+
+            beacon_ies_data->ie_index = beacon_index;
+            beacon_ies_data->mgmt_subtype_mask = MLAN_CUSTOM_IE_DELETE_MASK;
+            beacon_ies_data->ie_length = 0;
+            beacon_index = MLAN_CUSTOM_IE_AUTO_IDX_MASK;
+        }
+    }
+
+    if (proberesp_ies_data) {
+        memset(proberesp_ies_data, 0x00, sizeof(custom_ie));
+        if (proberesp_ies && proberesp_ies_len) {
+            /* set the probe response ies */
+            // proberesp_ies_data->ie_index = MLAN_CUSTOM_IE_AUTO_IDX_MASK;
+            proberesp_ies_data->ie_index = proberesp_index;
+            proberesp_ies_data->mgmt_subtype_mask = MGMT_MASK_PROBE_RESP;
+            proberesp_ies_data->ie_length = proberesp_ies_len;
+            pos = proberesp_ies_data->ie_buffer;
+            memcpy(pos, proberesp_ies, proberesp_ies_len);
+        } else {
+            /* clear the probe response ies */
+            if (proberesp_index > MAX_MGMT_IE_INDEX) {
+                PRINTM(MERROR, "Invalid probe resp index for mgmt frame ie.\n");
+                goto done;
+            }
+
+            proberesp_ies_data->ie_index = proberesp_index;
+            proberesp_ies_data->mgmt_subtype_mask = MLAN_CUSTOM_IE_DELETE_MASK;
+            proberesp_ies_data->ie_length = 0;
+            proberesp_index = MLAN_CUSTOM_IE_AUTO_IDX_MASK;
+        }
+    }
+    if (assocresp_ies_data) {
+        memset(assocresp_ies_data, 0x00, sizeof(custom_ie));
+        if (assocresp_ies && assocresp_ies_len) {
+            /* set the assoc response ies */
+            assocresp_ies_data->ie_index = assocresp_index;
+            assocresp_ies_data->mgmt_subtype_mask = MGMT_MASK_ASSOC_RESP;
+            assocresp_ies_data->ie_length = assocresp_ies_len;
+            pos = assocresp_ies_data->ie_buffer;
+            memcpy(pos, assocresp_ies, assocresp_ies_len);
+        } else {
+            /* clear the assoc response ies */
+            if (assocresp_index > MAX_MGMT_IE_INDEX) {
+                PRINTM(MERROR, "Invalid assoc resp index for mgmt frame ie.\n");
+                goto done;
+            }
+
+            assocresp_ies_data->ie_index = assocresp_index;
+            assocresp_ies_data->mgmt_subtype_mask = MLAN_CUSTOM_IE_DELETE_MASK;
+            assocresp_ies_data->ie_length = 0;
+            assocresp_index = MLAN_CUSTOM_IE_AUTO_IDX_MASK;
+        }
+    }
+
+    if (probereq_ies_data) {
+        memset(probereq_ies_data, 0x00, sizeof(custom_ie));
+        if ((probereq_index != MLAN_CUSTOM_IE_AUTO_IDX_MASK) &&
+            (priv->probereq_index != probereq_index)) {
+            pmpriv = woal_get_priv_by_mgmt_index(priv->phandle, probereq_index);
+            if (pmpriv) {
+                probereq_ies_data->ie_index = probereq_index;
+                probereq_ies_data->mgmt_subtype_mask =
+                    MLAN_CUSTOM_IE_DELETE_MASK;
+                probereq_ies_data->ie_length = 0;
+                probereq_index = MLAN_CUSTOM_IE_AUTO_IDX_MASK;
+                pmpriv->probereq_index = MLAN_CUSTOM_IE_AUTO_IDX_MASK;
+                if (MLAN_STATUS_SUCCESS !=
+                    woal_cfg80211_custom_ie(pmpriv, NULL, &beacon_index,
+                                            NULL, &proberesp_index,
+                                            NULL, &assocresp_index,
+                                            probereq_ies_data,
+                                            &probereq_index)) {
+                    ret = -EFAULT;
+                    goto done;
+                }
+                memset(probereq_ies_data, 0x00, sizeof(custom_ie));
+            }
+        }
+        if (probereq_ies && probereq_ies_len) {
+            /* set the probe req ies */
+            probereq_ies_data->ie_index = probereq_index;
+            probereq_ies_data->mgmt_subtype_mask = MGMT_MASK_PROBE_REQ;
+            probereq_ies_data->ie_length = probereq_ies_len;
+            pos = probereq_ies_data->ie_buffer;
+            memcpy(pos, probereq_ies, probereq_ies_len);
+        } else {
+            /* clear the probe req ies */
+            if (probereq_index > MAX_MGMT_IE_INDEX) {
+                PRINTM(MERROR, "Invalid probe resp index for mgmt frame ie.\n");
+                goto done;
+            }
+            probereq_ies_data->ie_index = probereq_index;
+            probereq_ies_data->mgmt_subtype_mask = MLAN_CUSTOM_IE_DELETE_MASK;
+            probereq_ies_data->ie_length = 0;
+            probereq_index = MLAN_CUSTOM_IE_AUTO_IDX_MASK;
+        }
+    }
+
+    if (MLAN_STATUS_SUCCESS !=
+        woal_cfg80211_custom_ie(priv, beacon_ies_data, &beacon_index,
+                                proberesp_ies_data, &proberesp_index,
+                                assocresp_ies_data, &assocresp_index,
+                                probereq_ies_data, &probereq_index)) {
+        ret = -EFAULT;
+        goto done;
+    }
+    if (probereq_ies_data)
+        priv->probereq_index = probereq_index;
+
+  done:
+    if (beacon_ies_data)
+        kfree(beacon_ies_data);
+    if (proberesp_ies_data)
+        kfree(proberesp_ies_data);
+    if (assocresp_ies_data)
+        kfree(assocresp_ies_data);
+
+    LEAVE();
+
     return ret;
 }

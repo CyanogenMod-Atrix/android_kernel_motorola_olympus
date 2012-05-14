@@ -2124,12 +2124,14 @@ woal_set_priv(struct net_device *dev, struct iw_request_info *info,
         priv->bg_scan_reported = MFALSE;
         len = sprintf(buf, "OK\n") + 1;
     } else if (strncmp(buf, "BGSCAN-STOP", strlen("BGSCAN-STOP")) == 0) {
-        if (MLAN_STATUS_SUCCESS != woal_stop_bg_scan(priv)) {
-            ret = -EFAULT;
-            goto done;
+        if (priv->bg_scan_start && !priv->scan_cfg.rssi_threshold) {
+            if (MLAN_STATUS_SUCCESS != woal_stop_bg_scan(priv)) {
+                ret = -EFAULT;
+                goto done;
+            }
+            priv->bg_scan_start = MFALSE;
+            priv->bg_scan_reported = MFALSE;
         }
-        priv->bg_scan_start = MFALSE;
-        priv->bg_scan_reported = MFALSE;
         len = sprintf(buf, "OK\n") + 1;
     } else if (strncmp(buf, "RXFILTER-START", strlen("RXFILTER-START")) == 0) {
 #ifdef MEF_CFG_RX_FILTER
@@ -2326,13 +2328,13 @@ woal_set_essid(struct net_device *dev, struct iw_request_info *info,
      * Check if we asked for `any' or 'particular'
      */
     if (!dwrq->flags) {
-
+#ifdef REASSOCIATION
         if (!req_ssid.ssid_len) {
             memset(&priv->prev_ssid_bssid.ssid, 0x00, sizeof(mlan_802_11_ssid));
             memset(&priv->prev_ssid_bssid.bssid, 0x00, MLAN_MAC_ADDR_LENGTH);
             goto setessid_ret;
         }
-
+#endif
         /* Do normal SSID scanning */
         if (MLAN_STATUS_SUCCESS !=
             woal_request_scan(priv, MOAL_IOCTL_WAIT, NULL)) {
@@ -2351,6 +2353,7 @@ woal_set_essid(struct net_device *dev, struct iw_request_info *info,
 
         PRINTM(MINFO, "Requested new SSID = %s\n", (char *) req_ssid.ssid);
         memcpy(&ssid_bssid.ssid, &req_ssid, sizeof(mlan_802_11_ssid));
+
         if (dwrq->flags != 0xFFFF) {
             if (MLAN_STATUS_SUCCESS != woal_find_essid(priv, &ssid_bssid)) {
                 /* Do specific SSID scanning */

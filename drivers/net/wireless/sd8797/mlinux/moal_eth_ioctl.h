@@ -44,12 +44,23 @@ Change log:
 /** Private command ID to get BSS type */
 #define WOAL_GET_BSS_TYPE           (SIOCDEVPRIVATE + 15)
 
-int woal_do_ioctl(struct net_device *dev, struct ifreq *req, int i);
+int woal_do_ioctl(struct net_device *dev, struct ifreq *req, int cmd);
 
+/*
+ * For android private commands, fixed value of ioctl is used.
+ * Internally commands are differentiated using strings.
+ *
+ * application needs to specify "total_len" of data for copy_from_user
+ * kernel updates "used_len" during copy_to_user
+ */
+/** Private command structure from app */
 typedef struct _android_wifi_priv_cmd
 {
+    /** Buffer pointer */
     char *buf;
+    /** buffer updated by driver */
     int used_len;
+    /** buffer sent by application */
     int total_len;
 } android_wifi_priv_cmd;
 
@@ -61,6 +72,16 @@ typedef struct woal_priv_tx_rate_cfg
     /** Rate/MCS index (0xFF: auto) */
     t_u32 rate_index;
 } woal_tx_rate_cfg;
+
+typedef struct woal_priv_esuppmode_cfg
+{
+    /* RSN mode */
+    t_u16 rsn_mode;
+    /* Pairwise cipher */
+    t_u8 pairwise_cipher;
+    /* Group cipher */
+    t_u8 group_cipher;
+} woal_esuppmode_cfg;
 
 mlan_status woal_set_ap_wps_p2p_ie(moal_private * priv, t_u8 * ie, size_t len);
 

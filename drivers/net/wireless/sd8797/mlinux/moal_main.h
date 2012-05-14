@@ -2,7 +2,7 @@
   *
   * @brief This file contains wlan driver specific defines etc.
   * 
-  * Copyright (C) 2008-2011, Marvell International Ltd.  
+  * Copyright (C) 2008-2012, Marvell International Ltd.  
   *
   * This software file (the "File") is distributed by Marvell International 
   * Ltd. under the terms of the GNU General Public License Version 2, June 1991 
@@ -49,8 +49,9 @@ Change log:
 #include        <linux/ctype.h>
 #include        <linux/proc_fs.h>
 #include        <linux/vmalloc.h>
-#include	<linux/ptrace.h>
-#include	<linux/string.h>
+#include        <linux/ptrace.h>
+#include        <linux/string.h>
+#include        <linux/list.h>
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,18)
 #include       <linux/config.h>
@@ -654,6 +655,24 @@ struct debug_data_priv
 /** IP address operation: Remove */
 #define IPADDR_OP_REMOVE        0
 
+struct tcp_sess
+{
+    struct list_head link;
+    /** tcp session info */
+    t_u32 src_ip_addr;
+    t_u32 dst_ip_addr;
+    t_u16 src_tcp_port;
+    t_u16 dst_tcp_port;
+    /** tcp window info */
+    t_u8 rx_win_opt;
+    t_u32 rx_win_scale;
+    /** warming up counter */
+    t_u32 start_cnt;
+    /** tx ack packet info */
+    t_u32 ack_seq;
+    t_u32 ack_cnt;
+};
+
 /** Private structure for MOAL */
 struct _moal_private
 {
@@ -715,6 +734,18 @@ struct _moal_private
     t_u8 cfg_bssid[ETH_ALEN];
         /** Disconnect request from CFG80211 */
     bool cfg_disconnect;
+        /** rssi_threshold */
+    s32 cqm_rssi_thold;
+        /** rssi hysteresis */
+    u32 cqm_rssi_hyst;
+        /** last rssi_low */
+    u8 last_rssi_low;
+        /** last rssi_high */
+    u8 last_rssi_high;
+        /** mrvl rssi threshold */
+    u8 mrvl_rssi_low;
+        /** rssi status */
+    u32 rssi_status;
 #endif                          /* STA_SUPPORT */
 #endif                          /* STA_CFG80211 */
         /** IOCTL wait queue */
@@ -779,6 +810,11 @@ struct _moal_private
     /** MLAN debug info */
     struct debug_data_priv items_priv;
 #endif
+
+    /** tcp session queue */
+    struct list_head tcp_sess_queue;
+    /** TCP Ack enhance flag */
+    t_u8 enable_tcp_ack_enh;
 };
 
 /** Handle data structure for MOAL */
@@ -818,6 +854,7 @@ struct _moal_handle
     t_u16 init_wait_q_woken;
         /** Init wait queue */
     wait_queue_head_t init_wait_q __ATTRIB_ALIGN__;
+#if defined(SDIO_SUSPEND_RESUME)
         /** Device suspend flag */
     BOOLEAN is_suspended;
 #ifdef SDIO_SUSPEND_RESUME
@@ -830,6 +867,7 @@ struct _moal_handle
     t_u16 hs_activate_wait_q_woken;
         /** Host Sleep activated event wait queue */
     wait_queue_head_t hs_activate_wait_q __ATTRIB_ALIGN__;
+#endif
         /** Card pointer */
     t_void *card;
         /** Rx pending in MLAN */
@@ -844,12 +882,14 @@ struct _moal_handle
     t_u32 lock_count;
         /** mlan buffer alloc count */
     t_u32 mbufalloc_count;
+#if defined(SDIO_SUSPEND_RESUME)
         /** hs skip count */
     t_u32 hs_skip_count;
         /** hs force count */
     t_u32 hs_force_count;
         /** suspend_fail flag */
     BOOLEAN suspend_fail;
+#endif
 #ifdef REASSOCIATION
         /** Re-association thread */
     moal_thread reassoc_thread;
@@ -923,7 +963,7 @@ struct _moal_handle
     t_u8 cmd52_reg;
         /** cmd52 value */
     t_u8 cmd52_val;
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,34)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,29)
         /** spinlock to stop_queue/wake_queue*/
     spinlock_t queue_lock;
 #endif
@@ -939,7 +979,7 @@ struct _moal_handle
 static inline void
 woal_set_trans_start(struct net_device *dev)
 {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,34)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,31)
     unsigned int i;
     for (i = 0; i < dev->num_tx_queues; i++) {
         netdev_get_tx_queue(dev, i)->trans_start = jiffies;
@@ -958,7 +998,7 @@ woal_set_trans_start(struct net_device *dev)
 static inline void
 woal_start_queue(struct net_device *dev)
 {
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,34)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,29)
     netif_start_queue(dev);
 #else
     netif_tx_start_all_queues(dev);
@@ -975,7 +1015,7 @@ woal_start_queue(struct net_device *dev)
 static inline void
 woal_stop_queue(struct net_device *dev)
 {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,34)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,29)
     unsigned long flags;
     moal_private *priv = (moal_private *) netdev_priv(dev);
     spin_lock_irqsave(&priv->phandle->queue_lock, flags);
@@ -1000,7 +1040,7 @@ woal_stop_queue(struct net_device *dev)
 static inline void
 woal_wake_queue(struct net_device *dev)
 {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,34)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,29)
     unsigned long flags;
     moal_private *priv = (moal_private *) netdev_priv(dev);
     spin_lock_irqsave(&priv->phandle->queue_lock, flags);
@@ -1217,6 +1257,8 @@ typedef struct _HostCmd_DS_802_11_CFG_DATA
 #define WEXT_BGSCAN_RSSI_SECTION	 'R'
 /** BGSCAN SCAN INTERVAL SECTION */
 #define WEXT_BGSCAN_INTERVAL_SECTION 'T'
+/** BGSCAN REPEAT SECTION */
+#define WEXT_BGSCAN_REPEAT_SECTION  'E'
 
 /** band AUTO */
 #define	WIFI_FREQUENCY_BAND_AUTO		0
@@ -1316,11 +1358,15 @@ mlan_status woal_set_get_hs_params(moal_private * priv, t_u16 action,
                                    t_u8 wait_option, mlan_ds_hs_cfg * hscfg);
 /** Cancel Host Sleep configuration */
 mlan_status woal_cancel_hs(moal_private * priv, t_u8 wait_option);
+#if defined(SDIO_SUSPEND_RESUME)
 /** Enable Host Sleep configuration */
 int woal_enable_hs(moal_private * priv);
 /** hs active timeout 2 second */
 #define HS_ACTIVE_TIMEOUT  (2 * HZ)
+#endif
 
+/** get deep sleep */
+int woal_get_deep_sleep(moal_private * priv, t_u32 * data);
 /** set deep sleep */
 int woal_set_deep_sleep(moal_private * priv, t_u8 wait_option,
                         BOOLEAN bdeep_sleep, t_u16 idletime);
@@ -1431,6 +1477,8 @@ int woal_host_command(moal_private * priv, struct iwreq *wrq);
 #if defined(WIFI_DIRECT_SUPPORT)
 #if defined(STA_SUPPORT) && defined(UAP_SUPPORT)
 #if defined(STA_WEXT) || defined(UAP_WEXT)
+mlan_status woal_bss_role_cfg(moal_private * priv, t_u8 action,
+                              t_u8 wait_option, t_u8 * bss_role);
 int woal_set_get_bss_role(moal_private * priv, struct iwreq *wrq);
 #endif
 #endif
@@ -1443,8 +1491,8 @@ int woal_hostcmd_ioctl(struct net_device *dev, struct ifreq *req);
 #if defined(WIFI_DIRECT_SUPPORT)
 mlan_status woal_set_remain_channel_ioctl(moal_private * priv, t_u8 wait_option,
                                           mlan_ds_remain_chan * pchan);
-mlan_status woal_cfg80211_wifi_direct_mode_cfg(moal_private * priv,
-                                               t_u16 action, t_u16 * mode);
+mlan_status woal_wifi_direct_mode_cfg(moal_private * priv, t_u16 action,
+                                      t_u16 * mode);
 #endif /* WIFI_DIRECT_SUPPORT */
 
 #ifdef CONFIG_PROC_FS
@@ -1502,9 +1550,15 @@ mlan_status woal_remove_rxfilter(moal_private * priv, char *rxfilter);
 mlan_status woal_set_qos_cfg(moal_private * priv, char *qos_cfg);
 int woal_set_sleeppd(moal_private * priv, char *psleeppd);
 mlan_status woal_set_rssi_low_threshold(moal_private * priv, char *rssi);
+mlan_status woal_set_rssi_threshold(moal_private * priv, t_u32 event_id);
 mlan_status woal_set_bg_scan(moal_private * priv, char *buf, int length);
 mlan_status woal_stop_bg_scan(moal_private * priv);
 void woal_reconfig_bgscan(moal_handle * handle);
 #endif
+
+struct tcp_sess *woal_get_tcp_sess(moal_private * priv,
+                                   t_u32 src_ip, t_u16 src_port,
+                                   t_u32 dst_ip, t_u16 dst_port);
+void woal_check_tcp_fin(moal_private * priv, struct sk_buff *skb);
 
 #endif /* _MOAL_MAIN_H */

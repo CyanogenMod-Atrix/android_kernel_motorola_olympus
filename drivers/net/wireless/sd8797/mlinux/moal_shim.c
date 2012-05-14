@@ -745,6 +745,11 @@ moal_recv_packet(IN t_void * pmoal_handle, IN pmlan_buffer pmbuf)
             skb->dev = priv->netdev;
             skb->protocol = eth_type_trans(skb, priv->netdev);
             skb->ip_summed = CHECKSUM_NONE;
+
+            if (priv->enable_tcp_ack_enh == MTRUE) {
+                woal_check_tcp_fin(priv, skb);
+            }
+
             priv->stats.rx_bytes += skb->len;
             priv->stats.rx_packets++;
             if (in_interrupt())
@@ -950,6 +955,13 @@ moal_recv_event(IN t_void * pmoal_handle, IN pmlan_event pmevent)
 #endif
         }
 #endif /* STA_WEXT */
+#ifdef STA_CFG80211
+        if (IS_STA_CFG80211(cfg80211_wext)) {
+            cfg80211_michael_mic_failure(priv->netdev, priv->cfg_bssid,
+                                         NL80211_KEYTYPE_PAIRWISE, -1, NULL,
+                                         GFP_KERNEL);
+        }
+#endif
         break;
     case MLAN_EVENT_ID_FW_MIC_ERR_MUL:
 #ifdef STA_WEXT
@@ -961,17 +973,47 @@ moal_recv_event(IN t_void * pmoal_handle, IN pmlan_event pmevent)
 #endif
         }
 #endif /* STA_WEXT */
+#ifdef STA_CFG80211
+        if (IS_STA_CFG80211(cfg80211_wext)) {
+            cfg80211_michael_mic_failure(priv->netdev, priv->cfg_bssid,
+                                         NL80211_KEYTYPE_GROUP, -1, NULL,
+                                         GFP_KERNEL);
+        }
+#endif
         break;
     case MLAN_EVENT_ID_FW_BCN_RSSI_LOW:
 #ifdef STA_WEXT
         if (IS_STA_WEXT(cfg80211_wext))
             woal_send_iwevcustom_event(priv, CUS_EVT_BEACON_RSSI_LOW);
 #endif
+#ifdef STA_CFG80211
+        if (IS_STA_CFG80211(cfg80211_wext)) {
+#if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,35) || defined(COMPAT_WIRELESS)
+            cfg80211_cqm_rssi_notify(priv->netdev,
+                                     NL80211_CQM_RSSI_THRESHOLD_EVENT_LOW,
+                                     GFP_KERNEL);
+            priv->rssi_status = MLAN_EVENT_ID_FW_BCN_RSSI_LOW;
+#endif
+            woal_set_rssi_threshold(priv, MLAN_EVENT_ID_FW_BCN_RSSI_LOW);
+        }
+#endif
         break;
     case MLAN_EVENT_ID_FW_BCN_RSSI_HIGH:
 #ifdef STA_WEXT
         if (IS_STA_WEXT(cfg80211_wext))
             woal_send_iwevcustom_event(priv, CUS_EVT_BEACON_RSSI_HIGH);
+#endif
+#ifdef STA_CFG80211
+        if (IS_STA_CFG80211(cfg80211_wext)) {
+            if (!priv->mrvl_rssi_low) {
+#if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,35) || defined(COMPAT_WIRELESS)
+                cfg80211_cqm_rssi_notify(priv->netdev,
+                                         NL80211_CQM_RSSI_THRESHOLD_EVENT_HIGH,
+                                         GFP_KERNEL);
+#endif
+                woal_set_rssi_threshold(priv, MLAN_EVENT_ID_FW_BCN_RSSI_HIGH);
+            }
+        }
 #endif
         break;
     case MLAN_EVENT_ID_FW_BCN_SNR_LOW:
@@ -1033,6 +1075,22 @@ moal_recv_event(IN t_void * pmoal_handle, IN pmlan_event pmevent)
         if (IS_STA_WEXT(cfg80211_wext))
             woal_send_iwevcustom_event(priv, CUS_EVT_PRE_BEACON_LOST);
 #endif
+#ifdef STA_CFG80211
+#if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,35) || defined(COMPAT_WIRELESS)
+        if (IS_STA_CFG80211(cfg80211_wext)) {
+            struct cfg80211_bss *bss = NULL;
+            bss =
+                cfg80211_get_bss(priv->wdev->wiphy, NULL, priv->cfg_bssid, NULL,
+                                 0, WLAN_CAPABILITY_ESS, WLAN_CAPABILITY_ESS);
+            if (bss)
+                cfg80211_unlink_bss(priv->wdev->wiphy, bss);
+            cfg80211_cqm_rssi_notify(priv->netdev,
+                                     NL80211_CQM_RSSI_THRESHOLD_EVENT_LOW,
+                                     GFP_KERNEL);
+            priv->rssi_status = MLAN_EVENT_ID_FW_PRE_BCN_LOST;
+        }
+#endif
+#endif
         break;
     case MLAN_EVENT_ID_FW_WMM_CONFIG_CHANGE:
 #ifdef STA_WEXT
@@ -1069,9 +1127,20 @@ moal_recv_event(IN t_void * pmoal_handle, IN pmlan_event pmevent)
         priv->bg_scan_reported = MTRUE;
 #ifdef STA_WEXT
         if (IS_STA_WEXT(cfg80211_wext)) {
-            woal_send_iwevcustom_event(priv, CUS_EVT_BG_SCAN);
             memset(&wrqu, 0, sizeof(union iwreq_data));
             wireless_send_event(priv->netdev, SIOCGIWSCAN, &wrqu, NULL);
+        }
+#endif
+#ifdef STA_CFG80211
+        if (IS_STA_CFG80211(cfg80211_wext)) {
+            woal_inform_bss_from_scan_result(priv, NULL);
+#if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,35) || defined(COMPAT_WIRELESS)
+            if (priv->mrvl_rssi_low) {
+                cfg80211_cqm_rssi_notify(priv->netdev,
+                                         NL80211_CQM_RSSI_THRESHOLD_EVENT_HIGH,
+                                         GFP_KERNEL);
+            }
+#endif
         }
 #endif
         break;
@@ -1285,10 +1354,15 @@ moal_recv_event(IN t_void * pmoal_handle, IN pmlan_event pmevent)
 #endif /* UAP_WEXT */
         break;
     case MLAN_EVENT_ID_DRV_MGMT_FRAME:
+#ifdef UAP_WEXT
+        if (IS_UAP_WEXT(cfg80211_wext)) {
+            woal_broadcast_event(priv, pmevent->event_buf, pmevent->event_len);
+        }
+#endif /* UAP_WEXT */
 #ifdef WIFI_DIRECT_SUPPORT
 #if defined(STA_CFG80211) || defined(UAP_CFG80211)
         if (IS_STA_OR_UAP_CFG80211(cfg80211_wext)) {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,0,0) || defined(COMPAT_WIRELESS)
+#if LINUX_VERSION_CODE >= WIFI_DIRECT_KERNEL_VERSION
             if (priv->netdev && priv->netdev->ieee80211_ptr->wiphy->mgmt_stypes) {
                 /* frmctl + durationid + addr1 + addr2 + addr3 + seqctl */
 #define PACKET_ADDR4_POS        (2 + 2 + 6 + 6 + 6 + 2)
@@ -1310,11 +1384,6 @@ moal_recv_event(IN t_void * pmoal_handle, IN pmlan_event pmevent)
         }
 #endif /* STA_CFG80211 || UAP_CFG80211 */
 #endif /* WIFI_DIRECT_SUPPORT */
-#ifdef UAP_WEXT
-        if (IS_UAP_WEXT(cfg80211_wext)) {
-            woal_broadcast_event(priv, pmevent->event_buf, pmevent->event_len);
-        }
-#endif /* UAP_WEXT */
         break;
 #endif /* UAP_SUPPORT */
     case MLAN_EVENT_ID_DRV_PASSTHRU:

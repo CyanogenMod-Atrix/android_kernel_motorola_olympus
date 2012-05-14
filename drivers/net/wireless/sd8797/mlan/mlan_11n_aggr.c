@@ -333,7 +333,9 @@ wlan_11n_aggregate_pkt(mlan_private * priv, raListTbl * pra_list,
     t_u8 *data;
     int pad = 0;
     mlan_status ret = MLAN_STATUS_SUCCESS;
+#ifdef DEBUG_LEVEL1
     t_u32 sec, usec;
+#endif
     mlan_tx_param tx_param;
 #ifdef STA_SUPPORT
     TxPD *ptx_pd = MNULL;
@@ -497,8 +499,7 @@ wlan_11n_aggregate_pkt(mlan_private * priv, raListTbl * pra_list,
         pmadapter->callbacks.moal_spin_unlock(pmadapter->pmoal_handle,
                                               priv->wmm.ra_list_spinlock);
     }
-    pmadapter->callbacks.moal_get_system_time(pmadapter->pmoal_handle, &sec,
-                                              &usec);
+    PRINTM_GET_SYS_TIME(MDATA, &sec, &usec);
     PRINTM_NETINTF(MDATA, priv);
     PRINTM(MDATA, "%lu.%06lu : Data => FW\n", sec, usec);
 

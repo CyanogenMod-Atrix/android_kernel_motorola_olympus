@@ -1335,6 +1335,7 @@ wlan_ret_tx_bf_cfg(IN pmlan_private pmpriv,
 }
 
 #ifdef STA_SUPPORT
+
 /**
  *  @brief This function append the 802_11N tlv
  *
@@ -1426,12 +1427,12 @@ wlan_cmd_append_11n_tlv(IN mlan_private * pmpriv,
             pbss_desc->pht_info->ht_info.pri_chan;
         pchan_list->chan_scan_param[0].radio_type =
             wlan_band_to_radio_type((t_u8) pbss_desc->bss_band);
-
         if (ISSUPP_CHANWIDTH40(usr_dot_11n_dev_cap) &&
-            ISALLOWED_CHANWIDTH40(pbss_desc->pht_info->ht_info.field2))
+            ISALLOWED_CHANWIDTH40(pbss_desc->pht_info->ht_info.field2)) {
             SET_SECONDARYCHAN(pchan_list->chan_scan_param[0].radio_type,
                               GET_SECONDARYCHAN(pbss_desc->pht_info->ht_info.
                                                 field2));
+        }
 
         HEXDUMP("ChanList", (t_u8 *) pchan_list,
                 sizeof(MrvlIEtypes_ChanListParamSet_t));
@@ -1467,15 +1468,13 @@ wlan_cmd_append_11n_tlv(IN mlan_private * pmpriv,
 
         memcpy(pmadapter, (t_u8 *) pext_cap + sizeof(MrvlIEtypesHeader_t),
                (t_u8 *) pbss_desc->pext_cap + sizeof(IEEEtypes_Header_t),
-               pext_cap->header.len);
-
+               pbss_desc->pext_cap->ieee_hdr.len);
         HEXDUMP("Extended Capabilities IE", (t_u8 *) pext_cap,
                 sizeof(MrvlIETypes_ExtCap_t));
         *ppbuffer += sizeof(MrvlIETypes_ExtCap_t);
         ret_len += sizeof(MrvlIETypes_ExtCap_t);
         pext_cap->header.len = wlan_cpu_to_le16(pext_cap->header.len);
     }
-
     LEAVE();
     return ret_len;
 }

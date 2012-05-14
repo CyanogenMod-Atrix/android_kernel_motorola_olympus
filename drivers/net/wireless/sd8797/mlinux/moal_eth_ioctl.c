@@ -50,10 +50,29 @@ Change log:
 #define PRIV_CMD_BANDCFG    "bandcfg"
 /** Private command: Host cmd */
 #define PRIV_CMD_HOSTCMD    "hostcmd"
+/** Private command: Custom IE config*/
+#define PRIV_CMD_CUSTOMIE   "customie"
 /** Private command: HT Tx Cfg */
 #define PRIV_CMD_HTTXCFG    "httxcfg"
 #define PRIV_CMD_DATARATE   "getdatarate"
 #define PRIV_CMD_TXRATECFG  "txratecfg"
+#define PRIV_CMD_ESUPPMODE  "esuppmode"
+#define PRIV_CMD_PASSPHRASE "passphrase"
+#define PRIV_CMD_DEAUTH     "deauth"
+#if defined(WIFI_DIRECT_SUPPORT)
+#if defined(STA_SUPPORT) && defined(UAP_SUPPORT)
+#define PRIV_CMD_BSSROLE    "bssrole"
+#endif
+#endif
+#ifdef STA_SUPPORT
+#define PRIV_CMD_SETUSERSCAN    "setuserscan"
+#endif
+#define PRIV_CMD_DEEPSLEEP      "deepsleep"
+#define PRIV_CMD_IPADDR         "ipaddr"
+#define PRIV_CMD_WPSSESSION     "wpssession"
+#define PRIV_CMD_OTPUSERDATA    "otpuserdata"
+#define PRIV_CMD_COUNTRYCODE    "countrycode"
+#define PRIV_CMD_TCPACKENH      "tcpackenh"
 
 /** Bands supported in Infra mode */
 static t_u8 SupportedInfraBand[] = {
@@ -76,6 +95,17 @@ static t_u8 SupportedAdhocBand[] = {
 /********************************************************
 		Global Variables
 ********************************************************/
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,29)
+#ifdef UAP_SUPPORT
+/** Network device handlers for uAP */
+extern const struct net_device_ops woal_uap_netdev_ops;
+#endif
+#ifdef STA_SUPPORT
+/** Network device handlers for STA */
+extern const struct net_device_ops woal_netdev_ops;
+#endif
+#endif
+extern int cfg80211_wext;
 
 /********************************************************
 		Local Functions
@@ -85,7 +115,7 @@ static t_u8 SupportedAdhocBand[] = {
  *
  * @param pos           Pointer to the arguments string
  * @param data          Pointer to the arguments buffer
- * @param len           Pointer to the number of arguments extracted
+ * @param user_data_len Pointer to the number of arguments extracted
  *
  * @return              MLAN_STATUS_SUCCESS
  *
@@ -246,7 +276,6 @@ woal_get_priv_driver_version(moal_private * priv, t_u8 * respbuf,
     return ret;
 }
 
-#ifdef WIFI_DIRECT_SUPPORT
 /**
  *  @brief Hostcmd interface from application
  *
@@ -296,8 +325,12 @@ woal_priv_hostcmd(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
         ret = -EFAULT;
         goto error;
     }
-    sprintf(respbuf, "OK");
-    ret = 3;
+    memcpy(data_ptr + sizeof(buf_len), misc_cfg->param.hostcmd.cmd,
+           misc_cfg->param.hostcmd.len);
+    ret =
+        misc_cfg->param.hostcmd.len + sizeof(buf_len) + strlen(CMD_MARVELL) +
+        strlen(PRIV_CMD_HOSTCMD);
+    memcpy(data_ptr, (t_u8 *) & ret, sizeof(t_u32));
 
   error:
     if (req)
@@ -306,7 +339,65 @@ woal_priv_hostcmd(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
     LEAVE();
     return ret;
 }
-#endif
+
+/**
+ *  @brief Custom IE setting
+ *
+ *  @param priv         A pointer to moal_private structure
+ *  @param respbuf      A pointer to response buffer
+ *  @param respbuflen   Available length of response buffer
+ *
+ *  @return             Number of bytes written, negative for failure.
+ */
+int
+woal_priv_customie(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
+{
+    int ret = 0;
+    t_u8 *data_ptr;
+    mlan_ioctl_req *ioctl_req = NULL;
+    mlan_ds_misc_cfg *misc = NULL;
+    mlan_ds_misc_custom_ie *custom_ie = NULL;
+
+    ENTER();
+    data_ptr = respbuf + (strlen(CMD_MARVELL) + strlen(PRIV_CMD_CUSTOMIE));
+
+    custom_ie = (mlan_ds_misc_custom_ie *) data_ptr;
+    ioctl_req = woal_alloc_mlan_ioctl_req(sizeof(mlan_ds_misc_cfg));
+    if (ioctl_req == NULL) {
+        ret = -ENOMEM;
+        goto done;
+    }
+
+    misc = (mlan_ds_misc_cfg *) ioctl_req->pbuf;
+    misc->sub_command = MLAN_OID_MISC_CUSTOM_IE;
+    ioctl_req->req_id = MLAN_IOCTL_MISC_CFG;
+    if ((custom_ie->len == 0) ||
+        (custom_ie->len == sizeof(custom_ie->ie_data_list[0].ie_index)))
+        ioctl_req->action = MLAN_ACT_GET;
+    else
+        ioctl_req->action = MLAN_ACT_SET;
+
+    memcpy(&misc->param.cust_ie, custom_ie, sizeof(mlan_ds_misc_custom_ie));
+
+    if (MLAN_STATUS_SUCCESS !=
+        woal_request_ioctl(priv, ioctl_req, MOAL_IOCTL_WAIT)) {
+        ret = -EFAULT;
+        goto done;
+    }
+    custom_ie = (mlan_ds_misc_custom_ie *) data_ptr;
+    memcpy(custom_ie, &misc->param.cust_ie, sizeof(mlan_ds_misc_custom_ie));
+    ret = sizeof(mlan_ds_misc_custom_ie);
+    if (ioctl_req->status_code == MLAN_ERROR_IOCTL_FAIL) {
+        /* send a separate error code to indicate error from driver */
+        ret = EFAULT;
+    }
+  done:
+    if (ioctl_req) {
+        kfree(ioctl_req);
+    }
+    LEAVE();
+    return ret;
+}
 
 /**
  *  @brief Set/Get Band and Adhoc-band setting
@@ -728,6 +819,824 @@ woal_setget_priv_txratecfg(moal_private * priv, t_u8 * respbuf,
 }
 
 /**
+ *  @brief Set/Get esupplicant mode configurations
+ *
+ *  @param priv         A pointer to moal_private structure
+ *  @param respbuf      A pointer to response buffer
+ *  @param respbuflen   Available length of response buffer
+ *
+ *  @return             Number of bytes written, negative for failure.
+ */
+int
+woal_setget_priv_esuppmode(moal_private * priv, t_u8 * respbuf,
+                           t_u32 respbuflen)
+{
+    t_u32 data[3];
+    mlan_ioctl_req *req = NULL;
+    mlan_ds_sec_cfg *sec = NULL;
+    woal_esuppmode_cfg *esupp_mode = NULL;
+    int ret = 0;
+    int user_data_len = 0;
+
+    ENTER();
+
+    if (strlen(respbuf) == (strlen(CMD_MARVELL) + strlen(PRIV_CMD_ESUPPMODE))) {
+        /* GET operation */
+        user_data_len = 0;
+    } else {
+        /* SET operation */
+        memset((char *) data, 0, sizeof(data));
+        parse_arguments(respbuf + strlen(CMD_MARVELL) +
+                        strlen(PRIV_CMD_ESUPPMODE), data, &user_data_len);
+    }
+
+    if (user_data_len >= 4 || user_data_len == 1 || user_data_len == 2) {
+        PRINTM(MERROR, "Invalid number of arguments\n");
+        ret = -EINVAL;
+        goto done;
+    }
+
+    req = woal_alloc_mlan_ioctl_req(sizeof(mlan_ds_sec_cfg));
+    if (req == NULL) {
+        ret = -ENOMEM;
+        goto done;
+    }
+
+    req->req_id = MLAN_IOCTL_SEC_CFG;
+    sec = (mlan_ds_sec_cfg *) req->pbuf;
+    sec->sub_command = MLAN_OID_SEC_CFG_ESUPP_MODE;
+
+    if (user_data_len == 0) {
+        /* Get operation */
+        req->action = MLAN_ACT_GET;
+    } else {
+        /* Set operation */
+        req->action = MLAN_ACT_SET;
+        /* RSN mode */
+        sec->param.esupp_mode.rsn_mode = data[0];
+        /* Pairwise cipher */
+        sec->param.esupp_mode.act_paircipher = (data[1] & 0xFF);
+        /* Group cipher */
+        sec->param.esupp_mode.act_groupcipher = (data[2] & 0xFF);
+    }
+
+    if (MLAN_STATUS_SUCCESS != woal_request_ioctl(priv, req, MOAL_IOCTL_WAIT)) {
+        ret = -EFAULT;
+        goto done;
+    }
+
+    esupp_mode = (woal_esuppmode_cfg *) respbuf;
+    esupp_mode->rsn_mode = (t_u16) ((sec->param.esupp_mode.rsn_mode) & 0xFFFF);
+    esupp_mode->pairwise_cipher =
+        (t_u8) ((sec->param.esupp_mode.act_paircipher) & 0xFF);
+    esupp_mode->group_cipher =
+        (t_u8) ((sec->param.esupp_mode.act_groupcipher) & 0xFF);
+
+    ret = sizeof(woal_esuppmode_cfg);
+  done:
+    if (req)
+        kfree(req);
+    LEAVE();
+    return ret;
+
+}
+
+/**
+ *  @brief Set/Get esupplicant passphrase configurations
+ *
+ *  @param priv         A pointer to moal_private structure
+ *  @param respbuf      A pointer to response buffer
+ *  @param respbuflen   Available length of response buffer
+ *
+ *  @return             Number of bytes written, negative for failure.
+ */
+int
+woal_setget_priv_passphrase(moal_private * priv, t_u8 * respbuf,
+                            t_u32 respbuflen)
+{
+    mlan_ioctl_req *req = NULL;
+    mlan_ds_sec_cfg *sec = NULL;
+    int ret = 0, action = -1, i = 0;
+    char *begin, *end, *opt;
+    t_u16 len = 0;
+    t_u8 zero_mac[] = { 0, 0, 0, 0, 0, 0 };
+    t_u8 *mac = NULL;
+
+    ENTER();
+
+    if (strlen(respbuf) == (strlen(CMD_MARVELL) + strlen(PRIV_CMD_PASSPHRASE))) {
+        PRINTM(MERROR, "No arguments provided\n");
+        ret = -EINVAL;
+        goto done;
+    }
+
+    /* Parse the buf to get the cmd_action */
+    begin = respbuf + strlen(CMD_MARVELL) + strlen(PRIV_CMD_PASSPHRASE);
+    end = woal_strsep(&begin, ';', '/');
+    if (end)
+        action = woal_atox(end);
+    if (action < 0 || action > 2 || end[1] != '\0') {
+        PRINTM(MERROR, "Invalid action argument %s\n", end);
+        ret = -EINVAL;
+        goto done;
+    }
+
+    req = woal_alloc_mlan_ioctl_req(sizeof(mlan_ds_sec_cfg));
+    if (req == NULL) {
+        ret = -ENOMEM;
+        goto done;
+    }
+
+    req->req_id = MLAN_IOCTL_SEC_CFG;
+    sec = (mlan_ds_sec_cfg *) req->pbuf;
+    sec->sub_command = MLAN_OID_SEC_CFG_PASSPHRASE;
+    if (action == 0)
+        req->action = MLAN_ACT_GET;
+    else
+        req->action = MLAN_ACT_SET;
+
+    while (begin) {
+        end = woal_strsep(&begin, ';', '/');
+        opt = woal_strsep(&end, '=', '/');
+        if (!opt || !end || !end[0]) {
+            PRINTM(MERROR, "Invalid option\n");
+            ret = -EINVAL;
+            break;
+        } else if (!strnicmp(opt, "ssid", strlen(opt))) {
+            if (strlen(end) > MLAN_MAX_SSID_LENGTH) {
+                PRINTM(MERROR, "SSID length exceeds max length\n");
+                ret = -EFAULT;
+                break;
+            }
+            sec->param.passphrase.ssid.ssid_len = strlen(end);
+            strncpy((char *) sec->param.passphrase.ssid.ssid, end, strlen(end));
+            PRINTM(MINFO, "ssid=%s, len=%d\n", sec->param.passphrase.ssid.ssid,
+                   (int) sec->param.passphrase.ssid.ssid_len);
+        } else if (!strnicmp(opt, "bssid", strlen(opt))) {
+            woal_mac2u8((t_u8 *) & sec->param.passphrase.bssid, end);
+        } else if (!strnicmp(opt, "psk", strlen(opt)) &&
+                   req->action == MLAN_ACT_SET) {
+            if (strlen(end) != MLAN_PMK_HEXSTR_LENGTH) {
+                PRINTM(MERROR, "Invalid PMK length\n");
+                ret = -EINVAL;
+                break;
+            }
+            woal_ascii2hex((t_u8 *) (sec->param.passphrase.psk.pmk.pmk), end,
+                           MLAN_PMK_HEXSTR_LENGTH / 2);
+            sec->param.passphrase.psk_type = MLAN_PSK_PMK;
+        } else if (!strnicmp(opt, "passphrase", strlen(opt)) &&
+                   req->action == MLAN_ACT_SET) {
+            if (strlen(end) < MLAN_MIN_PASSPHRASE_LENGTH ||
+                strlen(end) > MLAN_MAX_PASSPHRASE_LENGTH) {
+                PRINTM(MERROR, "Invalid length for passphrase\n");
+                ret = -EINVAL;
+                break;
+            }
+            sec->param.passphrase.psk_type = MLAN_PSK_PASSPHRASE;
+            strncpy(sec->param.passphrase.psk.passphrase.passphrase, end,
+                    sizeof(sec->param.passphrase.psk.passphrase.passphrase));
+            sec->param.passphrase.psk.passphrase.passphrase_len = strlen(end);
+            PRINTM(MINFO, "passphrase=%s, len=%d\n",
+                   sec->param.passphrase.psk.passphrase.passphrase,
+                   (int) sec->param.passphrase.psk.passphrase.passphrase_len);
+        } else {
+            PRINTM(MERROR, "Invalid option %s\n", opt);
+            ret = -EINVAL;
+            break;
+        }
+    }
+    if (ret)
+        goto done;
+
+    if (action == 2)
+        sec->param.passphrase.psk_type = MLAN_PSK_CLEAR;
+
+    if (MLAN_STATUS_SUCCESS != woal_request_ioctl(priv, req, MOAL_IOCTL_WAIT)) {
+        ret = -EFAULT;
+        goto done;
+    }
+
+    memset(respbuf, 0, respbuflen);
+    if (sec->param.passphrase.ssid.ssid_len) {
+        len += sprintf(respbuf + len, "ssid:");
+        memcpy(respbuf + len, sec->param.passphrase.ssid.ssid,
+               sec->param.passphrase.ssid.ssid_len);
+        len += sec->param.passphrase.ssid.ssid_len;
+        len += sprintf(respbuf + len, " ");
+    }
+    if (memcmp(&sec->param.passphrase.bssid, zero_mac, sizeof(zero_mac))) {
+        mac = (t_u8 *) & sec->param.passphrase.bssid;
+        len += sprintf(respbuf + len, "bssid:");
+        for (i = 0; i < ETH_ALEN - 1; ++i)
+            len += sprintf(respbuf + len, "%02x:", mac[i]);
+        len += sprintf(respbuf + len, "%02x ", mac[i]);
+    }
+    if (sec->param.passphrase.psk_type == MLAN_PSK_PMK) {
+        len += sprintf(respbuf + len, "psk:");
+        for (i = 0; i < MLAN_MAX_KEY_LENGTH; ++i)
+            len +=
+                sprintf(respbuf + len, "%02x",
+                        sec->param.passphrase.psk.pmk.pmk[i]);
+        len += sprintf(respbuf + len, "\n");
+    }
+    if (sec->param.passphrase.psk_type == MLAN_PSK_PASSPHRASE) {
+        len +=
+            sprintf(respbuf + len, "passphrase:%s \n",
+                    sec->param.passphrase.psk.passphrase.passphrase);
+    }
+
+    ret = len;
+  done:
+    if (req)
+        kfree(req);
+    LEAVE();
+    return ret;
+
+}
+
+/**
+ *  @brief Deauthenticate
+ *
+ *  @param priv         A pointer to moal_private structure
+ *  @param respbuf      A pointer to response buffer
+ *  @param respbuflen   Available length of response buffer
+ *
+ *  @return             Number of bytes written, negative for failure.
+ */
+int
+woal_priv_deauth(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
+{
+    mlan_ioctl_req *req = NULL;
+    int ret = 0;
+    t_u8 mac[ETH_ALEN];
+
+    ENTER();
+
+    if (strlen(respbuf) > (strlen(CMD_MARVELL) + strlen(PRIV_CMD_DEAUTH))) {
+        /* Deauth mentioned BSSID */
+        woal_mac2u8(mac,
+                    respbuf + strlen(CMD_MARVELL) + strlen(PRIV_CMD_DEAUTH));
+        if (MLAN_STATUS_SUCCESS != woal_disconnect(priv, MOAL_IOCTL_WAIT, mac)) {
+            ret = -EFAULT;
+            goto done;
+        }
+    } else {
+        if (MLAN_STATUS_SUCCESS != woal_disconnect(priv, MOAL_IOCTL_WAIT, NULL))
+            ret = -EFAULT;
+    }
+
+  done:
+    if (req)
+        kfree(req);
+    LEAVE();
+    return ret;
+}
+
+#if defined(WIFI_DIRECT_SUPPORT)
+#if defined(STA_SUPPORT) && defined(UAP_SUPPORT)
+/**
+ *  @brief Set/Get BSS role
+ *
+ *  @param priv         A pointer to moal_private structure
+ *  @param respbuf      A pointer to response buffer
+ *  @param respbuflen   Available length of response buffer
+ *
+ *  @return             Number of bytes written, negative for failure.
+ */
+int
+woal_priv_bssrole(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
+{
+    t_u32 data[1];
+    int ret = 0;
+    int user_data_len = 0;
+    t_u8 action = MLAN_ACT_GET;
+
+    ENTER();
+
+    if (strlen(respbuf) == (strlen(CMD_MARVELL) + strlen(PRIV_CMD_BSSROLE))) {
+        /* GET operation */
+        user_data_len = 0;
+    } else {
+        /* SET operation */
+        memset((char *) data, 0, sizeof(data));
+        parse_arguments(respbuf + strlen(CMD_MARVELL) +
+                        strlen(PRIV_CMD_BSSROLE), data, &user_data_len);
+    }
+
+    if (user_data_len >= 2) {
+        PRINTM(MERROR, "Invalid number of arguments\n");
+        ret = -EINVAL;
+        goto error;
+    }
+
+    if (user_data_len == 0) {
+        action = MLAN_ACT_GET;
+    } else {
+        if ((data[0] != MLAN_BSS_ROLE_STA &&
+             data[0] != MLAN_BSS_ROLE_UAP) ||
+            priv->bss_type != MLAN_BSS_TYPE_WIFIDIRECT) {
+            PRINTM(MWARN, "Invalid BSS role\n");
+            ret = -EINVAL;
+            goto error;
+        }
+        if (data[0] == GET_BSS_ROLE(priv)) {
+            PRINTM(MWARN, "Already BSS is in desired role\n");
+            goto done;
+        }
+        action = MLAN_ACT_SET;
+        /* Reset interface */
+        woal_reset_intf(priv, MOAL_IOCTL_WAIT, MFALSE);
+    }
+
+    if (MLAN_STATUS_SUCCESS != woal_bss_role_cfg(priv,
+                                                 action, MOAL_IOCTL_WAIT,
+                                                 (t_u8 *) data)) {
+        ret = -EFAULT;
+        goto error;
+    }
+
+    if (user_data_len) {
+        /* Initialize private structures */
+        woal_init_priv(priv, MOAL_IOCTL_WAIT);
+        /* Enable interfaces */
+        netif_device_attach(priv->netdev);
+        woal_start_queue(priv->netdev);
+    }
+
+  done:
+    memset(respbuf, 0, respbuflen);
+    respbuf[0] = (t_u8) data[0];
+    ret = 1;
+
+  error:
+    LEAVE();
+    return ret;
+}
+#endif /* STA_SUPPORT && UAP_SUPPORT */
+#endif /* WIFI_DIRECT_SUPPORT && V14_FEATURE */
+
+#ifdef STA_SUPPORT
+/**
+ *  @brief Set user scan
+ *
+ *  @param priv         A pointer to moal_private structure
+ *  @param respbuf      A pointer to response buffer
+ *  @param respbuflen   Available length of response buffer
+ *
+ *  @return             Number of bytes written, negative for failure.
+ */
+int
+woal_priv_setuserscan(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
+{
+    wlan_user_scan_cfg scan_cfg;
+    int ret = 0;
+
+    ENTER();
+
+    /* Create the scan_cfg structure */
+    memset(&scan_cfg, 0, sizeof(scan_cfg));
+
+    /* We expect the scan_cfg structure to be passed in respbuf */
+    memcpy((char *) &scan_cfg,
+           respbuf + strlen(CMD_MARVELL) + strlen(PRIV_CMD_SETUSERSCAN),
+           sizeof(wlan_user_scan_cfg));
+
+    /* Call for scan */
+    if (MLAN_STATUS_FAILURE == woal_do_scan(priv, &scan_cfg))
+        ret = -EFAULT;
+
+    LEAVE();
+    return ret;
+}
+#endif
+
+/**
+ *  @brief Set/Get deep sleep mode configurations
+ *
+ *  @param priv         A pointer to moal_private structure
+ *  @param respbuf      A pointer to response buffer
+ *  @param respbuflen   Available length of response buffer
+ *
+ *  @return             Number of bytes written, negative for failure.
+ */
+int
+woal_priv_setgetdeepsleep(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
+{
+    t_u32 data[2];
+    int ret = 0;
+    int user_data_len = 0;
+
+    ENTER();
+
+    if (strlen(respbuf) == (strlen(CMD_MARVELL) + strlen(PRIV_CMD_DEEPSLEEP))) {
+        /* GET operation */
+        user_data_len = 0;
+    } else {
+        /* SET operation */
+        memset((char *) data, 0, sizeof(data));
+        parse_arguments(respbuf + strlen(CMD_MARVELL) +
+                        strlen(PRIV_CMD_DEEPSLEEP), data, &user_data_len);
+    }
+
+    if (user_data_len >= 3) {
+        PRINTM(MERROR, "Invalid number of arguments\n");
+        ret = -EINVAL;
+        goto done;
+    }
+
+    if (user_data_len == 0) {
+        if (MLAN_STATUS_SUCCESS != woal_get_deep_sleep(priv, data)) {
+            ret = -EFAULT;
+            goto done;
+        }
+        sprintf(respbuf, "%d %d", data[0], data[1]);
+        ret = strlen(respbuf) + 1;
+    } else {
+        if (data[0] == DEEP_SLEEP_OFF) {
+            PRINTM(MINFO, "Exit Deep Sleep Mode\n");
+            ret = woal_set_deep_sleep(priv, MOAL_IOCTL_WAIT, MFALSE, 0);
+            if (ret != MLAN_STATUS_SUCCESS) {
+                ret = -EINVAL;
+                goto done;
+            }
+        } else if (data[0] == DEEP_SLEEP_ON) {
+            PRINTM(MINFO, "Enter Deep Sleep Mode\n");
+            if (user_data_len != 2)
+                data[1] = 0;
+            ret = woal_set_deep_sleep(priv, MOAL_IOCTL_WAIT, MTRUE, data[1]);
+            if (ret != MLAN_STATUS_SUCCESS) {
+                ret = -EINVAL;
+                goto done;
+            }
+        } else {
+            PRINTM(MERROR, "Unknown option = %u\n", data[0]);
+            ret = -EINVAL;
+            goto done;
+        }
+        ret = sprintf(respbuf, "OK\n") + 1;
+    }
+
+  done:
+    LEAVE();
+    return ret;
+
+}
+
+/**
+ *  @brief Set/Get IP address configurations
+ *
+ *  @param priv         A pointer to moal_private structure
+ *  @param respbuf      A pointer to response buffer
+ *  @param respbuflen   Available length of response buffer
+ *
+ *  @return             Number of bytes written, negative for failure.
+ */
+int
+woal_priv_setgetipaddr(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
+{
+    mlan_ioctl_req *req = NULL;
+    mlan_ds_misc_cfg *misc = NULL;
+    int ret = 0, op_code = 0, data_length = 0, header = 0;
+
+    ENTER();
+
+    header = strlen(CMD_MARVELL) + strlen(PRIV_CMD_IPADDR);
+    data_length = strlen(respbuf) - header;
+
+    req = woal_alloc_mlan_ioctl_req(sizeof(mlan_ds_misc_cfg));
+    if (req == NULL) {
+        ret = -ENOMEM;
+        goto done;
+    }
+    misc = (mlan_ds_misc_cfg *) req->pbuf;
+
+    if (data_length < 1) {      /* GET */
+        req->action = MLAN_ACT_GET;
+    } else {
+        /* Make sure we have the operation argument */
+        if (data_length > 2 && respbuf[header + 1] != ';') {
+            PRINTM(MERROR, "No operation argument. Separate with ';'\n");
+            ret = -EINVAL;
+            goto done;
+        } else {
+            respbuf[header + 1] = '\0';
+        }
+        req->action = MLAN_ACT_SET;
+
+        /* Only one IP is supported in current firmware */
+        memset(misc->param.ipaddr_cfg.ip_addr[0], 0, IPADDR_LEN);
+        in4_pton(&respbuf[header + 2],
+                 MIN((IPADDR_MAX_BUF - 3), (data_length - 2)),
+                 misc->param.ipaddr_cfg.ip_addr[0], ' ', NULL);
+        misc->param.ipaddr_cfg.ip_addr_num = 1;
+        misc->param.ipaddr_cfg.ip_addr_type = IPADDR_TYPE_IPV4;
+
+        if (woal_atoi(&op_code, &respbuf[header]) != MLAN_STATUS_SUCCESS) {
+            ret = -EINVAL;
+            goto done;
+        }
+        misc->param.ipaddr_cfg.op_code = (t_u32) op_code;
+    }
+
+    req->req_id = MLAN_IOCTL_MISC_CFG;
+    misc->sub_command = MLAN_OID_MISC_IP_ADDR;
+
+    if (MLAN_STATUS_SUCCESS != woal_request_ioctl(priv, req, MOAL_IOCTL_WAIT)) {
+        ret = -EFAULT;
+        goto done;
+    }
+
+    if (req->action == MLAN_ACT_GET) {
+        snprintf(respbuf, IPADDR_MAX_BUF, "%d;%d.%d.%d.%d",
+                 misc->param.ipaddr_cfg.op_code,
+                 misc->param.ipaddr_cfg.ip_addr[0][0],
+                 misc->param.ipaddr_cfg.ip_addr[0][1],
+                 misc->param.ipaddr_cfg.ip_addr[0][2],
+                 misc->param.ipaddr_cfg.ip_addr[0][3]);
+        ret = IPADDR_MAX_BUF + 1;
+    } else {
+        ret = sprintf(respbuf, "OK\n") + 1;
+    }
+
+  done:
+    if (req)
+        kfree(req);
+    LEAVE();
+    return ret;
+}
+
+/**
+ *  @brief Set/Get WPS session configurations
+ *
+ *  @param priv         A pointer to moal_private structure
+ *  @param respbuf      A pointer to response buffer
+ *  @param respbuflen   Available length of response buffer
+ *
+ *  @return             Number of bytes written, negative for failure.
+ */
+int
+woal_priv_setwpssession(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
+{
+    mlan_ioctl_req *req = NULL;
+    mlan_ds_wps_cfg *pwps = NULL;
+    t_u32 data[1];
+    int ret = 0;
+    int user_data_len = 0;
+
+    ENTER();
+
+    if (strlen(respbuf) == (strlen(CMD_MARVELL) + strlen(PRIV_CMD_WPSSESSION))) {
+        /* GET operation */
+        user_data_len = 0;
+    } else {
+        /* SET operation */
+        memset((char *) data, 0, sizeof(data));
+        parse_arguments(respbuf + strlen(CMD_MARVELL) +
+                        strlen(PRIV_CMD_WPSSESSION), data, &user_data_len);
+    }
+
+    if (user_data_len != 1) {
+        PRINTM(MERROR, "Invalid number of arguments\n");
+        ret = -EINVAL;
+        goto done;
+    }
+
+    req = woal_alloc_mlan_ioctl_req(sizeof(mlan_ds_wps_cfg));
+    if (req == NULL) {
+        ret = -ENOMEM;
+        goto done;
+    }
+    pwps = (mlan_ds_wps_cfg *) req->pbuf;
+
+    req->req_id = MLAN_IOCTL_WPS_CFG;
+    req->action = MLAN_ACT_SET;
+    pwps->sub_command = MLAN_OID_WPS_CFG_SESSION;
+
+    if (data[0] == 1)
+        pwps->param.wps_session = MLAN_WPS_CFG_SESSION_START;
+    else
+        pwps->param.wps_session = MLAN_WPS_CFG_SESSION_END;
+
+    if (MLAN_STATUS_SUCCESS != woal_request_ioctl(priv, req, MOAL_IOCTL_WAIT)) {
+        ret = -EFAULT;
+        goto done;
+    }
+
+    ret = sprintf(respbuf, "OK\n") + 1;
+  done:
+    if (req)
+        kfree(req);
+    LEAVE();
+    return ret;
+}
+
+/**
+ *  @brief Get OTP user data
+ *
+ *  @param priv         A pointer to moal_private structure
+ *  @param respbuf      A pointer to response buffer
+ *  @param respbuflen   Available length of response buffer
+ *
+ *  @return             Number of bytes written, negative for failure.
+ */
+int
+woal_priv_otpuserdata(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
+{
+    int data[1];
+    int user_data_len = 0;
+    mlan_ioctl_req *req = NULL;
+    mlan_ds_misc_cfg *misc = NULL;
+    mlan_ds_misc_otp_user_data *otp = NULL;
+    int ret = 0;
+
+    ENTER();
+
+    memset((char *) data, 0, sizeof(data));
+    parse_arguments(respbuf + strlen(CMD_MARVELL) +
+                    strlen(PRIV_CMD_OTPUSERDATA), data, &user_data_len);
+
+    if (user_data_len > 1) {
+        PRINTM(MERROR, "Too many arguments\n");
+        LEAVE();
+        return -EINVAL;
+    }
+
+    req = woal_alloc_mlan_ioctl_req(sizeof(mlan_ds_misc_cfg));
+    if (req == NULL) {
+        ret = -ENOMEM;
+        goto done;
+    }
+    req->action = MLAN_ACT_GET;
+    req->req_id = MLAN_IOCTL_MISC_CFG;
+
+    misc = (mlan_ds_misc_cfg *) req->pbuf;
+    misc->sub_command = MLAN_OID_MISC_OTP_USER_DATA;
+    misc->param.otp_user_data.user_data_length = data[0];
+
+    if (MLAN_STATUS_SUCCESS != woal_request_ioctl(priv, req, MOAL_IOCTL_WAIT)) {
+        ret = -EFAULT;
+        goto done;
+    }
+    otp = (mlan_ds_misc_otp_user_data *) req->pbuf;
+
+    if (req->action == MLAN_ACT_GET) {
+        ret = MIN(otp->user_data_length, data[0]);
+        memcpy(respbuf, otp->user_data, ret);
+    }
+
+  done:
+    if (req)
+        kfree(req);
+    LEAVE();
+    return ret;
+}
+
+/**
+ *  @brief Set / Get country code
+ *
+ *  @param priv         A pointer to moal_private structure
+ *  @param respbuf      A pointer to response buffer
+ *  @param respbuflen   Available length of response buffer
+ *
+ *  @return             Number of bytes written, negative for failure.
+ */
+int
+woal_priv_set_get_countrycode(moal_private * priv, t_u8 * respbuf,
+                              t_u32 respbuflen)
+{
+    int ret = 0;
+    // char data[COUNTRY_CODE_LEN] = {0, 0, 0};
+    int header = 0, data_length = 0;    // wrq->u.data.length;
+    mlan_ioctl_req *req = NULL;
+    mlan_ds_misc_cfg *pcfg_misc = NULL;
+    mlan_ds_misc_country_code *country_code = NULL;
+
+    ENTER();
+
+    header = strlen(CMD_MARVELL) + strlen(PRIV_CMD_COUNTRYCODE);
+    data_length = strlen(respbuf) - header;
+
+    if (data_length > COUNTRY_CODE_LEN) {
+        PRINTM(MERROR, "Invalid argument!\n");
+        ret = -EINVAL;
+        goto done;
+    }
+
+    /* Allocate an IOCTL request buffer */
+    req = woal_alloc_mlan_ioctl_req(sizeof(mlan_ds_misc_cfg));
+    if (req == NULL) {
+        ret = -ENOMEM;
+        goto done;
+    }
+
+    /* Fill request buffer */
+    pcfg_misc = (mlan_ds_misc_cfg *) req->pbuf;
+    country_code = &pcfg_misc->param.country_code;
+    pcfg_misc->sub_command = MLAN_OID_MISC_COUNTRY_CODE;
+    req->req_id = MLAN_IOCTL_MISC_CFG;
+
+    if (data_length <= 1) {
+        req->action = MLAN_ACT_GET;
+    } else {
+        memset(country_code->country_code, 0, COUNTRY_CODE_LEN);
+        memcpy(country_code->country_code, respbuf + header, COUNTRY_CODE_LEN);
+        req->action = MLAN_ACT_SET;
+    }
+
+    /* Send IOCTL request to MLAN */
+    if (woal_request_ioctl(priv, req, MOAL_IOCTL_WAIT) != MLAN_STATUS_SUCCESS) {
+        ret = -EFAULT;
+        goto done;
+    }
+
+    if (req->action == MLAN_ACT_GET) {
+        ret = data_length = COUNTRY_CODE_LEN;
+        memset(respbuf + header, 0, COUNTRY_CODE_LEN);
+        memcpy(respbuf, country_code->country_code, COUNTRY_CODE_LEN);
+    }
+
+  done:
+    if (req)
+        kfree(req);
+
+    LEAVE();
+    return ret;
+}
+
+/**
+ *  @brief Set/Get TCP Ack enhancement configurations
+ *
+ *  @param priv         A pointer to moal_private structure
+ *  @param respbuf      A pointer to response buffer
+ *  @param respbuflen   Available length of response buffer
+ *
+ *  @return             Number of bytes written, negative for failure.
+ */
+int
+woal_priv_setgettcpackenh(moal_private * priv, t_u8 * respbuf, t_u32 respbuflen)
+{
+    t_u32 data[1];
+    int ret = 0;
+    int user_data_len = 0;
+    struct list_head *link = NULL;
+    struct tcp_sess *tcp_sess = NULL;
+
+    ENTER();
+
+    if (strlen(respbuf) == (strlen(CMD_MARVELL) + strlen(PRIV_CMD_TCPACKENH))) {
+        /* GET operation */
+        user_data_len = 0;
+    } else {
+        /* SET operation */
+        memset((char *) data, 0, sizeof(data));
+        parse_arguments(respbuf + strlen(CMD_MARVELL) +
+                        strlen(PRIV_CMD_TCPACKENH), data, &user_data_len);
+    }
+
+    if (user_data_len >= 2) {
+        PRINTM(MERROR, "Invalid number of arguments\n");
+        ret = -EINVAL;
+        goto done;
+    }
+
+    if (user_data_len == 0) {
+        /* get operation */
+        respbuf[0] = priv->enable_tcp_ack_enh;
+    } else {
+        /* set operation */
+        if (data[0] == MTRUE) {
+            PRINTM(MINFO, "Enabling TCP Ack enhancement\n");
+            priv->enable_tcp_ack_enh = MTRUE;
+        } else if (data[0] == MFALSE) {
+            PRINTM(MINFO, "Disabling TCP Ack enhancement\n");
+            priv->enable_tcp_ack_enh = MFALSE;
+            /* release the tcp sessions if any */
+            while (!list_empty(&priv->tcp_sess_queue)) {
+                link = priv->tcp_sess_queue.next;
+                tcp_sess = list_entry(link, struct tcp_sess, link);
+                PRINTM(MINFO,
+                       "Disable TCP ACK Enh: release a tcp session in dl. (src: ipaddr 0x%08x, port: %d. dst: ipaddr 0x%08x, port: %d\n",
+                       tcp_sess->src_ip_addr, tcp_sess->src_tcp_port,
+                       tcp_sess->dst_ip_addr, tcp_sess->dst_tcp_port);
+                list_del(link);
+                kfree(tcp_sess);
+            }
+        } else {
+            PRINTM(MERROR, "Unknown option = %u\n", data[0]);
+            ret = -EINVAL;
+            goto done;
+        }
+        respbuf[0] = priv->enable_tcp_ack_enh;
+    }
+    ret = 1;
+
+  done:
+    LEAVE();
+    return ret;
+
+}
+
+/**
  *  @brief Set priv command for Android
  *  @param dev          A pointer to net_device structure
  *  @param req          A pointer to ifreq structure
@@ -788,7 +1697,6 @@ woal_android_priv_cmd(struct net_device *dev, struct ifreq *req)
             /* Set/Get band configuration */
             len = woal_setget_priv_bandcfg(priv, buf, priv_cmd.total_len);
             goto handled;
-#ifdef WIFI_DIRECT_SUPPORT
         } else
             if (strnicmp
                 (buf + strlen(CMD_MARVELL), PRIV_CMD_HOSTCMD,
@@ -796,7 +1704,6 @@ woal_android_priv_cmd(struct net_device *dev, struct ifreq *req)
             /* hostcmd configuration */
             len = woal_priv_hostcmd(priv, buf, priv_cmd.total_len);
             goto handled;
-#endif
         } else
             if (strnicmp
                 (buf + strlen(CMD_MARVELL), PRIV_CMD_HTTXCFG,
@@ -818,13 +1725,110 @@ woal_android_priv_cmd(struct net_device *dev, struct ifreq *req)
             /* Set/Get tx rate cfg */
             len = woal_setget_priv_txratecfg(priv, buf, priv_cmd.total_len);
             goto handled;
+        } else
+            if (strnicmp
+                (buf + strlen(CMD_MARVELL), PRIV_CMD_CUSTOMIE,
+                 strlen(PRIV_CMD_CUSTOMIE)) == 0) {
+            /* Custom IE configuration */
+            len = woal_priv_customie(priv, buf, priv_cmd.total_len);
+            goto handled;
+        } else
+            if (strnicmp
+                (buf + strlen(CMD_MARVELL), PRIV_CMD_ESUPPMODE,
+                 strlen(PRIV_CMD_ESUPPMODE)) == 0) {
+            /* Esupplicant mode configuration */
+            len = woal_setget_priv_esuppmode(priv, buf, priv_cmd.total_len);
+            goto handled;
+        } else
+            if (strnicmp
+                (buf + strlen(CMD_MARVELL), PRIV_CMD_PASSPHRASE,
+                 strlen(PRIV_CMD_PASSPHRASE)) == 0) {
+            /* Esupplicant passphrase configuration */
+            len = woal_setget_priv_passphrase(priv, buf, priv_cmd.total_len);
+            goto handled;
+        } else
+            if (strnicmp
+                (buf + strlen(CMD_MARVELL), PRIV_CMD_DEAUTH,
+                 strlen(PRIV_CMD_DEAUTH)) == 0) {
+            /* Deauth */
+            len = woal_priv_deauth(priv, buf, priv_cmd.total_len);
+            goto handled;
+#if defined(WIFI_DIRECT_SUPPORT)
+#if defined(STA_SUPPORT) && defined(UAP_SUPPORT)
+        } else
+            if (strnicmp
+                (buf + strlen(CMD_MARVELL), PRIV_CMD_BSSROLE,
+                 strlen(PRIV_CMD_BSSROLE)) == 0) {
+            /* BSS Role */
+            len = woal_priv_bssrole(priv, buf, priv_cmd.total_len);
+            goto handled;
+#endif
+#endif
+#ifdef STA_SUPPORT
+        } else
+            if (strnicmp
+                (buf + strlen(CMD_MARVELL), PRIV_CMD_SETUSERSCAN,
+                 strlen(PRIV_CMD_SETUSERSCAN)) == 0) {
+            /* Set user scan */
+            len = woal_priv_setuserscan(priv, buf, priv_cmd.total_len);
+            goto handled;
+#endif
+        } else
+            if (strnicmp
+                (buf + strlen(CMD_MARVELL), PRIV_CMD_DEEPSLEEP,
+                 strlen(PRIV_CMD_DEEPSLEEP)) == 0) {
+            /* Deep sleep */
+            len = woal_priv_setgetdeepsleep(priv, buf, priv_cmd.total_len);
+            goto handled;
+        } else
+            if (strnicmp
+                (buf + strlen(CMD_MARVELL), PRIV_CMD_IPADDR,
+                 strlen(PRIV_CMD_IPADDR)) == 0) {
+            /* IP address */
+            len = woal_priv_setgetipaddr(priv, buf, priv_cmd.total_len);
+            goto handled;
+        } else
+            if (strnicmp
+                (buf + strlen(CMD_MARVELL), PRIV_CMD_WPSSESSION,
+                 strlen(PRIV_CMD_WPSSESSION)) == 0) {
+            /* WPS Session */
+            len = woal_priv_setwpssession(priv, buf, priv_cmd.total_len);
+            goto handled;
+        } else
+            if (strnicmp
+                (buf + strlen(CMD_MARVELL), PRIV_CMD_OTPUSERDATA,
+                 strlen(PRIV_CMD_OTPUSERDATA)) == 0) {
+            /* OTP user data */
+            len = woal_priv_otpuserdata(priv, buf, priv_cmd.total_len);
+            goto handled;
+        } else
+            if (strnicmp
+                (buf + strlen(CMD_MARVELL), PRIV_CMD_COUNTRYCODE,
+                 strlen(PRIV_CMD_COUNTRYCODE)) == 0) {
+            /* OTP user data */
+            len = woal_priv_set_get_countrycode(priv, buf, priv_cmd.total_len);
+            goto handled;
+        } else
+            if (strnicmp
+                (buf + strlen(CMD_MARVELL), PRIV_CMD_TCPACKENH,
+                 strlen(PRIV_CMD_TCPACKENH)) == 0) {
+            /* OTP user data */
+            len = woal_priv_setgettcpackenh(priv, buf, priv_cmd.total_len);
+            goto handled;
         } else {
             /* Fall through, after stripping off the custom header */
             buf += strlen(CMD_MARVELL);
         }
     }
 #ifdef STA_SUPPORT
-    if (strncmp(buf, "RSSI", strlen("RSSI")) == 0) {
+    if (strncmp(buf, "RSSILOW-THRESHOLD", strlen("RSSILOW-THRESHOLD")) == 0) {
+        pdata = buf + strlen("RSSILOW-THRESHOLD") + 1;
+        if (MLAN_STATUS_SUCCESS != woal_set_rssi_low_threshold(priv, pdata)) {
+            ret = -EFAULT;
+            goto done;
+        }
+        len = sprintf(buf, "OK\n") + 1;
+    } else if (strncmp(buf, "RSSI", strlen("RSSI")) == 0) {
         if (MLAN_STATUS_SUCCESS != woal_get_bss_info(priv,
                                                      MOAL_IOCTL_WAIT,
                                                      &bss_info)) {
@@ -983,12 +1987,14 @@ woal_android_priv_cmd(struct net_device *dev, struct ifreq *req)
         priv->bg_scan_reported = MFALSE;
         len = sprintf(buf, "OK\n") + 1;
     } else if (strncmp(buf, "BGSCAN-STOP", strlen("BGSCAN-STOP")) == 0) {
-        if (MLAN_STATUS_SUCCESS != woal_stop_bg_scan(priv)) {
-            ret = -EFAULT;
-            goto done;
+        if (priv->bg_scan_start && !priv->scan_cfg.rssi_threshold) {
+            if (MLAN_STATUS_SUCCESS != woal_stop_bg_scan(priv)) {
+                ret = -EFAULT;
+                goto done;
+            }
+            priv->bg_scan_start = MFALSE;
+            priv->bg_scan_reported = MFALSE;
         }
-        priv->bg_scan_start = MFALSE;
-        priv->bg_scan_reported = MFALSE;
         len = sprintf(buf, "OK\n") + 1;
     } else if (strncmp(buf, "RXFILTER-START", strlen("RXFILTER-START")) == 0) {
 #ifdef MEF_CFG_RX_FILTER
@@ -1004,7 +2010,19 @@ woal_android_priv_cmd(struct net_device *dev, struct ifreq *req)
         }
 #endif
         len = sprintf(buf, "OK\n") + 1;
-    } else if (strncmp(buf, "RXFILTER-ADD", strlen("RXFILTER-ADD")) == 0) {
+    }
+#ifdef STA_CFG80211
+    else if (strncmp(buf, "GET_RSSI_STATUS", strlen("GET_RSSI_STATUS")) == 0) {
+        if (priv->rssi_status == MLAN_EVENT_ID_FW_BCN_RSSI_LOW)
+            len = sprintf(buf, "EVENT=BEACON_RSSI_LOW\n");
+        else if (priv->rssi_status == MLAN_EVENT_ID_FW_PRE_BCN_LOST)
+            len = sprintf(buf, "EVENT=PRE_BEACON_LOST\n");
+        else
+            len = sprintf(buf, "OK\n") + 1;
+        priv->rssi_status = 0;
+    }
+#endif
+    else if (strncmp(buf, "RXFILTER-ADD", strlen("RXFILTER-ADD")) == 0) {
         pdata = buf + strlen("RXFILTER-ADD") + 1;
         if (MLAN_STATUS_SUCCESS != woal_add_rxfilter(priv, pdata)) {
             ret = -EFAULT;
@@ -1071,8 +2089,18 @@ woal_android_priv_cmd(struct net_device *dev, struct ifreq *req)
 
     if (len > 0) {
         priv_cmd.used_len = len;
-        if (copy_to_user(priv_cmd.buf, buf, len)) {
+        if (priv_cmd.used_len < priv_cmd.total_len)
+            memset(priv_cmd.buf + priv_cmd.used_len, 0,
+                   priv_cmd.total_len - priv_cmd.used_len);
+        if (copy_to_user(priv_cmd.buf, buf, priv_cmd.used_len)) {
             PRINTM(MERROR, "%s: failed to copy data to user buffer\n",
+                   __FUNCTION__);
+            ret = -EFAULT;
+            goto done;
+        }
+        if (copy_to_user
+            (req->ifr_data, &priv_cmd, sizeof(android_wifi_priv_cmd))) {
+            PRINTM(MERROR, "%s: failed to copy command header to user buffer\n",
                    __FUNCTION__);
             ret = -EFAULT;
         }

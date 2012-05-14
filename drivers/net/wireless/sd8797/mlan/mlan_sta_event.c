@@ -341,14 +341,8 @@ wlan_ops_sta_process_event(IN t_void * priv)
 
     case EVENT_BG_SCAN_REPORT:
         PRINTM(MEVENT, "EVENT: BGS_REPORT\n");
-        /* Clear the previous scan result */
-        memset(pmadapter, pmadapter->pscan_table, 0x00,
-               sizeof(BSSDescriptor_t) * MRVDRV_MAX_BSSID_LIST);
-        pmadapter->num_in_scan_table = 0;
-        pmadapter->pbcn_buf_end = pmadapter->bcn_buf;
-        ret = wlan_prepare_cmd(pmpriv,
-                               HostCmd_CMD_802_11_BG_SCAN_QUERY,
-                               HostCmd_ACT_GEN_GET, 0, MNULL, MNULL);
+        pmadapter->bgscan_reported = MTRUE;
+        wlan_recv_event(pmpriv, MLAN_EVENT_ID_FW_BG_SCAN, MNULL);
         break;
 
     case EVENT_PORT_RELEASE:

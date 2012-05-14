@@ -45,7 +45,6 @@ Change log:
 #define CUS_EVT_BEACON_SNR_HIGH		"EVENT=BEACON_SNR_HIGH"
 /** Custom event : Max fail */
 #define CUS_EVT_MAX_FAIL		"EVENT=MAX_FAIL"
-#define CUS_EVT_BG_SCAN			"EVENT=BG_SCAN_REPORT"
 /** Custom event : Data RSSI low */
 #define CUS_EVT_DATA_RSSI_LOW		"EVENT=DATA_RSSI_LOW"
 /** Custom event : Data SNR low */

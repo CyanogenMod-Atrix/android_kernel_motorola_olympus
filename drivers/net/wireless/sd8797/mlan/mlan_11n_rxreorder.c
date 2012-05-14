@@ -4,7 +4,7 @@
  *  driver.
  * 
  *  Copyright (C) 2008-2011, Marvell International Ltd. 
- *
+ *   
  *  This software file (the "File") is distributed by Marvell International 
  *  Ltd. under the terms of the GNU General Public License Version 2, June 1991 
  *  (the "License").  You may use, redistribute and/or modify this File in 
@@ -639,6 +639,9 @@ wlan_cmd_11n_addba_rspgen(mlan_private * priv,
                                          BLOCKACKPARAM_WINSIZE_POS);
     win_size = (padd_ba_rsp->block_ack_param_set & BLOCKACKPARAM_WINSIZE_MASK)
         >> BLOCKACKPARAM_WINSIZE_POS;
+    if (win_size == 0)
+        padd_ba_rsp->status_code = wlan_cpu_to_le16(ADDBA_RSP_STATUS_DECLINED);
+
     padd_ba_rsp->block_ack_param_set =
         wlan_cpu_to_le16(padd_ba_rsp->block_ack_param_set);
 

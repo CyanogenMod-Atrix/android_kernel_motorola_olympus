@@ -63,7 +63,9 @@ wlan_handle_rx_packet(pmlan_adapter pmadapter, pmlan_buffer pmbuf)
     mlan_status ret = MLAN_STATUS_SUCCESS;
     pmlan_private priv = wlan_get_priv(pmadapter, MLAN_BSS_ROLE_ANY);
     RxPD *prx_pd;
+#ifdef DEBUG_LEVEL1
     t_u32 sec, usec;
+#endif
 
     ENTER();
 
@@ -75,8 +77,7 @@ wlan_handle_rx_packet(pmlan_adapter pmadapter, pmlan_buffer pmbuf)
     if (!priv)
         priv = wlan_get_priv(pmadapter, MLAN_BSS_ROLE_ANY);
     pmbuf->bss_index = priv->bss_index;
-    pmadapter->callbacks.moal_get_system_time(pmadapter->pmoal_handle, &sec,
-                                              &usec);
+    PRINTM_GET_SYS_TIME(MDATA, &sec, &usec);
     PRINTM_NETINTF(MDATA, priv);
     PRINTM(MDATA, "%lu.%06lu : Data <= FW\n", sec, usec);
     ret = priv->ops.process_rx_packet(pmadapter, pmbuf);
@@ -101,7 +102,9 @@ wlan_process_tx(pmlan_private priv, pmlan_buffer pmbuf,
     mlan_status ret = MLAN_STATUS_SUCCESS;
     pmlan_adapter pmadapter = priv->adapter;
     t_u8 *head_ptr = MNULL;
+#ifdef DEBUG_LEVEL1
     t_u32 sec, usec;
+#endif
 #ifdef STA_SUPPORT
     TxPD *plocal_tx_pd = MNULL;
 #endif
@@ -153,8 +156,7 @@ wlan_process_tx(pmlan_private priv, pmlan_buffer pmbuf,
     }
 
     if ((ret == MLAN_STATUS_SUCCESS) || (ret == MLAN_STATUS_PENDING)) {
-        pmadapter->callbacks.moal_get_system_time(pmadapter->pmoal_handle, &sec,
-                                                  &usec);
+        PRINTM_GET_SYS_TIME(MDATA, &sec, &usec);
         PRINTM_NETINTF(MDATA, priv);
         PRINTM(MDATA, "%lu.%06lu : Data => FW\n", sec, usec);
     }

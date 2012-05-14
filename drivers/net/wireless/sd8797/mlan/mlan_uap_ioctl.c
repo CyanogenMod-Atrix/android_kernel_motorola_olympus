@@ -3,7 +3,7 @@
  *  @brief This file contains the handling of AP mode ioctls 
  * 
  *  Copyright (C) 2009-2011, Marvell International Ltd. 
- *
+ *   
  *  This software file (the "File") is distributed by Marvell International 
  *  Ltd. under the terms of the GNU General Public License Version 2, June 1991 
  *  (the "License").  You may use, redistribute and/or modify this File in 
@@ -230,8 +230,8 @@ wlan_uap_bss_ioctl_reset(IN pmlan_adapter pmadapter,
         memset(pmadapter, &pmpriv->mgmt_ie[i], 0, sizeof(custom_ie));
     }
     pmpriv->add_ba_param.timeout = MLAN_DEFAULT_BLOCK_ACK_TIMEOUT;
-    pmpriv->add_ba_param.tx_win_size = MLAN_AMPDU_DEF_TXWINSIZE;
-    pmpriv->add_ba_param.rx_win_size = MLAN_AMPDU_DEF_RXWINSIZE;
+    pmpriv->add_ba_param.tx_win_size = MLAN_UAP_AMPDU_DEF_TXWINSIZE;
+    pmpriv->add_ba_param.rx_win_size = MLAN_UAP_AMPDU_DEF_RXWINSIZE;
     for (i = 0; i < MAX_NUM_TID; i++) {
         pmpriv->aggr_prio_tbl[i].ampdu_user = tos_to_tid_inv[i];
         pmpriv->aggr_prio_tbl[i].amsdu = BA_STREAM_NOT_ALLOWED;

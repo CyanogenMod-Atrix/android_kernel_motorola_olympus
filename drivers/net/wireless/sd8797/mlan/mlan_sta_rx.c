@@ -2,7 +2,7 @@
  *
  *  @brief This file contains the handling of RX in MLAN
  *  module.
- *
+ * 
  *  Copyright (C) 2008-2011, Marvell International Ltd. 
  *
  *  This software file (the "File") is distributed by Marvell International
@@ -59,6 +59,7 @@ typedef struct
 /********************************************************
 		Global functions
 ********************************************************/
+
 /**
  *  @brief This function processes received packet and forwards it
  *  		to kernel/upper layer
@@ -174,6 +175,7 @@ wlan_process_rx_packet(pmlan_adapter pmadapter, pmlan_buffer pmbuf)
     PRINTM(MDATA, "%lu.%06lu : Data => kernel seq_num=%d tid=%d\n",
            pmbuf->out_ts_sec, pmbuf->out_ts_usec, prx_pd->seq_num,
            prx_pd->priority);
+
     ret = pmadapter->callbacks.moal_recv_packet(pmadapter->pmoal_handle, pmbuf);
     if (ret == MLAN_STATUS_FAILURE) {
         pmbuf->status_code = MLAN_ERROR_PKT_INVALID;

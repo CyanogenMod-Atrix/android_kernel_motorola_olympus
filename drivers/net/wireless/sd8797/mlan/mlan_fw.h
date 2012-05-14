@@ -148,6 +148,11 @@ typedef enum _KEY_TYPE_ID
     KEY_TYPE_ID_WAPI,
 } KEY_TYPE_ID;
 
+/** Key Info flag for multicast key */
+#define KEY_INFO_MCAST_KEY      0x01
+/** Key Info flag for unicast key */
+#define KEY_INFO_UCAST_KEY      0x02
+
 /** KEY_INFO_WEP*/
 typedef enum _KEY_INFO_WEP
 {
@@ -311,9 +316,10 @@ typedef enum _WLAN_802_11_WEP_STATUS
 #define TLV_TYPE_RSSI_HIGH          (PROPRIETARY_TLV_BASE_ID + 0x16)    // 0x0116
 /** TLV type : Beacon SNR high */
 #define TLV_TYPE_SNR_HIGH           (PROPRIETARY_TLV_BASE_ID + 0x17)    // 0x0117
-
 /** TLV type : Start BG scan later */
 #define TLV_TYPE_STARTBGSCANLATER   (PROPRIETARY_TLV_BASE_ID + 0x1e)    // 0x011e
+/** TLV type: BG scan repeat count */
+#define TLV_TYPE_REPEAT_COUNT       (PROPRIETARY_TLV_BASE_ID + 0xb0)    // 0x01b0
 /** TLV type : Authentication type */
 #define TLV_TYPE_AUTH_TYPE          (PROPRIETARY_TLV_BASE_ID + 0x1f)    // 0x011f
 /** TLV type : BSSID */
@@ -397,7 +403,7 @@ typedef enum _WLAN_802_11_WEP_STATUS
 #define BA_STREAM_NOT_ALLOWED   0xff
 
 /** Test if 11n is enabled by checking the HTCap IE */
-#define IS_11N_ENABLED(priv) ((priv->adapter->config_bands & BAND_GN ||priv->adapter->config_bands & BAND_AN) \
+#define IS_11N_ENABLED(priv) ((priv->config_bands & BAND_GN ||priv->config_bands & BAND_AN) \
         && priv->curr_bss_params.bss_descriptor.pht_cap)
 /** Find out if we are the initiator or not */
 #define INITIATOR_BIT(DelBAParamSet) (((DelBAParamSet) & \
@@ -847,6 +853,9 @@ typedef enum _WLAN_802_11_WEP_STATUS
 /** Host Command ID: Remain On Channel */
 #define HostCmd_CMD_802_11_REMAIN_ON_CHANNEL     0x010d
 #endif
+
+/** Host Command ID : OTP user data */
+#define HostCmd_CMD_OTP_READ_USER_DATA          0x0114
 
 /** Enhanced PS modes */
 typedef enum _ENH_PS_MODES
@@ -2806,6 +2815,25 @@ typedef MLAN_PACK_START struct _HostCmd_DS_802_11_BG_SCAN_QUERY_RSP
     HostCmd_DS_802_11_SCAN_RSP scan_resp;
 } MLAN_PACK_END HostCmd_DS_802_11_BG_SCAN_QUERY_RSP;
 
+/** MrvlIEtypes_StartLater_t */
+typedef MLAN_PACK_START struct _MrvlIEtypes_StartLater_t
+{
+    /** Header */
+    MrvlIEtypesHeader_t header;
+    /* 0 - BGScan start immediately, 1 - BGScan will start later after "Scan
+       Interval" */
+    t_u16 value;
+} MLAN_PACK_END MrvlIEtypes_StartLater_t;
+
+/** MrvlIEtypes_RepeatCount_t */
+typedef MLAN_PACK_START struct _MrvlIEtypes_RepeatCount_t
+{
+    /** Header */
+    MrvlIEtypesHeader_t header;
+    /* Repeat count */
+    t_u16 repeat_count;
+} MLAN_PACK_END MrvlIEtypes_RepeatCount_t;
+
 /** MrvlIEtypes_DomainParamSet_t */
 typedef MLAN_PACK_START struct _MrvlIEtypes_DomainParamSet
 {
@@ -3539,6 +3567,19 @@ typedef MLAN_PACK_START struct _HostCmd_DS_SUBSCRIBE_EVENT
     /** Bitmap of subscribed events */
     t_u16 event_bitmap;
 } MLAN_PACK_END HostCmd_DS_SUBSCRIBE_EVENT;
+
+/** HostCmd_DS_OTP_USER_DATA */
+typedef MLAN_PACK_START struct _HostCmd_DS_OTP_USER_DATA
+{
+        /** Action */
+    t_u16 action;
+        /** Reserved field */
+    t_u16 reserved;
+        /** User data length */
+    t_u16 user_data_length;
+        /** User data */
+    t_u8 user_data[1];
+} MLAN_PACK_END HostCmd_DS_OTP_USER_DATA;
 
 /** HostCmd_DS_INACTIVITY_TIMEOUT_EXT */
 typedef MLAN_PACK_START struct _HostCmd_DS_INACTIVITY_TIMEOUT_EXT
@@ -4495,6 +4536,7 @@ typedef struct MLAN_PACK_START _HostCmd_DS_COMMAND
         HostCmd_DS_802_11_BG_SCAN_QUERY bg_scan_query;
         HostCmd_DS_802_11_BG_SCAN_QUERY_RSP bg_scan_query_resp;
         HostCmd_DS_SUBSCRIBE_EVENT subscribe_event;
+        HostCmd_DS_OTP_USER_DATA otp_user_data;
         /** Associate */
         HostCmd_DS_802_11_ASSOCIATE associate;
 

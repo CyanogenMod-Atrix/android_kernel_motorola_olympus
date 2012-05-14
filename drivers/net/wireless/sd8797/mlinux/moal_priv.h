@@ -115,6 +115,8 @@ Change log:
 /** Private command ID to set/get dfs testing settings */
 #define WOAL_DFS_TESTING            33
 #endif
+/** Private command ID to set/get CFP table codes */
+#define WOAL_CFP_CODE               34
 /** Private command ID to set/get tx/rx antenna */
 #define WOAL_SET_GET_TX_RX_ANT      35
 /** Private command ID to set/get management frame passthru mask */
@@ -226,6 +228,8 @@ Change log:
 #define WOAL_SET_USER_SCAN          3
 /** Private command ID for getscantable */
 #define WOAL_GET_SCAN_TABLE         4
+/** Private command ID for setuserscanext: async without wait */
+#define WOAL_SET_USER_SCAN_EXT      5
 
 /** Private command ID to request ADDTS */
 #define WOAL_WMM_ADDTS              7
@@ -526,6 +530,11 @@ static const struct iw_priv_args woal_private_args[] = {
      IW_PRIV_TYPE_INT | 16,
      "mgmtframectrl"},
     {
+     WOAL_CFP_CODE,
+     IW_PRIV_TYPE_INT | 16,
+     IW_PRIV_TYPE_INT | 16,
+     "cfpcode"},
+    {
      WOAL_SET_GET_TX_RX_ANT,
      IW_PRIV_TYPE_INT | 16,
      IW_PRIV_TYPE_INT | 16,
@@ -655,6 +664,11 @@ static const struct iw_priv_args woal_private_args[] = {
      IW_PRIV_TYPE_BYTE | WOAL_2K_BYTES,
      IW_PRIV_TYPE_BYTE | WOAL_2K_BYTES,
      "getscantable"},
+    {
+     WOAL_SET_USER_SCAN_EXT,
+     IW_PRIV_TYPE_BYTE | WOAL_2K_BYTES,
+     IW_PRIV_TYPE_BYTE | WOAL_2K_BYTES,
+     "setuserscanext"},
     {
      WOAL_WMM_ADDTS,
      IW_PRIV_TYPE_BYTE | WOAL_2K_BYTES,

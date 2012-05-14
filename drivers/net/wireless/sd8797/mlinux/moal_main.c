@@ -47,6 +47,11 @@ Change log:
 #include <linux/wlan_plat.h>
 #include "moal_eth_ioctl.h"
 
+#include <linux/if_ether.h>
+#include <linux/in.h>
+#include <linux/tcp.h>
+#include <net/tcp.h>
+
 /********************************************************
 		Local Variables
 ********************************************************/
@@ -205,7 +210,7 @@ int woal_close(struct net_device *dev);
 int woal_set_mac_address(struct net_device *dev, void *addr);
 void woal_tx_timeout(struct net_device *dev);
 struct net_device_stats *woal_get_stats(struct net_device *dev);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,34)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,29)
 u16 woal_select_queue(struct net_device *dev, struct sk_buff *skb);
 #endif
 
@@ -404,7 +409,7 @@ woal_init_sw(moal_handle * handle)
     /* PnP and power profile */
     handle->surprise_removed = MFALSE;
     init_waitqueue_head(&handle->init_wait_q);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,34)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,29)
     spin_lock_init(&handle->queue_lock);
 #endif
 
@@ -1215,9 +1220,7 @@ const struct net_device_ops woal_netdev_ops = {
 #else
     .ndo_set_multicast_list = woal_set_multicast_list,
 #endif
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,34)
     .ndo_select_queue = woal_select_queue,
-#endif
 };
 #endif
 
@@ -1292,9 +1295,7 @@ const struct net_device_ops woal_uap_netdev_ops = {
 #else
     .ndo_set_multicast_list = woal_uap_set_multicast_list,
 #endif
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,34)
     .ndo_select_queue = woal_select_queue,
-#endif
 };
 #endif
 
@@ -1373,7 +1374,7 @@ woal_add_interface(moal_handle * handle, t_u8 bss_index, t_u8 bss_type)
     moal_private *priv = NULL;
 
     ENTER();
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,34)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,29)
 #define MAX_WMM_QUEUE   4
     /* Allocate an Ethernet device */
     if (!(dev = alloc_etherdev_mq(sizeof(moal_private), MAX_WMM_QUEUE))) {
@@ -1420,11 +1421,8 @@ woal_add_interface(moal_handle * handle, t_u8 bss_index, t_u8 bss_type)
     else if (bss_type == MLAN_BSS_TYPE_WIFIDIRECT)
         priv->bss_role = MLAN_BSS_ROLE_STA;
 #endif
-#if defined(STA_CFG80211) || defined(UAP_CFG80211)
-    priv->probereq_index = MLAN_CUSTOM_IE_AUTO_IDX_MASK;
-#endif
-#ifdef STA_SUPPORT
-#endif
+
+    INIT_LIST_HEAD(&priv->tcp_sess_queue);
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,24)
     SET_MODULE_OWNER(dev);
@@ -1448,7 +1446,7 @@ woal_add_interface(moal_handle * handle, t_u8 bss_index, t_u8 bss_type)
     if ((priv->bss_role == MLAN_BSS_ROLE_STA) && IS_STA_CFG80211(cfg80211_wext)) {
         if (bss_type == MLAN_BSS_TYPE_STA
 #if defined(WIFI_DIRECT_SUPPORT)
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,0,0) || defined(COMPAT_WIRELESS)
+#if LINUX_VERSION_CODE >= WIFI_DIRECT_KERNEL_VERSION
             || bss_type == MLAN_BSS_TYPE_WIFIDIRECT
 #endif
 #endif
@@ -1883,7 +1881,14 @@ woal_close(struct net_device *dev)
     moal_private *priv = (moal_private *) netdev_priv(dev);
 
     ENTER();
-
+#ifdef STA_SUPPORT
+#ifdef STA_CFG80211
+    if (IS_STA_CFG80211(cfg80211_wext) && priv->scan_request) {
+        cfg80211_scan_done(priv->scan_request, MTRUE);
+        priv->scan_request = NULL;
+    }
+#endif
+#endif
     woal_stop_queue(priv->netdev);
 
     MODULE_PUT;
@@ -2066,7 +2071,7 @@ woal_get_stats(struct net_device *dev)
     return &priv->stats;
 }
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,34)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,29)
 /**
  *  @brief This function handles wmm queue select
  *
@@ -2107,6 +2112,233 @@ woal_select_queue(struct net_device * dev, struct sk_buff * skb)
     return index;
 }
 #endif
+
+/**
+ *  @brief This function gets tcp session from the tcp session queue
+ *
+ *  @param priv      A pointer to moal_private structure
+ *  @param src_ip    IP address of the device
+ *  @param src_port  TCP port of the device
+ *  @param dst_ip    IP address of the client
+ *  @param src_port  TCP port of the client
+ *
+ *  @return          A pointer to the tcp session data structure, if found.
+ *                   Otherwise, null
+ */
+struct tcp_sess *
+woal_get_tcp_sess(moal_private * priv,
+                  t_u32 src_ip, t_u16 src_port, t_u32 dst_ip, t_u16 dst_port)
+{
+    struct tcp_sess *tcp_sess = NULL;
+    ENTER();
+
+    list_for_each_entry(tcp_sess, &priv->tcp_sess_queue, link) {
+        if ((tcp_sess->src_ip_addr == src_ip) &&
+            (tcp_sess->src_tcp_port == src_port) &&
+            (tcp_sess->dst_ip_addr == dst_ip) &&
+            (tcp_sess->dst_tcp_port == dst_port)) {
+            LEAVE();
+            return tcp_sess;
+        }
+    }
+    LEAVE();
+    return NULL;
+}
+
+/**
+ *  @brief This function checks received tcp packet for FIN
+ *          and release the tcp session if received
+ *
+ *  @param priv      A pointer to moal_private structure
+ *  @param skb       A pointer to sk_buff structure
+ *
+ *  @return          None
+ */
+void
+woal_check_tcp_fin(moal_private * priv, struct sk_buff *skb)
+{
+    struct ethhdr *ethh = NULL;
+    struct iphdr *iph = NULL;
+    struct tcphdr *tcph = NULL;
+    struct tcp_sess *tcp_sess = NULL;
+
+    ENTER();
+
+    ethh = eth_hdr(skb);
+    if (ntohs(ethh->h_proto) == ETH_P_IP) {
+        iph = (struct iphdr *) ((t_u8 *) ethh + sizeof(struct ethhdr));
+        if (iph->protocol == IPPROTO_TCP) {
+            tcph = (struct tcphdr *) ((t_u8 *) iph + iph->ihl * 4);
+            if (tcph->fin) {
+                tcp_sess = woal_get_tcp_sess(priv, iph->daddr,
+                                             tcph->dest, iph->saddr,
+                                             tcph->source);
+                if (tcp_sess != NULL) {
+                    PRINTM(MINFO,
+                           "TX: release a tcp session in dl. (src: ipaddr 0x%08x, port: %d. dst: ipaddr 0x%08x, port: %d\n",
+                           iph->daddr, tcph->dest, iph->saddr, tcph->source);
+                    /* remove the tcp session from the queue */
+                    list_del(&tcp_sess->link);
+                    kfree(tcp_sess);
+                } else {
+                    PRINTM(MINFO, "Tx: released TCP session is not found.\n ");
+                }
+            }
+        }
+    }
+    LEAVE();
+}
+
+/**
+ *  @brief This function process tcp ack packets
+ *
+ *  @param priv      A pointer to moal_private structure
+ *  @param pmbuf     A pointer to the mlan buffer associated with the skb
+ *
+ *  @return          1, if a tcp ack packet has been dropped. Otherwise, 0.
+ */
+int
+woal_process_tcp_ack(moal_private * priv, mlan_buffer * pmbuf)
+{
+    int ret = 0;
+    struct ethhdr *ethh = NULL;
+    struct iphdr *iph = NULL;
+    struct tcphdr *tcph = NULL;
+    struct tcp_sess *tcp_sess = NULL;
+    struct sk_buff *skb = NULL;
+    t_u32 ack_seq = 0;
+    t_u32 len = 0;
+    t_u8 opt = 0;
+    t_u8 opt_len = 0;
+    t_u8 *pos = NULL;
+    t_u32 win_size = 0;
+
+#define TCP_ACK_DELAY   3
+#define TCP_ACK_INIT_WARMING_UP  1000   /* initial */
+#define TCP_ACK_RECV_WARMING_UP  1000   /* recovery */
+
+    ENTER();
+
+    /** check the tcp packet */
+    ethh = (struct ethhdr *) (pmbuf->pbuf + pmbuf->data_offset);
+    if (ntohs(ethh->h_proto) != ETH_P_IP) {
+        return 0;
+    }
+    iph = (struct iphdr *) ((t_u8 *) ethh + sizeof(struct ethhdr));
+    if (iph->protocol != IPPROTO_TCP) {
+        return 0;
+    }
+    tcph = (struct tcphdr *) ((t_u8 *) iph + iph->ihl * 4);
+
+    if (tcph->syn & tcph->ack) {
+        /* respond to a TCP request. create a tcp session */
+        if (!(tcp_sess = kmalloc(sizeof(struct tcp_sess), GFP_ATOMIC))) {
+            PRINTM(MERROR, "Fail to allocate tcp_sess.\n");
+            return 0;
+        }
+        memset(tcp_sess, 0, sizeof(struct tcp_sess));
+        tcp_sess->src_ip_addr = iph->saddr;     /* my ip addr */
+        tcp_sess->dst_ip_addr = iph->daddr;
+        tcp_sess->src_tcp_port = tcph->source;
+        tcp_sess->dst_tcp_port = tcph->dest;
+        tcp_sess->start_cnt = TCP_ACK_INIT_WARMING_UP;
+
+        INIT_LIST_HEAD(&tcp_sess->link);
+        list_add_tail(&tcp_sess->link, &priv->tcp_sess_queue);
+        PRINTM(MINFO,
+               "create a tcp session. (src: ipaddr 0x%08x, port: %d. dst: ipaddr 0x%08x, port: %d\n",
+               iph->saddr, tcph->source, iph->daddr, tcph->dest);
+
+        /* parse tcp options for the window scale */
+        len = (tcph->doff * 4) - sizeof(struct tcphdr);
+        pos = (t_u8 *) (tcph + 1);
+        while (len > 0) {
+            opt = *pos++;
+            switch (opt) {
+            case TCPOPT_EOL:
+                len = 0;
+                continue;
+            case TCPOPT_NOP:
+                len--;
+                continue;
+            case TCPOPT_WINDOW:
+                opt_len = *pos++;
+                if (opt_len == TCPOLEN_WINDOW) {
+                    tcp_sess->rx_win_scale = *pos;
+                    tcp_sess->rx_win_opt = 1;
+                    if (tcp_sess->rx_win_scale > 14)
+                        tcp_sess->rx_win_scale = 14;
+                    PRINTM(MINFO, "TCP Window Scale: %d \n",
+                           tcp_sess->rx_win_scale);
+                }
+                break;
+            default:
+                opt_len = *pos++;
+            }
+            len -= opt_len;
+            pos += opt_len - 2;
+        }
+    } else if (tcph->ack && !(tcph->syn) &&
+               (ntohs(iph->tot_len) == (iph->ihl * 4 + tcph->doff * 4))) {
+        /** it is an ack packet, not a piggyback ack */
+        tcp_sess = woal_get_tcp_sess(priv, iph->saddr, tcph->source,
+                                     iph->daddr, tcph->dest);
+        if (tcp_sess == NULL) {
+            return 0;
+        }
+        /** do not drop the ack packets initially */
+        if (tcp_sess->start_cnt) {
+            tcp_sess->start_cnt--;
+            return 0;
+        }
+
+        /* check the window size. */
+        win_size = ntohs(tcph->window);
+        if (tcp_sess->rx_win_opt) {
+            win_size <<= tcp_sess->rx_win_scale;
+            /* Note: it may depend on the rtd */
+            if ((win_size > 1500 * (TCP_ACK_DELAY + 5)) &&
+                (tcp_sess->ack_cnt < TCP_ACK_DELAY)) {
+                /* if windiow is big enough, drop the ack packet */
+                if (tcp_sess->ack_seq != ntohl(tcph->ack_seq)) {
+                    ack_seq = tcp_sess->ack_seq;
+                    tcp_sess->ack_seq = ntohl(tcph->ack_seq);
+                    tcp_sess->ack_cnt++;
+                    skb = (struct sk_buff *) pmbuf->pdesc;
+                    if (skb)
+                        dev_kfree_skb_any(skb);
+                    ret = 1;
+                } else {
+                    /* the ack packet is retransmitted. thus, stop dropping
+                       the ack packets */
+                    tcp_sess->start_cnt = TCP_ACK_RECV_WARMING_UP;
+                    PRINTM(MINFO, "Recover the TCP session.\n ");
+                }
+            } else {
+                /* send the current ack pacekt */
+                ack_seq = tcp_sess->ack_seq;
+                tcp_sess->ack_seq = ntohl(tcph->ack_seq);
+                tcp_sess->ack_cnt = 0;
+                ret = 0;
+            }
+        }
+    } else if (tcph->fin) {
+        tcp_sess = woal_get_tcp_sess(priv, iph->saddr, tcph->source,
+                                     iph->daddr, tcph->dest);
+        if (tcp_sess != NULL) {
+            /* remove the tcp session from the queue */
+            PRINTM(MINFO,
+                   "Rx: release a tcp session in ul. (src: ipaddr 0x%08x, port: %d. dst: ipaddr 0x%08x, port: %d\n",
+                   iph->saddr, tcph->source, iph->daddr, tcph->dest);
+            list_del(&tcp_sess->link);
+            kfree(tcp_sess);
+        } else {
+            PRINTM(MINFO, "released TCP session is not found.\n ");
+        }
+    }
+    LEAVE();
+    return ret;
+}
 
 /**
  *  @brief This function handles packet transmission
@@ -2165,6 +2397,13 @@ woal_hard_start_xmit(struct sk_buff *skb, struct net_device *dev)
     memset((t_u8 *) pmbuf, 0, sizeof(mlan_buffer));
     pmbuf->bss_index = priv->bss_index;
     woal_fill_mlan_buffer(priv, pmbuf, skb);
+    if (priv->enable_tcp_ack_enh == MTRUE) {
+        if (woal_process_tcp_ack(priv, pmbuf)) {
+            /* the ack packet has been dropped */
+            goto done;
+        }
+    }
+
     status = mlan_send_packet(priv->phandle->pmlan_adapter, pmbuf);
     switch (status) {
     case MLAN_STATUS_PENDING:
@@ -2394,6 +2633,8 @@ woal_set_multicast_list(struct net_device *dev)
 void
 woal_init_priv(moal_private * priv, t_u8 wait_option)
 {
+    struct list_head *link = NULL;
+    struct tcp_sess *tcp_sess = NULL;
     ENTER();
 #ifdef STA_SUPPORT
     if (GET_BSS_ROLE(priv) == MLAN_BSS_ROLE_STA) {
@@ -2414,7 +2655,7 @@ woal_init_priv(moal_private * priv, t_u8 wait_option)
         if (IS_STA_CFG80211(cfg80211_wext)) {
             if (priv->bss_type == MLAN_BSS_TYPE_STA
 #if defined(WIFI_DIRECT_SUPPORT)
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,0,0) || defined(COMPAT_WIRELESS)
+#if LINUX_VERSION_CODE >= WIFI_DIRECT_KERNEL_VERSION
                 || priv->bss_type == MLAN_BSS_TYPE_WIFIDIRECT
 #endif
 #endif
@@ -2434,6 +2675,25 @@ woal_init_priv(moal_private * priv, t_u8 wait_option)
     }
 #endif
     priv->media_connected = MFALSE;
+
+#if defined(STA_CFG80211) || defined(UAP_CFG80211)
+    priv->probereq_index = MLAN_CUSTOM_IE_AUTO_IDX_MASK;
+#endif
+#ifdef STA_SUPPORT
+#endif
+
+    priv->enable_tcp_ack_enh = MTRUE;
+    while (!list_empty(&priv->tcp_sess_queue)) {
+        link = priv->tcp_sess_queue.next;
+        tcp_sess = list_entry(link, struct tcp_sess, link);
+        PRINTM(MINFO,
+               "warm reset: release a tcp session in dl. (src: ipaddr 0x%08x, port: %d. dst: ipaddr 0x%08x, port: %d\n",
+               tcp_sess->src_ip_addr, tcp_sess->src_tcp_port,
+               tcp_sess->dst_ip_addr, tcp_sess->dst_tcp_port);
+        list_del(link);
+        kfree(tcp_sess);
+    }
+
     woal_request_get_fw_info(priv, wait_option, NULL);
 
     LEAVE();
@@ -2805,8 +3065,9 @@ woal_reassociation_thread(void *data)
 
         for (i = 0; i < handle->priv_num && (priv = handle->priv[i]); i++) {
 
-            if (priv->reassoc_required == MFALSE)
+            if (priv->reassoc_required == MFALSE) {
                 continue;
+            }
 
             memset(&bss_info, 0x00, sizeof(bss_info));
 
@@ -2892,7 +3153,6 @@ woal_reassociation_thread(void *data)
                 mlan_ioctl_req *req = NULL;
 
                 reassoc_timer_req = MFALSE;
-
                 if (priv->rate_index != AUTO_RATE) {
                     req = woal_alloc_mlan_ioctl_req(sizeof(mlan_ds_rate));
 
@@ -2928,11 +3188,13 @@ woal_reassociation_thread(void *data)
             break;
 
         if (reassoc_timer_req == MTRUE) {
-            PRINTM(MEVENT,
-                   "Reassoc: No AP found or assoc failed. "
-                   "Restarting re-assoc Timer: %d\n", (int) timer_val);
             handle->is_reassoc_timer_set = MTRUE;
-            woal_mod_timer(&handle->reassoc_timer, timer_val);
+            {
+                PRINTM(MEVENT,
+                       "Reassoc: No AP found or assoc failed. "
+                       "Restarting re-assoc Timer: %d\n", (int) timer_val);
+                woal_mod_timer(&handle->reassoc_timer, timer_val);
+            }
         }
     }
     woal_deactivate_thread(pmoal_thread);
@@ -3083,7 +3345,7 @@ woal_moal_debug_info(moal_private * priv, moal_handle * handle, u8 flag)
 {
     moal_handle *phandle = NULL;
     char buf[MLAN_MAX_VER_STR_LEN];
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,34)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,29)
     int i = 0;
 #endif
 
@@ -3122,7 +3384,7 @@ woal_moal_debug_info(moal_private * priv, moal_handle * handle, u8 flag)
                  MFALSE) ? "Disconnected" : "Connected"));
         PRINTM(MERROR, "carrier %s\n",
                ((netif_carrier_ok(priv->netdev)) ? "on" : "off"));
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,34)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,29)
         for (i = 0; i < (priv->netdev->num_tx_queues); i++) {
             PRINTM(MERROR, "tx queue %d: %s\n", i,
                    ((netif_tx_queue_stopped
@@ -3599,10 +3861,10 @@ woal_init_module(void)
     /* Init mutex */
     MOAL_INIT_SEMAPHORE(&AddRemoveCardSem);
 
+    wifi_add_dev();
+
     /* Register with bus */
     ret = woal_bus_register();
-
-    wifi_add_dev();
 
     LEAVE();
     return ret;
@@ -3645,7 +3907,8 @@ woal_cleanup_module(void)
                 if (handle->priv[i]->media_connected == MTRUE)
                     woal_disconnect(handle->priv[i], MOAL_CMD_WAIT, NULL);
 #ifdef STA_CFG80211
-                if (handle->priv[i]->scan_request) {
+                if (IS_STA_CFG80211(cfg80211_wext) &&
+                    handle->priv[i]->scan_request) {
                     cfg80211_scan_done(handle->priv[i]->scan_request, MTRUE);
                     handle->priv[i]->scan_request = NULL;
                 }
@@ -3681,13 +3944,13 @@ woal_cleanup_module(void)
                              MOAL_CMD_WAIT);
     }
 
-    wifi_del_dev();
-
   exit:
     MOAL_REL_SEMAPHORE(&AddRemoveCardSem);
   exit_sem_err:
     /* Unregister from bus */
     woal_bus_unregister();
+    wifi_del_dev();
+
     LEAVE();
 }
 
@@ -3749,7 +4012,7 @@ module_param(init_cfg, charp, 0);
 MODULE_PARM_DESC(init_cfg, "Init config file name");
 module_param(cal_data_cfg, charp, 0);
 MODULE_PARM_DESC(cal_data_cfg, "Calibration data file name");
-module_param(minicard_pwrup, int, 0);
+module_param(minicard_pwrup, int, 1);
 MODULE_PARM_DESC(minicard_pwrup,
                  "1: Driver load clears PDn/Rst, unload sets (default); 0: Don't do this.");
 module_param(cfg80211_wext, int, 0);

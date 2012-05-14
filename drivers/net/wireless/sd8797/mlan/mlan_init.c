@@ -312,10 +312,17 @@ wlan_init_priv(pmlan_private priv)
     priv->bcn_rssi_avg = 0;
     priv->bcn_nf_avg = 0;
     priv->bcn_nf_last = 0;
+
+    priv->sec_info.ewpa_enabled = MFALSE;
+    priv->sec_info.wpa_enabled = MFALSE;
+    priv->sec_info.wpa2_enabled = MFALSE;
     memset(pmadapter, &priv->wpa_ie, 0, sizeof(priv->wpa_ie));
     memset(pmadapter, &priv->aes_key, 0, sizeof(priv->aes_key));
     priv->wpa_ie_len = 0;
     priv->wpa_is_gtk_set = MFALSE;
+    priv->sec_info.wapi_enabled = MFALSE;
+    priv->wapi_ie_len = 0;
+    priv->sec_info.wapi_key_on = MFALSE;
 
     memset(pmadapter, &priv->wps, 0, sizeof(priv->wps));
     memset(pmadapter, &priv->gen_ie_buf, 0, sizeof(priv->gen_ie_buf));
@@ -362,7 +369,6 @@ wlan_init_priv(pmlan_private priv)
 t_void
 wlan_init_adapter(pmlan_adapter pmadapter)
 {
-    int i;
     opt_sleep_confirm_buffer *sleep_cfm_buf = MNULL;
 
     ENTER();
@@ -391,9 +397,6 @@ wlan_init_adapter(pmlan_adapter pmadapter)
     pmadapter->mp_wr_bitmap = 0;
     pmadapter->curr_rd_port = 1;
     pmadapter->curr_wr_port = 1;
-    for (i = 0; i < MAX_NUM_TID; i++) {
-        pmadapter->tx_eligibility[i] = 1;
-    }
     pmadapter->mp_data_port_mask = DATA_PORT_MASK;
 
 #ifdef SDIO_MULTI_PORT_TX_AGGR
@@ -559,6 +562,8 @@ wlan_init_adapter(pmlan_adapter pmadapter)
     memset(pmadapter, &pmadapter->region_channel, 0,
            sizeof(pmadapter->region_channel));
     pmadapter->region_code = 0;
+    memcpy(pmadapter, pmadapter->country_code, MRVDRV_DEFAULT_COUNTRY_CODE,
+           COUNTRY_CODE_LEN);
     pmadapter->bcn_miss_time_out = DEFAULT_BCN_MISS_TIMEOUT;
     pmadapter->adhoc_awake_period = 0;
 #ifdef STA_SUPPORT

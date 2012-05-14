@@ -344,7 +344,9 @@ wlan_dnld_cmd_to_fw(IN mlan_private * pmpriv, IN cmd_ctrl_node * pcmd_node)
     mlan_ioctl_req *pioctl_buf = MNULL;
     t_u16 cmd_code;
     t_u16 cmd_size;
+#ifdef DEBUG_LEVEL1
     t_u32 sec, usec;
+#endif
 
     ENTER();
 
@@ -389,8 +391,7 @@ wlan_dnld_cmd_to_fw(IN mlan_private * pmpriv, IN cmd_ctrl_node * pcmd_node)
 
     pcmd_node->cmdbuf->data_len = cmd_size;
 
-    pmadapter->callbacks.moal_get_system_time(pmadapter->pmoal_handle, &sec,
-                                              &usec);
+    PRINTM_GET_SYS_TIME(MCMND, &sec, &usec);
     PRINTM_NETINTF(MCMND, pmpriv);
     PRINTM(MCMND, "DNLD_CMD (%lu.%06lu): 0x%x, act 0x%x, len %d, seqno 0x%x\n",
            sec, usec, cmd_code,
@@ -690,8 +691,9 @@ wlan_process_event(pmlan_adapter pmadapter)
     pmlan_private priv = wlan_get_priv(pmadapter, MLAN_BSS_ROLE_ANY);
     pmlan_buffer pmbuf = pmadapter->pmlan_buffer_event;
     t_u32 eventcause = pmadapter->event_cause;
-    t_u32 in_ts_sec;
-    t_u32 in_ts_usec;
+#ifdef DEBUG_LEVEL1
+    t_u32 in_ts_sec, in_ts_usec;
+#endif
     ENTER();
 
     /* Save the last event to debug log */
@@ -726,8 +728,7 @@ wlan_process_event(pmlan_adapter pmadapter)
 
     if (MTRUE && (eventcause != EVENT_PS_SLEEP && eventcause != EVENT_PS_AWAKE)
         ) {
-        pmadapter->callbacks.moal_get_system_time(pmadapter->pmoal_handle,
-                                                  &in_ts_sec, &in_ts_usec);
+        PRINTM_GET_SYS_TIME(MEVENT, &in_ts_sec, &in_ts_usec);
         PRINTM_NETINTF(MEVENT, priv);
         PRINTM(MEVENT, "%lu.%06lu : Event: 0x%x\n", in_ts_sec, in_ts_usec,
                eventcause);
@@ -1109,7 +1110,10 @@ wlan_process_cmdresp(mlan_adapter * pmadapter)
     t_u16 cmdresp_result;
     mlan_ioctl_req *pioctl_buf = MNULL;
     mlan_callbacks *pcb = (mlan_callbacks *) & pmadapter->callbacks;
-    t_u32 sec, usec, i;
+#ifdef DEBUG_LEVEL1
+    t_u32 sec, usec;
+#endif
+    t_u32 i;
 
     ENTER();
 
@@ -1189,8 +1193,7 @@ wlan_process_cmdresp(mlan_adapter * pmadapter)
     pmadapter->dbg.last_cmd_resp_id[pmadapter->dbg.last_cmd_resp_index] =
         orig_cmdresp_no;
 
-    pmadapter->callbacks.moal_get_system_time(pmadapter->pmoal_handle, &sec,
-                                              &usec);
+    PRINTM_GET_SYS_TIME(MCMND, &sec, &usec);
     PRINTM_NETINTF(MCMND, pmadapter->curr_cmd->priv);
     PRINTM(MCMND, "CMD_RESP (%lu.%06lu): 0x%x, result %d, len %d, seqno 0x%x\n",
            sec, usec, orig_cmdresp_no, cmdresp_result, resp->size,
@@ -1301,7 +1304,9 @@ wlan_cmd_timeout_func(t_void * function_context)
     mlan_adapter *pmadapter = (mlan_adapter *) function_context;
     cmd_ctrl_node *pcmd_node = MNULL;
     mlan_ioctl_req *pioctl_buf = MNULL;
+#ifdef DEBUG_LEVEL1
     t_u32 sec, usec;
+#endif
     t_u8 i;
     mlan_private *pmpriv = MNULL;
 
@@ -1325,8 +1330,7 @@ wlan_cmd_timeout_func(t_void * function_context)
             pmadapter->dbg.last_cmd_id[pmadapter->dbg.last_cmd_index];
         pmadapter->dbg.timeout_cmd_act =
             pmadapter->dbg.last_cmd_act[pmadapter->dbg.last_cmd_index];
-        pmadapter->callbacks.moal_get_system_time(pmadapter->pmoal_handle, &sec,
-                                                  &usec);
+        PRINTM_GET_SYS_TIME(MERROR, &sec, &usec);
         PRINTM(MERROR, "Timeout cmd id (%lu.%06lu) = 0x%x, act = 0x%x \n", sec,
                usec, pmadapter->dbg.timeout_cmd_id,
                pmadapter->dbg.timeout_cmd_act);
@@ -2719,6 +2723,9 @@ wlan_ret_get_hw_spec(IN pmlan_private pmpriv,
         PRINTM(MWARN, "unidentified region code, use the default (0x%02x)\n",
                MRVDRV_DEFAULT_REGION_CODE);
     }
+    /* Synchronize CFP code with region code */
+    pmadapter->cfp_code_bg = pmadapter->region_code;
+    pmadapter->cfp_code_a = pmadapter->region_code;
 
     if (wlan_set_regiontable(pmpriv, (t_u8) pmadapter->region_code,
                              pmadapter->fw_bands)) {

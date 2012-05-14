@@ -24,8 +24,11 @@
 
 #include    "moal_main.h"
 
+/* Clear all key indexes */
+#define KEY_INDEX_CLEAR_ALL             (0x0000000F)
+
 /** RTS/FRAG disabled value */
-#define MLAN_FRAG_RTS_DISABLED      (0xFFFFFFFF)
+#define MLAN_FRAG_RTS_DISABLED          (0xFFFFFFFF)
 
 #ifndef WLAN_CIPHER_SUITE_WAPI
 #define WLAN_CIPHER_SUITE_WAPI          0x00000020
@@ -55,6 +58,9 @@ static const void *const mrvl_wiphy_privid = &mrvl_wiphy_privid;
 /* Get the private structure from wiphy */
 void *woal_get_wiphy_priv(struct wiphy *wiphy);
 
+/* Get the private structure from net device */
+void *woal_get_netdev_priv(struct net_device *dev);
+
 int woal_cfg80211_change_virtual_intf(struct wiphy *wiphy,
                                       struct net_device *dev,
                                       enum nl80211_iftype type,
@@ -78,7 +84,7 @@ int woal_cfg80211_del_key(struct wiphy *wiphy,
 
 #ifdef STA_CFG80211
 #ifdef STA_SUPPORT
-int woal_set_rf_channel(struct wiphy *wiphy,
+int woal_set_rf_channel(moal_private * priv,
                         struct ieee80211_channel *chan,
                         enum nl80211_channel_type channel_type);
 mlan_status woal_inform_bss_from_scan_result(moal_private * priv,
@@ -149,7 +155,7 @@ int woal_cfg80211_del_virtual_intf(struct wiphy *wiphy, struct net_device *dev);
 #if defined(WIFI_DIRECT_SUPPORT)
 /** Define kernel version for wifi direct */
 #if !defined(COMPAT_WIRELESS)
-#define WIFI_DIRECT_KERNEL_VERSION          KERNEL_VERSION(3,0,0)
+#define WIFI_DIRECT_KERNEL_VERSION          KERNEL_VERSION(2,6,39)
 #else
 #define WIFI_DIRECT_KERNEL_VERSION          KERNEL_VERSION(2,6,33)
 #endif /* COMPAT_WIRELESS */
@@ -173,7 +179,7 @@ int woal_cfg80211_init_p2p_go(moal_private * priv);
 
 int woal_cfg80211_deinit_p2p(moal_private * priv);
 
-int woal_cfg80211_remain_on_channel_cfg(struct wiphy *wiphy,
+int woal_cfg80211_remain_on_channel_cfg(moal_private * priv,
                                         t_u8 wait_option, t_u8 remove,
                                         t_u8 * status,
                                         struct ieee80211_channel *chan,
@@ -183,6 +189,8 @@ int woal_uap_cfg80211_get_station(struct wiphy *wiphy, struct net_device *dev,
                                   u8 * mac, struct station_info *stainfo);
 #endif /* KERNEL_VERSION */
 #endif /* WIFI_DIRECT_SUPPORT && V14_FEATURE */
+
+const t_u8 *woal_parse_ie_tlv(const t_u8 * ie, int len, t_u8 id);
 
 int woal_cfg80211_mgmt_frame_ie(moal_private * priv,
                                 const t_u8 * beacon_ies, size_t beacon_ies_len,

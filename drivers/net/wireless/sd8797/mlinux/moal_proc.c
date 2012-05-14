@@ -95,9 +95,9 @@ woal_info_proc_read(char *page, char **start, off_t offset,
     int mc_count = netdev_mc_count(netdev);
 #endif /* < 2.6.35 */
 #else
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,34)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,29)
     int i = 0;
-#endif /* >= 2.6.34 */
+#endif /* >= 2.6.29 */
 #endif
 #ifdef UAP_SUPPORT
     mlan_ds_uap_stats ustats;
@@ -199,7 +199,7 @@ woal_info_proc_read(char *page, char **start, off_t offset,
     p += sprintf(p, "num_rx_pkts_err = %lu\n", priv->stats.rx_errors);
     p += sprintf(p, "carrier %s\n",
                  ((netif_carrier_ok(priv->netdev)) ? "on" : "off"));
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,34)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,29)
     for (i = 0; i < netdev->num_tx_queues; i++) {
         p += sprintf(p, "tx queue %d:  %s\n", i,
                      ((netif_tx_queue_stopped(netdev_get_tx_queue(netdev, 0))) ?

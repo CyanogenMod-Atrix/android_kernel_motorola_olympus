@@ -315,6 +315,12 @@ woal_sdio_suspend(struct device *dev)
     }
 
     handle = cardp->handle;
+    if (handle->is_suspended == MTRUE) {
+        PRINTM(MWARN, "Device already suspended\n");
+        LEAVE();
+        return MLAN_STATUS_SUCCESS;
+    }
+
     handle->suspend_fail = MFALSE;
     memset(&pm_info, 0, sizeof(pm_info));
     if (MLAN_STATUS_SUCCESS ==

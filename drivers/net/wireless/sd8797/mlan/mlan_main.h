@@ -4,7 +4,7 @@
  *  structures and declares global function prototypes used
  *  in MLAN module.
  *
- *  Copyright (C) 2008-2011, Marvell International Ltd. 
+ *  Copyright (C) 2008-2012, Marvell International Ltd. 
  *
  *  This software file (the "File") is distributed by Marvell International
  *  Ltd. under the terms of the GNU General Public License Version 2, June 1991
@@ -31,6 +31,11 @@ Change log:
 #ifdef DEBUG_LEVEL1
 extern t_void(*print_callback) (IN t_void * pmoal_handle,
                                 IN t_u32 level, IN t_s8 * pformat, IN ...);
+
+extern mlan_status(*get_sys_time_callback) (IN t_void * pmoal_handle,
+                                            OUT t_u32 * psec,
+                                            OUT t_u32 * pusec);
+
 extern t_u32 drvdbg;
 
 #ifdef	DEBUG_LEVEL2
@@ -40,10 +45,35 @@ extern t_u32 drvdbg;
                                     print_callback(MNULL, MWARN, msg);} while(0)
 #define	PRINTM_MENTRY(msg...) do {if ((drvdbg & MENTRY) && (print_callback)) \
                                     print_callback(MNULL, MENTRY, msg);} while(0)
+#define PRINTM_GET_SYS_TIME(level, psec, pusec)             \
+do {                                                        \
+    if ((level & drvdbg) && (get_sys_time_callback))        \
+        get_sys_time_callback(MNULL, psec, pusec);          \
+} while (0)
+
+/** Hexdump for level-2 debugging */
+#define HEXDUMP(x,y,z)   \
+do {                \
+    if ((drvdbg & (MHEX_DUMP | MINFO)) && (print_callback))  \
+        print_callback(MNULL, MHEX_DUMP | MINFO, x, y, z); \
+} while (0)
+
 #else
+
 #define	PRINTM_MINFO(msg...)  do {} while (0)
 #define	PRINTM_MWARN(msg...)  do {} while (0)
 #define	PRINTM_MENTRY(msg...) do {} while (0)
+
+#define PRINTM_GET_SYS_TIME(level, psec, pusec)         \
+do {                                                    \
+    if ((level & drvdbg) && (get_sys_time_callback)     \
+            && (level != MINFO) && (level != MWARN))    \
+        get_sys_time_callback(MNULL, psec, pusec);      \
+} while (0)
+
+/** Hexdump for debugging */
+#define HEXDUMP(x,y,z) do {} while (0)
+
 #endif /* DEBUG_LEVEL2 */
 
 #define	PRINTM_MFW_D(msg...)  do {if ((drvdbg & MFW_D) && (print_callback)) \
@@ -73,20 +103,6 @@ extern t_u32 drvdbg;
                                     print_callback(MNULL, MMSG, msg);} while(0)
 
 #define	PRINTM(level,msg...) PRINTM_##level(msg)
-
-#ifdef DEBUG_LEVEL2
-
-/** Hexdump for level-2 debugging */
-#define HEXDUMP(x,y,z)   \
-do {                \
-    if ((drvdbg & (MHEX_DUMP | MINFO)) && (print_callback))  \
-        print_callback(MNULL, MHEX_DUMP | MINFO, x, y, z); \
-} while (0)
-#else
-
-/** Hexdump for debugging */
-#define HEXDUMP(x,y,z) do {} while (0)
-#endif /* DEBUG_LEVEL2 */
 
 /** Log debug message */
 #ifdef __GNUC__
@@ -121,6 +137,8 @@ do {                \
 
 /** Hexdump for debugging */
 #define HEXDUMP(x,y,z) do {} while (0)
+
+#define PRINTM_GET_SYS_TIME(level, psec, pusec) do { } while(0)
 
 #endif /* DEBUG_LEVEL1 */
 
@@ -330,10 +348,18 @@ do {                                    \
 #define MLAN_DEFAULT_LISTEN_INTERVAL    10
 
 /** Maximum number of region codes */
-#define MRVDRV_MAX_REGION_CODE          8
+#define MRVDRV_MAX_REGION_CODE          9
+
+/** Maximum number of CFP codes for BG */
+#define MRVDRV_MAX_CFP_CODE_BG          0
+/** Maximum number of CFP codes for A */
+#define MRVDRV_MAX_CFP_CODE_A           5
 
 /** Default region code */
 #define MRVDRV_DEFAULT_REGION_CODE      0x10
+
+/** Default country code */
+#define MRVDRV_DEFAULT_COUNTRY_CODE      "US"
 
 /** Default factor for calculating beacon average */
 #define DEFAULT_BCN_AVG_FACTOR          8
@@ -722,8 +748,9 @@ typedef struct _chan_freq_power_t
     t_u32 freq;
     /** Max allowed Tx power level */
     t_u16 max_tx_power;
-    /** TRUE:radar detect required; FALSE:radar detect not required*/
-    t_bool radar_detect;
+    /** TRUE:radar detect required for BAND A or passive scan for BAND B/G;
+      * FALSE:radar detect not required for BAND A or active scan for BAND B/G*/
+    t_bool passive_scan_or_radar_detect;
     /** TRUE:channel unsupported;  FALSE:supported */
     t_u8 unsupported;
 } chan_freq_power_t;
@@ -1368,7 +1395,7 @@ typedef struct _sdio_mpa_tx
         /** multiport tx aggregation packet count */
     t_u32 pkt_cnt;
         /** multiport tx aggregation ports */
-    t_u16 ports;
+    t_u32 ports;
         /** multiport tx aggregation starting port */
     t_u16 start_port;
         /** multiport tx aggregation enable/disable flag */
@@ -1393,7 +1420,7 @@ typedef struct _sdio_mpa_rx
         /** multiport rx aggregation packet count */
     t_u32 pkt_cnt;
         /** multiport rx aggregation ports */
-    t_u16 ports;
+    t_u32 ports;
         /** multiport rx aggregation starting port */
     t_u16 start_port;
 
@@ -1511,8 +1538,6 @@ typedef struct _mlan_adapter
     t_u8 *mp_regs;
     /** allocated buf to read SDIO multiple port group registers */
     t_u8 *mp_regs_buf;
-    /** Array to store data transfer eligibility based on tid (QoS-over-SDIO) */
-    t_u8 tx_eligibility[MAX_NUM_TID];
 
 #ifdef SDIO_MULTI_PORT_TX_AGGR
         /** data structure for SDIO MPA TX */
@@ -1596,6 +1621,10 @@ typedef struct _mlan_adapter
     t_u16 region_code;
     /** Region Channel data */
     region_chan_t region_channel[MAX_REGION_CHANNEL_NUM];
+    /** CFP table code for 2.4GHz */
+    t_u8 cfp_code_bg;
+    /** CFP table code for 5GHz */
+    t_u8 cfp_code_a;
 #ifdef STA_SUPPORT
     /** Universal Channel data */
     region_chan_t universal_channel[MAX_REGION_CHANNEL_NUM];
@@ -1604,6 +1633,8 @@ typedef struct _mlan_adapter
 #endif                          /* STA_SUPPORT */
     /** 11D and Domain Regulatory Data */
     wlan_802_11d_domain_reg_t domain_reg;
+    /** Country Code */
+    t_u8 country_code[COUNTRY_CODE_LEN];
     /** FSM variable for 11h support */
     wlan_11h_device_state_t state_11h;
     /** FSM variable for DFS support */
@@ -1620,6 +1651,7 @@ typedef struct _mlan_adapter
     BSSDescriptor_t *pscan_table;
     /** scan age in secs */
     t_u32 age_in_secs;
+    t_u8 bgscan_reported;
 
     /** Number of records in the scan table */
     t_u32 num_in_scan_table;
@@ -2177,6 +2209,9 @@ mlan_status wlan_cmd_bgscan_config(IN mlan_private * pmpriv,
 mlan_status wlan_ret_bgscan_config(IN mlan_private * pmpriv,
                                    IN HostCmd_DS_COMMAND * resp,
                                    IN mlan_ioctl_req * pioctl_buf);
+mlan_status wlan_ret_802_11_bgscan_query(IN mlan_private * pmpriv,
+                                         IN HostCmd_DS_COMMAND * resp,
+                                         IN mlan_ioctl_req * pioctl_buf);
 
 /** Get Channel-Frequency-Power by band and channel */
 chan_freq_power_t *wlan_get_cfp_by_band_and_channel(pmlan_adapter pmadapter,
@@ -2221,10 +2256,16 @@ int wlan_get_rate_index(pmlan_adapter pmadapter, t_u16 * rateBitmap, int size);
 /* CFP related functions */
 /** Region code index table */
 extern t_u16 region_code_index[MRVDRV_MAX_REGION_CODE];
+/** The table to keep CFP code for BG */
+extern t_u16 cfp_code_index_bg[MRVDRV_MAX_CFP_CODE_BG];
+/** The table to keep CFP code for A */
+extern t_u16 cfp_code_index_a[MRVDRV_MAX_CFP_CODE_A];
 /** Set region table */
 mlan_status wlan_set_regiontable(mlan_private * pmpriv, t_u8 region, t_u8 band);
 /** Get radar detection requirements*/
 t_bool wlan_get_cfp_radar_detect(mlan_private * priv, t_u8 chnl);
+/** check if scan type is passive for b/g band*/
+t_bool wlan_bg_scan_type_is_passive(mlan_private * priv, t_u8 chnl);
 
 /* 802.11D related functions */
 /** Initialize 11D */
@@ -2280,6 +2321,12 @@ mlan_status wlan_11d_handle_uap_domain_info(mlan_private * pmpriv,
                                             t_void * pioctl_buf);
 #endif
 
+/** This function converts region string to CFP table code */
+mlan_status wlan_misc_country_2_cfp_table_code(IN pmlan_adapter pmadapter,
+                                               IN t_u8 * country_code,
+                                               OUT t_u8 * cfp_bg,
+                                               OUT t_u8 * cfp_a);
+
 /** check if station list is empty */
 t_u8 wlan_is_station_list_empty(mlan_private * priv);
 /** get station node */
@@ -2316,7 +2363,6 @@ wlan_is_tx_pause(mlan_private * priv, t_u8 * ra)
 
 t_void wlan_updata_ralist_tx_pause(pmlan_private priv, t_u8 * mac,
                                    t_u8 tx_pause);
-sta_node *wlan_get_tx_pause_station_entry(mlan_private * priv);
 
 #ifdef UAP_SUPPORT
 mlan_status wlan_process_uap_rx_packet(IN mlan_private * priv,
@@ -2365,6 +2411,9 @@ mlan_status wlan_reg_rx_mgmt_ind(IN pmlan_adapter pmadapter,
 mlan_status wlan_set_drvdbg(IN pmlan_adapter pmadapter,
                             IN pmlan_ioctl_req pioctl_req);
 #endif
+
+mlan_status wlan_misc_otp_user_data(IN pmlan_adapter pmadapter,
+                                    IN pmlan_ioctl_req pioctl_req);
 
 /**
  *  @brief RA based queueing

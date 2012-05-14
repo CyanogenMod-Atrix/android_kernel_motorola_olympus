@@ -4,7 +4,7 @@
  *  @brief This file contains WLAN client mode channel, frequency and power
  *  related code
  *
- *  Copyright (C) 2009-2011, Marvell International Ltd. 
+ *  Copyright (C) 2009-2012, Marvell International Ltd. 
  *
  *  This software file (the "File") is distributed by Marvell International
  *  Ltd. under the terms of the GNU General Public License Version 2, June 1991
@@ -52,6 +52,30 @@ Change Log:
 /** 2000mW */
 #define WLAN_TX_PWR_CN_2000MW       33
 
+/** Region code mapping */
+typedef struct _country_code_mapping
+{
+    /** Region */
+    t_u8 country_code[COUNTRY_CODE_LEN];
+    /** Code for B/G CFP table */
+    t_u8 cfp_code_bg;
+    /** Code for A CFP table */
+    t_u8 cfp_code_a;
+} country_code_mapping_t;
+
+/** Region code mapping table */
+static country_code_mapping_t country_code_mapping[] = {
+    {"US", 0x10, 0x10},         /* US FCC */
+    {"CA", 0x10, 0x20},         /* IC Canada */
+    {"SG", 0x10, 0x10},         /* Singapore */
+    {"EU", 0x30, 0x30},         /* ETSI */
+    {"AU", 0x30, 0x30},         /* Australia */
+    {"KR", 0x30, 0x30},         /* Republic Of Korea */
+    {"FR", 0x32, 0x32},         /* France */
+    {"JP", 0xFF, 0x40},         /* Japan */
+    {"CN", 0x30, 0x50},         /* China */
+};
+
 /**
  * The structure for Channel-Frequency-Power table
  */
@@ -68,91 +92,108 @@ typedef struct _cfp_table
 /* Format { Channel, Frequency (MHz), MaxTxPower } */
 /** Band: 'B/G', Region: USA FCC/Canada IC */
 static chan_freq_power_t channel_freq_power_US_BG[] = {
-    {1, 2412, WLAN_TX_PWR_US_DEFAULT},
-    {2, 2417, WLAN_TX_PWR_US_DEFAULT},
-    {3, 2422, WLAN_TX_PWR_US_DEFAULT},
-    {4, 2427, WLAN_TX_PWR_US_DEFAULT},
-    {5, 2432, WLAN_TX_PWR_US_DEFAULT},
-    {6, 2437, WLAN_TX_PWR_US_DEFAULT},
-    {7, 2442, WLAN_TX_PWR_US_DEFAULT},
-    {8, 2447, WLAN_TX_PWR_US_DEFAULT},
-    {9, 2452, WLAN_TX_PWR_US_DEFAULT},
-    {10, 2457, WLAN_TX_PWR_US_DEFAULT},
-    {11, 2462, WLAN_TX_PWR_US_DEFAULT}
+    {1, 2412, WLAN_TX_PWR_US_DEFAULT, MFALSE},
+    {2, 2417, WLAN_TX_PWR_US_DEFAULT, MFALSE},
+    {3, 2422, WLAN_TX_PWR_US_DEFAULT, MFALSE},
+    {4, 2427, WLAN_TX_PWR_US_DEFAULT, MFALSE},
+    {5, 2432, WLAN_TX_PWR_US_DEFAULT, MFALSE},
+    {6, 2437, WLAN_TX_PWR_US_DEFAULT, MFALSE},
+    {7, 2442, WLAN_TX_PWR_US_DEFAULT, MFALSE},
+    {8, 2447, WLAN_TX_PWR_US_DEFAULT, MFALSE},
+    {9, 2452, WLAN_TX_PWR_US_DEFAULT, MFALSE},
+    {10, 2457, WLAN_TX_PWR_US_DEFAULT, MFALSE},
+    {11, 2462, WLAN_TX_PWR_US_DEFAULT, MFALSE}
 };
 
 /** Band: 'B/G', Region: Europe ETSI/China */
 static chan_freq_power_t channel_freq_power_EU_BG[] = {
-    {1, 2412, WLAN_TX_PWR_EMEA_DEFAULT},
-    {2, 2417, WLAN_TX_PWR_EMEA_DEFAULT},
-    {3, 2422, WLAN_TX_PWR_EMEA_DEFAULT},
-    {4, 2427, WLAN_TX_PWR_EMEA_DEFAULT},
-    {5, 2432, WLAN_TX_PWR_EMEA_DEFAULT},
-    {6, 2437, WLAN_TX_PWR_EMEA_DEFAULT},
-    {7, 2442, WLAN_TX_PWR_EMEA_DEFAULT},
-    {8, 2447, WLAN_TX_PWR_EMEA_DEFAULT},
-    {9, 2452, WLAN_TX_PWR_EMEA_DEFAULT},
-    {10, 2457, WLAN_TX_PWR_EMEA_DEFAULT},
-    {11, 2462, WLAN_TX_PWR_EMEA_DEFAULT},
-    {12, 2467, WLAN_TX_PWR_EMEA_DEFAULT},
-    {13, 2472, WLAN_TX_PWR_EMEA_DEFAULT}
+    {1, 2412, WLAN_TX_PWR_EMEA_DEFAULT, MFALSE},
+    {2, 2417, WLAN_TX_PWR_EMEA_DEFAULT, MFALSE},
+    {3, 2422, WLAN_TX_PWR_EMEA_DEFAULT, MFALSE},
+    {4, 2427, WLAN_TX_PWR_EMEA_DEFAULT, MFALSE},
+    {5, 2432, WLAN_TX_PWR_EMEA_DEFAULT, MFALSE},
+    {6, 2437, WLAN_TX_PWR_EMEA_DEFAULT, MFALSE},
+    {7, 2442, WLAN_TX_PWR_EMEA_DEFAULT, MFALSE},
+    {8, 2447, WLAN_TX_PWR_EMEA_DEFAULT, MFALSE},
+    {9, 2452, WLAN_TX_PWR_EMEA_DEFAULT, MFALSE},
+    {10, 2457, WLAN_TX_PWR_EMEA_DEFAULT, MFALSE},
+    {11, 2462, WLAN_TX_PWR_EMEA_DEFAULT, MFALSE},
+    {12, 2467, WLAN_TX_PWR_EMEA_DEFAULT, MFALSE},
+    {13, 2472, WLAN_TX_PWR_EMEA_DEFAULT, MFALSE}
 };
 
 /** Band: 'B/G', Region: France */
 static chan_freq_power_t channel_freq_power_FR_BG[] = {
-    {1, 2412, WLAN_TX_PWR_FR_100MW},
-    {2, 2417, WLAN_TX_PWR_FR_100MW},
-    {3, 2422, WLAN_TX_PWR_FR_100MW},
-    {4, 2427, WLAN_TX_PWR_FR_100MW},
-    {5, 2432, WLAN_TX_PWR_FR_100MW},
-    {6, 2437, WLAN_TX_PWR_FR_100MW},
-    {7, 2442, WLAN_TX_PWR_FR_100MW},
-    {8, 2447, WLAN_TX_PWR_FR_100MW},
-    {9, 2452, WLAN_TX_PWR_FR_100MW},
-    {10, 2457, WLAN_TX_PWR_FR_10MW},
-    {11, 2462, WLAN_TX_PWR_FR_10MW},
-    {12, 2467, WLAN_TX_PWR_FR_10MW},
-    {13, 2472, WLAN_TX_PWR_FR_10MW}
+    {1, 2412, WLAN_TX_PWR_FR_100MW, MFALSE},
+    {2, 2417, WLAN_TX_PWR_FR_100MW, MFALSE},
+    {3, 2422, WLAN_TX_PWR_FR_100MW, MFALSE},
+    {4, 2427, WLAN_TX_PWR_FR_100MW, MFALSE},
+    {5, 2432, WLAN_TX_PWR_FR_100MW, MFALSE},
+    {6, 2437, WLAN_TX_PWR_FR_100MW, MFALSE},
+    {7, 2442, WLAN_TX_PWR_FR_100MW, MFALSE},
+    {8, 2447, WLAN_TX_PWR_FR_100MW, MFALSE},
+    {9, 2452, WLAN_TX_PWR_FR_100MW, MFALSE},
+    {10, 2457, WLAN_TX_PWR_FR_10MW, MFALSE},
+    {11, 2462, WLAN_TX_PWR_FR_10MW, MFALSE},
+    {12, 2467, WLAN_TX_PWR_FR_10MW, MFALSE},
+    {13, 2472, WLAN_TX_PWR_FR_10MW, MFALSE}
 };
 
 /** Band: 'B/G', Region: Japan */
 static chan_freq_power_t channel_freq_power_JPN41_BG[] = {
-    {1, 2412, WLAN_TX_PWR_JP_BG_DEFAULT},
-    {2, 2417, WLAN_TX_PWR_JP_BG_DEFAULT},
-    {3, 2422, WLAN_TX_PWR_JP_BG_DEFAULT},
-    {4, 2427, WLAN_TX_PWR_JP_BG_DEFAULT},
-    {5, 2432, WLAN_TX_PWR_JP_BG_DEFAULT},
-    {6, 2437, WLAN_TX_PWR_JP_BG_DEFAULT},
-    {7, 2442, WLAN_TX_PWR_JP_BG_DEFAULT},
-    {8, 2447, WLAN_TX_PWR_JP_BG_DEFAULT},
-    {9, 2452, WLAN_TX_PWR_JP_BG_DEFAULT},
-    {10, 2457, WLAN_TX_PWR_JP_BG_DEFAULT},
-    {11, 2462, WLAN_TX_PWR_JP_BG_DEFAULT},
-    {12, 2467, WLAN_TX_PWR_JP_BG_DEFAULT},
-    {13, 2472, WLAN_TX_PWR_JP_BG_DEFAULT}
+    {1, 2412, WLAN_TX_PWR_JP_BG_DEFAULT, MFALSE},
+    {2, 2417, WLAN_TX_PWR_JP_BG_DEFAULT, MFALSE},
+    {3, 2422, WLAN_TX_PWR_JP_BG_DEFAULT, MFALSE},
+    {4, 2427, WLAN_TX_PWR_JP_BG_DEFAULT, MFALSE},
+    {5, 2432, WLAN_TX_PWR_JP_BG_DEFAULT, MFALSE},
+    {6, 2437, WLAN_TX_PWR_JP_BG_DEFAULT, MFALSE},
+    {7, 2442, WLAN_TX_PWR_JP_BG_DEFAULT, MFALSE},
+    {8, 2447, WLAN_TX_PWR_JP_BG_DEFAULT, MFALSE},
+    {9, 2452, WLAN_TX_PWR_JP_BG_DEFAULT, MFALSE},
+    {10, 2457, WLAN_TX_PWR_JP_BG_DEFAULT, MFALSE},
+    {11, 2462, WLAN_TX_PWR_JP_BG_DEFAULT, MFALSE},
+    {12, 2467, WLAN_TX_PWR_JP_BG_DEFAULT, MFALSE},
+    {13, 2472, WLAN_TX_PWR_JP_BG_DEFAULT, MFALSE}
 };
 
 /** Band: 'B/G', Region: Japan */
 static chan_freq_power_t channel_freq_power_JPN40_BG[] = {
-    {14, 2484, WLAN_TX_PWR_JP_BG_DEFAULT}
+    {14, 2484, WLAN_TX_PWR_JP_BG_DEFAULT, MFALSE}
+};
+
+/** Band: 'B/G', Region: Japan */
+static chan_freq_power_t channel_freq_power_JPNFE_BG[] = {
+    {1, 2412, WLAN_TX_PWR_JP_BG_DEFAULT, MFALSE},
+    {2, 2417, WLAN_TX_PWR_JP_BG_DEFAULT, MFALSE},
+    {3, 2422, WLAN_TX_PWR_JP_BG_DEFAULT, MFALSE},
+    {4, 2427, WLAN_TX_PWR_JP_BG_DEFAULT, MFALSE},
+    {5, 2432, WLAN_TX_PWR_JP_BG_DEFAULT, MFALSE},
+    {6, 2437, WLAN_TX_PWR_JP_BG_DEFAULT, MFALSE},
+    {7, 2442, WLAN_TX_PWR_JP_BG_DEFAULT, MFALSE},
+    {8, 2447, WLAN_TX_PWR_JP_BG_DEFAULT, MFALSE},
+    {9, 2452, WLAN_TX_PWR_JP_BG_DEFAULT, MFALSE},
+    {10, 2457, WLAN_TX_PWR_JP_BG_DEFAULT, MFALSE},
+    {11, 2462, WLAN_TX_PWR_JP_BG_DEFAULT, MFALSE},
+    {12, 2467, WLAN_TX_PWR_JP_BG_DEFAULT, MTRUE},
+    {13, 2472, WLAN_TX_PWR_JP_BG_DEFAULT, MTRUE}
 };
 
 /** Band : 'B/G', Region: Special */
 static chan_freq_power_t channel_freq_power_SPECIAL_BG[] = {
-    {1, 2412, WLAN_TX_PWR_JP_BG_DEFAULT},
-    {2, 2417, WLAN_TX_PWR_JP_BG_DEFAULT},
-    {3, 2422, WLAN_TX_PWR_JP_BG_DEFAULT},
-    {4, 2427, WLAN_TX_PWR_JP_BG_DEFAULT},
-    {5, 2432, WLAN_TX_PWR_JP_BG_DEFAULT},
-    {6, 2437, WLAN_TX_PWR_JP_BG_DEFAULT},
-    {7, 2442, WLAN_TX_PWR_JP_BG_DEFAULT},
-    {8, 2447, WLAN_TX_PWR_JP_BG_DEFAULT},
-    {9, 2452, WLAN_TX_PWR_JP_BG_DEFAULT},
-    {10, 2457, WLAN_TX_PWR_JP_BG_DEFAULT},
-    {11, 2462, WLAN_TX_PWR_JP_BG_DEFAULT},
-    {12, 2467, WLAN_TX_PWR_JP_BG_DEFAULT},
-    {13, 2472, WLAN_TX_PWR_JP_BG_DEFAULT},
-    {14, 2484, WLAN_TX_PWR_JP_BG_DEFAULT}
+    {1, 2412, WLAN_TX_PWR_JP_BG_DEFAULT, MFALSE},
+    {2, 2417, WLAN_TX_PWR_JP_BG_DEFAULT, MFALSE},
+    {3, 2422, WLAN_TX_PWR_JP_BG_DEFAULT, MFALSE},
+    {4, 2427, WLAN_TX_PWR_JP_BG_DEFAULT, MFALSE},
+    {5, 2432, WLAN_TX_PWR_JP_BG_DEFAULT, MFALSE},
+    {6, 2437, WLAN_TX_PWR_JP_BG_DEFAULT, MFALSE},
+    {7, 2442, WLAN_TX_PWR_JP_BG_DEFAULT, MFALSE},
+    {8, 2447, WLAN_TX_PWR_JP_BG_DEFAULT, MFALSE},
+    {9, 2452, WLAN_TX_PWR_JP_BG_DEFAULT, MFALSE},
+    {10, 2457, WLAN_TX_PWR_JP_BG_DEFAULT, MFALSE},
+    {11, 2462, WLAN_TX_PWR_JP_BG_DEFAULT, MFALSE},
+    {12, 2467, WLAN_TX_PWR_JP_BG_DEFAULT, MFALSE},
+    {13, 2472, WLAN_TX_PWR_JP_BG_DEFAULT, MFALSE},
+    {14, 2484, WLAN_TX_PWR_JP_BG_DEFAULT, MFALSE}
 };
 
 /**
@@ -192,6 +233,12 @@ static cfp_table_t cfp_table_BG[] = {
     {0x50,                      /* China */
      channel_freq_power_EU_BG,
      sizeof(channel_freq_power_EU_BG) / sizeof(chan_freq_power_t),
+     }
+    ,
+    {
+     0xfe,                      /* JAPAN */
+     channel_freq_power_JPNFE_BG,
+     sizeof(channel_freq_power_JPNFE_BG) / sizeof(chan_freq_power_t),
      }
     ,
     {0xff,                      /* Special */
@@ -317,6 +364,64 @@ static chan_freq_power_t channel_freq_power_CN_A[] = {
     {165, 5825, WLAN_TX_PWR_CN_2000MW, MFALSE}
 };
 
+/** Band: 'A', NULL */
+static chan_freq_power_t channel_freq_power_NULL_A[] = {
+};
+
+/** Band: 'A', Code: 1, Low band (5150-5250 MHz) channels */
+static chan_freq_power_t channel_freq_power_low_band[] = {
+    {36, 5180, WLAN_TX_PWR_DEFAULT, MFALSE},
+    {40, 5200, WLAN_TX_PWR_DEFAULT, MFALSE},
+    {44, 5220, WLAN_TX_PWR_DEFAULT, MFALSE},
+    {48, 5240, WLAN_TX_PWR_DEFAULT, MFALSE},
+};
+
+/** Band: 'A', Code: 2, Lower middle band (5250-5350 MHz) channels */
+static chan_freq_power_t channel_freq_power_lower_middle_band[] = {
+    {52, 5260, WLAN_TX_PWR_DEFAULT, MTRUE},
+    {56, 5280, WLAN_TX_PWR_DEFAULT, MTRUE},
+    {60, 5300, WLAN_TX_PWR_DEFAULT, MTRUE},
+    {64, 5320, WLAN_TX_PWR_DEFAULT, MTRUE},
+};
+
+/** Band: 'A', Code: 3, Upper middle band (5470-5725 MHz) channels */
+static chan_freq_power_t channel_freq_power_upper_middle_band[] = {
+    {100, 5500, WLAN_TX_PWR_DEFAULT, MTRUE},
+    {104, 5520, WLAN_TX_PWR_DEFAULT, MTRUE},
+    {108, 5540, WLAN_TX_PWR_DEFAULT, MTRUE},
+    {112, 5560, WLAN_TX_PWR_DEFAULT, MTRUE},
+    {116, 5580, WLAN_TX_PWR_DEFAULT, MTRUE},
+    {120, 5600, WLAN_TX_PWR_DEFAULT, MTRUE},
+    {124, 5620, WLAN_TX_PWR_DEFAULT, MTRUE},
+    {128, 5640, WLAN_TX_PWR_DEFAULT, MTRUE},
+    {132, 5660, WLAN_TX_PWR_DEFAULT, MTRUE},
+    {136, 5680, WLAN_TX_PWR_DEFAULT, MTRUE},
+    {140, 5700, WLAN_TX_PWR_DEFAULT, MTRUE},
+};
+
+/** Band: 'A', Code: 4, High band (5725-5850 MHz) channels */
+static chan_freq_power_t channel_freq_power_high_band[] = {
+    {149, 5745, WLAN_TX_PWR_DEFAULT, MFALSE},
+    {153, 5765, WLAN_TX_PWR_DEFAULT, MFALSE},
+    {157, 5785, WLAN_TX_PWR_DEFAULT, MFALSE},
+    {161, 5805, WLAN_TX_PWR_DEFAULT, MFALSE},
+    {165, 5825, WLAN_TX_PWR_DEFAULT, MFALSE}
+};
+
+/** Band: 'A', Code: 5, Low band (5150-5250 MHz) and
+ * High band (5725-5850 MHz) channels */
+static chan_freq_power_t channel_freq_power_low_high_band[] = {
+    {36, 5180, WLAN_TX_PWR_DEFAULT, MFALSE},
+    {40, 5200, WLAN_TX_PWR_DEFAULT, MFALSE},
+    {44, 5220, WLAN_TX_PWR_DEFAULT, MFALSE},
+    {48, 5240, WLAN_TX_PWR_DEFAULT, MFALSE},
+    {149, 5745, WLAN_TX_PWR_DEFAULT, MFALSE},
+    {153, 5765, WLAN_TX_PWR_DEFAULT, MFALSE},
+    {157, 5785, WLAN_TX_PWR_DEFAULT, MFALSE},
+    {161, 5805, WLAN_TX_PWR_DEFAULT, MFALSE},
+    {165, 5825, WLAN_TX_PWR_DEFAULT, MFALSE}
+};
+
 /**
  * The 5GHz CFP tables
  */
@@ -356,9 +461,40 @@ static cfp_table_t cfp_table_A[] = {
      sizeof(channel_freq_power_CN_A) / sizeof(chan_freq_power_t),
      }
     ,
+    {0xfe,                      /* JAPAN */
+     channel_freq_power_NULL_A,
+     sizeof(channel_freq_power_NULL_A) / sizeof(chan_freq_power_t),
+     }
+    ,
     {0xff,                      /* Special */
      channel_freq_power_JPN_A,
      sizeof(channel_freq_power_JPN_A) / sizeof(chan_freq_power_t),
+     }
+    ,
+    {0x1,                       /* Low band (5150-5250 MHz) channels */
+     channel_freq_power_low_band,
+     sizeof(channel_freq_power_low_band) / sizeof(chan_freq_power_t)
+     }
+    ,
+    {0x2,                       /* Lower middle band (5250-5350 MHz) channels */
+     channel_freq_power_lower_middle_band,
+     sizeof(channel_freq_power_lower_middle_band) / sizeof(chan_freq_power_t)
+     }
+    ,
+    {0x3,                       /* Upper middle band (5470-5725 MHz) channels */
+     channel_freq_power_upper_middle_band,
+     sizeof(channel_freq_power_upper_middle_band) / sizeof(chan_freq_power_t)
+     }
+    ,
+    {0x4,                       /* High band (5725-5850 MHz) channels */
+     channel_freq_power_high_band,
+     sizeof(channel_freq_power_high_band) / sizeof(chan_freq_power_t)
+     }
+    ,
+    {0x5,                       /* Low band (5150-5250 MHz) and High band
+                                   (5725-5850 MHz) channels */
+     channel_freq_power_low_high_band,
+     sizeof(channel_freq_power_low_high_band) / sizeof(chan_freq_power_t)
      }
     ,
 /* Add new region here */
@@ -374,7 +510,13 @@ static cfp_table_t cfp_table_A[] = {
  * The table to keep region code
  */
 t_u16 region_code_index[MRVDRV_MAX_REGION_CODE] =
-    { 0x10, 0x20, 0x30, 0x32, 0x40, 0x41, 0x50, 0xff };
+    { 0x10, 0x20, 0x30, 0x32, 0x40, 0x41, 0x50, 0xfe, 0xff };
+
+/** The table to keep CFP code for BG */
+t_u16 cfp_code_index_bg[MRVDRV_MAX_CFP_CODE_BG] = { };
+
+/** The table to keep CFP code for A */
+t_u16 cfp_code_index_a[MRVDRV_MAX_CFP_CODE_A] = { 0x1, 0x2, 0x3, 0x4, 0x5 };
 
 /**
  * The rates supported for ad-hoc B mode
@@ -494,6 +636,11 @@ wlan_get_region_cfp_table(pmlan_adapter pmadapter, t_u8 region, t_u8 band,
     ENTER();
 
     cfp_bg = cfp_a = region;
+    if (!region) {
+        /* Invalid region code, use CFP code */
+        cfp_bg = pmadapter->cfp_code_bg;
+        cfp_a = pmadapter->cfp_code_a;
+    }
 
     if (band & (BAND_B | BAND_G | BAND_GN)) {
         for (i = 0; i < MLAN_CFP_TABLE_SIZE_BG; i++) {
@@ -521,7 +668,11 @@ wlan_get_region_cfp_table(pmlan_adapter pmadapter, t_u8 region, t_u8 band,
         }
     }
 
-    PRINTM(MERROR, "Error Band[0x%x] or region[%#x]\n", band, region);
+    if (!region)
+        PRINTM(MERROR, "Error Band[0x%x] or code[BG:%#x, A:%#x]\n",
+               band, cfp_bg, cfp_a);
+    else
+        PRINTM(MERROR, "Error Band[0x%x] or region[%#x]\n", band, region);
 
     LEAVE();
     return MNULL;
@@ -530,6 +681,38 @@ wlan_get_region_cfp_table(pmlan_adapter pmadapter, t_u8 region, t_u8 band,
 /********************************************************
     Global Functions
 ********************************************************/
+/**
+ *  @brief This function converts region string to integer code
+ *
+ *  @param pmadapter        A pointer to mlan_adapter structure
+ *  @param country_code     Country string
+ *  @param cfp_bg           Pointer to buffer
+ *  @param cfp_a            Pointer to buffer
+ *
+ *  @return                 MLAN_STATUS_SUCCESS or MLAN_STATUS_FAILURE
+ */
+mlan_status
+wlan_misc_country_2_cfp_table_code(pmlan_adapter pmadapter, t_u8 * country_code,
+                                   t_u8 * cfp_bg, t_u8 * cfp_a)
+{
+    t_u8 i;
+
+    ENTER();
+
+    /* Look for code in mapping table */
+    for (i = 0; i < NELEMENTS(country_code_mapping); i++) {
+        if (!memcmp(pmadapter, country_code_mapping[i].country_code,
+                    country_code, COUNTRY_CODE_LEN - 1)) {
+            *cfp_bg = country_code_mapping[i].cfp_code_bg;
+            *cfp_a = country_code_mapping[i].cfp_code_a;
+            LEAVE();
+            return MLAN_STATUS_SUCCESS;
+        }
+    }
+
+    LEAVE();
+    return MLAN_STATUS_FAILURE;
+}
 
 #ifdef STA_SUPPORT
 #endif /* STA_SUPPORT */
@@ -1137,7 +1320,7 @@ wlan_get_cfp_radar_detect(mlan_private * priv, t_u8 chnl)
     /* get the radar detection requirements according to chan num */
     for (j = 0; j < priv->adapter->region_channel[i].num_cfp; j++) {
         if (pcfp[j].channel == chnl) {
-            required = pcfp[j].radar_detect;
+            required = pcfp[j].passive_scan_or_radar_detect;
             break;
         }
     }
@@ -1145,4 +1328,51 @@ wlan_get_cfp_radar_detect(mlan_private * priv, t_u8 chnl)
   done:
     LEAVE();
     return required;
+}
+
+/**
+ *  @brief Get if scan type is passive or not on a certain channel for b/g band
+ *
+ *  @param priv    Private driver information structure
+ *  @param chnl Channel to determine scan type
+ *
+ *  @return
+ *    - MTRUE if scan type is passive
+ *    - MFALSE otherwise
+ */
+
+t_bool
+wlan_bg_scan_type_is_passive(mlan_private * priv, t_u8 chnl)
+{
+    int i, j;
+    t_bool passive = MFALSE;
+    chan_freq_power_t *pcfp = MNULL;
+
+    ENTER();
+
+    /* get the cfp table first */
+    for (i = 0; i < MAX_REGION_CHANNEL_NUM; i++) {
+        if (priv->adapter->region_channel[i].band & (BAND_B | BAND_G)) {
+            pcfp = priv->adapter->region_channel[i].pcfp;
+            break;
+        }
+    }
+
+    if (!pcfp) {
+        /* This means operation in BAND-B or BAND_G is not support, we can
+           just return false here */
+        goto done;
+    }
+
+    /* get the bg scan type according to chan num */
+    for (j = 0; j < priv->adapter->region_channel[i].num_cfp; j++) {
+        if (pcfp[j].channel == chnl) {
+            passive = pcfp[j].passive_scan_or_radar_detect;
+            break;
+        }
+    }
+
+  done:
+    LEAVE();
+    return passive;
 }
