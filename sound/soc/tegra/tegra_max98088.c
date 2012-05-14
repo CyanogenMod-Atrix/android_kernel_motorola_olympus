@@ -96,6 +96,7 @@ struct tegra_max98088 {
 #endif
 	enum snd_soc_bias_level bias_level;
 	struct snd_soc_card *pcard;
+	volatile int clock_enabled;
 };
 
 static int tegra_call_mode_info(struct snd_kcontrol *kcontrol,
@@ -926,6 +927,7 @@ static int tegra_max98088_init(struct snd_soc_pcm_runtime *rtd)
 
 	machine->pcard = card;
 	machine->bias_level = SND_SOC_BIAS_STANDBY;
+	machine->clock_enabled = 1;
 
 	if (gpio_is_valid(pdata->gpio_spkr_en)) {
 		ret = gpio_request(pdata->gpio_spkr_en, "spkr_en");
@@ -1070,8 +1072,11 @@ static int tegra30_soc_set_bias_level(struct snd_soc_card *card,
 	struct tegra_max98088 *machine = snd_soc_card_get_drvdata(card);
 
 	if (machine->bias_level == SND_SOC_BIAS_OFF &&
-		level != SND_SOC_BIAS_OFF)
+		level != SND_SOC_BIAS_OFF && (!machine->clock_enabled)) {
+		machine->clock_enabled = 1;
 		tegra_asoc_utils_clk_enable(&machine->util_data);
+		machine->bias_level = level;
+	}
 
 	return 0;
 }
@@ -1082,8 +1087,10 @@ static int tegra30_soc_set_bias_level_post(struct snd_soc_card *card,
 	struct tegra_max98088 *machine = snd_soc_card_get_drvdata(card);
 
 	if (machine->bias_level != SND_SOC_BIAS_OFF &&
-		level == SND_SOC_BIAS_OFF)
+		level == SND_SOC_BIAS_OFF && (machine->clock_enabled)) {
+		machine->clock_enabled = 0;
 		tegra_asoc_utils_clk_disable(&machine->util_data);
+	}
 
 	machine->bias_level = level;
 
@@ -1156,6 +1163,7 @@ static __devinit int tegra_max98088_driver_probe(struct platform_device *pdev)
 	tegra_max98088_i2s_dai_name[machine->codec_info[BT_SCO].i2s_id];
 #endif
 
+	card->dapm.idle_bias_off = 1;
 	ret = snd_soc_register_card(card);
 	if (ret) {
 		dev_err(&pdev->dev, "snd_soc_register_card failed (%d)\n",
