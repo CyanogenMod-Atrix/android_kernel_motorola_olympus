@@ -580,7 +580,7 @@ static struct nvc_gpio_pdata pm269_sh532u_left_gpio_pdata[] = {
 };
 
 static struct sh532u_platform_data pm269_sh532u_left_pdata = {
-	.cfg		= NVC_CFG_NODEV,
+	.cfg		= 0,
 	.num		= 1,
 	.sync		= 2,
 	.dev_name	= "focuser",
@@ -593,7 +593,7 @@ static struct nvc_gpio_pdata pm269_sh532u_right_gpio_pdata[] = {
 };
 
 static struct sh532u_platform_data pm269_sh532u_right_pdata = {
-	.cfg		= NVC_CFG_NODEV,
+	.cfg		= 0,
 	.num		= 2,
 	.sync		= 1,
 	.dev_name	= "focuser",
