@@ -170,17 +170,28 @@ static int smb349_configure_otg(struct i2c_client *client, int enable)
 	}
 
 	if (enable) {
-		/* Configure PGOOD to be active low */
-		ret = smb349_read(client, SMB349_SYSOK_USB3);
+		/* Configure PGOOD to be active low if no 5V on VBUS */
+		ret = smb349_read(client, SMB349_STS_REG_C);
 		if (ret < 0) {
 			dev_err(&client->dev, "%s: err %d\n", __func__, ret);
 			goto error;
 		}
 
-		ret = smb349_write(client, SMB349_SYSOK_USB3, (ret & (~(1))));
-		if (ret < 0) {
-			dev_err(&client->dev, "%s: err %d\n", __func__, ret);
-			goto error;
+		if (!(ret & 0x01)) {
+			ret = smb349_read(client, SMB349_SYSOK_USB3);
+			if (ret < 0) {
+				dev_err(&client->dev, "%s: err %d\n",
+					__func__, ret);
+				goto error;
+			}
+
+			ret = smb349_write(client, SMB349_SYSOK_USB3,
+						(ret & (~(1))));
+			if (ret < 0) {
+				dev_err(&client->dev, "%s: err %d\n",
+					__func__, ret);
+				goto error;
+			}
 		}
 
 		/* Enable OTG */
