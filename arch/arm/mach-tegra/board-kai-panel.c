@@ -173,7 +173,7 @@ static struct platform_device kai_backlight_device = {
 	},
 };
 
-static int kai_panel_enable(void)
+static int kai_panel_postpoweron(void)
 {
 	if (kai_lvds_reg == NULL) {
 		kai_lvds_reg = regulator_get(NULL, "vdd_lvds");
@@ -182,15 +182,6 @@ static int kai_panel_enable(void)
 			       __func__, PTR_ERR(kai_lvds_reg));
 		else
 			regulator_enable(kai_lvds_reg);
-	}
-
-	if (kai_lvds_vdd_panel == NULL) {
-		kai_lvds_vdd_panel = regulator_get(NULL, "vdd_lcd_panel");
-		if (WARN_ON(IS_ERR(kai_lvds_vdd_panel)))
-			pr_err("%s: couldn't get regulator vdd_lcd_panel: %ld\n",
-			       __func__, PTR_ERR(kai_lvds_vdd_panel));
-		else
-			regulator_enable(kai_lvds_vdd_panel);
 	}
 
 	mdelay(5);
@@ -208,7 +199,30 @@ static int kai_panel_enable(void)
 	return 0;
 }
 
+static int kai_panel_enable(void)
+{
+	if (kai_lvds_vdd_panel == NULL) {
+		kai_lvds_vdd_panel = regulator_get(NULL, "vdd_lcd_panel");
+		if (WARN_ON(IS_ERR(kai_lvds_vdd_panel)))
+			pr_err("%s: couldn't get regulator vdd_lcd_panel: %ld\n",
+			       __func__, PTR_ERR(kai_lvds_vdd_panel));
+		else
+			regulator_enable(kai_lvds_vdd_panel);
+	}
+
+	return 0;
+}
+
 static int kai_panel_disable(void)
+{
+	regulator_disable(kai_lvds_vdd_panel);
+	regulator_put(kai_lvds_vdd_panel);
+	kai_lvds_vdd_panel = NULL;
+
+	return 0;
+}
+
+static int kai_panel_prepoweroff(void)
 {
 	gpio_set_value(kai_lvds_lr, 0);
 	gpio_set_value(kai_lvds_shutdown, 0);
@@ -222,10 +236,6 @@ static int kai_panel_disable(void)
 	regulator_disable(kai_lvds_reg);
 	regulator_put(kai_lvds_reg);
 	kai_lvds_reg = NULL;
-
-	regulator_disable(kai_lvds_vdd_panel);
-	regulator_put(kai_lvds_vdd_panel);
-	kai_lvds_vdd_panel = NULL;
 
 	return 0;
 }
@@ -526,6 +536,8 @@ static struct tegra_dc_out kai_disp1_out = {
 	.n_modes	= ARRAY_SIZE(kai_panel_modes),
 
 	.enable		= kai_panel_enable,
+	.postpoweron	= kai_panel_postpoweron,
+	.prepoweroff	= kai_panel_prepoweroff,
 	.disable	= kai_panel_disable,
 };
 
