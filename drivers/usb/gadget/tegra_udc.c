@@ -130,7 +130,7 @@ static void done(struct tegra_ep *ep, struct tegra_req *req, int status)
 	unsigned char stopped = ep->stopped;
 	struct ep_td_struct *curr_td, *next_td;
 	int j;
-
+	BUG_ON(!(in_irq() || irqs_disabled()));
 	udc = (struct tegra_udc *)ep->udc;
 	/* Removed the req from tegra_ep->queue */
 	list_del_init(&req->queue);
@@ -180,19 +180,20 @@ static void done(struct tegra_ep *ep, struct tegra_req *req, int status)
 	}
 #endif
 
-	spin_unlock(&ep->udc->lock);
 	/* complete() is from gadget layer,
 	 * eg fsg->bulk_in_complete() */
-	if (req->req.complete)
+	if (req->req.complete) {
+		spin_unlock(&ep->udc->lock);
 		req->req.complete(&ep->ep, &req->req);
+		spin_lock(&ep->udc->lock);
+	}
 
-	spin_lock(&ep->udc->lock);
 	ep->stopped = stopped;
 }
 
 /*
  * nuke(): delete all requests related to this ep
- * called with spinlock held
+ * Must be called with spinlock held and interrupt disabled
  */
 static void nuke(struct tegra_ep *ep, int status)
 {
@@ -1221,14 +1222,14 @@ static int tegra_set_selfpowered(struct usb_gadget *gadget, int is_on)
 static int tegra_vbus_session(struct usb_gadget *gadget, int is_active)
 {
 	struct tegra_udc *udc = container_of(gadget, struct tegra_udc, gadget);
-
+	unsigned long flags;
 	DBG("%s(%d) turn VBUS state from %s to %s", __func__, __LINE__,
 		udc->vbus_active ? "on" : "off", is_active ? "on" : "off");
 
 	if (udc->vbus_active && !is_active) {
 		/* If cable disconnected, cancel any delayed work */
 		cancel_delayed_work(&udc->work);
-		spin_lock(&udc->lock);
+		spin_lock_irqsave(&udc->lock, flags);
 		/* reset all internal Queues and inform client driver */
 		reset_queues(udc);
 		/* stop the controller and turn off the clocks */
@@ -1236,7 +1237,7 @@ static int tegra_vbus_session(struct usb_gadget *gadget, int is_active)
 		dr_controller_reset(udc);
 		udc->vbus_active = 0;
 		udc->usb_state = USB_STATE_DEFAULT;
-		spin_unlock(&udc->lock);
+		spin_unlock_irqrestore(&udc->lock,flags);
 		tegra_usb_phy_power_off(udc->phy);
 		if (udc->vbus_reg) {
 			/* set the current limit to 0mA */
@@ -2704,6 +2705,7 @@ static int __exit tegra_udc_remove(struct platform_device *pdev)
 static int tegra_udc_suspend(struct platform_device *pdev, pm_message_t state)
 {
 	struct tegra_udc *udc = platform_get_drvdata(pdev);
+	unsigned long flags;
 	DBG("%s(%d) BEGIN\n", __func__, __LINE__);
 
 	/* If the controller is in otg mode, return */
@@ -2711,12 +2713,12 @@ static int tegra_udc_suspend(struct platform_device *pdev, pm_message_t state)
 			return 0;
 
 	if (udc->vbus_active) {
-		spin_lock(&udc->lock);
+		spin_lock_irqsave(&udc->lock, flags);
 		/* Reset all internal Queues and inform client driver */
 		reset_queues(udc);
 		udc->vbus_active = 0;
 		udc->usb_state = USB_STATE_DEFAULT;
-		spin_unlock(&udc->lock);
+		spin_unlock_irqrestore(&udc->lock, flags);
 	}
 	/* Stop the controller and turn off the clocks */
 	dr_controller_stop(udc);
