@@ -187,10 +187,36 @@ static int baseband_modem_power_on(struct baseband_power_platform_data *data)
 	/* set IPC_HSIC_ACTIVE active */
 	gpio_set_value(data->modem.xmm.ipc_hsic_active, 1);
 
+	/* wait 20 ms */
+	mdelay(20);
+
+	/* reset / power on sequence */
+	mdelay(40);
+	gpio_set_value(data->modem.xmm.bb_rst, 1);
+	mdelay(1);
+
+	gpio_set_value(data->modem.xmm.bb_on, 1);
+	udelay(70);
+	gpio_set_value(data->modem.xmm.bb_on, 0);
+
+	return 0;
+}
+
+/* this function can sleep, do not call in atomic context */
+static int baseband_modem_power_on_async(
+				struct baseband_power_platform_data *data)
+{
+	/* set IPC_HSIC_ACTIVE active */
+	gpio_set_value(data->modem.xmm.ipc_hsic_active, 1);
+
+	/* wait 20 ms */
+	msleep(20);
+
 	/* reset / power on sequence */
 	msleep(40);
 	gpio_set_value(data->modem.xmm.bb_rst, 1);
-	mdelay(1);
+	usleep_range(1000, 2000);
+
 	gpio_set_value(data->modem.xmm.bb_on, 1);
 	udelay(70);
 	gpio_set_value(data->modem.xmm.bb_on, 0);
@@ -251,8 +277,9 @@ static int xmm_power_on(struct platform_device *device)
 			if (pdata->hsic_register)
 				data->hsic_device = pdata->hsic_register();
 			/* turn on modem */
-			pr_debug("%s call baseband_modem_power_on\n", __func__);
-			baseband_modem_power_on(pdata);
+			pr_debug("%s call baseband_modem_power_on_async\n",
+								__func__);
+			baseband_modem_power_on_async(pdata);
 		}
 	}
 	ret = enable_irq_wake(gpio_to_irq(pdata->modem.xmm.ipc_ap_wake));
@@ -302,11 +329,12 @@ static int xmm_power_off(struct platform_device *device)
 	gpio_set_value(pdata->modem.xmm.ipc_hsic_active, 0);
 
 	/* wait 20 ms */
-	mdelay(20);
+	msleep(20);
 
 	/* drive bb_rst low */
 	gpio_set_value(pdata->modem.xmm.bb_rst, 0);
-	mdelay(1);
+	/* sleep 1ms */
+	usleep_range(1000, 2000);
 
 	baseband_xmm_powerstate = BBXMM_PS_UNINIT;
 	modem_sleep_flag = false;
@@ -484,6 +512,7 @@ EXPORT_SYMBOL_GPL(baseband_xmm_set_power_status);
 irqreturn_t xmm_power_ipc_ap_wake_irq(int irq, void *dev_id)
 {
 	struct baseband_power_platform_data *data = xmm_power_drv_data.pdata;
+	struct xmm_power_data *drv = &xmm_power_drv_data;
 	int value;
 
 	value = gpio_get_value(data->modem.xmm.ipc_ap_wake);
@@ -521,6 +550,12 @@ irqreturn_t xmm_power_ipc_ap_wake_irq(int irq, void *dev_id)
 	/* modem wakeup part */
 	if (!value) {
 		pr_debug("%s - falling\n", __func__);
+		if (drv->hostwake == 0) {
+			/* AP L2 to L0 wakeup */
+			pr_debug("received wakeup ap l2->l0\n");
+			drv->hostwake = 1;
+			wake_up_interruptible(&drv->bb_wait);
+		}
 		/* First check it a CP ack or CP wake  */
 		value = gpio_get_value(data->modem.xmm.ipc_bb_wake);
 		if (value) {
@@ -528,6 +563,7 @@ irqreturn_t xmm_power_ipc_ap_wake_irq(int irq, void *dev_id)
 			ipc_ap_wake_state = IPC_AP_WAKE_L;
 			return IRQ_HANDLED;
 		}
+
 		spin_lock(&xmm_lock);
 		wakeup_pending = true;
 		if (system_suspending) {
@@ -593,19 +629,19 @@ static void xmm_power_init1_work(struct work_struct *work)
 	}
 
 	/* wait 100 ms */
-	mdelay(100);
+	msleep(100);
 
 	/* set IPC_HSIC_ACTIVE low */
 	gpio_set_value(pdata->modem.xmm.ipc_hsic_active, 0);
 
 	/* wait 10 ms */
-	mdelay(10);
+	usleep_range(10000, 11000);
 
 	/* set IPC_HSIC_ACTIVE high */
 	gpio_set_value(pdata->modem.xmm.ipc_hsic_active, 1);
 
 	/* wait 20 ms */
-	mdelay(20);
+	msleep(20);
 
 	pr_debug("%s }\n", __func__);
 }
@@ -654,9 +690,11 @@ static void xmm_power_autopm_resume(struct work_struct *work)
 static void xmm_power_L2_resume(void)
 {
 	struct baseband_power_platform_data *pdata = xmm_power_drv_data.pdata;
+	struct xmm_power_data *drv = &xmm_power_drv_data;
 	int value;
-	int delay = 10000; /* maxmum delay in msec */
+	int delay = 1000; /* maxmum delay in msec */
 	unsigned long flags;
+	int ret, rcount = 0;
 
 	pr_debug("%s\n", __func__);
 
@@ -680,22 +718,30 @@ static void xmm_power_L2_resume(void)
 		pr_info("AP L2->L0\n");
 		value = gpio_get_value(pdata->modem.xmm.ipc_ap_wake);
 		if (value) {
-			pr_debug("waiting for host wakeup from CP...\n");
+			drv->hostwake = 0;
 			/* wake bb */
 			gpio_set_value(pdata->modem.xmm.ipc_bb_wake, 1);
-			do {
-				mdelay(1);
-				value = gpio_get_value(
-						pdata->modem.xmm.ipc_ap_wake);
-				delay--;
-			} while ((value) && (delay));
-			if (delay)
-				pr_debug("gpio host wakeup low <-\n");
-			else
+retry:
+			/* wait for cp */
+			pr_debug("waiting for host wakeup from CP...\n");
+			ret = wait_event_interruptible_timeout(drv->bb_wait,
+				drv->hostwake == 1, msecs_to_jiffies(delay));
+			if (ret == 0) {
 				pr_info("!!AP L2->L0 Failed\n");
-		} else {
+				return;
+			}
+			if (ret == -ERESTARTSYS) {
+				if (rcount >= 5) {
+					pr_info("!!AP L2->L0 Failed\n");
+					return;
+				}
+				pr_debug("%s: caught signal\n", __func__);
+				rcount++;
+				goto retry;
+			}
+			pr_debug("Get gpio host wakeup low <-\n");
+		} else
 			pr_info("CP already ready\n");
-		}
 	}
 }
 
@@ -723,7 +769,7 @@ static void xmm_power_reset_on(struct baseband_power_platform_data *pdata)
 	gpio_set_value(pdata->modem.xmm.bb_rst, 0);
 	msleep(40);
 	gpio_set_value(pdata->modem.xmm.bb_rst, 1);
-	mdelay(1);
+	usleep_range(1000, 2000);
 	gpio_set_value(pdata->modem.xmm.bb_on, 1);
 	udelay(70);
 	gpio_set_value(pdata->modem.xmm.bb_on, 0);
@@ -778,6 +824,7 @@ static void xmm_power_work_func(struct work_struct *work)
 		 * software directly.
 		 */
 		break;
+
 	case BBXMM_WORK_INIT_FLASHLESS_PM_STEP1:
 		pr_debug("BBXMM_WORK_INIT_FLASHLESS_PM_STEP1\n");
 		pr_info("%s: flashless is not supported here\n", __func__);
@@ -915,6 +962,10 @@ static int xmm_power_driver_probe(struct platform_device *device)
 	/* save platform data */
 	xmm_power_drv_data.pdata = pdata;
 
+	/* init wait queue */
+	xmm_power_drv_data.hostwake = 1;
+	init_waitqueue_head(&xmm_power_drv_data.bb_wait);
+
 	/* create device file */
 	err = device_create_file(dev, &dev_attr_xmm_onoff);
 	if (err < 0) {
@@ -1041,7 +1092,7 @@ static int xmm_power_driver_handle_resume(
 			struct baseband_power_platform_data *pdata)
 {
 	int value;
-	int delay = 1000; /* maxmum delay in msec */
+	unsigned long timeout;
 	unsigned long flags;
 
 	pr_debug("%s\n", __func__);
@@ -1064,28 +1115,29 @@ static int xmm_power_driver_handle_resume(
 	value = gpio_get_value(pdata->modem.xmm.ipc_ap_wake);
 	if (value) {
 		pr_info("AP L3 -> L0\n");
-		pr_debug("waiting for host wakeup...\n");
 		/* wake bb */
 		gpio_set_value(pdata->modem.xmm.ipc_bb_wake, 1);
+
+		/* Wait for max 1 sec */
+		timeout = jiffies + HZ;
+		pr_debug("Current: %lu: timeout %lu\n", jiffies, timeout);
 		do {
-			mdelay(1);
+			udelay(100);
 			value = gpio_get_value(pdata->modem.xmm.ipc_ap_wake);
-			delay--;
-		} while ((value) && (delay));
-		if (delay)
+			if (!value)
+				break;
+		} while (time_before(jiffies, timeout));
+		if (!value)
 			pr_debug("gpio host wakeup low <-\n");
 		else
 			pr_info("!!AP L3->L0 Failed\n");
-
-	} else {
+	} else
 		pr_info("CP L3 -> L0\n");
-	}
+
 	reenable_autosuspend = true;
 
 	return 0;
-
 }
-
 
 #ifdef CONFIG_PM
 static int xmm_power_driver_suspend(struct device *dev)
