@@ -567,8 +567,6 @@ static int __init kai_fixed_regulator_init(void)
 			fixed_reg_devs[i]->dev.platform_data;
 		gpio_nr = fixed_reg_pdata->gpio;
 
-		if (gpio_nr < TEGRA_NR_GPIOS)
-			tegra_gpio_enable(gpio_nr);
 	}
 
 	return platform_add_devices(fixed_reg_devs, nfixreg_devs);

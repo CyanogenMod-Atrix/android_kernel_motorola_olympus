@@ -108,7 +108,6 @@ static noinline void __init kai_bt_st(void)
 
 	platform_device_register(&wl128x_device);
 	platform_device_register(&btwilink_device);
-	tegra_gpio_enable(TEGRA_GPIO_PU0);
 }
 
 static struct resource kai_bluesleep_resources[] = {
@@ -620,9 +619,6 @@ static int __init kai_touch_init(void)
 {
 	int touch_id;
 
-	tegra_gpio_enable(KAI_TS_ID1);
-	tegra_gpio_enable(KAI_TS_ID2);
-
 	gpio_request(KAI_TS_ID1, "touch-id1");
 	gpio_direction_input(KAI_TS_ID1);
 
@@ -764,10 +760,6 @@ static void kai_modem_init(void)
 {
 	int ret;
 
-	tegra_gpio_enable(TEGRA_GPIO_W_DISABLE);
-	tegra_gpio_enable(TEGRA_GPIO_MODEM_RSVD1);
-	tegra_gpio_enable(TEGRA_GPIO_MODEM_RSVD2);
-
 	ret = gpio_request(TEGRA_GPIO_W_DISABLE, "w_disable_gpio");
 	if (ret < 0)
 		pr_err("%s: gpio_request failed for gpio %d\n",
@@ -813,13 +805,6 @@ static void kai_audio_init(void)
 	}
 }
 
-static void kai_nfc_init(void)
-{
-	tegra_gpio_enable(TEGRA_GPIO_PX0);
-	tegra_gpio_enable(TEGRA_GPIO_PS7);
-	tegra_gpio_enable(TEGRA_GPIO_PR3);
-}
-
 static void __init tegra_kai_init(void)
 {
 	tegra_thermal_init(&thermal_data);
@@ -843,7 +828,6 @@ static void __init tegra_kai_init(void)
 	kai_panel_init();
 	kai_bt_st();
 	kai_tegra_setup_tibluesleep();
-	kai_nfc_init();
 	kai_sensors_init();
 	kai_pins_state_init();
 	kai_emc_init();

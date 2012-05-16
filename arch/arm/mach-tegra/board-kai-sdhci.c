@@ -243,9 +243,6 @@ static int __init kai_wifi_init(void)
 	if (rc)
 		pr_err("WLAN_IRQ gpio request failed:%d\n", rc);
 
-	tegra_gpio_enable(KAI_WLAN_EN);
-	tegra_gpio_enable(KAI_WLAN_IRQ);
-
 	rc = gpio_direction_output(KAI_WLAN_EN, 0);
 	if (rc)
 		pr_err("WLAN_EN gpio direction configuration failed:%d\n", rc);
