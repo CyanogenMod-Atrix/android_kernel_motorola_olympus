@@ -30,7 +30,7 @@
 #include <asm/mach/time.h>
 #include <asm/localtimer.h>
 
-#include <mach/nvmap.h>
+#include <linux/nvmap.h>
 #include <mach/irqs.h>
 #include <mach/iomap.h>
 #include <mach/clk.h>

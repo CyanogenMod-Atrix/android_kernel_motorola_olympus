@@ -27,7 +27,7 @@
 #include <linux/earlysuspend.h>
 #include <linux/pwm_backlight.h>
 #include <linux/nvhost.h>
-#include <mach/nvmap.h>
+#include <linux/nvmap.h>
 #include <mach/irqs.h>
 #include <mach/iomap.h>
 #include <mach/dc.h>

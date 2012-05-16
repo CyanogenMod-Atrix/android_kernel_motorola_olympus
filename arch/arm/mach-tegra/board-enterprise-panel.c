@@ -28,7 +28,7 @@
 #include <linux/tegra_pwm_bl.h>
 #include <asm/atomic.h>
 #include <linux/nvhost.h>
-#include <mach/nvmap.h>
+#include <linux/nvmap.h>
 #include <mach/irqs.h>
 #include <mach/iomap.h>
 #include <mach/dc.h>
