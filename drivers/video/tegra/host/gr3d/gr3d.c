@@ -18,7 +18,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <mach/nvmap.h>
+#include <linux/nvmap.h>
 #include <linux/slab.h>
 
 #include "t20/t20.h"
