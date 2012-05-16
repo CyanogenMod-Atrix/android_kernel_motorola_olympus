@@ -133,8 +133,6 @@ static struct platform_device cardhu_bluesleep_device = {
 static noinline void __init cardhu_setup_bluesleep(void)
 {
 	platform_device_register(&cardhu_bluesleep_device);
-	tegra_gpio_enable(TEGRA_GPIO_PU6);
-	tegra_gpio_enable(TEGRA_GPIO_PU1);
 	return;
 }
 
@@ -808,9 +806,6 @@ static int __init cardhu_touch_init(void)
 
 		touch_init_raydium(TEGRA_GPIO_PH4, TEGRA_GPIO_PH6, 2);
 	} else {
-		tegra_gpio_enable(TEGRA_GPIO_PH4);
-		tegra_gpio_enable(TEGRA_GPIO_PH6);
-
 		gpio_request(TEGRA_GPIO_PH4, "atmel-irq");
 		gpio_direction_input(TEGRA_GPIO_PH4);
 
@@ -1120,19 +1115,6 @@ static void cardhu_usb_init(void)
 static void cardhu_usb_init(void) { }
 #endif
 
-static void cardhu_gps_init(void)
-{
-	tegra_gpio_enable(TEGRA_GPIO_PU2);
-	tegra_gpio_enable(TEGRA_GPIO_PU3);
-}
-
-static void cardhu_nfc_init(void)
-{
-	tegra_gpio_enable(TEGRA_GPIO_PX0);
-	tegra_gpio_enable(TEGRA_GPIO_PP3);
-	tegra_gpio_enable(TEGRA_GPIO_PO7);
-}
-
 static struct baseband_power_platform_data tegra_baseband_power_data = {
 	.baseband_type = BASEBAND_XMM,
 	.modem = {
@@ -1210,7 +1192,7 @@ static void cardhu_modem_init(void)
 		} else {
 			w_disable_gpio = TEGRA_GPIO_PDD5;
 		}
-		tegra_gpio_enable(w_disable_gpio);
+
 		ret = gpio_request(w_disable_gpio, "w_disable_gpio");
 		if (ret < 0)
 			pr_err("%s: gpio_request failed for gpio %d\n",
@@ -1230,22 +1212,9 @@ static void cardhu_modem_init(void)
 				break;
 			}
 			gpio_direction_output(TEGRA_GPIO_PH7, 1);
-			tegra_gpio_enable(TEGRA_GPIO_PH7);
 		}
 		break;
 	case BOARD_E1186:
-		tegra_gpio_enable(
-			tegra_baseband_power_data.modem.xmm.bb_rst);
-		tegra_gpio_enable(
-			tegra_baseband_power_data.modem.xmm.bb_on);
-		tegra_gpio_enable(
-			tegra_baseband_power_data.modem.xmm.ipc_bb_wake);
-		tegra_gpio_enable(
-			tegra_baseband_power_data.modem.xmm.ipc_ap_wake);
-		tegra_gpio_enable(
-			tegra_baseband_power_data.modem.xmm.ipc_hsic_active);
-		tegra_gpio_enable(
-			tegra_baseband_power_data.modem.xmm.ipc_hsic_sus_req);
 		platform_device_register(&tegra_baseband_power_device);
 		platform_device_register(&tegra_baseband_power2_device);
 		break;
@@ -1283,7 +1252,6 @@ static void __init tegra_cardhu_init(void)
 	cardhu_dtv_init();
 	cardhu_suspend_init();
 	cardhu_touch_init();
-	cardhu_gps_init();
 	cardhu_modem_init();
 	cardhu_kbc_init();
 	cardhu_scroll_init();
@@ -1297,7 +1265,6 @@ static void __init tegra_cardhu_init(void)
 	cardhu_pins_state_init();
 	cardhu_emc_init();
 	tegra_release_bootloader_fb();
-	cardhu_nfc_init();
 	cardhu_pci_init();
 #ifdef CONFIG_TEGRA_WDT_RECOVERY
 	tegra_wdt_recovery_init();

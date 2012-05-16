@@ -87,24 +87,20 @@ static int cardhu_camera_init(void)
 	 * and donot have TCA6416 exp for camera */
 	if ((board_info.board_id == BOARD_E1198) ||
 		(board_info.board_id == BOARD_E1291)) {
-		tegra_gpio_enable(CAM1_POWER_DWN_GPIO);
 		ret = gpio_request(CAM1_POWER_DWN_GPIO, "camera_power_en");
 		if (ret < 0)
 			pr_err("%s: gpio_request failed for gpio %s\n",
 				__func__, "CAM1_POWER_DWN_GPIO");
-				tegra_gpio_enable(CAM3_POWER_DWN_GPIO);
 		ret = gpio_request(CAM3_POWER_DWN_GPIO, "cam3_power_en");
 		if (ret < 0)
 			pr_err("%s: gpio_request failed for gpio %s\n",
 				__func__, "CAM3_POWER_DWN_GPIO");
 
-		tegra_gpio_enable(CAM2_POWER_DWN_GPIO);
 		ret = gpio_request(CAM2_POWER_DWN_GPIO, "camera2_power_en");
 		if (ret < 0)
 			pr_err("%s: gpio_request failed for gpio %s\n",
 				__func__, "CAM2_POWER_DWN_GPIO");
 
-		tegra_gpio_enable(OV5650_RESETN_GPIO);
 		ret = gpio_request(OV5650_RESETN_GPIO, "camera_reset");
 		if (ret < 0)
 			pr_err("%s: gpio_request failed for gpio %s\n",
@@ -124,7 +120,6 @@ static int cardhu_camera_init(void)
 	}
 
 	/* To select the CSIB MUX either for cam2 or cam3 */
-	tegra_gpio_enable(CAMERA_CSI_MUX_SEL_GPIO);
 	ret = gpio_request(CAMERA_CSI_MUX_SEL_GPIO, "camera_csi_sel");
 	if (ret < 0)
 		pr_err("%s: gpio_request failed for gpio %s\n",
@@ -785,8 +780,6 @@ static int cardhu_nct1008_init(void)
 		ret = gpio_direction_input(nct1008_port);
 		if (ret < 0)
 			gpio_free(nct1008_port);
-		else
-			tegra_gpio_enable(nct1008_port);
 	}
 
 	return ret;
@@ -916,7 +909,6 @@ static void mpuirq_init(void)
 #if (MPU_GYRO_TYPE == MPU_TYPE_MPU3050)
 #if	MPU_ACCEL_IRQ_GPIO
 	/* ACCEL-IRQ assignment */
-	tegra_gpio_enable(MPU_ACCEL_IRQ_GPIO);
 	ret = gpio_request(MPU_ACCEL_IRQ_GPIO, MPU_ACCEL_NAME);
 	if (ret < 0) {
 		pr_err("%s: gpio_request failed %d\n", __func__, ret);
@@ -933,7 +925,6 @@ static void mpuirq_init(void)
 #endif
 
 	/* MPU-IRQ assignment */
-	tegra_gpio_enable(MPU_GYRO_IRQ_GPIO);
 	ret = gpio_request(MPU_GYRO_IRQ_GPIO, MPU_GYRO_NAME);
 	if (ret < 0) {
 		pr_err("%s: gpio_request failed %d\n", __func__, ret);

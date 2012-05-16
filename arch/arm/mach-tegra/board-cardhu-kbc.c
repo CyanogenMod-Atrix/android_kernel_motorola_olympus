@@ -252,8 +252,6 @@ int __init cardhu_keys_init(void)
 				if (get_tegra_image_type() == rck_image)
 					cardhu_keys_e1291_pdata.buttons[i].code
 							= KEY_ENTER;
-			} else {
-				tegra_gpio_enable(gpio_nr);
 			}
 		}
 
@@ -265,8 +263,6 @@ int __init cardhu_keys_init(void)
 			if (gpio_nr < 0) {
 				if (get_tegra_image_type() == rck_image)
 					cardhu_keys_e1198[i].code = KEY_ENTER;
-			} else {
-				tegra_gpio_enable(gpio_nr);
 			}
 		}
 
