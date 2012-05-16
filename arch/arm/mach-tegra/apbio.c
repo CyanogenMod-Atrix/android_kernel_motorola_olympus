@@ -30,7 +30,7 @@
 
 static DEFINE_MUTEX(tegra_apb_dma_lock);
 
-#ifdef CONFIG_TEGRA_SYSTEM_DMA
+#if defined(CONFIG_TEGRA_SYSTEM_DMA) && defined(CONFIG_ARCH_TEGRA_2x_SOC)
 static struct tegra_dma_channel *tegra_apb_dma;
 static u32 *tegra_apb_bb;
 static dma_addr_t tegra_apb_bb_phys;
@@ -121,17 +121,6 @@ static inline void apb_writel(u32 value, unsigned long offset)
 
 	mutex_unlock(&tegra_apb_dma_lock);
 }
-#else
-static inline u32 apb_readl(unsigned long offset)
-{
-	return readl(IO_TO_VIRT(offset));
-}
-
-static inline void apb_writel(u32 value, unsigned long offset)
-{
-	writel(value, IO_TO_VIRT(offset));
-}
-#endif
 
 u32 tegra_apb_readl(unsigned long offset)
 {
@@ -142,10 +131,11 @@ void tegra_apb_writel(u32 value, unsigned long offset)
 {
 	apb_writel(value, offset);
 }
+#endif
 
 static int tegra_init_apb_dma(void)
 {
-#ifdef CONFIG_TEGRA_SYSTEM_DMA
+#if defined(CONFIG_TEGRA_SYSTEM_DMA) && defined(CONFIG_ARCH_TEGRA_2x_SOC)
 	tegra_apb_dma = tegra_dma_allocate_channel(TEGRA_DMA_MODE_ONESHOT |
 		TEGRA_DMA_SHARED, "apbio");
 	if (!tegra_apb_dma) {
