@@ -1172,7 +1172,8 @@ static const struct file_operations tegra_nvavp_fops = {
 	.unlocked_ioctl	= tegra_nvavp_ioctl,
 };
 
-static int tegra_nvavp_probe(struct nvhost_device *ndev)
+static int tegra_nvavp_probe(struct nvhost_device *ndev,
+	struct nvhost_device_id *id_table)
 {
 	struct nvavp_info *nvavp;
 	int irq;

@@ -25,7 +25,8 @@
 #include "dev.h"
 #include "bus_client.h"
 
-static int __devinit isp_probe(struct nvhost_device *dev)
+static int __devinit isp_probe(struct nvhost_device *dev,
+	struct nvhost_device_id *id_table)
 {
 	int err = 0;
 

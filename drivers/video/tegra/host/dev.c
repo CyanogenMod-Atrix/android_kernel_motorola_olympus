@@ -416,13 +416,12 @@ struct nvhost_device tegra_grhost_device = {
 	.id = -1,
 	.resource = nvhost_resources,
 	.num_resources = ARRAY_SIZE(nvhost_resources),
-	.finalize_poweron = power_on_host,
-	.prepare_poweroff = power_off_host,
 	.clocks = {{"host1x", UINT_MAX}, {} },
 	NVHOST_MODULE_NO_POWERGATE_IDS,
 };
 
-static int __devinit nvhost_probe(struct nvhost_device *dev)
+static int __devinit nvhost_probe(struct nvhost_device *dev,
+	struct nvhost_device_id *id_table)
 {
 	struct nvhost_master *host;
 	struct resource *regs, *intr0, *intr1;
@@ -546,7 +545,9 @@ static struct nvhost_driver nvhost_driver = {
 	.driver = {
 		.owner = THIS_MODULE,
 		.name = DRIVER_NAME
-	}
+	},
+	.finalize_poweron = power_on_host,
+	.prepare_poweroff = power_off_host,
 };
 
 static int __init nvhost_mod_init(void)
