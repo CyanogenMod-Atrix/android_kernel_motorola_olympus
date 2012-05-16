@@ -31,8 +31,6 @@
  * struct tps6238x0_regulator_platform_data - tps62360 regulator platform data.
  *
  * @init_data: The regulator init data.
- * @en_discharge: Enable discharge the output capacitor via internal
- *                register.
  * @en_internal_pulldn: internal pull down enable or not.
  * @vsel_gpio: Gpio number for vsel. It should be -1 if this is tied with
  *              fixed logic.
@@ -40,7 +38,6 @@
  */
 struct tps6238x0_regulator_platform_data {
 	struct regulator_init_data *init_data;
-	bool en_discharge;
 	bool en_internal_pulldn;
 	int vsel_gpio;
 	int vsel_def_state;

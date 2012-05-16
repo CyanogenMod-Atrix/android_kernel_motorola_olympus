@@ -62,7 +62,6 @@ struct tps6238x0_chip {
 	int vsel_gpio;
 	int change_uv_per_us;
 	bool en_internal_pulldn;
-	bool en_discharge;
 	bool valid_gpios;
 	int lru_index[TPS6238X0_MAX_VSET];
 	int curr_vset_vsel[TPS6238X0_MAX_VSET];
@@ -304,8 +303,8 @@ static int __devinit tps6238x0_configure(struct tps6238x0_chip *tps,
 		}
 	}
 
-	/* Reset output discharge path to reduce power consumption */
-	ret = regmap_update_bits(tps->regmap, REG_RAMPCTRL, BIT(2), 0);
+	/* Enable output discharge path to have faster discharge */
+	ret = regmap_update_bits(tps->regmap, REG_RAMPCTRL, BIT(2), BIT(2));
 	if (ret < 0)
 		dev_err(tps->dev, "%s() fails in updating reg %d\n",
 			__func__, REG_RAMPCTRL);
@@ -344,7 +343,6 @@ static int __devinit tps6238x0_probe(struct i2c_client *client,
 		return -ENOMEM;
 	}
 
-	tps->en_discharge = pdata->en_discharge;
 	tps->en_internal_pulldn = pdata->en_internal_pulldn;
 	tps->vsel_gpio = pdata->vsel_gpio;
 	tps->dev = &client->dev;
@@ -436,21 +434,6 @@ static int __devexit tps6238x0_remove(struct i2c_client *client)
 	return 0;
 }
 
-static void tps6238x0_shutdown(struct i2c_client *client)
-{
-	struct tps6238x0_chip *tps = i2c_get_clientdata(client);
-	int st;
-
-	if (!tps->en_discharge)
-		return;
-
-	/* Configure the output discharge path */
-	st = regmap_update_bits(tps->regmap, REG_RAMPCTRL, BIT(2), BIT(2));
-	if (st < 0)
-		dev_err(tps->dev, "%s() fails in updating reg %d\n",
-			__func__, REG_RAMPCTRL);
-}
-
 static const struct i2c_device_id tps6238x0_id[] = {
 	{.name = "tps623850", },
 	{.name = "tps623860", },
@@ -467,7 +450,6 @@ static struct i2c_driver tps6238x0_i2c_driver = {
 	},
 	.probe = tps6238x0_probe,
 	.remove = __devexit_p(tps6238x0_remove),
-	.shutdown = tps6238x0_shutdown,
 	.id_table = tps6238x0_id,
 };
 
