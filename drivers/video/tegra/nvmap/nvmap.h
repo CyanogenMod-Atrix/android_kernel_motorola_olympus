@@ -30,7 +30,7 @@
 #include <linux/sched.h>
 #include <linux/wait.h>
 #include <linux/atomic.h>
-#include <mach/nvmap.h>
+#include <linux/nvmap.h>
 #include "nvmap_heap.h"
 
 struct nvmap_device;
