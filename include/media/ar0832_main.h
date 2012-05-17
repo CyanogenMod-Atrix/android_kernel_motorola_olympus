@@ -12,6 +12,7 @@
 #define __AR0832_MAIN_H__
 
 #include <linux/ioctl.h> /* For IOCTL macros */
+#include <media/nvc_focus.h>
 
 #define AR0832_IOCTL_SET_MODE			_IOW('o', 0x01, struct ar0832_mode)
 #define AR0832_IOCTL_SET_FRAME_LENGTH		_IOW('o', 0x02, __u32)
@@ -23,10 +24,11 @@
 #define AR0832_IOCTL_SET_POWER_ON		_IOW('o', 0x08, struct ar0832_mode)
 #define AR0832_IOCTL_SET_SENSOR_REGION		_IOW('o', 0x09, struct ar0832_stereo_region)
 
-#define AR0832_FOCUSER_IOCTL_GET_CONFIG		_IOR('o', 0x10, struct ar0832_focuser_config)
+#define AR0832_FOCUSER_IOCTL_GET_CONFIG		_IOR('o', 0x10, struct nv_focuser_config)
 #define AR0832_FOCUSER_IOCTL_SET_POSITION	_IOW('o', 0x11, __u32)
 
 #define AR0832_IOCTL_GET_SENSOR_ID		_IOR('o', 0x12, __u16)
+#define AR0832_FOCUSER_IOCTL_SET_CONFIG		_IOW('o', 0x13, struct nv_focuser_config)
 
 #define AR0832_SENSOR_ID_8141			0x1006
 #define AR0832_SENSOR_ID_8140			0x3006
@@ -85,15 +87,6 @@ struct ar0832_stereo_region {
 	struct ar0832_point image_end;
 };
 
-struct ar0832_focuser_config {
-	__u32 settle_time;
-	__u32 actuator_range;
-	__u32 pos_low;
-	__u32 pos_high;
-	__u32 focal_length;
-	__u32 fnumber;
-	__u32 max_aperture;
-};
 
 #ifdef __KERNEL__
 struct ar0832_platform_data {

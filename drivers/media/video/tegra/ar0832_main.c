@@ -23,9 +23,11 @@
 #include <linux/regulator/consumer.h>
 #include <media/ar0832_main.h>
 
-#define POS_LOW  0
-#define POS_HIGH 1000
-#define SETTLETIME_MS 100
+#define POS_ACTUAL_LOW			0
+#define POS_ACTUAL_HIGH			255
+#define SETTLE_TIME				100
+#define SLEW_RATE_DEFAULT		1
+
 
 struct ar0832_sensor_info {
 	int mode;
@@ -33,7 +35,7 @@ struct ar0832_sensor_info {
 };
 
 struct ar0832_focuser_info {
-	struct ar0832_focuser_config config;
+	struct nv_focuser_config config;
 	int focuser_init_flag;
 	u16 last_position;
 };
@@ -2160,12 +2162,32 @@ static long ar0832_ioctl(struct file *file,
 			"%s AR0832_FOCUSER_IOCTL_GET_CONFIG\n", __func__);
 		if (copy_to_user((void __user *) arg,
 				 &dev->focuser_info->config,
-				 sizeof(dev->focuser_info->config))) {
+				 sizeof(struct nv_focuser_config)))
+        {
 			dev_err(&i2c_client->dev,
 				"%s: AR0832_FOCUSER_IOCTL_GET_CONFIG failed\n",
 				__func__);
 			return -EFAULT;
 		}
+		return 0;
+
+	case AR0832_FOCUSER_IOCTL_SET_CONFIG:
+		dev_info(&i2c_client->dev,
+				"%s AR0832_FOCUSER_IOCTL_SET_CONFIG\n", __func__);
+		if (copy_from_user(&dev->focuser_info->config,
+			(const void __user *)arg,
+			sizeof(struct nv_focuser_config)))
+		{
+			dev_err(&i2c_client->dev,
+					"%s: AR0832_FOCUSER_IOCTL_SET_CONFIG failed\n", __func__);
+			return -EFAULT;
+		}
+		dev_dbg(&i2c_client->dev,
+			"%s AR0832_FOCUSER_IOCTL_SET_CONFIG sucess "
+			"slew_rate %i, pos_working_high %i, pos_working_low %i\n",
+			__func__, dev->focuser_info->config.slew_rate,
+			dev->focuser_info->config.pos_working_low,
+			dev->focuser_info->config.pos_working_high);
 		return 0;
 
 	case AR0832_FOCUSER_IOCTL_SET_POSITION:
@@ -2443,9 +2465,12 @@ static int ar0832_probe(struct i2c_client *client,
 	dev->i2c_client = client;
 
 	/* focuser */
-	dev->focuser_info->config.settle_time = SETTLETIME_MS;
-	dev->focuser_info->config.pos_low = POS_LOW;
-	dev->focuser_info->config.pos_high = POS_HIGH;
+	dev->focuser_info->config.settle_time = SETTLE_TIME;
+	dev->focuser_info->config.slew_rate = SLEW_RATE_DEFAULT;
+	dev->focuser_info->config.pos_actual_low = POS_ACTUAL_LOW;
+	dev->focuser_info->config.pos_actual_high = POS_ACTUAL_HIGH;
+	dev->focuser_info->config.pos_working_low = POS_ACTUAL_LOW;
+	dev->focuser_info->config.pos_working_high = POS_ACTUAL_HIGH;
 
 	snprintf(dev->dname, sizeof(dev->dname), "%s-%s",
 		id->name, dev->pdata->id);
