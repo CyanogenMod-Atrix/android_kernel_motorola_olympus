@@ -326,6 +326,7 @@ config TEGRA_THERMAL_THROTTLE
 	bool "Enable throttling of CPU speed on overtemp"
 	depends on TEGRA_SILICON_PLATFORM
 	depends on CPU_FREQ
+	depends on THERMAL
 	default y
 	help
 	  Also requires enabling a temperature sensor such as NCT1008.
@@ -445,11 +446,6 @@ config TEGRA_BB_XMM_POWER2
 	  (in flashless configuration).  User-mode application must
 	  insert this LKM to initiate 2nd USB enumeration power sequence
 	  - after modem software has been downloaded to flashless device.
-
-config TEGRA_THERMAL_SYSFS
-	bool "Enable Thermal driver to use Thermal Sysfs infrastructure"
-	depends on THERMAL
-	default y
 
 config TEGRA_PLLM_RESTRICTED
 	bool "Restrict PLLM usage as module clock source"
