@@ -76,6 +76,8 @@
 #define BOARD_FAB_A03			0x3
 #define BOARD_FAB_A04			0x4
 #define BOARD_FAB_A05			0x5
+#define BOARD_FAB_A06			0x6
+#define BOARD_FAB_A07			0x7
 
 /* Display Board ID */
 #define BOARD_DISPLAY_PM313		0x030D

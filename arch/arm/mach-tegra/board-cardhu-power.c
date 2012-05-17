@@ -486,7 +486,8 @@ int __init cardhu_regulator_init(void)
 	/* E1291-A04/A05: Enable DEV_SLP and enable sleep on GPIO2 */
 	if ((board_info.board_id == BOARD_E1291) &&
 			((board_info.fab == BOARD_FAB_A04) ||
-			 (board_info.fab == BOARD_FAB_A05))) {
+			 (board_info.fab == BOARD_FAB_A05) ||
+			 (board_info.fab == BOARD_FAB_A07))) {
 		tps_platform.dev_slp_en = true;
 		tps_platform.gpio_init_data = tps_gpio_pdata_e1291_a04;
 		tps_platform.num_gpioinit_data =
@@ -1027,7 +1028,8 @@ int __init cardhu_fixed_regulator_init(void)
 			nfixreg_devs = ARRAY_SIZE(fixed_reg_devs_e1291_a03);
 			fixed_reg_devs = fixed_reg_devs_e1291_a03;
 		} else if ((board_info.fab == BOARD_FAB_A04) ||
-				(board_info.fab == BOARD_FAB_A05)) {
+				(board_info.fab == BOARD_FAB_A05) ||
+				(board_info.fab == BOARD_FAB_A07)) {
 			nfixreg_devs = ARRAY_SIZE(fixed_reg_devs_e1291_a04);
 			fixed_reg_devs = fixed_reg_devs_e1291_a04;
 		} else {
