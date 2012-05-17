@@ -1773,6 +1773,7 @@ static int sh532u_open(struct inode *inode, struct file *file)
 	file->private_data = info;
 	dev_dbg(&info->i2c_client->dev, "%s\n", __func__);
 	sh532u_pos_rel_wr(info, info->cap.focus_infinity);
+	sh532u_pm_wr_s(info, NVC_PWR_OFF);
 	return 0;
 }
 
