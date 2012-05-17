@@ -639,7 +639,7 @@ static void enterprise_usb_hsic_post_phy_off(void)
 {
 	pr_debug("%s\n", __func__);
 #ifdef CONFIG_TEGRA_BB_XMM_POWER
-	baseband_xmm_set_power_status(BBXMM_PS_L3);
+	baseband_xmm_set_power_status(BBXMM_PS_L2);
 #endif
 }
 
