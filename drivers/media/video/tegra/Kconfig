@@ -95,3 +95,10 @@ config VIDEO_AD5820
         ---help---
           This is a driver for the AD5820 focuser
           for use with the tegra isp.
+
+config VIDEO_AD5816
+        tristate "AD5816 focuser support"
+        depends on I2C && ARCH_TEGRA
+        ---help---
+          This is a driver for the AD5816 focuser
+          for use with the tegra isp.
