@@ -68,6 +68,8 @@ static inline u32 apb_readl(unsigned long offset)
 	req.source_wrap = 4;
 	req.req_sel = 0;
 	req.size = 4;
+	dma_sync_single_for_device(NULL, tegra_apb_bb_phys,
+			sizeof(u32), DMA_FROM_DEVICE);
 
 	INIT_COMPLETION(tegra_apb_wait);
 
@@ -81,6 +83,8 @@ static inline u32 apb_readl(unsigned long offset)
 		*(u32 *)tegra_apb_bb = 0;
 	}
 
+	dma_sync_single_for_cpu(NULL, tegra_apb_bb_phys,
+			sizeof(u32), DMA_FROM_DEVICE);
 	mutex_unlock(&tegra_apb_dma_lock);
 	return *((u32 *)tegra_apb_bb);
 }
@@ -97,6 +101,8 @@ static inline void apb_writel(u32 value, unsigned long offset)
 	}
 
 	mutex_lock(&tegra_apb_dma_lock);
+	dma_sync_single_for_cpu(NULL, tegra_apb_bb_phys,
+			sizeof(u32), DMA_TO_DEVICE);
 	*((u32 *)tegra_apb_bb) = value;
 	req.complete = apb_dma_complete;
 	req.to_memory = 0;
@@ -111,6 +117,8 @@ static inline void apb_writel(u32 value, unsigned long offset)
 
 	INIT_COMPLETION(tegra_apb_wait);
 
+	dma_sync_single_for_device(NULL, tegra_apb_bb_phys,
+			sizeof(u32), DMA_TO_DEVICE);
 	tegra_dma_enqueue_req(tegra_apb_dma, &req);
 
 	ret = wait_for_completion_timeout(&tegra_apb_wait,
