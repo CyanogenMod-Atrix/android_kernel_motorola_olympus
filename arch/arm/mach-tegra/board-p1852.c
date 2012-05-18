@@ -305,6 +305,15 @@ static struct spi_board_info tegra_spi_devices[] __initdata = {
 	},
 	{
 		.modalias = "spidev",
+		.bus_num = 2,
+		.chip_select = 0,
+		.mode = SPI_MODE_0,
+		.max_speed_hz = 18000000,
+		.platform_data = NULL,
+		.irq = 0,
+	},
+	{
+		.modalias = "spidev",
 		.bus_num = 3,
 		.chip_select = 1,
 		.mode = SPI_MODE_0,
@@ -329,6 +338,7 @@ static void p1852_spi_init(void)
 	tegra_spi_device2.name = "spi_slave_tegra";
 	platform_device_register(&tegra_spi_device1);
 	platform_device_register(&tegra_spi_device2);
+	platform_device_register(&tegra_spi_device3);
 	p852_register_spidev();
 }
 
