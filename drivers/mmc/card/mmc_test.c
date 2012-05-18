@@ -211,7 +211,7 @@ static struct mmc_test_parameter mmc_test_parameter[] = {
 
 static long mmc_test_set_testcase(struct mmc_test_card *test)
 {
-	return 0;
+	return mmc_test_parameter[0].value;
 }
 
 static long mmc_test_set_clock(struct mmc_test_card *test)
