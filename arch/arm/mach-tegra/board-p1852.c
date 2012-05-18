@@ -103,7 +103,7 @@ static __initdata struct tegra_clk_init_table p1852_clk_init_table[] = {
 	{ "pll_a",		NULL,		552960000,	false},
 	{ "pll_a_out0",		NULL,		12288000,	false},
 	{ "d_audio",		"pll_a_out0",	12288000,	false},
-	{ "nor",		"pll_p",	86500000,	true},
+	{ "nor",		"pll_p",	102000000,	true},
 	{ "uarta",		"pll_p",	480000000,	true},
 	{ "uartd",		"pll_p",	480000000,	true},
 	{ "uarte",		"pll_p",	480000000,	true},
@@ -409,12 +409,12 @@ static struct tegra_nor_platform_data p1852_nor_data = {
 	.chip_parms = {
 		/* FIXME: Need to use characterized value */
 		.timing_default = {
-			.timing0 = 0xA0400273,
-			.timing1 = 0x00030402,
+			.timing0 = 0x30300263,
+			.timing1 = 0x00030302,
 		},
 		.timing_read = {
-			.timing0 = 0xA0400273,
-			.timing1 = 0x00030402,
+			.timing0 = 0x30300263,
+			.timing1 = 0x00030302,
 		},
 	},
 };
