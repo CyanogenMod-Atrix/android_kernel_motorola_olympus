@@ -294,6 +294,9 @@
 #define  PCIE_CONF_REG(r)	\
 	(((r) & ~0x3) | (((r) < 256) ? PCIE_CFG_OFF : PCIE_EXT_CFG_OFF))
 
+#define PCIE_CTRL_REGS		7
+#define COMBINE_PCIE_PCIX_SPACE	2
+
 struct tegra_pcie_port {
 	int			index;
 	u8			root_bus_nr;
@@ -349,6 +352,12 @@ static struct resource pcie_prefetch_mem_space;
 static bool is_pcie_noirq_op = false;
 /* used to backup config space registers of all pcie devices */
 static u32 *pbackup_config_space = NULL;
+static u16 *pbackup_pcie_cap_space = NULL;
+static u16 *pbackup_pcix_cap_space = NULL;
+/* use same save state and position variables to store pcie */
+/* and pcix capability offsets at even & odd index respectively */
+static struct pci_cap_saved_state **pcie_save_state;
+static int *pos;
 
 void __iomem *tegra_pcie_io_base;
 EXPORT_SYMBOL(tegra_pcie_io_base);
@@ -986,7 +995,7 @@ static void tegra_pcie_clocks_put(void)
 	clk_put(tegra_pcie.pcie_xclk);
 }
 
-static int __init tegra_pcie_get_resources(void)
+static int tegra_pcie_get_resources(void)
 {
 	struct resource *res_mmio = 0;
 	int err;
@@ -1112,10 +1121,21 @@ retry:
 	return false;
 }
 
-static void __init tegra_pcie_add_port(int index, u32 offset, u32 reset_reg)
+static void tegra_enable_clock_clamp(int index)
+{
+	unsigned int data;
+
+	/* Power mangagement settings */
+	/* Enable clock clamping by default */
+	data = rp_readl(NV_PCIE2_RP_PRIV_MISC, index);
+	data |= (PCIE2_RP_PRIV_MISC_CTLR_CLK_CLAMP_ENABLE) |
+		(PCIE2_RP_PRIV_MISC_TMS_CLK_CLAMP_ENABLE);
+	rp_writel(data, NV_PCIE2_RP_PRIV_MISC, index);
+}
+
+static void tegra_pcie_add_port(int index, u32 offset, u32 reset_reg)
 {
 	struct tegra_pcie_port *pp;
-	unsigned int data;
 
 	pp = tegra_pcie.port + tegra_pcie.num_ports;
 
@@ -1128,13 +1148,7 @@ static void __init tegra_pcie_add_port(int index, u32 offset, u32 reset_reg)
 		printk(KERN_INFO "PCIE: port %d: link down, ignoring\n", index);
 		return;
 	}
-	/* Power mangagement settings */
-	/* Enable clock clamping by default */
-	data = rp_readl(NV_PCIE2_RP_PRIV_MISC, index);
-	data |= (PCIE2_RP_PRIV_MISC_CTLR_CLK_CLAMP_ENABLE) |
-		(PCIE2_RP_PRIV_MISC_TMS_CLK_CLAMP_ENABLE);
-	rp_writel(data, NV_PCIE2_RP_PRIV_MISC, index);
-
+	tegra_enable_clock_clamp(index);
 	tegra_pcie.num_ports++;
 	pp->index = index;
 	pp->root_bus_nr = -1;
@@ -1178,9 +1192,47 @@ static int tegra_pcie_init(void)
 	return err;
 }
 
+static int tegra_pcie_allocate_config_states(int ndev, int size)
+{
+	/* backup config space registers of all devices since it gets reset in
+	save state call from suspend noirq due to disabling of read in it */
+	pbackup_config_space = kzalloc(ndev*size*sizeof(u32), GFP_KERNEL);
+	if (!pbackup_config_space)
+		return -ENODEV;
+	pbackup_pcie_cap_space = kzalloc(ndev*PCIE_CTRL_REGS*sizeof(u16), GFP_KERNEL);
+	if (!pbackup_pcie_cap_space)
+		return -ENODEV;
+	pbackup_pcix_cap_space = kzalloc(ndev*sizeof(u16), GFP_KERNEL);
+	if (!pbackup_pcix_cap_space)
+		return -ENODEV;
+	pcie_save_state = kzalloc(COMBINE_PCIE_PCIX_SPACE*ndev*
+					sizeof(struct pci_cap_saved_state*), GFP_KERNEL);
+	if (!pbackup_pcix_cap_space)
+		return -ENODEV;
+	pos = kzalloc(COMBINE_PCIE_PCIX_SPACE*ndev*sizeof(int), GFP_KERNEL);
+	if (!pos)
+		return -ENODEV;
+
+	return 0;
+}
+
+static void tegra_pcie_deallocate_config_states(void)
+{
+	if (pbackup_config_space)
+		kzfree(pbackup_config_space);
+	if (pbackup_pcie_cap_space)
+		kzfree(pbackup_pcie_cap_space);
+	if (pbackup_pcix_cap_space)
+		kzfree(pbackup_pcix_cap_space);
+	if (pcie_save_state)
+		kzfree(pcie_save_state);
+	if (pos)
+		kzfree(pos);
+}
+
 static int tegra_pci_probe(struct platform_device *pdev)
 {
-	int ret;
+	int ret, size = 0, ndev = 0;
 	struct pci_dev *dev = NULL;
 
 	tegra_pcie.plat_data = pdev->dev.platform_data;
@@ -1194,39 +1246,91 @@ static int tegra_pci_probe(struct platform_device *pdev)
 
 	/* disable async PM of pci devices to ensure right order */
 	/* suspend/resume calls of tegra and bus driver */
-	for_each_pci_dev(dev)
+	for_each_pci_dev(dev){
 		device_disable_async_suspend(&dev->dev);
+		size = sizeof(dev->saved_config_space) / sizeof(u32);
+		ndev++;
+	}
+	tegra_pcie_allocate_config_states(ndev, size);
 
 	return ret;
 }
 
+static int tegra_pcie_save_state(struct pci_dev *pdev, int ndev)
+{
+	int size;
+
+	/*save pcie control registers */
+	pos[ndev] = pci_pcie_cap(pdev);
+	if (pos[ndev]){
+		pcie_save_state[ndev] = pci_find_saved_cap(pdev, PCI_CAP_ID_EXP);
+		if (!pcie_save_state[ndev]) {
+			dev_err(&pdev->dev, "buffer not found in %s\n", __func__);
+			return -ENOMEM;
+		}
+		memcpy(&pbackup_pcie_cap_space[PCIE_CTRL_REGS*(ndev/2)],
+			pcie_save_state[ndev]->cap.data, PCIE_CTRL_REGS*sizeof(u16));
+	}
+	/* save pcix state */
+	pos[ndev+1] = pci_find_capability(pdev, PCI_CAP_ID_PCIX);
+	if (pos[ndev+1] > 0){
+		pcie_save_state[ndev+1] = pci_find_saved_cap(pdev, PCI_CAP_ID_PCIX);
+		if (!pcie_save_state[ndev+1]) {
+			dev_err(&pdev->dev, "buffer not found in %s\n", __func__);
+			return -ENOMEM;
+		}
+		memcpy(&pbackup_pcix_cap_space[ndev/2],
+			pcie_save_state[ndev+1]->cap.data, sizeof(u16));
+	}
+	/* save config space registers */
+	size = sizeof(pdev->saved_config_space) / sizeof(u32);
+	memcpy(&pbackup_config_space[size*ndev/2],
+		pdev->saved_config_space, size*sizeof(u32));
+
+	return 0;
+}
+
+static void tegra_pcie_restore_state(struct pci_dev *pdev, int ndev)
+{
+	int size;
+
+	/* restore pcie control registers */
+	if (pcie_save_state[ndev] && (pos[ndev] > 0))
+		memcpy(pcie_save_state[ndev]->cap.data,
+			&pbackup_pcie_cap_space[PCIE_CTRL_REGS*(ndev/2)],
+						PCIE_CTRL_REGS*sizeof(u16));
+
+	/* restore pcix state */
+	if (pcie_save_state[ndev+1] && (pos[ndev+1] > 0))
+		memcpy(pcie_save_state[ndev+1]->cap.data,
+			&pbackup_pcix_cap_space[ndev/2], sizeof(u16));
+
+	/* restore config space registers */
+	size = sizeof(pdev->saved_config_space) / sizeof(u32);
+	memcpy(pdev->saved_config_space,
+		&pbackup_config_space[size*ndev/2], size*sizeof(u32));
+}
+
 static int tegra_pci_suspend(struct device *dev)
 {
-	int ret = 0;
+	int ret = 0, ndev = 0;
 	struct pci_dev *pdev = NULL;
-	int i, size, ndev = 0;
 
 	if (!tegra_pcie.num_ports)
-		 return ret;
+		return ret;
 
 	for_each_pci_dev(pdev) {
 		/* save state of pcie devices before powering off regulators */
 		pci_save_state(pdev);
-		size = sizeof(pdev->saved_config_space) / sizeof(u32);
-		ndev++;
+		if (!pdev->subordinate)
+			pci_prepare_to_sleep(pdev);
 	}
 
-	/* backup config space registers of all devices since it gets reset in
-	    save state call from suspend noirq due to disabling of read in it */
-	pbackup_config_space = kzalloc(ndev * size* sizeof(u32), GFP_KERNEL);
-	if (!pbackup_config_space)
-		return -ENODEV;
-	ndev = 0;
 	for_each_pci_dev(pdev) {
-		for (i = 0;i < size;i++) {
-			memcpy(&pbackup_config_space[i + size*ndev],
-				&pdev->saved_config_space[i], sizeof(u32));
-		}
+		/* save control and config space registers*/
+		ret = tegra_pcie_save_state(pdev, ndev*2);
+		if (ret < 0)
+			return ret;
 		ndev++;
 	}
 
@@ -1239,50 +1343,45 @@ static int tegra_pci_resume_noirq(struct device *dev)
 {
 	struct pci_dev *pdev = NULL;
 
-	for_each_pci_dev(pdev) {
-		/* set this flag to avoid restore state in resume noirq */
+	/* set this flag to avoid restore state in resume noirq */
+	for_each_pci_dev(pdev)
 		pdev->state_saved = 0;
-	}
+
 	return 0;
 }
 
 static int tegra_pci_resume(struct device *dev)
 {
-	int ret = 0;
-	int i, size, ndev = 0;
+	int ret = 0, ndev = 0;
 	struct pci_dev *pdev = NULL;
+	int port;
 
 	if (!tegra_pcie.num_ports)
-		 return ret;
+		return ret;
 	ret = tegra_pcie_power_on();
+	/* enable read/write registers after powering on */
+	is_pcie_noirq_op = false;
 	tegra_pcie_enable_controller();
 	tegra_pcie_setup_translations();
 
-	/* enable read/write registers after powering on */
-	is_pcie_noirq_op = false;
+	for (port = 0; port < MAX_PCIE_SUPPORTED_PORTS; port++)
+		if (tegra_pcie.plat_data->port_status[port])
+			tegra_enable_clock_clamp(port);
 
 	for_each_pci_dev(pdev) {
-		/* do fixup here for all dev's since not done in resume noirq */
-		pci_fixup_device(pci_fixup_resume_early, pdev);
-
+		/* restore control and config space registers*/
+		tegra_pcie_restore_state(pdev, ndev*2);
 		/* set this flag to force restore state in resume */
 		pdev->state_saved = 1;
-
-		/* restore config space registers from backup buffer */
-		size = sizeof(pdev->saved_config_space) / sizeof(u32);
-		for (i = 0;i < size;i++) {
-			memcpy(&pdev->saved_config_space[i],
-				&pbackup_config_space[i + size*ndev], sizeof(u32));
-		}
 		ndev++;
 	}
-	kzfree(pbackup_config_space);
 
 	return ret;
 }
 
 static int tegra_pci_remove(struct platform_device *pdev)
 {
+	tegra_pcie_deallocate_config_states();
 	return 0;
 }
 #ifdef CONFIG_PM
