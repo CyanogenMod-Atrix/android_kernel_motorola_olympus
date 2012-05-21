@@ -129,8 +129,15 @@ static struct platform_device kai_bluesleep_device = {
 
 static noinline void __init kai_tegra_setup_tibluesleep(void)
 {
+	int ret;
+
+	ret = gpio_request(TEGRA_GPIO_PU6, "host_wake");
+	if (ret)
+		pr_err("gpio_request failed for gpio: %d\n", TEGRA_GPIO_PU6);
+	else
+		gpio_direction_input(TEGRA_GPIO_PU6);
+
 	platform_device_register(&kai_bluesleep_device);
-	tegra_gpio_enable(TEGRA_GPIO_PU6);
 }
 
 static __initdata struct tegra_clk_init_table kai_clk_init_table[] = {
