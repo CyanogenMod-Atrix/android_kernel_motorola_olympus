@@ -37,7 +37,6 @@
 #include <linux/workqueue.h>
 #include <linux/err.h>
 #include <linux/io.h>
-#include <linux/fsl_devices.h> /* check this */
 
 #include <asm/byteorder.h>
 #include <asm/io.h>
@@ -50,14 +49,10 @@
 
 #include "tegra_udc.h"
 
-/* #define IS_NEW_PHY_DRIVER 1 */
-
-#ifndef IS_NEW_PHY_DRIVER
-#include "fsl_tegra_udc.c"
-#endif
 
 #define	DRIVER_DESC	"Nvidia Tegra High-Speed USB SOC \
-				Device Controller driver"
+					Device Controller driver"
+
 #define	DRIVER_AUTHOR	"Venkat Moganty/Rakesh Bodla"
 #define	DRIVER_VERSION	"Apr 30, 2012"
 #define USB1_PREFETCH_ID	6
@@ -71,7 +66,6 @@
 #define ep_is_in(EP)	((ep_index(EP) == 0) ? (EP->udc->ep0_dir == \
 				USB_DIR_IN) : ((EP)->desc->bEndpointAddress \
 				& USB_DIR_IN) == USB_DIR_IN)
-
 
 
 static const char driver_name[] = "tegra-udc";
@@ -733,11 +727,7 @@ static void tegra_queue_td(struct tegra_ep *ep, struct tegra_req *req)
 			| EP_QUEUE_HEAD_STATUS_HALT));
 	dQH->size_ioc_int_sts &= temp;
 
-#ifdef IS_NEW_PHY_DRIVER
 	tegra_usb_phy_memory_prefetch_on(udc->phy);
-#else
-	fsl_udc_ep_barrier();
-#endif
 
 	/* Ensure that updates to the QH will occur before priming. */
 	wmb();
@@ -828,11 +818,7 @@ static int tegra_req_to_dtd(struct tegra_req *req, gfp_t gfp_flags)
 	struct ep_td_struct	*last_dtd = NULL, *dtd;
 	dma_addr_t dma;
 
-#ifdef IS_NEW_PHY_DRIVER
 	tegra_usb_phy_memory_prefetch_off(the_udc->phy);
-#else
-	fsl_udc_dtd_prepare();
-#endif
 
 	do {
 		dtd = tegra_build_dtd(req, &count, &dma, &is_last, gfp_flags);
@@ -1229,7 +1215,7 @@ static int tegra_set_selfpowered(struct usb_gadget *gadget, int is_on)
 }
 
 /**
- * Notify controller that VBUS is powered, Called by whatever
+ * Notify controller that VBUS is powered, called by whatever
  * detects VBUS sessions
  */
 static int tegra_vbus_session(struct usb_gadget *gadget, int is_active)
@@ -1251,22 +1237,14 @@ static int tegra_vbus_session(struct usb_gadget *gadget, int is_active)
 		udc->vbus_active = 0;
 		udc->usb_state = USB_STATE_DEFAULT;
 		spin_unlock(&udc->lock);
-#ifdef IS_NEW_PHY_DRIVER
 		tegra_usb_phy_power_off(udc->phy);
-#else
-		fsl_udc_clk_suspend(false);
-#endif
 		if (udc->vbus_reg) {
 			/* set the current limit to 0mA */
 			regulator_set_current_limit(
 				udc->vbus_reg, 0, 0);
 		}
 	} else if (!udc->vbus_active && is_active) {
-#ifdef IS_NEW_PHY_DRIVER
 		tegra_usb_phy_power_on(udc->phy);
-#else
-		fsl_udc_clk_resume(false);
-#endif
 		/* setup the controller in the device mode */
 		dr_controller_setup(udc);
 		/* setup EP0 for setup packet */
@@ -1348,12 +1326,7 @@ static void tegra_udc_release(struct device *dev)
 	struct tegra_udc *udc = platform_get_drvdata(pdev);
 
 	complete(udc->done);
-#ifdef IS_NEW_PHY_DRIVER
 	tegra_usb_phy_close(udc->phy);
-#else
-	fsl_udc_clk_suspend(false);
-#endif
-
 	kfree(udc);
 }
 
@@ -2109,15 +2082,18 @@ static void tegra_udc_irq_work(struct work_struct *irq_work)
 {
 	struct tegra_udc *udc = container_of(irq_work, struct tegra_udc,
 						 irq_work);
+	DBG("%s(%d) BEGIN\n", __func__, __LINE__);
 
 	/* Check whether cable is connected*/
 	if (vbus_enabled(udc))
 		tegra_vbus_session(&udc->gadget, 1);
 	else
 		tegra_vbus_session(&udc->gadget, 0);
+
+	DBG("%s(%d) END\n", __func__, __LINE__);
 }
 
-/*
+/**
  * If VBUS is detected and setup packet is not received in 100ms then
  * work thread starts and checks for the USB charger detection.
  */
@@ -2127,11 +2103,7 @@ static void tegra_udc_charger_detect_work(struct work_struct *work)
 	DBG("%s(%d) BEGIN\n", __func__, __LINE__);
 
 	/* check for the platform charger detection */
-#ifdef IS_NEW_PHY_DRIVER
 	if (tegra_usb_phy_charger_detected(udc->phy)) {
-#else
-	if (fsl_udc_charger_detect()) {
-#endif
 		printk(KERN_INFO "USB compliant charger detected\n");
 		/* check udc regulator is available for drawing vbus current*/
 		if (udc->vbus_reg) {
@@ -2271,8 +2243,6 @@ static int tegra_udc_start(struct usb_gadget_driver *driver,
 	if (!udc)
 		return -ENODEV;
 
-
-
 	if (!driver || (driver->speed != USB_SPEED_FULL
 				&& driver->speed != USB_SPEED_HIGH)
 			|| !bind || !driver->disconnect
@@ -2404,7 +2374,7 @@ static int tegra_udc_setup_qh(struct tegra_udc *udc)
 	/* FIXME: tegra_alloc_request() ignores ep argument */
 	udc->status_req = container_of(tegra_alloc_request(NULL, GFP_KERNEL),
 			struct tegra_req, req);
-	/* allocate a small amount of memory to get valid address */
+	/* Allocate a small amount of memory to get valid address */
 	udc->status_req->req.buf = dma_alloc_coherent(&udc->pdev->dev,
 				STATUS_BUFFER_SIZE, &udc->status_req->req.dma,
 				GFP_KERNEL);
@@ -2552,7 +2522,6 @@ static int __init tegra_udc_probe(struct platform_device *pdev)
 		goto err_iounmap;
 	}
 
-#ifdef IS_NEW_PHY_DRIVER
 	udc->phy = tegra_usb_phy_open(pdev);
 	if (IS_ERR(udc->phy)) {
 		dev_err(&pdev->dev, "failed to open USB phy\n");
@@ -2571,23 +2540,10 @@ static int __init tegra_udc_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "failed to init the phy\n");
 		goto err_phy;
 	}
-#else
-	/* Initialize USB clocks */
-	fsl_udc_clk_init(pdev);
-#endif
 	spin_lock_init(&udc->lock);
 	udc->stopped = 1;
 	udc->pdev = pdev;
-#ifdef IS_NEW_PHY_DRIVER
 	udc->has_hostpc = tegra_usb_phy_has_hostpc(udc->phy) ? 1 : 0;
-#else
-	#ifdef CONFIG_ARCH_TEGRA_2x_SOC
-	udc->has_hostpc = 0;
-	#else
-	udc->has_hostpc = 1;
-	#endif
-#endif
-
 	platform_set_drvdata(pdev, udc);
 
 	/* Initialize the udc structure including QH members */
@@ -2597,7 +2553,7 @@ static int __init tegra_udc_probe(struct platform_device *pdev)
 		goto err_phy;
 	}
 
-	/* initialize usb hw reg except for regs for EP,
+	/* Initialize usb hw reg except for regs for EP,
 	 * leave usbintr reg untouched */
 	err = dr_controller_setup(udc);
 	if (err) {
@@ -2617,7 +2573,7 @@ static int __init tegra_udc_probe(struct platform_device *pdev)
 		goto err_unregister;
 	}
 
-	/* use dma_pool for TD management */
+	/* Use dma_pool for TD management */
 	udc->td_pool = dma_pool_create("udc_td", &pdev->dev,
 			sizeof(struct ep_td_struct),
 			DTD_ALIGNMENT, UDC_DMA_BOUNDARY);
@@ -2638,9 +2594,9 @@ static int __init tegra_udc_probe(struct platform_device *pdev)
 					PM_QOS_DEFAULT_VALUE);
 #endif
 
-    /* create a work for controlling clocks to the phy if otg is disabled */
+	/* Create work for controlling clocks to the phy if otg is disabled */
 	INIT_WORK(&udc->irq_work, tegra_udc_irq_work);
-	/* create a delayed work for detecting the USB charger */
+	/* Create a delayed work for detecting the USB charger */
 	INIT_DELAYED_WORK(&udc->work, tegra_udc_charger_detect_work);
 	INIT_WORK(&udc->charger_work, tegra_udc_set_current_limit_work);
 
@@ -2654,35 +2610,21 @@ static int __init tegra_udc_probe(struct platform_device *pdev)
 	}
 
 #ifdef CONFIG_USB_OTG_UTILS
-
-#ifdef IS_NEW_PHY_DRIVER
 	if (tegra_usb_phy_otg_supported(udc->phy))
 		udc->transceiver = otg_get_transceiver();
-#else
-		udc->transceiver = otg_get_transceiver();
-#endif
 
 	if (udc->transceiver) {
 		dr_controller_stop(udc);
 		dr_controller_reset(udc);
-#ifdef IS_NEW_PHY_DRIVER
 		tegra_usb_phy_power_off(udc->phy);
-#else
-		fsl_udc_clk_suspend(false);
-#endif
 		udc->vbus_active = 0;
 		udc->usb_state = USB_STATE_DEFAULT;
 		otg_set_peripheral(udc->transceiver, &udc->gadget);
 	}
 #else
 	/* Power down the phy if cable is not connected */
-	if (!vbus_enabled()) {
-#ifdef IS_NEW_PHY_DRIVER
+	if (!vbus_enabled())
 		tegra_usb_phy_power_off(udc->phy);
-#else
-		fsl_udc_clk_suspend(false);
-#endif
-	}
 #endif
 
 	DBG("%s(%d) END\n", __func__, __LINE__);
@@ -2694,15 +2636,11 @@ err_del_udc:
 err_unregister:
 	device_unregister(&udc->gadget.dev);
 
-#ifdef IS_NEW_PHY_DRIVER
 err_phy:
 	tegra_usb_phy_close(udc->phy);
 
 err_irq:
 	free_irq(udc->irq, udc);
-#else
-err_phy:
-#endif
 
 err_iounmap:
 	iounmap(udc->regs);
@@ -2743,9 +2681,6 @@ static int __exit tegra_udc_remove(struct platform_device *pdev)
 	if (udc->transceiver)
 		otg_set_peripheral(udc->transceiver, NULL);
 
-#ifndef IS_NEW_PHY_DRIVER
-	fsl_udc_clk_release();
-#endif
 
 	/* Free allocated memory */
 	dma_free_coherent(&pdev->dev, STATUS_BUFFER_SIZE,
@@ -2760,7 +2695,7 @@ static int __exit tegra_udc_remove(struct platform_device *pdev)
 	release_mem_region(res->start, res->end - res->start + 1);
 
 	device_unregister(&udc->gadget.dev);
-	/* free udc --wait for the release() finished */
+	/* Free udc -- wait for the release() finished */
 	wait_for_completion(&done);
 
 	return 0;
@@ -2771,7 +2706,7 @@ static int tegra_udc_suspend(struct platform_device *pdev, pm_message_t state)
 	struct tegra_udc *udc = platform_get_drvdata(pdev);
 	DBG("%s(%d) BEGIN\n", __func__, __LINE__);
 
-	/* if it controller is in otg mode, return */
+	/* If the controller is in otg mode, return */
 	if (udc->transceiver)
 			return 0;
 
@@ -2783,16 +2718,12 @@ static int tegra_udc_suspend(struct platform_device *pdev, pm_message_t state)
 		udc->usb_state = USB_STATE_DEFAULT;
 		spin_unlock(&udc->lock);
 	}
-	/* stop the controller and turn off the clocks */
+	/* Stop the controller and turn off the clocks */
 	dr_controller_stop(udc);
 	if (udc->transceiver)
 		udc->transceiver->state = OTG_STATE_UNDEFINED;
 
-#ifdef IS_NEW_PHY_DRIVER
 	tegra_usb_phy_power_off(udc->phy);
-#else
-	fsl_udc_clk_suspend(true);
-#endif
 
 	DBG("%s(%d) END\n", __func__, __LINE__);
 	return 0;
@@ -2803,35 +2734,17 @@ static int tegra_udc_resume(struct platform_device *pdev)
 	struct tegra_udc *udc = platform_get_drvdata(pdev);
 	DBG("%s(%d) BEGIN\n", __func__, __LINE__);
 
-#ifndef IS_NEW_PHY_DRIVER
-#ifdef CONFIG_ARCH_TEGRA_2x_SOC
-	/* Work around to get UTMIP_OTGPD, UTMIP_BIASPD values correctly */
-	fsl_udc_clk_resume(true);
-	fsl_udc_clk_suspend(true);
-#endif
-#endif
-
 	if (udc->transceiver)
 		return 0;
 
-#ifdef IS_NEW_PHY_DRIVER
 	tegra_usb_phy_power_on(udc->phy);
-#else
-	fsl_udc_clk_resume(true);
-	fsl_udc_clk_resume(true);
-#endif
 	tegra_udc_restart(udc);
 
 	/* Power down the phy if cable is not connected */
 	if (!vbus_enabled(udc)) {
 		udc->vbus_active = 0;
-#ifdef IS_NEW_PHY_DRIVER
 		tegra_usb_phy_power_off(udc->phy);
-#else
-		fsl_udc_clk_suspend(true);
-#endif
 	}
-
 
 	DBG("%s(%d) END\n", __func__, __LINE__);
 	return 0;
