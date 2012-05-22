@@ -65,9 +65,10 @@ static __initdata struct tegra_clk_init_table p1852_clk_init_table[] = {
 	{ "pwm",		"clk_32k",	32768,		false},
 	{ "blink",		"clk_32k",	32768,		true},
 	{ "pll_a",		NULL,		552960000,	false},
-	{ "pll_a_out0",		NULL,		12288000,	false},
-	{ "d_audio",		"pll_a_out0",	12288000,	false},
-	{ "nor",		"pll_p",	102000000,	true},
+	/* audio cif clock should be faster than i2s */
+	{ "pll_a_out0",		NULL,		24576000,	false},
+	{ "d_audio",		"pll_a_out0",	24576000,	false},
+	{ "nor",		"pll_p",	86500000,	true},
 	{ "uarta",		"pll_p",	480000000,	true},
 	{ "uartd",		"pll_p",	480000000,	true},
 	{ "uarte",		"pll_p",	480000000,	true},
@@ -79,11 +80,11 @@ static __initdata struct tegra_clk_init_table p1852_clk_init_table[] = {
 	{ "sbc5",		"pll_m",	100000000,	true},
 	{ "sbc6",		"pll_m",	100000000,	true},
 	{ "cpu_g",		"cclk_g",	900000000,	true},
-	{ "i2s0",		"pll_a_out0",	12288000,	false},
-	{ "i2s1",		"pll_a_out0",	12288000,	false},
-	{ "i2s2",		"pll_a_out0",	12288000,	false},
-	{ "i2s3",		"pll_a_out0",	12288000,	false},
-	{ "i2s4",		"pll_a_out0",	12288000,	false},
+	{ "i2s0",		"pll_a_out0",	24576000,	false},
+	{ "i2s1",		"pll_a_out0",	24576000,	false},
+	{ "i2s2",		"pll_a_out0",	24576000,	false},
+	{ "i2s3",		"pll_a_out0",	24576000,	false},
+	{ "i2s4",		"pll_a_out0",	24576000,	false},
 	{ "audio0",		"i2s0_sync",	12288000,	false},
 	{ "audio1",		"i2s1_sync",	12288000,	false},
 	{ "audio2",		"i2s2_sync",	12288000,	false},
@@ -205,16 +206,24 @@ static struct tegra_p1852_platform_data p1852_audio_pdata = {
 		.cpu_dai_name = "tegra30-i2s.0",
 		.codec_name = "spdif-dit.0",
 		.name = "tegra-i2s-1",
-		.i2s_format = format_i2s,
+		.i2s_format = format_tdm,
 		.master = 1,
+		.num_slots = 4,
+		.slot_width = 32,
+		.tx_mask = 0x0f,
+		.rx_mask = 0x0f,
 	},
 	.codec_info[1] = {
 		.codec_dai_name = "dit-hifi",
-		.cpu_dai_name = "tegra30-i2s.1",
+		.cpu_dai_name = "tegra30-i2s.4",
 		.codec_name = "spdif-dit.1",
 		.name = "tegra-i2s-2",
-		.i2s_format = format_i2s,
-		.master = 0,
+		.i2s_format = format_tdm,
+		.master = 1,
+		.num_slots = 8,
+		.slot_width = 32,
+		.tx_mask = 0xff,
+		.rx_mask = 0xff,
 	},
 
 };
@@ -242,7 +251,7 @@ static void p1852_i2s_audio_init(void)
 	platform_device_register(&generic_codec_1);
 	platform_device_register(&generic_codec_2);
 	platform_device_register(&tegra_i2s_device0);
-	platform_device_register(&tegra_i2s_device1);
+	platform_device_register(&tegra_i2s_device4);
 	platform_device_register(&tegra_ahub_device);
 	platform_device_register(&tegra_snd_p1852);
 }
