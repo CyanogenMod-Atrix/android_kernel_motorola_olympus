@@ -37,6 +37,7 @@
 #include "board-kai.h"
 #include "devices.h"
 #include "gpio-names.h"
+#include "tegra3_host1x_devices.h"
 
 /* kai default display board pins */
 #define kai_lvds_avdd_en		TEGRA_GPIO_PH6
@@ -681,7 +682,7 @@ int __init kai_panel_init(void)
 #endif
 
 #ifdef CONFIG_TEGRA_GRHOST
-	err = nvhost_device_register(&tegra_grhost_device);
+	err = tegra3_register_host1x_devices();
 	if (err)
 		return err;
 #endif

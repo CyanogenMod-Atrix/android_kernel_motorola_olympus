@@ -33,6 +33,7 @@
 #include "devices.h"
 #include "gpio-names.h"
 #include "board.h"
+#include "tegra2_host1x_devices.h"
 
 #define harmony_bl_enb		TEGRA_GPIO_PB5
 #define harmony_lvds_shutdown	TEGRA_GPIO_PB2
@@ -356,7 +357,7 @@ int __init harmony_panel_init(void)
 #endif
 
 #ifdef CONFIG_TEGRA_GRHOST
-	err = nvhost_device_register(&tegra_grhost_device);
+	err = tegra2_register_host1x_devices();
 	if (err)
 		return err;
 #endif

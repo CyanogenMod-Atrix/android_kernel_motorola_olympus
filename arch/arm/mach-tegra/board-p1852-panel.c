@@ -28,6 +28,7 @@
 
 #include "board.h"
 #include "devices.h"
+#include "tegra3_host1x_devices.h"
 
 static int p1852_panel_enable(void)
 {
@@ -185,7 +186,7 @@ int __init p1852_panel_init(void)
 	res->end = tegra_fb_start + tegra_fb_size - 1;
 
 #ifdef CONFIG_TEGRA_GRHOST
-	err = nvhost_device_register(&tegra_grhost_device);
+	err = tegra3_register_host1x_devices();
 	if (err)
 		return err;
 #endif

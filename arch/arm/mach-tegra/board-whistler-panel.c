@@ -38,6 +38,7 @@
 #include "devices.h"
 #include "gpio-names.h"
 #include "board.h"
+#include "tegra2_host1x_devices.h"
 
 #define whistler_hdmi_hpd	TEGRA_GPIO_PN7
 
@@ -361,7 +362,7 @@ int __init whistler_panel_init(void)
 #endif
 
 #ifdef CONFIG_TEGRA_GRHOST
-	err = nvhost_device_register(&tegra_grhost_device);
+	err = tegra2_register_host1x_devices();
 	if (err)
 		return err;
 #endif

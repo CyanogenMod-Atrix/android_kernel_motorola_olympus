@@ -1,5 +1,7 @@
 /*
- * drivers/video/tegra/host/dev.h
+ * drivers/video/tegra/host/tegra2_host1x_devices.h
+ *
+ * Tegra2 Graphics Host Devices
  *
  * Copyright (c) 2012, NVIDIA Corporation.
  *
@@ -16,10 +18,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef NVHOST_DEV_H
-#define NVHOST_DEV_H
+#ifndef TEGRA2_HOST1X_DEVICES_H
+#define TEGRA2_HOST1X_DEVICES_H
 
-#include "host1x/host1x.h"
+int tegra2_register_host1x_devices(void);
 
-void nvhost_set_register_sets(unsigned int r);
 #endif

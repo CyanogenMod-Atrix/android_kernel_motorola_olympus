@@ -19,6 +19,7 @@
  */
 
 #include <linux/slab.h>
+#include <mach/gpufuse.h>
 
 #include "t20/t20.h"
 #include "host1x/host1x_channel.h"
@@ -34,12 +35,6 @@
 #include "nvhost_channel.h"
 #include "nvhost_memmgr.h"
 #include "chip_support.h"
-
-#include <mach/hardware.h>
-
-#ifndef TEGRA_POWERGATE_3D1
-#define TEGRA_POWERGATE_3D1	-1
-#endif
 
 void nvhost_3dctx_restore_begin(struct host1x_hwctx_handler *p, u32 *ptr)
 {
@@ -224,6 +219,7 @@ static int __devinit gr3d_probe(struct nvhost_device *dev,
 	 * found in clock tree */
 	dev->name = "gr3d";
 
+	nvhost_set_register_sets(tegra_gpu_register_sets());
 	return nvhost_client_device_init(dev);
 }
 
@@ -244,8 +240,6 @@ static int gr3d_resume(struct nvhost_device *dev)
 	return 0;
 }
 
-struct nvhost_device *gr3d_device;
-
 static struct nvhost_driver gr3d_driver = {
 	.probe = gr3d_probe,
 	.remove = __exit_p(gr3d_remove),
@@ -262,18 +256,6 @@ static struct nvhost_driver gr3d_driver = {
 
 static int __init gr3d_init(void)
 {
-	int err;
-
-	gr3d_device = nvhost_get_device("gr3d");
-	if (!gr3d_device)
-		return -ENXIO;
-
-	err = nvhost_device_register(gr3d_device);
-	if (err) {
-		pr_err("Could not register 3D device\n");
-		return err;
-	}
-
 	return nvhost_driver_register(&gr3d_driver);
 }
 

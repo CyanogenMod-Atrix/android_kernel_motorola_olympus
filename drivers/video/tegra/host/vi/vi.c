@@ -18,10 +18,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <linux/resource.h>
-
-#include <mach/iomap.h>
-
 #include "dev.h"
 #include "bus_client.h"
 
@@ -54,15 +50,6 @@ static int vi_resume(struct nvhost_device *dev)
 	return 0;
 }
 
-static struct resource vi_resources = {
-	.name = "regs",
-	.start = TEGRA_VI_BASE,
-	.end = TEGRA_VI_BASE + TEGRA_VI_SIZE - 1,
-	.flags = IORESOURCE_MEM,
-};
-
-struct nvhost_device *vi_device;
-
 static struct nvhost_driver vi_driver = {
 	.probe = vi_probe,
 	.remove = __exit_p(vi_remove),
@@ -78,18 +65,6 @@ static struct nvhost_driver vi_driver = {
 
 static int __init vi_init(void)
 {
-	int err;
-
-	vi_device = nvhost_get_device("vi");
-	if (!vi_device)
-		return -ENXIO;
-
-	vi_device->resource = &vi_resources;
-	vi_device->num_resources = 1;
-	err = nvhost_device_register(vi_device);
-	if (err)
-		return err;
-
 	return nvhost_driver_register(&vi_driver);
 }
 
