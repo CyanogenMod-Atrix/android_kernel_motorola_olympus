@@ -145,7 +145,7 @@ static __maybe_unused void ehci_adjust_port_wakeup_flags(struct ehci_hcd *ehci,
 	spin_lock_irqsave(&ehci->lock, flags);
 
 	/* clear phy low-power mode before changing wakeup flags */
-	if (ehci->has_hostpc) {
+	if (ehci->has_hostpc && !ehci->broken_hostpc_phcd) {
 		port = HCS_N_PORTS(ehci->hcs_params);
 		while (port--) {
 			u32 __iomem	*hostpc_reg;
@@ -181,7 +181,7 @@ static __maybe_unused void ehci_adjust_port_wakeup_flags(struct ehci_hcd *ehci,
 	}
 
 	/* enter phy low-power mode again */
-	if (ehci->has_hostpc) {
+	if (ehci->has_hostpc && !ehci->broken_hostpc_phcd) {
 		port = HCS_N_PORTS(ehci->hcs_params);
 		while (port--) {
 			u32 __iomem	*hostpc_reg;
@@ -285,7 +285,7 @@ static int ehci_bus_suspend (struct usb_hcd *hcd)
 		}
 	}
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
-	if (changed && ehci->has_hostpc) {
+	if (changed && ehci->has_hostpc && !ehci->broken_hostpc_phcd) {
 		spin_unlock_irq(&ehci->lock);
 		msleep(5);	/* 5 ms for HCD to enter low-power mode */
 		spin_lock_irq(&ehci->lock);
@@ -389,7 +389,7 @@ static int ehci_bus_resume (struct usb_hcd *hcd)
 	spin_lock_irq(&ehci->lock);
 
 	/* clear phy low-power mode before resume */
-	if (ehci->bus_suspended && ehci->has_hostpc) {
+	if (ehci->bus_suspended && ehci->has_hostpc && !ehci->broken_hostpc_phcd) {
 		i = HCS_N_PORTS(ehci->hcs_params);
 		while (i--) {
 			if (test_bit(i, &ehci->bus_suspended)) {
@@ -731,7 +731,7 @@ static int ehci_hub_control (
 				goto error;
 
 			/* clear phy low-power mode before resume */
-			if (hostpc_reg) {
+			if (hostpc_reg && !ehci->broken_hostpc_phcd) {
 				temp1 = ehci_readl(ehci, hostpc_reg);
 				ehci_writel(ehci, temp1 & ~HOSTPC_PHCD,
 						hostpc_reg);
@@ -979,7 +979,7 @@ static int ehci_hub_control (
 			temp &= ~PORT_WKCONN_E;
 			temp |= PORT_WKDISC_E | PORT_WKOC_E;
 			ehci_writel(ehci, temp | PORT_SUSPEND, status_reg);
-			if (hostpc_reg) {
+			if (hostpc_reg && !ehci->broken_hostpc_phcd) {
 				spin_unlock_irqrestore(&ehci->lock, flags);
 				msleep(5);/* 5ms for HCD enter low pwr mode */
 				spin_lock_irqsave(&ehci->lock, flags);
