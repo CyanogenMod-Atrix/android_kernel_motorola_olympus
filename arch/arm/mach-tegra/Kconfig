@@ -22,6 +22,7 @@ config ARCH_TEGRA_2x_SOC
 	select PCI_MSI if TEGRA_PCI
 	select CPA
 	select ARM_ERRATA_716044
+	select ARM_ERRATA_764369 if SMP
 	select ARCH_HAS_SUSPEND_PAGETABLE
 	help
 	  Support for NVIDIA Tegra AP20 and T20 processors, based on the
@@ -46,6 +47,7 @@ config ARCH_TEGRA_3x_SOC
 	select ARCH_SUPPORTS_MSI if TEGRA_PCI
 	select PCI_MSI if TEGRA_PCI
 	select ARM_ERRATA_754322
+	select ARM_ERRATA_764369 if SMP
 	select TEGRA_LP2_ARM_TWD if HAVE_ARM_TWD && !TEGRA_RAIL_OFF_MULTIPLE_CPUS
 	select CPA
 	select ARCH_HAS_SUSPEND_PAGETABLE
