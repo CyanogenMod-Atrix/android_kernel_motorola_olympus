@@ -77,3 +77,10 @@ config BCMDHD_INSMOD_NO_FW_LOAD
 	default n
 	---help---
 	Enable delayes firmware
+
+config BCMDHD_CUSTOM_REGULATORY_DOMAIN
+	bool "Enable Custom Regulatory Domain"
+	depends on BCMDHD
+	default y
+	---help---
+	Use Custom Regulatory Domain set by driver.

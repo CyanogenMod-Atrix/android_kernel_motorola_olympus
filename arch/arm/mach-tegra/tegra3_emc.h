@@ -27,6 +27,8 @@
 #define TEGRA_EMC_BRIDGE_RATE_MIN	300000000
 #define TEGRA_EMC_BRIDGE_MVOLTS_MIN	1200
 
+extern u8 tegra_emc_bw_efficiency;
+
 struct tegra_emc_table {
 	u8 rev;
 	unsigned long rate;
@@ -59,6 +61,7 @@ void tegra_emc_dram_type_init(struct clk *c);
 int tegra_emc_get_dram_type(void);
 int tegra_emc_get_dram_temperature(void);
 int tegra_emc_set_over_temp_state(unsigned long state);
+int tegra_emc_set_eack_state(unsigned long state);
 
 #ifdef CONFIG_PM_SLEEP
 void tegra_mc_timing_restore(void);

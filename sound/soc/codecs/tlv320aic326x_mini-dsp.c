@@ -601,25 +601,27 @@ struct process_flow{
 int
 set_minidsp_mode(struct snd_soc_codec *codec, int new_mode, int new_config)
 {
-
-	if (codec == NULL) {
-	printk(KERN_INFO "%s codec is NULL\n",__func__);
-	}
-	struct aic3262_priv *aic326x = snd_soc_codec_get_drvdata(codec);
-	struct snd_soc_dapm_context *dapm = &codec->dapm;
+	struct aic3262_priv *aic326x;
+	struct snd_soc_dapm_context *dapm;
 	struct process_flow *  pflows = &miniDSP_programs[new_mode];
-	u8 reg63, reg81, pll_pow, ndac_pow, mdac_pow, nadc_pow, madc_pow;
-
+	u8 pll_pow, ndac_pow, mdac_pow, nadc_pow;
 	u8 adc_status,dac_status;
-	u8 reg, val;
-	u8 shift;
-	volatile u16 counter;
 
-	int (*ptransfer)(struct snd_soc_codec *codec,
-				reg_value *program_ptr,
-				int size);
+	int (*ptransfer)(struct snd_soc_codec *codec, reg_value *program_ptr,
+								int size);
 
 	printk("%s:New Switch mode = %d New Config= %d\n", __func__, new_mode,new_config);
+
+	if (codec == NULL) {
+		printk(KERN_INFO "%s codec is NULL\n", __func__);
+		return 0;
+	}
+	aic326x = snd_soc_codec_get_drvdata(codec);
+	dapm = &codec->dapm;
+
+	printk(KERN_INFO "%s:New Switch mode = %d New Config= %d\n", __func__,
+							new_mode, new_config);
+
 	if (new_mode >= ARRAY_SIZE(miniDSP_programs))
 		return 0; //  error condition
 		if (new_config > MAXCONFIG)
@@ -1231,7 +1233,7 @@ static int __new_control_put_minidsp_mux(struct snd_kcontrol *kcontrol,
 	int ret_val = -1, array_size;
 	control *array;
 	char **array_names;
-	char *control_name, *control_name1, *control_name2;
+	char *control_name, *control_name1;
 	struct aic3262_priv *aic326x = snd_soc_codec_get_drvdata(codec);
 	i2c = codec->control_data;
 

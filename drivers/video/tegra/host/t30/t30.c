@@ -19,19 +19,21 @@
  */
 
 #include <linux/mutex.h>
+#include <linux/nvhost_ioctl.h>
 #include <mach/powergate.h>
 #include <mach/iomap.h>
 #include "dev.h"
 #include "t20/t20.h"
 #include "t30.h"
 #include "gr3d/gr3d.h"
-#include "mpe/mpe.h"
 #include "gr3d/gr3d_t30.h"
 #include "gr3d/scale3d.h"
+#include "mpe/mpe.h"
 #include "host1x/host1x_hardware.h"
-#include "host1x/host1x_cdma.h"
 #include "host1x/host1x_syncpt.h"
 #include "chip_support.h"
+#include "nvhost_channel.h"
+#include "host1x/host1x_cdma.h"
 
 #define NVMODMUTEX_2D_FULL	(1)
 #define NVMODMUTEX_2D_SIMPLE	(2)
@@ -44,6 +46,10 @@
 #define NVMODMUTEX_DSI		(9)
 
 #define NVHOST_CHANNEL_BASE	0
+
+#define T30_NVHOST_NUMCHANNELS	(NV_HOST1X_CHANNELS - 1)
+
+static int t30_num_alloc_channels = 0;
 
 struct nvhost_device t30_devices[] = {
 {
@@ -62,27 +68,21 @@ struct nvhost_device t30_devices[] = {
 },
 {
 	/* channel 1 */
-	.name		= "gr3d",
+	.name		= "gr3d02",
 	.id		= -1,
 	.index		= 1,
 	.syncpts 	= BIT(NVSYNCPT_3D),
 	.waitbases	= BIT(NVWAITBASE_3D),
 	.modulemutexes	= BIT(NVMODMUTEX_3D),
 	.class		= NV_GRAPHICS_3D_CLASS_ID,
-	.prepare_poweroff = nvhost_gr3d_prepare_power_off,
-	.busy		= nvhost_scale3d_notify_busy,
-	.idle		= nvhost_scale3d_notify_idle,
-	.init		= nvhost_scale3d_init,
-	.deinit		= nvhost_scale3d_deinit,
-	.suspend 	= nvhost_scale3d_suspend,
-	.alloc_hwctx_handler = nvhost_gr3d_t30_ctxhandler_init,
 	.clocks		= { {"gr3d", UINT_MAX},
 			    {"gr3d2", UINT_MAX},
 			    {"emc", UINT_MAX} },
 	.powergate_ids = { TEGRA_POWERGATE_3D,
 			   TEGRA_POWERGATE_3D1 },
 	NVHOST_DEFAULT_CLOCKGATE_DELAY,
-	.can_powergate = false,
+	.can_powergate = true,
+	.powerup_reset = true,
 	.powergate_delay = 250,
 	.moduleid	= NVHOST_MODULE_NONE,
 },
@@ -95,7 +95,7 @@ struct nvhost_device t30_devices[] = {
 	.waitbases	= BIT(NVWAITBASE_2D_0) | BIT(NVWAITBASE_2D_1),
 	.modulemutexes	= BIT(NVMODMUTEX_2D_FULL) | BIT(NVMODMUTEX_2D_SIMPLE) |
 			  BIT(NVMODMUTEX_2D_SB_A) | BIT(NVMODMUTEX_2D_SB_B),
-	.clocks 	= { {"gr2d", 0},
+	.clocks 	= { {"gr2d", UINT_MAX},
 			    {"epp", 0},
 			    {"emc", 300000000} },
 	NVHOST_MODULE_NO_POWERGATE_IDS,
@@ -129,7 +129,7 @@ struct nvhost_device t30_devices[] = {
 },
 {
 	/* channel 5 */
-	.name		= "mpe",
+	.name		= "mpe02",
 	.id		= -1,
 	.index		= 5,
 	.syncpts	= BIT(NVSYNCPT_MPE) | BIT(NVSYNCPT_MPE_EBM_EOF) |
@@ -138,8 +138,6 @@ struct nvhost_device t30_devices[] = {
 	.class		= NV_VIDEO_ENCODE_MPEG_CLASS_ID,
 	.waitbasesync	= true,
 	.keepalive	= true,
-	.prepare_poweroff = nvhost_mpe_prepare_power_off,
-	.alloc_hwctx_handler = nvhost_mpe_ctxhandler_init,
 	.clocks 	= { {"mpe", UINT_MAX},
 			    {"emc", UINT_MAX} },
 	.powergate_ids	= {TEGRA_POWERGATE_MPE, -1},
@@ -167,9 +165,10 @@ static inline int t30_nvhost_hwctx_handler_init(struct nvhost_channel *ch)
 	unsigned long waitbases = ch->dev->waitbases;
 	u32 syncpt = find_first_bit(&syncpts, BITS_PER_LONG);
 	u32 waitbase = find_first_bit(&waitbases, BITS_PER_LONG);
+	struct nvhost_driver *drv = to_nvhost_driver(ch->dev->dev.driver);
 
-	if (ch->dev->alloc_hwctx_handler) {
-		ch->ctxhandler = ch->dev->alloc_hwctx_handler(syncpt,
+	if (drv->alloc_hwctx_handler) {
+		ch->ctxhandler = drv->alloc_hwctx_handler(syncpt,
 				waitbase, ch);
 		if (!ch->ctxhandler)
 			err = -ENOMEM;
@@ -198,54 +197,71 @@ static int t30_channel_init(struct nvhost_channel *ch,
 	return t30_nvhost_hwctx_handler_init(ch);
 }
 
-int nvhost_init_t30_channel_support(struct nvhost_master *host)
+int nvhost_init_t30_channel_support(struct nvhost_master *host,
+	struct nvhost_chip_support *op)
 {
-	int result = nvhost_init_t20_channel_support(host);
-	host->op.channel.init = t30_channel_init;
+	int result = nvhost_init_t20_channel_support(host, op);
+	op->channel.init = t30_channel_init;
 
 	return result;
 }
-int nvhost_init_t30_debug_support(struct nvhost_master *host)
+
+int nvhost_init_t30_debug_support(struct nvhost_chip_support *op)
 {
-	nvhost_init_t20_debug_support(host);
-	host->op.debug.debug_init = nvhost_scale3d_debug_init;
+	nvhost_init_t20_debug_support(op);
+	op->debug.debug_init = nvhost_scale3d_debug_init;
 
 	return 0;
 }
 
-struct nvhost_device *t30_get_nvhost_device(struct nvhost_master *host,
-	char *name)
+static void t30_free_nvhost_channel(struct nvhost_channel *ch)
+{
+	nvhost_free_channel_internal(ch, &t30_num_alloc_channels);
+}
+
+static struct nvhost_channel *t30_alloc_nvhost_channel(int chindex)
+{
+	return nvhost_alloc_channel_internal(chindex,
+		T30_NVHOST_NUMCHANNELS, &t30_num_alloc_channels);
+}
+
+struct nvhost_device *t30_get_nvhost_device(char *name)
 {
 	int i;
 
-	for (i = 0; i < host->nb_channels; i++) {
-		if (strcmp(t30_devices[i].name, name) == 0)
+	for (i = 0; i < ARRAY_SIZE(t30_devices); i++) {
+		if (strncmp(t30_devices[i].name, name, strlen(name)) == 0)
 			return &t30_devices[i];
 	}
 
 	return NULL;
 }
 
-int nvhost_init_t30_support(struct nvhost_master *host)
+int nvhost_init_t30_support(struct nvhost_master *host,
+	struct nvhost_chip_support *op)
 {
 	int err;
 
 	/* don't worry about cleaning up on failure... "remove" does it. */
-	err = nvhost_init_t30_channel_support(host);
+	err = nvhost_init_t30_channel_support(host, op);
 	if (err)
 		return err;
-	err = host1x_init_cdma_support(host);
+	err = host1x_init_cdma_support(op);
 	if (err)
 		return err;
-	err = nvhost_init_t30_debug_support(host);
+	err = nvhost_init_t30_debug_support(op);
 	if (err)
 		return err;
-	err = host1x_init_syncpt_support(host);
+	err = host1x_init_syncpt_support(host, op);
 	if (err)
 		return err;
-	err = nvhost_init_t20_intr_support(host);
+	err = nvhost_init_t20_intr_support(op);
 	if (err)
 		return err;
-	host->op.nvhost_dev.get_nvhost_device = t30_get_nvhost_device;
+
+	op->nvhost_dev.get_nvhost_device = t30_get_nvhost_device;
+	op->nvhost_dev.alloc_nvhost_channel = t30_alloc_nvhost_channel;
+	op->nvhost_dev.free_nvhost_channel = t30_free_nvhost_channel;
+
 	return 0;
 }

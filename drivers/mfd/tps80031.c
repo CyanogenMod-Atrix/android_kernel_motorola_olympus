@@ -874,8 +874,22 @@ static irqreturn_t tps80031_irq(int irq, void *data)
 	acks = (tmp[2] << 16) | (tmp[1] << 8) | tmp[0];
 
 	if (acks) {
-		ret = tps80031_writes(tps80031->dev, SLAVE_ID2,
-				      TPS80031_INT_STS_A, 3, tmp);
+		/*
+		 * Hardware behavior: hardware have the shadow register for
+		 * interrupt status register which is updated if interrupt
+		 * comes just after the interrupt status read. This shadow
+		 * register gets written to main status register and cleared
+		 * if any byte write happens in any of status register like
+		 * STS_A, STS_B or STS_C.
+		 * Hence here to clear the original interrupt status and
+		 * updating the STS register with the shadow register, it is
+		 * require to write only one byte in any of STS register.
+		 * Having multiple register write can cause the STS register
+		 * to clear without handling those interrupt and can cause
+		 * interrupt miss.
+		 */
+		ret = tps80031_write(tps80031->dev, SLAVE_ID2,
+				      TPS80031_INT_STS_A, 0);
 		if (ret < 0) {
 			dev_err(tps80031->dev, "failed to write "
 						"interrupt status\n");

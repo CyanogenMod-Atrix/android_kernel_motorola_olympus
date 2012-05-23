@@ -174,7 +174,8 @@ static struct gpio_keys_button cardhu_keys_e1291_a04[] = {
 	[3] = GPIO_KEY(KEY_SEARCH, PQ3, 0),
 	[4] = GPIO_KEY(KEY_BACK, PQ0, 0),
 	[5] = GPIO_KEY(KEY_MENU, PQ1, 0),
-	[6] = GPIO_IKEY(KEY_POWER, TPS6591X_IRQ_BASE + TPS6591X_INT_PWRON, 1, 100),
+	[6] = GPIO_KEY(KEY_RESERVED, PV0, 1),
+	[7] = GPIO_IKEY(KEY_POWER, TPS6591X_IRQ_BASE + TPS6591X_INT_PWRON, 1, 100),
 };
 
 static struct gpio_keys_platform_data cardhu_keys_e1291_pdata = {
@@ -200,7 +201,7 @@ static struct gpio_keys_button cardhu_pm298_int_keys[] = {
 };
 
 static struct gpio_keys_button cardhu_pm299_int_keys[] = {
-	[0] = GPIO_IKEY(KEY_POWER, RICOH583_IRQ_BASE + RICOH583_IRQ_ONKEY, 1, 100),
+	[0] = GPIO_KEY(KEY_POWER, PV0, 1),
 };
 
 static struct gpio_keys_platform_data cardhu_int_keys_pdata = {
@@ -230,6 +231,7 @@ int __init cardhu_keys_init(void)
 		(board_info.board_id == BOARD_E1257) ||
 		(board_info.board_id == BOARD_PM305) ||
 		(board_info.board_id == BOARD_PM311) ||
+		(board_info.board_id == BOARD_PM267) ||
 		(board_info.board_id == BOARD_PM269)))
 		return 0;
 
@@ -290,6 +292,7 @@ int __init cardhu_keys_init(void)
 		(board_info.board_id == BOARD_E1186) ||
 		(board_info.board_id == BOARD_PM305) ||
 		(board_info.board_id == BOARD_PM311) ||
+		(board_info.board_id == BOARD_PM267) ||
 		(board_info.board_id == BOARD_PM269)) {
 		if (get_tegra_image_type() == rck_image)
 			cardhu_int_keys[0].code = KEY_ENTER;

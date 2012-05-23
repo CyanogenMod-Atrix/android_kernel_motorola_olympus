@@ -20,7 +20,7 @@
 #include <asm/mach-types.h>
 #include <linux/platform_device.h>
 #include <linux/nvhost.h>
-#include <mach/nvmap.h>
+#include <linux/nvmap.h>
 #include <mach/irqs.h>
 #include <mach/iomap.h>
 #include <mach/dc.h>

@@ -290,7 +290,10 @@ void __init platform_smp_prepare_cpus(unsigned int max_cpus)
 
 #if defined(CONFIG_HAVE_ARM_SCU)
 	{
-		u32 scu_ctrl = __raw_readl(scu_base) | 1 << 3;
+		u32 scu_ctrl = __raw_readl(scu_base) |
+				1 << 3 | /* Enable speculative line fill*/
+				1 << 5 | /* Enable IC standby */
+				1 << 6; /* Enable SCU standby */
 		if (!(scu_ctrl & 1))
 			__raw_writel(scu_ctrl, scu_base);
 	}

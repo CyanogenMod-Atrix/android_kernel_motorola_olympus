@@ -153,12 +153,12 @@ int tegra_asoc_utils_clk_disable(struct tegra_asoc_utils_data *data)
 EXPORT_SYMBOL_GPL(tegra_asoc_utils_clk_disable);
 
 int tegra_asoc_utils_init(struct tegra_asoc_utils_data *data,
-			  struct device *dev)
+			  struct device *dev, struct snd_soc_card *card)
 {
 	int ret;
-	int rate;
 
 	data->dev = dev;
+	data->card = card;
 
 	data->clk_pll_p_out1 = clk_get_sys(NULL, "pll_p_out1");
 	if (IS_ERR(data->clk_pll_p_out1)) {

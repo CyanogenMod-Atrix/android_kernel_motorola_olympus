@@ -862,22 +862,6 @@ static inline int twl4030charger_usb_en(int enable) { return 0; }
 #define TWL6030_REG_VDAC	45
 #define TWL6030_REG_VUSB	46
 
-/* These are renamed in 6025 but same registers */
-#define TWL6025_REG_LDO2	48
-#define TWL6025_REG_LDO4	49
-#define TWL6025_REG_LDO3	50
-#define TWL6025_REG_LDO5	51
-#define TWL6025_REG_LDO1	52
-#define TWL6025_REG_LDO7	53
-#define TWL6025_REG_LDO6	54
-#define TWL6025_REG_LDOLN	55
-#define TWL6025_REG_LDOUSB	56
-
-/* 6025 DCDC supplies */
-#define TWL6025_REG_SMPS3	57
-#define TWL6025_REG_SMPS4	58
-#define TWL6025_REG_VIO		59
-
 /* INTERNAL LDOs */
 #define TWL6030_REG_VRTC	47
 #define TWL6030_REG_CLK32KG	48

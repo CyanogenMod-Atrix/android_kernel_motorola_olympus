@@ -1,9 +1,9 @@
 /*
- * arch/arm/mach-tegra/include/mach/nvmap.h
+ * include/linux/nvmap.h
  *
  * structure declarations for nvmem and nvmap user-space ioctls
  *
- * Copyright (c) 2009-2011, NVIDIA Corporation.
+ * Copyright (c) 2009-2012, NVIDIA Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -137,6 +137,9 @@ void nvmap_unpin_handles(struct nvmap_client *client,
 int nvmap_patch_word(struct nvmap_client *client,
 		     struct nvmap_handle *patch,
 		     u32 patch_offset, u32 patch_value);
+
+struct nvmap_handle_ref *nvmap_duplicate_handle_id(struct nvmap_client *client,
+						   unsigned long id);
 
 struct nvmap_platform_carveout {
 	const char *name;

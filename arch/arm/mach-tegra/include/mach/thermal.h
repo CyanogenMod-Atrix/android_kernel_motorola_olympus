@@ -19,19 +19,17 @@
 
 /* All units in millicelsius */
 struct tegra_thermal_data {
-	long temp_throttle;
 	long temp_shutdown;
 	long temp_offset;
 #ifdef CONFIG_TEGRA_EDP_LIMITS
 	long edp_offset;
 	long hysteresis_edp;
 #endif
-#ifdef CONFIG_TEGRA_THERMAL_SYSFS
+#ifdef CONFIG_TEGRA_THERMAL_THROTTLE
+	long temp_throttle;
 	int tc1;
 	int tc2;
 	long passive_delay;
-#else
-	long hysteresis_throttle;
 #endif
 };
 

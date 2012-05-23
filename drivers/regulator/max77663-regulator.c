@@ -280,7 +280,7 @@ static int max77663_regulator_set_fps(struct max77663_regulator *reg)
 		fps_mask |= FPS_PD_PERIOD_MASK;
 	}
 
-	if (fps_val)
+	if (fps_val || fps_mask)
 		ret = max77663_regulator_cache_write(reg,
 					reg->regs[FPS_REG].addr, fps_mask,
 					fps_val, &reg->regs[FPS_REG].val);
@@ -704,15 +704,13 @@ skip_init_apply:
 				val |= (SD_SR_100 << SD_SR_SHIFT);
 		}
 
-		if (pdata->flags & SD_FORCED_PWM_MODE) {
-			mask |= SD_FPWM_MASK;
+		mask |= SD_FPWM_MASK;
+		if (pdata->flags & SD_FORCED_PWM_MODE)
 			val |= SD_FPWM_MASK;
-		}
 
-		if (pdata->flags & SD_FSRADE_DISABLE) {
-			mask |= SD_FSRADE_MASK;
+		mask |= SD_FSRADE_MASK;
+		if (pdata->flags & SD_FSRADE_DISABLE)
 			val |= SD_FSRADE_MASK;
-		}
 
 		ret = max77663_regulator_cache_write(reg,
 				reg->regs[CFG_REG].addr, mask, val,

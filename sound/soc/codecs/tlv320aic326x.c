@@ -81,9 +81,6 @@ static u8 aic3262_reg_ctl;
  * This function reprograms the clock dividers etc. this flag can be used to
  * disable this when the clock dividers are programmed by pps config file
  */
-static int soc_static_freq_config = 1;
-static struct aic3262_priv *aic3262_priv_data;
-static struct i2c_client *i2c_pdev;
 static struct snd_soc_codec *aic3262_codec;
 
 /*
@@ -849,7 +846,6 @@ static const struct aic3262_rate_divs aic3262_divs[] = {
 static void aic3262_multi_i2s_dump_regs(struct snd_soc_dai *dai)
 {
 	struct snd_soc_codec *codec = dai->codec;
-	struct aic3262_priv *aic3262 = snd_soc_codec_get_drvdata(codec);
 	unsigned int counter;
 
 	DBG(KERN_INFO "#%s: Dai Active %d ASI%d REGS DUMP\n",
@@ -1965,7 +1961,7 @@ static int aic3262_multi_i2s_hw_params(struct snd_pcm_substream *substream,
 * We can use this function to disable the DAC and ADC specific inputs from the
 * individual ASI Ports of the Audio Codec.
 */
-static int aic3262_multi_i2s_shutdown(struct snd_pcm_substream *substream,
+static void aic3262_multi_i2s_shutdown(struct snd_pcm_substream *substream,
 			struct snd_soc_dai *dai)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
@@ -2106,7 +2102,7 @@ static int aic3262_multi_i2s_shutdown(struct snd_pcm_substream *substream,
 			aic3262->active_count--;
 	}
 err:
-	return 0;
+	return;
 }
 
 
@@ -2547,13 +2543,13 @@ static const struct snd_kcontrol_new hpl_output_mixer_controls[] = {
 	SOC_DAPM_SINGLE("MAL Switch", HP_AMP_CNTL_R1, 7, 1, 0),
 	SOC_DAPM_SINGLE("LDAC Switch", HP_AMP_CNTL_R1, 5, 1, 0),
 	SOC_DAPM_SINGLE_TLV("LOL-B1 Volume", HP_AMP_CNTL_R2, 0,
-							0x7f, 1, lo_hp_tlv),
+							0x7f, 0, lo_hp_tlv),
 };
 
 /* Right HPR Mixer */
 static const struct snd_kcontrol_new hpr_output_mixer_controls[] = {
 	SOC_DAPM_SINGLE_TLV("LOR-B1 Volume", HP_AMP_CNTL_R3, 0,
-							0x7f, 1, lo_hp_tlv),
+							0x7f, 0, lo_hp_tlv),
 	SOC_DAPM_SINGLE("LDAC Switch", HP_AMP_CNTL_R1,	 2, 1, 0),
 	SOC_DAPM_SINGLE("RDAC Switch", HP_AMP_CNTL_R1, 4, 1, 0),
 	SOC_DAPM_SINGLE("MAR Switch", HP_AMP_CNTL_R1, 6, 1, 0),
@@ -3565,7 +3561,7 @@ void aic3262_write_reg_cache(struct snd_soc_codec *codec,
  *----------------------------------------------------------------------------
  */
 
-u8 aic3262_read(struct snd_soc_codec *codec, u16 reg)
+unsigned int aic3262_read(struct snd_soc_codec *codec, unsigned int reg)
 {
 	struct aic3262_priv *aic3262 = snd_soc_codec_get_drvdata(codec);
 	u8 value;
@@ -3573,7 +3569,7 @@ u8 aic3262_read(struct snd_soc_codec *codec, u16 reg)
 	u16 *cache = codec->reg_cache;
 	u16 cmd;
 	u8 buffer[2];
-	int rc;
+	int rc = 0;
 	reg = reg % 128;
 
 	if (reg >= AIC3262_CACHEREGNUM) {
@@ -3619,7 +3615,8 @@ u8 aic3262_read(struct snd_soc_codec *codec, u16 reg)
  *
  *----------------------------------------------------------------------------
  */
-int aic3262_write(struct snd_soc_codec *codec, u16 reg, u8 value)
+int aic3262_write(struct snd_soc_codec *codec, unsigned int reg,
+						unsigned int value)
 {
 	struct aic3262_priv *aic3262 = snd_soc_codec_get_drvdata(codec);
 	u8 data[2];
@@ -3855,8 +3852,6 @@ int i2c_verify_book0(struct snd_soc_codec *codec)
 static int aic3262_set_bias_level(struct snd_soc_codec *codec,
 			enum snd_soc_bias_level level)
 {
-	struct aic3262_priv *aic3262 = snd_soc_codec_get_drvdata(codec);
-	u8 value;
 	switch (level) {
 		/* full On */
 	case SND_SOC_BIAS_ON:
@@ -4400,6 +4395,7 @@ static int aic3262_spi_write(struct spi_device *spi, const char *data, int len)
 	return len;
 }
 
+#ifdef RUN_DELAYED_WORK
 /*
  * This function forces any delayed work to be queued and run.
  */
@@ -4418,6 +4414,8 @@ static int run_delayed_work(struct delayed_work *dwork)
 	}
 	return ret;
 }
+#endif
+
 static int __devinit aic3262_spi_probe(struct spi_device *spi)
 {
 	int ret;

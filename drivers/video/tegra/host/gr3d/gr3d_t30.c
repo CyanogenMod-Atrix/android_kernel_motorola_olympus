@@ -19,6 +19,8 @@
  */
 
 #include "nvhost_hwctx.h"
+#include "nvhost_channel.h"
+#include "nvhost_cdma.h"
 #include "dev.h"
 #include "host1x/host1x_hardware.h"
 #include "host1x/host1x_syncpt.h"
@@ -71,7 +73,6 @@ static const struct hwctx_reginfo ctxsave_regs_3d_global[] = {
 	HWCTX_REGINFO(0xa02,   10, DIRECT),
 	HWCTX_REGINFO(0xb04,    1, DIRECT),
 	HWCTX_REGINFO(0xb06,   13, DIRECT),
-	HWCTX_REGINFO(0xe42,    2, DIRECT), /* HW bug workaround */
 };
 
 static const struct hwctx_reginfo ctxsave_regs_3d_perset[] = {
@@ -143,8 +144,9 @@ static void save_push_v1(struct nvhost_hwctx *nctx, struct nvhost_cdma *cdma)
 		ctx->restore_phys);
 	/* gather the save buffer */
 	nvhost_cdma_push_gather(cdma,
-			(void *)NVHOST_CDMA_PUSH_GATHER_CTXSAVE,
-			(void *)NVHOST_CDMA_PUSH_GATHER_CTXSAVE,
+			nvhost_get_host(nctx->channel->dev)->nvmap,
+			p->save_buf->handle,
+			0,
 			nvhost_opcode_gather(p->save_size),
 			p->save_phys);
 }

@@ -16,17 +16,6 @@ static control base_speaker_SRS_VOLUME_controls[] = {
 static char * base_speaker_SRS_VOLUME_control_names[] = {
 };
 
-/*//INSTRUCTIONS & COEFFICIENTS
-typedef struct {
-    u8 reg_off;
-    u8 reg_val;
-} reg_value;*/
-
-static char * base_speaker_SRS_REG_Section_names[] = {
-    "miniDSP_A_reg_values",
-    "miniDSP_D_reg_values",
-};
-
 reg_value base_speaker_SRS_REG_init_Section_program[] = {
     {  0,0x0},
     {  0x7F,0x00},

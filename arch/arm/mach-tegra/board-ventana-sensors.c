@@ -143,20 +143,32 @@ struct ov2710_platform_data ventana_ov2710_data = {
 };
 
 
+static struct nvc_gpio_pdata sh532u_left_gpio_pdata[] = {
+	{ SH532U_GPIO_RESET, CAM2_RST_L_GPIO, false, 0, },
+	{ SH532U_GPIO_GP1, CAM2_LDO_SHUTDN_L_GPIO, false, true, },
+};
+
 static struct sh532u_platform_data sh532u_left_pdata = {
+	.cfg		= NVC_CFG_NODEV,
 	.num		= 1,
 	.sync		= 2,
 	.dev_name	= "focuser",
-	.gpio_reset	= CAM2_RST_L_GPIO,
-	.gpio_en	= CAM2_LDO_SHUTDN_L_GPIO,
+	.gpio_count	= ARRAY_SIZE(sh532u_left_gpio_pdata),
+	.gpio		= sh532u_left_gpio_pdata,
+};
+
+static struct nvc_gpio_pdata sh532u_right_gpio_pdata[] = {
+	{ SH532U_GPIO_RESET, CAM1_RST_L_GPIO, false, 0, },
+	{ SH532U_GPIO_GP1, CAM1_LDO_SHUTDN_L_GPIO, false, true, },
 };
 
 static struct sh532u_platform_data sh532u_right_pdata = {
+	.cfg		= NVC_CFG_NODEV,
 	.num		= 2,
 	.sync		= 1,
 	.dev_name	= "focuser",
-	.gpio_reset	= CAM1_RST_L_GPIO,
-	.gpio_en	= CAM1_LDO_SHUTDN_L_GPIO,
+	.gpio_count	= ARRAY_SIZE(sh532u_right_gpio_pdata),
+	.gpio		= sh532u_right_gpio_pdata,
 };
 
 

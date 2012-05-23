@@ -181,7 +181,8 @@ static struct regulator_consumer_supply ricoh583_ldo8_supply_0[] = {
 
 RICOH_PDATA_INIT(dc0, 0,         700,  1500, 0, 1, 1, 0, -1, 0, 0, 0,
 				RICOH583_EXT_PWRREQ2_CONTROL, 0);
-RICOH_PDATA_INIT(dc1, skubit0_0, 700,  1500, 0, 1, 1, 0, -1, 0, 0, 0, 0, 0);
+RICOH_PDATA_INIT(dc1, skubit0_0, 700,  1500, 0, 1, 1, 0, -1, 0, 0, 0,
+				RICOH583_EXT_PWRREQ1_CONTROL, 0);
 RICOH_PDATA_INIT(dc2, 0,         900,  2400, 0, 1, 1, 0, -1, 0, 0, 0, 0, 0);
 RICOH_PDATA_INIT(dc3, 0,         900,  2400, 0, 1, 1, 0, -1, 0, 0, 0, 0, 0);
 
@@ -448,13 +449,13 @@ static struct regulator_consumer_supply fixed_reg_en_vdd_pnl1_supply[] = {
 /* CAM1_LDO_EN from AP GPIO KB_ROW6 R06*/
 static struct regulator_consumer_supply fixed_reg_cam1_ldo_en_supply[] = {
 	REGULATOR_SUPPLY("vdd_2v8_cam1", NULL),
-	REGULATOR_SUPPLY("vdd", "6-0072"),
+	REGULATOR_SUPPLY("avdd", "6-0072"),
 };
 
 /* CAM2_LDO_EN from AP GPIO KB_ROW7 R07*/
 static struct regulator_consumer_supply fixed_reg_cam2_ldo_en_supply[] = {
 	REGULATOR_SUPPLY("vdd_2v8_cam2", NULL),
-	REGULATOR_SUPPLY("vdd", "7-0072"),
+	REGULATOR_SUPPLY("avdd", "7-0072"),
 };
 
 /* CAM3_LDO_EN from AP GPIO KB_ROW8 S00*/
@@ -492,8 +493,8 @@ static struct regulator_consumer_supply fixed_reg_en_1v8_cam_supply[] = {
 	REGULATOR_SUPPLY("vdd_1v8_cam1", NULL),
 	REGULATOR_SUPPLY("vdd_1v8_cam2", NULL),
 	REGULATOR_SUPPLY("vdd_1v8_cam3", NULL),
-	REGULATOR_SUPPLY("vdd_i2c", "6-0072"),
-	REGULATOR_SUPPLY("vdd_i2c", "7-0072"),
+	REGULATOR_SUPPLY("dvdd", "6-0072"),
+	REGULATOR_SUPPLY("dvdd", "7-0072"),
 	REGULATOR_SUPPLY("vdd_i2c", "2-0033"),
 };
 
@@ -558,13 +559,13 @@ static struct regulator_consumer_supply fixed_reg_en_vddio_vid_oc_supply[] = {
 #define FIXED_REG(_id, _var, _name, _in_supply, _always_on, _boot_on,	\
 		 _gpio_nr, _active_high, _boot_state, _millivolts)	\
 	FIXED_REG_OD(_id, _var, _name, _in_supply, _always_on, _boot_on, \
-		 _gpio_nr, _active_high, _boot_state, _millivolts, true)
+		 _gpio_nr, _active_high, _boot_state, _millivolts, false)
 
 /* common to most of boards*/
 FIXED_REG(0, en_5v_cp,		en_5v_cp,	NULL,			1,	0,	TPS6591X_GPIO_0,	true,	1, 5000);
 FIXED_REG(1, en_5v0,		en_5v0,		NULL,			0,      0,      TPS6591X_GPIO_4,	true,	0, 5000);
 FIXED_REG(2, en_ddr,		en_ddr,		NULL,			0,      0,      TPS6591X_GPIO_3,	true,	1, 1500);
-FIXED_REG(3, en_3v3_sys,	en_3v3_sys,	NULL,			0,      0,      TPS6591X_GPIO_1,	true,	0, 3300);
+FIXED_REG(3, en_3v3_sys,	en_3v3_sys,	NULL,			0,      0,      TPS6591X_GPIO_1,	true,	1, 3300);
 FIXED_REG(4, en_vdd_bl,		en_vdd_bl,	NULL,			0,      0,      TEGRA_GPIO_PK3,		true,	1, 5000);
 FIXED_REG(5, en_3v3_modem,	en_3v3_modem,	NULL,			1,      0,      TEGRA_GPIO_PD6,		true,	1, 3300);
 FIXED_REG(6, en_vdd_pnl1,	en_vdd_pnl1,	FIXED_SUPPLY(en_3v3_sys),	0,      0,      TEGRA_GPIO_PL4,		true,	1, 3300);

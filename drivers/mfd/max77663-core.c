@@ -118,6 +118,8 @@
 
 #define ONOFF_SLP_LPM_MASK		(1 << 5)
 
+#define ONOFF_IRQ_EN0_RISING		(1 << 3)
+
 enum {
 	CACHE_IRQ_LBT,
 	CACHE_IRQ_SD,
@@ -903,6 +905,8 @@ static void max77663_irq_sync_unlock(struct irq_data *data)
 				irq_mask = irq_data->trigger_type;
 			else
 				irq_mask = GPIO_REFE_IRQ_EDGE_FALLING << shift;
+		} else {
+			irq_mask = GPIO_REFE_IRQ_NONE << shift;
 		}
 
 		ret = max77663_cache_write(chip->dev, GPIO_REG_ADDR(offset),
@@ -1131,6 +1135,10 @@ static int max77663_irq_init(struct max77663_chip *chip)
 	chip->cache_irq_mask[CACHE_IRQ_LBT] &= ~IRQ_GLBL_MASK;
 	max77663_write(chip->dev, MAX77663_REG_LBT_IRQ_MASK,
 		       &chip->cache_irq_mask[CACHE_IRQ_LBT], 1, 0);
+
+	chip->cache_irq_mask[CACHE_IRQ_ONOFF] &= ~ONOFF_IRQ_EN0_RISING;
+	max77663_write(chip->dev, MAX77663_REG_ONOFF_IRQ_MASK,
+		       &chip->cache_irq_mask[CACHE_IRQ_ONOFF], 1, 0);
 
 	return 0;
 }

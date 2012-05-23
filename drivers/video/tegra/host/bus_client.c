@@ -36,7 +36,7 @@
 #include <linux/nvhost.h>
 #include <linux/nvhost_ioctl.h>
 
-#include <mach/nvmap.h>
+#include <linux/nvmap.h>
 #include <mach/gpufuse.h>
 #include <mach/hardware.h>
 #include <mach/iomap.h>
@@ -44,6 +44,11 @@
 #include "debug.h"
 #include "bus_client.h"
 #include "dev.h"
+#include "nvhost_acm.h"
+
+#include "nvhost_channel.h"
+#include "nvhost_job.h"
+#include "nvhost_hwctx.h"
 
 void nvhost_read_module_regs(struct nvhost_device *ndev,
 			u32 offset, int count, u32 *values)
@@ -84,45 +89,6 @@ struct nvhost_channel_userctx {
 	u32 priority;
 	int clientid;
 };
-
-/*
- * Write cmdbuf to ftrace output. Checks if cmdbuf contents should be output
- * and mmaps the cmdbuf contents if required.
- */
-static void trace_write_cmdbufs(struct nvhost_job *job)
-{
-	struct nvmap_handle_ref handle;
-	void *mem = NULL;
-	int i = 0;
-
-	for (i = 0; i < job->num_gathers; i++) {
-		struct nvhost_channel_gather *gather = &job->gathers[i];
-		if (nvhost_debug_trace_cmdbuf) {
-			handle.handle = nvmap_id_to_handle(gather->mem_id);
-			mem = nvmap_mmap(&handle);
-			if (IS_ERR_OR_NULL(mem))
-				mem = NULL;
-		};
-
-		if (mem) {
-			u32 i;
-			/*
-			 * Write in batches of 128 as there seems to be a limit
-			 * of how much you can output to ftrace at once.
-			 */
-			for (i = 0; i < gather->words; i += TRACE_MAX_LENGTH) {
-				trace_nvhost_channel_write_cmdbuf_data(
-					job->ch->dev->name,
-					gather->mem_id,
-					min(gather->words - i,
-					    TRACE_MAX_LENGTH),
-					gather->offset + i * sizeof(u32),
-					mem);
-			}
-			nvmap_munmap(&handle, mem);
-		}
-	}
-}
 
 static int nvhost_channelrelease(struct inode *inode, struct file *filp)
 {
@@ -174,6 +140,7 @@ static int nvhost_channelopen(struct inode *inode, struct file *filp)
 	priv->priority = NVHOST_PRIORITY_MEDIUM;
 	priv->clientid = atomic_add_return(1,
 			&nvhost_get_host(ch->dev)->clientid);
+	priv->timeout = MAX_STUCK_CHECK_COUNT * SYNCPT_CHECK_PERIOD;
 
 	priv->job = nvhost_job_alloc(ch, priv->hwctx, &priv->hdr,
 			NULL, priv->priority, priv->clientid);
@@ -364,8 +331,6 @@ static int nvhost_ioctl_channel_flush(
 		ctx->timeout = nvhost_debug_force_timeout_val;
 	}
 
-	trace_write_cmdbufs(ctx->job);
-
 	/* context switch if needed, and submit user's gathers to the channel */
 	err = nvhost_channel_submit(ctx->job);
 	args->value = ctx->job->syncpt_end;
@@ -375,12 +340,11 @@ static int nvhost_ioctl_channel_flush(
 	return err;
 }
 
-static int nvhost_ioctl_channel_read_3d_reg(
-	struct nvhost_channel_userctx *ctx,
+static int nvhost_ioctl_channel_read_3d_reg(struct nvhost_channel_userctx *ctx,
 	struct nvhost_read_3d_reg_args *args)
 {
-	BUG_ON(!channel_op(ctx->ch).read3dreg);
-	return channel_op(ctx->ch).read3dreg(ctx->ch, ctx->hwctx,
+	BUG_ON(!channel_op().read3dreg);
+	return channel_op().read3dreg(ctx->ch, ctx->hwctx,
 			args->offset, &args->value);
 }
 
@@ -535,18 +499,23 @@ int nvhost_client_user_init(struct nvhost_device *dev)
 	int err, devno;
 
 	struct nvhost_channel *ch = dev->channel;
+	err = alloc_chrdev_region(&devno, 0, 1, IFACE_NAME);
+	if (err < 0) {
+		dev_err(&dev->dev, "failed to allocate devno\n");
+		goto fail;
+	}
 
 	cdev_init(&ch->cdev, &nvhost_channelops);
 	ch->cdev.owner = THIS_MODULE;
 
-	devno = MKDEV(nvhost_major, nvhost_minor + dev->index);
 	err = cdev_add(&ch->cdev, devno, 1);
 	if (err < 0) {
 		dev_err(&dev->dev,
 			"failed to add chan %i cdev\n", dev->index);
 		goto fail;
 	}
-	ch->node = device_create(nvhost_get_host(dev)->nvhost_class, NULL, devno, NULL,
+	ch->node = device_create(nvhost_get_host(dev)->nvhost_class,
+			NULL, devno, NULL,
 			IFACE_NAME "-%s", dev->name);
 	if (IS_ERR(ch->node)) {
 		err = PTR_ERR(ch->node);
@@ -564,7 +533,11 @@ int nvhost_client_device_init(struct nvhost_device *dev)
 {
 	int err;
 	struct nvhost_master *nvhost_master = nvhost_get_host(dev);
-	struct nvhost_channel *ch = &nvhost_master->channels[dev->index];
+	struct nvhost_channel *ch;
+
+	ch = nvhost_alloc_channel(dev->index);
+	if (ch == NULL)
+		return -ENODEV;
 
 	/* store the pointer to this device for channel */
 	ch->dev = dev;
@@ -587,6 +560,7 @@ int nvhost_client_device_init(struct nvhost_device *dev)
 
 fail:
 	/* Add clean-up */
+	nvhost_free_channel(ch);
 	return err;
 }
 

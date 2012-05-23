@@ -738,7 +738,7 @@ static struct ar0832_reg mode_1920X1080_8140[] = {
 	{0x3178, 0x0000},	/* RESERVED_MFR_3178 */
 	{0x3ED0, 0x1E24},	/* RESERVED_MFR_3ED0 */
 
-	{0x0342, 0x103B},	/* LINE_LENGTH_PCK */
+	{0x0342, 0x1139},	/* LINE_LENGTH_PCK */
 	{0x0340, 0x05C4},	/* FRAME_LENGTH_LINES */
 	{0x0202, 0x05C4},	/* COARSE_INTEGRATION_TIME */
 	{0x3014, 0x0702},	/* FINE_INTEGRATION_TIME */
@@ -863,7 +863,7 @@ static struct ar0832_reg mode_1920X1080_8141[] = {
 	{0x3178, 0x0000},	/* RESERVED_MFR_3178 */
 	{0x3ED0, 0x1E24},	/* RESERVED_MFR_3ED0 */
 
-	{0x0342, 0x103B},	/* LINE_LENGTH_PCK */
+	{0x0342, 0x1139},	/* LINE_LENGTH_PCK */
 	{0x0340, 0x05C4},	/* FRAME_LENGTH_LINES */
 	{0x0202, 0x05C4},	/* COARSE_INTEGRATION_TIME */
 	{0x3014, 0x0702},	/* FINE_INTEGRATION_TIME */
@@ -1977,7 +1977,7 @@ static int ar0832_focuser_set_position(struct ar0832_dev *dev,
 	return ret;
 }
 
-
+#ifdef AR0832_FOCUSER_DYNAMIC_STEP_TIME
 /*
  * This function is not currently called as we have the hardcoded
  * step time in ar0832_focuser_set_config function. If we need to
@@ -2033,6 +2033,7 @@ static u16 ar0832_get_focuser_vcm_step_time(struct ar0832_dev *dev)
 	return vt_pix_clk_freq_mhz;
 
 }
+#endif
 
 static inline
 int ar0832_get_sensorid(struct ar0832_dev *dev, u16 *sensor_id)
@@ -2148,7 +2149,6 @@ static long ar0832_ioctl(struct file *file,
 	}
 	case AR0832_IOCTL_SET_SENSOR_REGION:
 	{
-		struct ar0832_stereo_region region;
 		dev_dbg(&i2c_client->dev, "AR0832_IOCTL_SET_SENSOR_REGION\n");
 		/* Right now, it doesn't do anything */
 
@@ -2547,3 +2547,4 @@ static void __exit ar0832_exit(void)
 
 module_init(ar0832_init);
 module_exit(ar0832_exit);
+MODULE_LICENSE("GPL v2");

@@ -30,7 +30,7 @@
 
 static DEFINE_MUTEX(tegra_apb_dma_lock);
 
-#ifdef CONFIG_TEGRA_SYSTEM_DMA
+#if defined(CONFIG_TEGRA_SYSTEM_DMA) && defined(CONFIG_ARCH_TEGRA_2x_SOC)
 static struct tegra_dma_channel *tegra_apb_dma;
 static u32 *tegra_apb_bb;
 static dma_addr_t tegra_apb_bb_phys;
@@ -68,6 +68,8 @@ static inline u32 apb_readl(unsigned long offset)
 	req.source_wrap = 4;
 	req.req_sel = 0;
 	req.size = 4;
+	dma_sync_single_for_device(NULL, tegra_apb_bb_phys,
+			sizeof(u32), DMA_FROM_DEVICE);
 
 	INIT_COMPLETION(tegra_apb_wait);
 
@@ -81,6 +83,8 @@ static inline u32 apb_readl(unsigned long offset)
 		*(u32 *)tegra_apb_bb = 0;
 	}
 
+	dma_sync_single_for_cpu(NULL, tegra_apb_bb_phys,
+			sizeof(u32), DMA_FROM_DEVICE);
 	mutex_unlock(&tegra_apb_dma_lock);
 	return *((u32 *)tegra_apb_bb);
 }
@@ -97,6 +101,8 @@ static inline void apb_writel(u32 value, unsigned long offset)
 	}
 
 	mutex_lock(&tegra_apb_dma_lock);
+	dma_sync_single_for_cpu(NULL, tegra_apb_bb_phys,
+			sizeof(u32), DMA_TO_DEVICE);
 	*((u32 *)tegra_apb_bb) = value;
 	req.complete = apb_dma_complete;
 	req.to_memory = 0;
@@ -111,6 +117,8 @@ static inline void apb_writel(u32 value, unsigned long offset)
 
 	INIT_COMPLETION(tegra_apb_wait);
 
+	dma_sync_single_for_device(NULL, tegra_apb_bb_phys,
+			sizeof(u32), DMA_TO_DEVICE);
 	tegra_dma_enqueue_req(tegra_apb_dma, &req);
 
 	ret = wait_for_completion_timeout(&tegra_apb_wait,
@@ -121,17 +129,6 @@ static inline void apb_writel(u32 value, unsigned long offset)
 
 	mutex_unlock(&tegra_apb_dma_lock);
 }
-#else
-static inline u32 apb_readl(unsigned long offset)
-{
-	return readl(IO_TO_VIRT(offset));
-}
-
-static inline void apb_writel(u32 value, unsigned long offset)
-{
-	writel(value, IO_TO_VIRT(offset));
-}
-#endif
 
 u32 tegra_apb_readl(unsigned long offset)
 {
@@ -142,10 +139,11 @@ void tegra_apb_writel(u32 value, unsigned long offset)
 {
 	apb_writel(value, offset);
 }
+#endif
 
 static int tegra_init_apb_dma(void)
 {
-#ifdef CONFIG_TEGRA_SYSTEM_DMA
+#if defined(CONFIG_TEGRA_SYSTEM_DMA) && defined(CONFIG_ARCH_TEGRA_2x_SOC)
 	tegra_apb_dma = tegra_dma_allocate_channel(TEGRA_DMA_MODE_ONESHOT |
 		TEGRA_DMA_SHARED, "apbio");
 	if (!tegra_apb_dma) {

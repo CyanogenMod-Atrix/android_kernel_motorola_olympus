@@ -147,6 +147,7 @@ static struct regulator_consumer_supply tps80031_vana_supply_common[] = {
 
 static struct regulator_consumer_supply tps80031_ldo1_supply_a02[] = {
 	REGULATOR_SUPPLY("avdd_dsi_csi", NULL),
+	REGULATOR_SUPPLY("avdd_hsic", NULL),
 	REGULATOR_SUPPLY("pwrdet_mipi", NULL),
 };
 
@@ -373,8 +374,8 @@ static struct tps80031_bg_platform_data battery_gauge_data = {
 
 
 static struct tps80031_subdev_info tps80031_devs_a02[] = {
-	TPS80031_DEVS_COMMON,
 	TPS_REG(VIO, vio, a02),
+	TPS80031_DEVS_COMMON,
 	TPS_REG(SMPS4, smps4, a02),
 	TPS_REG(LDO1, ldo1, a02),
 	TPS_REG(LDO4, ldo4, a02),
@@ -386,8 +387,8 @@ static struct tps80031_subdev_info tps80031_devs_a02[] = {
 };
 
 static struct tps80031_subdev_info tps80031_devs_a03[] = {
-	TPS80031_DEVS_COMMON,
 	TPS_REG(VIO, vio, a03),
+	TPS80031_DEVS_COMMON,
 	TPS_REG(SMPS4, smps4, a03),
 	TPS_REG(LDO1, ldo1, a03),
 	TPS_REG(LDO4, ldo4, a03),
@@ -462,7 +463,7 @@ static struct regulator_consumer_supply fixed_reg_vdd_fuse_en_supply[] = {
 static struct regulator_consumer_supply gpio_reg_sdmmc3_vdd_sel_supply[] = {
 	REGULATOR_SUPPLY("vddio_sdmmc3_2v85_1v8", NULL),
 	REGULATOR_SUPPLY("sdmmc3_compu_pu", NULL),
-	REGULATOR_SUPPLY("vddio_sdmmc3", NULL),
+	REGULATOR_SUPPLY("vddio_sdmmc", "sdhci-tegra.2"),
 	REGULATOR_SUPPLY("vsys_3v7", NULL),
 };
 
@@ -643,8 +644,12 @@ FIXED_REG(8, lcd_1v8_en,  NULL,
 	ADD_FIXED_REG(cam_ldo_1v8_en)
 
 static struct platform_device *fixed_regs_devices_a02[] = {
-	FIXED_REGS_COMMON,
-	ADD_FIXED_REG(pmu_3v3_en),
+	ADD_FIXED_REG(pmu_5v15_en),	\
+	ADD_FIXED_REG(pmu_3v3_en),	\
+	ADD_FIXED_REG(pmu_hdmi_5v0_en),	\
+	ADD_FIXED_REG(vdd_fuse_en),	\
+	ADD_FIXED_REG(cam_ldo_2v8_en),	\
+	ADD_FIXED_REG(cam_ldo_1v8_en)
 };
 
 static struct platform_device *fixed_regs_devices_a03[] = {

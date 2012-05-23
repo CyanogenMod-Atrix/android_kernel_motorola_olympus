@@ -103,7 +103,7 @@ static __initdata struct tegra_clk_init_table p1852_clk_init_table[] = {
 	{ "pll_a",		NULL,		552960000,	false},
 	{ "pll_a_out0",		NULL,		12288000,	false},
 	{ "d_audio",		"pll_a_out0",	12288000,	false},
-	{ "nor",		"pll_p",	86500000,	true},
+	{ "nor",		"pll_p",	102000000,	true},
 	{ "uarta",		"pll_p",	480000000,	true},
 	{ "uartd",		"pll_p",	480000000,	true},
 	{ "uarte",		"pll_p",	480000000,	true},
@@ -141,6 +141,7 @@ static __initdata struct tegra_clk_init_table p1852_clk_init_table[] = {
 	{ "i2c4",		"pll_p",	3200000,	true},
 	{ "i2c5",		"pll_p",	3200000,	true},
 	{ "sdmmc2",		"pll_p",	104000000,	false},
+	{"wake.sclk",		NULL,		334000000,	true },
 	{ NULL,			NULL,		0,		0},
 };
 
@@ -332,6 +333,11 @@ static void p1852_spi_init(void)
 	p852_register_spidev();
 }
 
+static struct platform_device tegra_camera = {
+	.name = "tegra_camera",
+	.id = -1,
+};
+
 static struct platform_device *p1852_devices[] __initdata = {
 #if defined(CONFIG_TEGRA_IOVMM_SMMU)
 	&tegra_smmu_device,
@@ -339,6 +345,7 @@ static struct platform_device *p1852_devices[] __initdata = {
 #if defined(CONFIG_TEGRA_AVP)
 	&tegra_avp_device,
 #endif
+	&tegra_camera,
 	&tegra_wdt_device
 };
 
@@ -402,12 +409,12 @@ static struct tegra_nor_platform_data p1852_nor_data = {
 	.chip_parms = {
 		/* FIXME: Need to use characterized value */
 		.timing_default = {
-			.timing0 = 0xA0400273,
-			.timing1 = 0x00030402,
+			.timing0 = 0x30300263,
+			.timing1 = 0x00030302,
 		},
 		.timing_read = {
-			.timing0 = 0xA0400273,
-			.timing1 = 0x00030402,
+			.timing0 = 0x30300263,
+			.timing1 = 0x00030302,
 		},
 	},
 };

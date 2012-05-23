@@ -144,6 +144,7 @@ static struct resource sdhci_resource3[] = {
 	},
 };
 
+#ifdef CONFIG_MMC_EMBEDDED_SDIO
 static struct embedded_sdio_data embedded_sdio_data1 = {
 	.cccr   = {
 		.sdio_vsn       = 2,
@@ -158,13 +159,19 @@ static struct embedded_sdio_data embedded_sdio_data1 = {
 		.device         = 0x4329,
 	},
 };
+#endif
 
 static struct tegra_sdhci_platform_data tegra_sdhci_platform_data1 = {
 	.mmc_data = {
 		.register_status_notify	= whistler_wifi_status_register,
+#ifdef CONFIG_MMC_EMBEDDED_SDIO
 		.embedded_sdio = &embedded_sdio_data1,
-		.built_in = 1,
+#endif
+		.built_in = 0,
 	},
+#ifndef CONFIG_MMC_EMBEDDED_SDIO
+	.pm_flags = MMC_PM_KEEP_POWER,
+#endif
 	.cd_gpio = -1,
 	.wp_gpio = -1,
 	.power_gpio = -1,
@@ -215,6 +222,20 @@ static struct platform_device tegra_sdhci_device3 = {
 		.platform_data = &tegra_sdhci_platform_data3,
 	},
 };
+
+#ifdef CONFIG_TEGRA_PREPOWER_WIFI
+static int __init whistler_wifi_prepower(void)
+{
+	if (!machine_is_whistler())
+		return 0;
+
+	whistler_wifi_power(1);
+
+	return 0;
+}
+
+subsys_initcall_sync(whistler_wifi_prepower);
+#endif
 
 static int __init whistler_wifi_init(void)
 {

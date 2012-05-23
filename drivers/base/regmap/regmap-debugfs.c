@@ -11,7 +11,6 @@
  */
 
 #include <linux/slab.h>
-#include <linux/module.h>
 #include <linux/mutex.h>
 #include <linux/debugfs.h>
 #include <linux/uaccess.h>
@@ -32,6 +31,35 @@ static int regmap_open_file(struct inode *inode, struct file *file)
 	file->private_data = inode->i_private;
 	return 0;
 }
+
+static ssize_t regmap_name_read_file(struct file *file,
+				     char __user *user_buf, size_t count,
+				     loff_t *ppos)
+{
+	struct regmap *map = file->private_data;
+	int ret;
+	char *buf;
+
+	buf = kmalloc(PAGE_SIZE, GFP_KERNEL);
+	if (!buf)
+		return -ENOMEM;
+
+	ret = snprintf(buf, PAGE_SIZE, "%s\n", map->dev->driver->name);
+	if (ret < 0) {
+		kfree(buf);
+		return ret;
+	}
+
+	ret = simple_read_from_buffer(user_buf, count, ppos, buf, ret);
+	kfree(buf);
+	return ret;
+}
+
+static const struct file_operations regmap_name_fops = {
+	.open = regmap_open_file,
+	.read = regmap_name_read_file,
+	.llseek = default_llseek,
+};
 
 static ssize_t regmap_map_read_file(struct file *file, char __user *user_buf,
 				    size_t count, loff_t *ppos)
@@ -57,7 +85,7 @@ static ssize_t regmap_map_read_file(struct file *file, char __user *user_buf,
 	val_len = 2 * map->format.val_bytes;
 	tot_len = reg_len + val_len + 3;      /* : \n */
 
-	for (i = 0; i < map->max_register + 1; i++) {
+	for (i = 0; i <= map->max_register; i += map->reg_stride) {
 		if (!regmap_readable(map, i))
 			continue;
 
@@ -103,9 +131,51 @@ out:
 	return ret;
 }
 
+#undef REGMAP_ALLOW_WRITE_DEBUGFS
+#ifdef REGMAP_ALLOW_WRITE_DEBUGFS
+/*
+ * This can be dangerous especially when we have clients such as
+ * PMICs, therefore don't provide any real compile time configuration option
+ * for this feature, people who want to use this will need to modify
+ * the source code directly.
+ */
+static ssize_t regmap_map_write_file(struct file *file,
+				     const char __user *user_buf,
+				     size_t count, loff_t *ppos)
+{
+	char buf[32];
+	size_t buf_size;
+	char *start = buf;
+	unsigned long reg, value;
+	struct regmap *map = file->private_data;
+
+	buf_size = min(count, (sizeof(buf)-1));
+	if (copy_from_user(buf, user_buf, buf_size))
+		return -EFAULT;
+	buf[buf_size] = 0;
+
+	while (*start == ' ')
+		start++;
+	reg = simple_strtoul(start, &start, 16);
+	while (*start == ' ')
+		start++;
+	if (strict_strtoul(start, 16, &value))
+		return -EINVAL;
+
+	/* Userspace has been fiddling around behind the kernel's back */
+	add_taint(TAINT_USER);
+
+	regmap_write(map, reg, value);
+	return buf_size;
+}
+#else
+#define regmap_map_write_file NULL
+#endif
+
 static const struct file_operations regmap_map_fops = {
 	.open = regmap_open_file,
 	.read = regmap_map_read_file,
+	.write = regmap_map_write_file,
 	.llseek = default_llseek,
 };
 
@@ -132,7 +202,7 @@ static ssize_t regmap_access_read_file(struct file *file,
 	reg_len = regmap_calc_reg_len(map->max_register, buf, count);
 	tot_len = reg_len + 10; /* ': R W V P\n' */
 
-	for (i = 0; i < map->max_register + 1; i++) {
+	for (i = 0; i <= map->max_register; i += map->reg_stride) {
 		/* Ignore registers which are neither readable nor writable */
 		if (!regmap_readable(map, i) && !regmap_writeable(map, i))
 			continue;
@@ -177,14 +247,24 @@ static const struct file_operations regmap_access_fops = {
 	.llseek = default_llseek,
 };
 
-void regmap_debugfs_init(struct regmap *map)
+void regmap_debugfs_init(struct regmap *map, const char *name)
 {
-	map->debugfs = debugfs_create_dir(dev_name(map->dev),
-					  regmap_debugfs_root);
+	if (name) {
+		map->debugfs_name = kasprintf(GFP_KERNEL, "%s-%s",
+					      dev_name(map->dev), name);
+		name = map->debugfs_name;
+	} else {
+		name = dev_name(map->dev);
+	}
+
+	map->debugfs = debugfs_create_dir(name, regmap_debugfs_root);
 	if (!map->debugfs) {
 		dev_warn(map->dev, "Failed to create debugfs directory\n");
 		return;
 	}
+
+	debugfs_create_file("name", 0400, map->debugfs,
+			    map, &regmap_name_fops);
 
 	if (map->max_register) {
 		debugfs_create_file("registers", 0400, map->debugfs,
@@ -206,6 +286,7 @@ void regmap_debugfs_init(struct regmap *map)
 void regmap_debugfs_exit(struct regmap *map)
 {
 	debugfs_remove_recursive(map->debugfs);
+	kfree(map->debugfs_name);
 }
 
 void regmap_debugfs_initcall(void)

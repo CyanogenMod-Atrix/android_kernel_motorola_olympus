@@ -1232,8 +1232,8 @@ static struct fsl_usb2_platform_data tegra_udc_pdata = {
 };
 
 struct platform_device tegra_udc_device = {
-	.name	= "fsl-tegra-udc",
-	.id	= -1,
+	.name	= "tegra-udc",
+	.id	= 0,
 	.dev	= {
 		.dma_mask	= &tegra_udc_dmamask,
 		.coherent_dma_mask = DMA_BIT_MASK(32),

@@ -53,7 +53,7 @@ config NVMAP_RECLAIM_UNPINNED_VM
 config NVMAP_ALLOW_SYSMEM
 	bool "Allow physical system memory to be used by nvmap"
 	depends on TEGRA_NVMAP
-	default y
+	default n
 	help
 	  Say Y here to allow nvmap to use physical system memory (i.e.,
 	  shared with the operating system but not translated through
@@ -85,6 +85,22 @@ config NVMAP_CARVEOUT_COMPACTOR
 	  heap and retries the failed allocation.
 	  Say Y here to let nvmap to keep carveout fragmentation under control.
 
+config NVMAP_PAGE_POOLS
+	bool "Use page pools to reduce allocation overhead"
+	depends on TEGRA_NVMAP
+	default y
+	help
+	  say Y here to reduce the alloction overhead, which is significant
+	  for uncached, writecombine and inner cacheable memories as it
+	  involves changing page attributes during every allocation per page
+	  and flushing cache. Alloc time is reduced by allcoating the pages
+	  ahead and keeping them aside. The reserved pages would be released
+	  when system is low on memory and acquired back during release of
+	  memory.
+
+config NVMAP_PAGE_POOL_SIZE
+	hex
+	default 0x0
 
 config NVMAP_VPR
 	bool "Enable VPR Heap."

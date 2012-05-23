@@ -347,17 +347,12 @@ int aic3262_add_multiconfig_controls(struct snd_soc_codec *codec)
  *---------------------------------------------------------------------------
  */
 void minidsp_multiconfig(struct snd_soc_codec *codec,
-									reg_value *a_patch, int a_size,
-									reg_value *d_patch, int d_size)
+	reg_value *a_patch, int a_size,	reg_value *d_patch, int d_size)
 {
-	struct aic3262_priv *aic326x = snd_soc_codec_get_drvdata(codec);
-	int val1,val2;
 	int adc_status,dac_status;
 	int (*ptransfer)(struct snd_soc_codec *codec,
-				reg_value *program_ptr,
-				int size);
-
-printk("======in the config_multiconfiguration function==== \n");
+			reg_value *program_ptr, int size);
+	printk(KERN_INFO "======in the config_multiconfiguration function====\n");
 #ifndef MULTIBYTE_I2C
 		ptransfer = byte_i2c_array_transfer;
 #else

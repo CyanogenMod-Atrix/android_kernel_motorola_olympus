@@ -177,7 +177,7 @@ static void max17048_get_vcell(struct i2c_client *client)
 	if (vcell < 0)
 		dev_err(&client->dev, "%s: err %d\n", __func__, vcell);
 	else
-		chip->vcell = (uint16_t)vcell;
+		chip->vcell = (uint16_t)(((vcell >> 4) * 125) / 100);
 }
 
 static void max17048_get_soc(struct i2c_client *client)
@@ -276,13 +276,18 @@ static int max17048_write_rcomp_seg(struct i2c_client *client,
 {
 	uint8_t rs1, rs2;
 	int ret;
+	uint8_t rcomp_seg_table[16];
 
 	rs2 = rcomp_seg | 0x00FF;
 	rs1 = rcomp_seg >> 8;
-	uint8_t rcomp_seg_table[16] = { rs1, rs2, rs1, rs2,
-					rs1, rs2, rs1, rs2,
-					rs1, rs2, rs1, rs2,
-					rs1, rs2, rs1, rs2};
+
+	rcomp_seg_table[0] = rcomp_seg_table[2] = rcomp_seg_table[4] =
+		rcomp_seg_table[6] = rcomp_seg_table[8] = rcomp_seg_table[10] =
+			rcomp_seg_table[12] = rcomp_seg_table[14] = rs1;
+
+	rcomp_seg_table[1] = rcomp_seg_table[3] = rcomp_seg_table[5] =
+		rcomp_seg_table[7] = rcomp_seg_table[9] = rcomp_seg_table[11] =
+			rcomp_seg_table[13] = rcomp_seg_table[15] = rs2;
 
 	ret = i2c_smbus_write_i2c_block_data(client, MAX17048_RCOMPSEG1,
 				16, (uint8_t *)rcomp_seg_table);
@@ -562,14 +567,30 @@ static int max17048_suspend(struct i2c_client *client,
 		pm_message_t state)
 {
 	struct max17048_chip *chip = i2c_get_clientdata(client);
+	int ret;
 
 	cancel_delayed_work(&chip->work);
+
+	ret = max17048_write_word(client, MAX17048_HIBRT, 0xffff);
+	if (ret < 0) {
+		dev_err(&client->dev, "failed in entering hibernate mode\n");
+		return ret;
+	}
+
 	return 0;
 }
 
 static int max17048_resume(struct i2c_client *client)
 {
 	struct max17048_chip *chip = i2c_get_clientdata(client);
+	int ret;
+	struct max17048_battery_model *mdata = chip->model_data;
+
+	ret = max17048_write_word(client, MAX17048_HIBRT, mdata->hibernate);
+	if (ret < 0) {
+		dev_err(&client->dev, "failed in exiting hibernate mode\n");
+		return ret;
+	}
 
 	schedule_delayed_work(&chip->work, MAX17048_DELAY);
 	return 0;

@@ -21,11 +21,14 @@
 #include <linux/delay.h>
 #include <linux/err.h>
 #include <linux/i2c.h>
+#include <linux/nct1008.h>
 #include <linux/cm3217.h>
 #include <linux/mpu.h>
 #include <linux/regulator/consumer.h>
+#include <linux/slab.h>
 #include <asm/mach-types.h>
 #include <mach/gpio.h>
+#include <mach/thermal.h>
 #include <media/ov2710.h>
 #include "board.h"
 #include "board-kai.h"
@@ -33,6 +36,110 @@
 
 static struct regulator *kai_1v8_cam3;
 static struct regulator *kai_vdd_cam3;
+
+#ifndef CONFIG_TEGRA_INTERNAL_TSENSOR_EDP_SUPPORT
+static int nct_get_temp(void *_data, long *temp)
+{
+	struct nct1008_data *data = _data;
+	return nct1008_thermal_get_temp(data, temp);
+}
+
+static int nct_get_temp_low(void *_data, long *temp)
+{
+	struct nct1008_data *data = _data;
+	return nct1008_thermal_get_temp_low(data, temp);
+}
+
+static int nct_set_limits(void *_data,
+			long lo_limit_milli,
+			long hi_limit_milli)
+{
+	struct nct1008_data *data = _data;
+	return nct1008_thermal_set_limits(data,
+					lo_limit_milli,
+					hi_limit_milli);
+}
+
+static int nct_set_alert(void *_data,
+				void (*alert_func)(void *),
+				void *alert_data)
+{
+	struct nct1008_data *data = _data;
+	return nct1008_thermal_set_alert(data, alert_func, alert_data);
+}
+
+static int nct_set_shutdown_temp(void *_data, long shutdown_temp)
+{
+	struct nct1008_data *data = _data;
+	return nct1008_thermal_set_shutdown_temp(data, shutdown_temp);
+}
+
+static void nct1008_probe_callback(struct nct1008_data *data)
+{
+	struct tegra_thermal_device *thermal_device;
+
+	thermal_device = kzalloc(sizeof(struct tegra_thermal_device),
+					GFP_KERNEL);
+	if (!thermal_device) {
+		pr_err("unable to allocate thermal device\n");
+		return;
+	}
+
+	thermal_device->name = "nct72";
+	thermal_device->data = data;
+	thermal_device->offset = TDIODE_OFFSET;
+	thermal_device->get_temp = nct_get_temp;
+	thermal_device->get_temp_low = nct_get_temp_low;
+	thermal_device->set_limits = nct_set_limits;
+	thermal_device->set_alert = nct_set_alert;
+	thermal_device->set_shutdown_temp = nct_set_shutdown_temp;
+
+	tegra_thermal_set_device(thermal_device);
+}
+#endif
+
+static struct nct1008_platform_data kai_nct1008_pdata = {
+	.supported_hwrev = true,
+	.ext_range = true,
+	.conv_rate = 0x09, /* 0x09 corresponds to 32Hz conversion rate */
+	.offset = 8, /* 4 * 2C. 1C for device accuracies */
+#ifndef CONFIG_TEGRA_INTERNAL_TSENSOR_EDP_SUPPORT
+	.probe_callback = nct1008_probe_callback,
+#endif
+};
+
+static struct i2c_board_info kai_i2c4_nct1008_board_info[] = {
+	{
+		I2C_BOARD_INFO("nct72", 0x4C),
+		.platform_data = &kai_nct1008_pdata,
+		.irq = -1,
+	}
+};
+
+static int kai_nct1008_init(void)
+{
+	int ret = 0;
+
+	/* FIXME: enable irq when throttling is supported */
+	kai_i2c4_nct1008_board_info[0].irq =
+		TEGRA_GPIO_TO_IRQ(KAI_TEMP_ALERT_GPIO);
+
+	ret = gpio_request(KAI_TEMP_ALERT_GPIO, "temp_alert");
+	if (ret < 0) {
+		pr_err("%s: gpio_request failed\n", __func__);
+		return ret;
+	}
+
+	ret = gpio_direction_input(KAI_TEMP_ALERT_GPIO);
+	if (ret < 0) {
+		pr_err("%s: set gpio to input failed\n", __func__);
+		gpio_free(KAI_TEMP_ALERT_GPIO);
+	}
+	else
+		tegra_gpio_enable(KAI_TEMP_ALERT_GPIO);
+
+	return ret;
+}
 
 static struct cm3217_platform_data kai_cm3217_pdata = {
 	.levels = {10, 160, 225, 320, 640, 1280, 2600, 5800, 8000, 10240},
@@ -83,7 +190,7 @@ static int kai_ov2710_power_on(void)
 		kai_vdd_cam3 = regulator_get(NULL, "vdd_cam3");
 		if (WARN_ON(IS_ERR(kai_vdd_cam3))) {
 			pr_err("%s: couldn't get regulator vdd_cam3: %d\n",
-				__func__, PTR_ERR(kai_vdd_cam3));
+				__func__, (int)PTR_ERR(kai_vdd_cam3));
 			goto reg_get_vdd_cam3_fail;
 		}
 	}
@@ -93,7 +200,7 @@ static int kai_ov2710_power_on(void)
 		kai_1v8_cam3 = regulator_get(NULL, "vdd_1v8_cam3");
 		if (WARN_ON(IS_ERR(kai_1v8_cam3))) {
 			pr_err("%s: couldn't get regulator vdd_1v8_cam3: %d\n",
-				__func__, PTR_ERR(kai_1v8_cam3));
+				__func__, (int)PTR_ERR(kai_1v8_cam3));
 			goto reg_get_vdd_1v8_cam3_fail;
 		}
 	}
@@ -245,6 +352,15 @@ static void mpuirq_init(void)
 
 int __init kai_sensors_init(void)
 {
+	int err;
+
+	err = kai_nct1008_init();
+	if (err)
+		pr_err("%s: nct1008 init failed\n", __func__);
+	else
+		i2c_register_board_info(4, kai_i2c4_nct1008_board_info,
+			ARRAY_SIZE(kai_i2c4_nct1008_board_info));
+
 	kai_camera_init();
 
 	i2c_register_board_info(2, kai_i2c2_board_info,

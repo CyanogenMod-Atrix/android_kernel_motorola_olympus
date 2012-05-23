@@ -38,7 +38,7 @@
 
 /* macro to enable tsensor hw reset */
 /* FIXME: till tsensor temperature is reliable this should be 0 */
-#define ENABLE_TSENSOR_HW_RESET 0
+#define ENABLE_TSENSOR_HW_RESET 1
 
 /* tsensor instance used for temperature calculation */
 #define TSENSOR_FUSE_REV1	8
@@ -1542,7 +1542,7 @@ static int tsensor_within_limits(struct tegra_tsensor_data *data)
 
 static void tsensor_work_func(struct work_struct *work)
 {
-	struct tegra_tsensor_data *data = container_of(work,
+	struct tegra_tsensor_data *data = container_of(to_delayed_work(work),
 		struct tegra_tsensor_data, work);
 
 	if (!data->alert_func)

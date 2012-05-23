@@ -2,7 +2,7 @@
  * arch/arm/mach-tegra/fuse.c
  *
  * Copyright (C) 2010 Google, Inc.
- * Copyright (C) 2010-2011 NVIDIA Corp.
+ * Copyright (C) 2010-2012 NVIDIA Corp.
  *
  * Author:
  *	Colin Cross <ccross@android.com>
@@ -70,8 +70,6 @@ struct tegra_id {
 };
 
 static struct tegra_id tegra_id;
-static unsigned int tegra_chip_id;
-static unsigned int tegra_chip_rev;
 
 static const char *tegra_revision_name[TEGRA_REVISION_MAX] = {
 	[TEGRA_REVISION_UNKNOWN] = "unknown",
@@ -343,19 +341,6 @@ static enum tegra_revision tegra_decode_revision(const struct tegra_id *id)
 		revision = tegra_chip_revisions[i].revision;
 		break;
 	}
-
-#elif defined(CONFIG_TEGRA_FPGA_PLATFORM)
-	if ((id->chipid & 0xf0) == TEGRA_CHIPID_TEGRA3) {
-		if ((id->major == 0) && (id->minor == 1)) {
-			unsigned int patch = id->patch & 0xF;
-			if ((id->netlist == 12) && (patch == 12))
-				revision = TEGRA_REVISION_A01;
-			else if ((id->netlist == 12) && (patch > 12))
-				revision = TEGRA_REVISION_A02;
-			else if (id->netlist > 12)
-				revision = TEGRA_REVISION_A02;
-		}
-	}
 #endif
 
 	return revision;
@@ -396,66 +381,37 @@ static void tegra_get_tegraid_from_hw(void)
 
 enum tegra_chipid tegra_get_chipid(void)
 {
-	if (tegra_id.chipid == TEGRA_CHIPID_UNKNOWN) {
-		/* Boot loader did not pass a valid chip ID.
-		 * Get it from hardware */
+	if (tegra_id.chipid == TEGRA_CHIPID_UNKNOWN)
 		tegra_get_tegraid_from_hw();
-	}
 
 	return tegra_id.chipid;
 }
 
 enum tegra_revision tegra_get_revision(void)
 {
-	if (tegra_id.chipid == TEGRA_CHIPID_UNKNOWN) {
-		/* Boot loader did not pass a valid chip ID.
-		 * Get it from hardware */
+	if (tegra_id.chipid == TEGRA_CHIPID_UNKNOWN)
 		tegra_get_tegraid_from_hw();
-	}
 
 	return tegra_id.revision;
 }
 
-static char chippriv[16]; /* Permanent buffer for private string */
-static int __init tegra_bootloader_tegraid(char *str)
+static int get_chip_id(char *val, const struct kernel_param *kp)
 {
-	u32 id[5];
-	int i = 0;
-	char *priv = NULL;
-
-	do {
-		id[i++] = simple_strtoul(str, &str, 16);
-	} while (*str++ && i < ARRAY_SIZE(id));
-
-	if (*(str - 1) == '.') {
-		strncpy(chippriv, str, sizeof(chippriv) - 1);
-		priv = chippriv;
-		if (strlen(str) > sizeof(chippriv) - 1)
-			pr_err("### tegraid.priv in kernel arg truncated\n");
-	}
-
-	while (i < ARRAY_SIZE(id))
-		id[i++] = 0;
-
-	tegra_set_tegraid(id[0], id[1], id[2], id[3], id[4], priv);
-	return 0;
-}
-
-static unsigned int get_chip_id(char *val, struct kernel_param *kp)
-{
-	tegra_chip_id = (unsigned int)tegra_get_chipid();
-	return param_get_uint(val, kp);
-}
-static unsigned int get_chip_rev(char *val, struct kernel_param *kp)
-{
-	tegra_chip_rev = (unsigned int)tegra_get_revision();
 	return param_get_uint(val, kp);
 }
 
-module_param_call(tegra_chip_id, NULL, get_chip_id, &tegra_chip_id, 0444);
-__MODULE_PARM_TYPE(tegra_chip_id, "uint");
-module_param_call(tegra_chip_rev, NULL, get_chip_rev, &tegra_chip_rev, 0444);
-__MODULE_PARM_TYPE(tegra_chip_rev, "uint");
+static int get_revision(char *val, const struct kernel_param *kp)
+{
+	return param_get_uint(val, kp);
+}
 
-/* tegraid=chipid.major.minor.netlist.patch[.priv] */
-early_param("tegraid", tegra_bootloader_tegraid);
+static struct kernel_param_ops tegra_chip_id_ops = {
+	.get = get_chip_id,
+};
+
+static struct kernel_param_ops tegra_revision_ops = {
+	.get = get_revision,
+};
+
+module_param_cb(tegra_chip_id, &tegra_chip_id_ops, &tegra_id.chipid, 0444);
+module_param_cb(tegra_chip_rev, &tegra_revision_ops, &tegra_id.revision, 0444);

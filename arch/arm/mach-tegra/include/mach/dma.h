@@ -190,6 +190,7 @@ struct tegra_dma_channel *tegra_dma_allocate_channel(int mode,
 		const char namefmt[], ...);
 void tegra_dma_free_channel(struct tegra_dma_channel *ch);
 
+int tegra_dma_get_channel_id(struct tegra_dma_channel *ch);
 /*
  * tegra_dma_cancel: Stop the dma and remove all request from pending request
  * queue for transfer.

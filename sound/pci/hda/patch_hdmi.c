@@ -1112,6 +1112,12 @@ static int generic_hdmi_playback_pcm_prepare(struct hda_pcm_stream *hinfo,
 #if defined(CONFIG_SND_HDA_PLATFORM_NVIDIA_TEGRA) && defined(CONFIG_TEGRA_DC)
 	if (codec->preset->id == 0x10de0020) {
 		int err = 0;
+
+		if (substream->runtime->channels == 2)
+			tegra_hdmi_audio_null_sample_inject(true);
+		else
+			tegra_hdmi_audio_null_sample_inject(false);
+
 		/* Set hdmi:audio freq and source selection*/
 		err = tegra_hdmi_setup_audio_freq_source(
 					substream->runtime->rate, HDA);

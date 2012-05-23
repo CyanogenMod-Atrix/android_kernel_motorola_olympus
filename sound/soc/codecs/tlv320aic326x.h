@@ -36,7 +36,7 @@
 /* Enable register caching on write */
 #define EN_REG_CACHE 1
 
-#define MULTIBYTE_CONFIG_SUPPORT
+//#define MULTIBYTE_CONFIG_SUPPORT
 
 /*Setting all codec reg/write locally*/
 /* This definition is added as the snd_ direct call are
@@ -45,12 +45,12 @@ page, so fix that before commenting this line*/
 #define LOCAL_REG_ACCESS 1
 
 /* Macro to enable the inclusion of tiload kernel driver */
-#define AIC3262_TiLoad
+//#define AIC3262_TiLoad
 
 
 /* Macro enables or disables support for miniDSP in the driver */
 /* Enable the AIC3262_TiLoad macro first before enabling these macros */
-#define CONFIG_MINI_DSP
+//#define CONFIG_MINI_DSP
 /*#undef CONFIG_MINI_DSP*/
 
 /* Enable or disable controls to have Input routing*/
@@ -657,11 +657,12 @@ extern int aic326x_headset_detect(struct snd_soc_codec *codec,
 extern int aic326x_headset_button_init(struct snd_soc_codec *codec,
 	struct snd_soc_jack *jack, int jack_type);
 
-extern u8 aic3262_read(struct snd_soc_codec *codec, u16 reg);
+extern unsigned int aic3262_read(struct snd_soc_codec *codec, unsigned int reg);
 extern u16 aic3262_read_2byte(struct snd_soc_codec *codec, u16 reg);
 extern int aic3262_reset_cache(struct snd_soc_codec *codec);
 extern int aic3262_change_page(struct snd_soc_codec *codec, u8 new_page);
-extern int aic3262_write(struct snd_soc_codec *codec, u16 reg, u8 value);
+extern int aic3262_write(struct snd_soc_codec *codec, unsigned int reg,
+							unsigned int value);
 extern void aic3262_write_reg_cache(struct snd_soc_codec *codec,
 				    u16 reg, u8 value);
 extern int aic3262_change_book(struct snd_soc_codec *codec, u8 new_book);

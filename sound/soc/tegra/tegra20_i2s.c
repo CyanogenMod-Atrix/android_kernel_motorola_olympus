@@ -191,8 +191,9 @@ static int tegra20_i2s_hw_params(struct snd_pcm_substream *substream,
 	struct tegra20_i2s *i2s = snd_soc_dai_get_drvdata(dai);
 	u32 reg;
 	int ret, sample_size, srate, i2sclock, bitcnt, i2sclk_div;
+	u32 bit_format = i2s->reg_ctrl & TEGRA20_I2S_CTRL_BIT_FORMAT_MASK;
 
-	if ((i2s->reg_ctrl & TEGRA20_I2S_CTRL_BIT_FORMAT_I2S) &&
+	if ((bit_format == TEGRA20_I2S_CTRL_BIT_FORMAT_I2S) &&
 	    (params_channels(params) != 2)) {
 		dev_err(dev, "Only Stereo is supported in I2s mode\n");
 		return -EINVAL;

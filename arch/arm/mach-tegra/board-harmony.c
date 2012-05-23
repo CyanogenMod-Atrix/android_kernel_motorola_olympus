@@ -425,7 +425,8 @@ static struct tegra_sdhci_platform_data sdhci_pdata4 = {
 	.is_8bit	= 1,
 };
 
-static int __init harmony_wifi_init(void)
+#ifdef CONFIG_TEGRA_PREPOWER_WIFI
+static int __init harmony_wifi_prepower(void)
 {
         int gpio_pwr, gpio_rst;
 
@@ -458,7 +459,8 @@ static int __init harmony_wifi_init(void)
  * supply of external PMU and 1.2V regulator) are properly enabled,
  * and mmc driver has not yet probed for a device on SDIO bus.
  */
-subsys_initcall_sync(harmony_wifi_init);
+subsys_initcall_sync(harmony_wifi_prepower);
+#endif
 
 static void __init tegra_harmony_init(void)
 {

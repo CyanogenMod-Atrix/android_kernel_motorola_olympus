@@ -191,7 +191,7 @@ static struct regulator_consumer_supply tps6591x_ldo8_supply_0[] = {
 
 TPS_PDATA_INIT(vdd1, skubit0_0, 600,  1500, 0, 1, 1, 0, -1, 0, 0, EXT_CTRL_SLEEP_OFF, 0);
 TPS_PDATA_INIT(vdd1, skubit0_1, 600,  1500, 0, 1, 1, 0, -1, 0, 0, EXT_CTRL_SLEEP_OFF, 0);
-TPS_PDATA_INIT(vdd2, 0,         600,  1500, 0, 1, 1, 0, -1, 0, 0, 0, 0);
+TPS_PDATA_INIT(vdd2, 0,         600,  1500, 0, 0, 1, 0, -1, 0, 0, 0, 0);
 TPS_PDATA_INIT(vddctrl, 0,      600,  1400, 0, 1, 1, 0, -1, 0, 0, EXT_CTRL_EN1, 0);
 TPS_PDATA_INIT(vio,  0,         1500, 3300, 0, 1, 1, 0, -1, 0, 0, 0, 0);
 
@@ -486,7 +486,8 @@ int __init cardhu_regulator_init(void)
 	/* E1291-A04/A05: Enable DEV_SLP and enable sleep on GPIO2 */
 	if ((board_info.board_id == BOARD_E1291) &&
 			((board_info.fab == BOARD_FAB_A04) ||
-			 (board_info.fab == BOARD_FAB_A05))) {
+			 (board_info.fab == BOARD_FAB_A05) ||
+			 (board_info.fab == BOARD_FAB_A07))) {
 		tps_platform.dev_slp_en = true;
 		tps_platform.gpio_init_data = tps_gpio_pdata_e1291_a04;
 		tps_platform.num_gpioinit_data =
@@ -602,13 +603,13 @@ static struct regulator_consumer_supply fixed_reg_en_vdd_pnl1_supply[] = {
 /* CAM1_LDO_EN from AP GPIO KB_ROW6 R06*/
 static struct regulator_consumer_supply fixed_reg_cam1_ldo_en_supply[] = {
 	REGULATOR_SUPPLY("vdd_2v8_cam1", NULL),
-	REGULATOR_SUPPLY("vdd", "6-0072"),
+	REGULATOR_SUPPLY("avdd", "6-0072"),
 };
 
 /* CAM2_LDO_EN from AP GPIO KB_ROW7 R07*/
 static struct regulator_consumer_supply fixed_reg_cam2_ldo_en_supply[] = {
 	REGULATOR_SUPPLY("vdd_2v8_cam2", NULL),
-	REGULATOR_SUPPLY("vdd", "7-0072"),
+	REGULATOR_SUPPLY("avdd", "7-0072"),
 };
 
 /* CAM3_LDO_EN from AP GPIO KB_ROW8 S00*/
@@ -646,8 +647,8 @@ static struct regulator_consumer_supply fixed_reg_en_1v8_cam_supply[] = {
 	REGULATOR_SUPPLY("vdd_1v8_cam1", NULL),
 	REGULATOR_SUPPLY("vdd_1v8_cam2", NULL),
 	REGULATOR_SUPPLY("vdd_1v8_cam3", NULL),
-	REGULATOR_SUPPLY("vdd_i2c", "6-0072"),
-	REGULATOR_SUPPLY("vdd_i2c", "7-0072"),
+	REGULATOR_SUPPLY("dvdd", "6-0072"),
+	REGULATOR_SUPPLY("dvdd", "7-0072"),
 	REGULATOR_SUPPLY("vdd_i2c", "2-0033"),
 };
 
@@ -1027,7 +1028,8 @@ int __init cardhu_fixed_regulator_init(void)
 			nfixreg_devs = ARRAY_SIZE(fixed_reg_devs_e1291_a03);
 			fixed_reg_devs = fixed_reg_devs_e1291_a03;
 		} else if ((board_info.fab == BOARD_FAB_A04) ||
-				(board_info.fab == BOARD_FAB_A05)) {
+				(board_info.fab == BOARD_FAB_A05) ||
+				(board_info.fab == BOARD_FAB_A07)) {
 			nfixreg_devs = ARRAY_SIZE(fixed_reg_devs_e1291_a04);
 			fixed_reg_devs = fixed_reg_devs_e1291_a04;
 		} else {
@@ -1150,17 +1152,6 @@ int __init cardhu_suspend_init(void)
 	tegra_init_suspend(&cardhu_suspend_data);
 	return 0;
 }
-
-static struct tegra_tsensor_pmu_data  tpdata = {
-	.poweroff_reg_addr = 0x3F,
-	.poweroff_reg_data = 0x80,
-	.reset_tegra = 1,
-	.controller_type = 0,
-	.i2c_controller_id = 4,
-	.pinmux = 0,
-	.pmu_16bit_ops = 0,
-	.pmu_i2c_addr = 0x2D,
-};
 
 #ifdef CONFIG_TEGRA_EDP_LIMITS
 

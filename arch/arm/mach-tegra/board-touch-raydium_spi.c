@@ -220,15 +220,15 @@ int __init touch_init_raydium(int irq_gpio, int reset_gpio, int platform)
 	switch (platform) {
 	case 0:
 		pr_info("Raydium Kai PCB based touch init\n");
-		rm31080ts_data.config = rm31080_config_kai_pcb;
+		rm31080ts_data.config = (char *) rm31080_config_kai_pcb;
 		break;
 	case 1:
 		pr_info("Raydium Kai On-Board touch init\n");
-		rm31080ts_data.config = rm31080_config_kai_mainboard;
+		rm31080ts_data.config = (char *) rm31080_config_kai_mainboard;
 		break;
 	case 2:
 		pr_info("Raydium cardhu touch init\n");
-		rm31080ts_data.config = rm31080_config_cardhu;
+		rm31080ts_data.config = (char *) rm31080_config_cardhu;
 		break;
 	default:
 		pr_err("touch_id error, no touch\n");

@@ -66,7 +66,7 @@ ENTRY(tegra_resume)
 
 	cpu_id	r0
 	cmp	r0, #0				@ CPU0?
-	bne	cpu_resume			@ no
+	bne	tegra_cpu_resume_phys		@ no
 
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
 	@ Clear the flow controller flags for this CPU.
@@ -83,7 +83,9 @@ ENTRY(tegra_resume)
 	ldr	r1, [r0]
 	orr	r1, r1, #1
 #if defined(CONFIG_HAVE_ARM_SCU)
-	orr	r1, r1, #(1 << 3)	@ Enabled SCU speculative line fill.
+	orr	r1, r1, #(1 << 3)	@ Enable SCU speculative line fill.
+	orr	r1, r1, #(1 << 5)	@ Enable IC standby.
+	orr	r1, r1, #(1 << 6)	@ Enable SCU standby.
 #endif
 	str	r1, [r0]
 
@@ -92,7 +94,7 @@ ENTRY(tegra_resume)
 	bl	tegra_generic_smc
 #endif
 
-	b	cpu_resume
+	b	tegra_cpu_resume_phys
 ENDPROC(tegra_resume)
 #endif
 

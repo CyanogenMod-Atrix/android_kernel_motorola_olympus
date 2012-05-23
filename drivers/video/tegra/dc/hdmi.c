@@ -67,6 +67,28 @@
 #define HDMI_ELD_PRODUCT_CODE_INDEX		18
 #define HDMI_ELD_MONITOR_NAME_INDEX		20
 
+/* These two values need to be cross checked in case of
+     addition/removal from tegra_dc_hdmi_aspect_ratios[] */
+#define TEGRA_DC_HDMI_MIN_ASPECT_RATIO_PERCENT	80
+#define TEGRA_DC_HDMI_MAX_ASPECT_RATIO_PERCENT	320
+
+/* Percentage equivalent of standard aspect ratios
+    accurate upto two decimal digits */
+static int tegra_dc_hdmi_aspect_ratios[] = {
+	/*   3:2	*/	150,
+	/*   4:3	*/	133,
+	/*   4:5	*/	 80,
+	/*   5:4	*/	125,
+	/*   9:5	*/	180,
+	/*  16:5	*/	320,
+	/*  16:9	*/	178,
+	/* 16:10	*/	160,
+	/* 19:10	*/	190,
+	/* 25:16	*/	156,
+	/* 64:35	*/	183,
+	/* 72:35	*/	206
+};
+
 struct tegra_dc_hdmi_data {
 	struct tegra_dc			*dc;
 	struct tegra_edid		*edid;
@@ -94,6 +116,7 @@ struct tegra_dc_hdmi_data {
 	bool				clk_enabled;
 	unsigned			audio_freq;
 	unsigned			audio_source;
+	bool				audio_inject_null;
 
 	bool				dvi;
 };
@@ -947,12 +970,16 @@ static const struct tegra_hdmi_audio_config
 unsigned long tegra_hdmi_readl(struct tegra_dc_hdmi_data *hdmi,
 					     unsigned long reg)
 {
-	return readl(hdmi->base + reg * 4);
+	unsigned long ret;
+	ret = readl(hdmi->base + reg * 4);
+	trace_printk("readl %p=%#08lx\n", hdmi->base + reg * 4, ret);
+	return ret;
 }
 
 void tegra_hdmi_writel(struct tegra_dc_hdmi_data *hdmi,
 				     unsigned long val, unsigned long reg)
 {
+	trace_printk("writel %p=%#08lx\n", hdmi->base + reg * 4, val);
 	writel(val, hdmi->base + reg * 4);
 }
 
@@ -1240,62 +1267,84 @@ static bool tegra_dc_reload_mode(struct fb_videomode *mode)
 	return false;
 }
 
-
-static bool tegra_dc_hdmi_mode_filter(const struct tegra_dc *dc,
+static bool tegra_dc_hdmi_valid_asp_ratio(const struct tegra_dc *dc,
 					struct fb_videomode *mode)
 {
-	int i;
-	int clock_per_frame;
+	int count = 0;
+	int m_aspratio = 0;
+	int s_aspratio = 0;
 
-	if (!mode->pixclock)
-		return false;
+	/* To check the aspect upto two decimal digits, calculate in % */
+	m_aspratio = (mode->xres*100 / mode->yres);
 
-#ifdef CONFIG_TEGRA_HDMI_74MHZ_LIMIT
-	if (PICOS2KHZ(mode->pixclock) > 74250)
-		return false;
-#endif
+	if ((m_aspratio < TEGRA_DC_HDMI_MIN_ASPECT_RATIO_PERCENT) ||
+			(m_aspratio > TEGRA_DC_HDMI_MAX_ASPECT_RATIO_PERCENT))
+				return false;
 
-	for (i = 0; i < ARRAY_SIZE(tegra_dc_hdmi_supported_modes); i++) {
-		const struct fb_videomode *supported_mode
-				= &tegra_dc_hdmi_supported_modes[i];
-		if (tegra_dc_hdmi_mode_equal(supported_mode, mode) &&
-		    tegra_dc_hdmi_valid_pixclock(dc, supported_mode)) {
-			if (mode->lower_margin == 1) {
-				/* This might be the case for HDMI<->DVI
-				 * where std VESA representation will not
-				 * pass constraint V_FRONT_PORCH >=
-				 * V_REF_TO_SYNC + 1.So reload mode in
-				 * CVT timing standards.
-				 */
-				if (!tegra_dc_reload_mode(mode))
-					return false;
-			}
-			else
-				memcpy(mode, supported_mode, sizeof(*mode));
-
-			mode->flag = FB_MODE_IS_DETAILED;
-			clock_per_frame = tegra_dc_calc_clock_per_frame(mode);
-			mode->refresh = (PICOS2KHZ(mode->pixclock) * 1000)
-					/ clock_per_frame;
-			return true;
-		}
+	/* Check from the table of  supported aspect ratios, allow
+	    difference of 1% for second decimal digit calibration */
+	for (count = 0; count < ARRAY_SIZE(tegra_dc_hdmi_aspect_ratios);
+		 count++) {
+			s_aspratio =  tegra_dc_hdmi_aspect_ratios[count];
+			if ((m_aspratio == s_aspratio) ||
+				(abs(m_aspratio - s_aspratio) == 1))
+				return true;
 	}
 
 	return false;
 }
 
 
+static bool tegra_dc_hdmi_mode_filter(const struct tegra_dc *dc,
+					struct fb_videomode *mode)
+{
+	if (mode->vmode & FB_VMODE_INTERLACED)
+		return false;
+
+	/* Ignore modes with a 0 pixel clock */
+	if (!mode->pixclock)
+		return false;
+
+#ifdef CONFIG_TEGRA_HDMI_74MHZ_LIMIT
+		if (PICOS2KHZ(mode->pixclock) > 74250)
+			return false;
+#endif
+
+	/* Check if the mode's pixel clock is more than the max rate*/
+	if (!tegra_dc_hdmi_valid_pixclock(dc, mode))
+		return false;
+
+	/* Check if the mode's aspect ratio is supported */
+	if (!tegra_dc_hdmi_valid_asp_ratio(dc, mode))
+		return false;
+
+	/* Check some of DC's constraints */
+	if (mode->hsync_len > 1 && mode->vsync_len > 1 &&
+		mode->lower_margin + mode->vsync_len + mode->upper_margin > 1 &&
+		mode->xres >= 16 && mode->yres >= 16) {
+
+		if (mode->lower_margin == 1) {
+			/* This might be the case for HDMI<->DVI
+			 * where std VESA representation will not
+			 * pass constraint V_FRONT_PORCH >=
+			 * V_REF_TO_SYNC + 1.So reload mode in
+			 * CVT timing standards.
+			 */
+			if (!tegra_dc_reload_mode(mode))
+				return false;
+		}
+		mode->flag = FB_MODE_IS_DETAILED;
+		mode->refresh = (PICOS2KHZ(mode->pixclock) * 1000) /
+				tegra_dc_calc_clock_per_frame(mode);
+		return true;
+	}
+
+	return false;
+}
+
 static bool tegra_dc_hdmi_hpd(struct tegra_dc *dc)
 {
-	int sense;
-	int level;
-
-	level = gpio_get_value(dc->out->hotplug_gpio);
-
-	sense = dc->out->flags & TEGRA_DC_OUT_HOTPLUG_MASK;
-
-	return (sense == TEGRA_DC_OUT_HOTPLUG_HIGH && level) ||
-		(sense == TEGRA_DC_OUT_HOTPLUG_LOW && !level);
+	return tegra_dc_hpd(dc);
 }
 
 
@@ -1816,7 +1865,10 @@ static int tegra_dc_hdmi_setup_audio(struct tegra_dc *dc, unsigned audio_freq,
 		a_source = AUDIO_CNTRL0_SOURCE_SELECT_SPDIF;
 
 #if !defined(CONFIG_ARCH_TEGRA_2x_SOC)
-	tegra_hdmi_writel(hdmi,a_source | AUDIO_CNTRL0_INJECT_NULLSMPL,
+	if (hdmi->audio_inject_null)
+		a_source |= AUDIO_CNTRL0_INJECT_NULLSMPL;
+
+	tegra_hdmi_writel(hdmi,a_source,
 			  HDMI_NV_PDISP_SOR_AUDIO_CNTRL0_0);
 	tegra_hdmi_writel(hdmi,
 			  AUDIO_CNTRL0_ERROR_TOLERANCE(6) |
@@ -1919,6 +1971,31 @@ int tegra_hdmi_setup_audio_freq_source(unsigned audio_freq, unsigned audio_sourc
 EXPORT_SYMBOL(tegra_hdmi_setup_audio_freq_source);
 
 #if !defined(CONFIG_ARCH_TEGRA_2x_SOC)
+int tegra_hdmi_audio_null_sample_inject(bool on)
+{
+	struct tegra_dc_hdmi_data *hdmi = dc_hdmi;
+	unsigned int val = 0;
+
+	if (!hdmi)
+		return -EAGAIN;
+
+	if (hdmi->audio_inject_null != on) {
+		hdmi->audio_inject_null = on;
+		if (hdmi->clk_enabled) {
+			val = tegra_hdmi_readl(hdmi,
+				HDMI_NV_PDISP_SOR_AUDIO_CNTRL0_0);
+			val &= ~AUDIO_CNTRL0_INJECT_NULLSMPL;
+			if (on)
+				val |= AUDIO_CNTRL0_INJECT_NULLSMPL;
+			tegra_hdmi_writel(hdmi,val,
+				HDMI_NV_PDISP_SOR_AUDIO_CNTRL0_0);
+		}
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL(tegra_hdmi_audio_null_sample_inject);
+
 int tegra_hdmi_setup_hda_presence()
 {
 	struct tegra_dc_hdmi_data *hdmi = dc_hdmi;
@@ -2005,6 +2082,11 @@ static void tegra_dc_hdmi_setup_avi_infoframe(struct tegra_dc *dc, bool dvi)
 
 	avi.r = HDMI_AVI_R_SAME;
 
+	if ((dc->mode.h_active == 720) && ((dc->mode.v_active == 480) || (dc->mode.v_active == 576)))
+		tegra_dc_writel(dc, 0x00101010, DC_DISP_BORDER_COLOR);
+	else
+		tegra_dc_writel(dc, 0x00000000, DC_DISP_BORDER_COLOR);
+
 	if (dc->mode.v_active == 480) {
 		if (dc->mode.h_active == 640) {
 			avi.m = HDMI_AVI_M_4_3;
@@ -2037,9 +2119,12 @@ static void tegra_dc_hdmi_setup_avi_infoframe(struct tegra_dc *dc, bool dvi)
 		(dc->mode.v_active == 2205 && dc->mode.stereo_mode)) {
 		/* VIC for both 1080p and 1080p 3D mode */
 		avi.m = HDMI_AVI_M_16_9;
-		if (dc->mode.h_front_porch == 88)
-			avi.vic = 16; /* 60 Hz */
-		else if (dc->mode.h_front_porch == 528)
+		if (dc->mode.h_front_porch == 88) {
+			if (dc->mode.pclk > 74250000)
+				avi.vic = 16; /* 60 Hz */
+			else
+				avi.vic = 34; /* 30 Hz */
+		} else if (dc->mode.h_front_porch == 528)
 			avi.vic = 31; /* 50 Hz */
 		else
 			avi.vic = 32; /* 24 Hz */
@@ -2200,10 +2285,16 @@ static void tegra_dc_hdmi_enable(struct tegra_dc *dc)
 			  VSYNC_WINDOW_ENABLE,
 			  HDMI_NV_PDISP_HDMI_VSYNC_WINDOW);
 
-	tegra_hdmi_writel(hdmi,
-			  (dc->ndev->id ? HDMI_SRC_DISPLAYB : HDMI_SRC_DISPLAYA) |
-			  ARM_VIDEO_RANGE_LIMITED,
-			  HDMI_NV_PDISP_INPUT_CONTROL);
+	if ((dc->mode.h_active == 720) && ((dc->mode.v_active == 480) || (dc->mode.v_active == 576)))
+		tegra_hdmi_writel(hdmi,
+				  (dc->ndev->id ? HDMI_SRC_DISPLAYB : HDMI_SRC_DISPLAYA) |
+				  ARM_VIDEO_RANGE_FULL,
+				  HDMI_NV_PDISP_INPUT_CONTROL);
+	else
+		tegra_hdmi_writel(hdmi,
+				  (dc->ndev->id ? HDMI_SRC_DISPLAYB : HDMI_SRC_DISPLAYA) |
+				  ARM_VIDEO_RANGE_LIMITED,
+				  HDMI_NV_PDISP_INPUT_CONTROL);
 
 	clk_disable(hdmi->disp1_clk);
 	clk_disable(hdmi->disp2_clk);
@@ -2374,6 +2465,7 @@ struct tegra_dc_out_ops tegra_dc_hdmi_ops = {
 	.detect = tegra_dc_hdmi_detect,
 	.suspend = tegra_dc_hdmi_suspend,
 	.resume = tegra_dc_hdmi_resume,
+	.mode_filter = tegra_dc_hdmi_mode_filter,
 };
 
 struct tegra_dc_edid *tegra_dc_get_edid(struct tegra_dc *dc)

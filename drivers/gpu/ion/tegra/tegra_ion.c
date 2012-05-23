@@ -31,7 +31,7 @@
 #define HEAP_FLAGS 0xFF
 
 #if !defined(CONFIG_TEGRA_NVMAP)
-#include "mach/nvmap.h"
+#include "linux/nvmap.h"
 struct nvmap_device *nvmap_dev;
 #endif
 

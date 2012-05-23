@@ -101,32 +101,21 @@ static struct resource sdhci_resource3[] = {
 	},
 };
 
-static struct embedded_sdio_data embedded_sdio_data2 = {
-	.cccr   = {
-		.sdio_vsn       = 2,
-		.multi_block    = 1,
-		.low_speed      = 0,
-		.wide_bus       = 0,
-		.high_power     = 1,
-		.high_speed     = 1,
-	},
-	.cis  = {
-		.vendor         = 0x0097,
-		.device         = 0x4076,
-	},
-};
 
 static struct tegra_sdhci_platform_data tegra_sdhci_platform_data2 = {
 	.mmc_data = {
 		.register_status_notify	= kai_wifi_status_register,
-		/* .embedded_sdio = &embedded_sdio_data2, */
-		.built_in = 1,
+		.built_in = 0,
 	},
+#ifndef CONFIG_MMC_EMBEDDED_SDIO
+	.pm_flags = MMC_PM_KEEP_POWER,
+#endif
 	.cd_gpio = -1,
 	.wp_gpio = -1,
 	.power_gpio = -1,
-/*	.tap_delay = 6,
-	.is_voltage_switch_supported = false,
+	.tap_delay = 0x0F,
+	.ddr_clk_limit = 41000000,
+/*	.is_voltage_switch_supported = false,
 	.vdd_rail_name = NULL,
 	.slot_rail_name = NULL,
 	.vdd_max_uv = -1,
@@ -140,8 +129,9 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data0 = {
 	.cd_gpio = KAI_SD_CD,
 	.wp_gpio = -1,
 	.power_gpio = -1,
-/*	.tap_delay = 6,
-	.is_voltage_switch_supported = true,
+	.tap_delay = 0x0F,
+	.ddr_clk_limit = 41000000,
+/*	.is_voltage_switch_supported = true,
 	.vdd_rail_name = "vddio_sdmmc1",
 	.slot_rail_name = "vddio_sd_slot",
 	.vdd_max_uv = 3320000,
@@ -156,11 +146,11 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data3 = {
 	.power_gpio = -1,
 	.is_8bit = 1,
 	.tap_delay = 0x0F,
+	.ddr_clk_limit = 41000000,
 	.mmc_data = {
 		.built_in = 1,
 	}
-/*	.tap_delay = 6,
-	.is_voltage_switch_supported = false,
+/*	.is_voltage_switch_supported = false,
 	.vdd_rail_name = NULL,
 	.slot_rail_name = NULL,
 	.vdd_max_uv = -1,
@@ -226,6 +216,20 @@ static int kai_wifi_power(int power_on)
 
 	return 0;
 }
+
+#ifdef CONFIG_TEGRA_PREPOWER_WIFI
+static int __init kai_wifi_prepower(void)
+{
+	if (!machine_is_kai())
+		return 0;
+
+	kai_wifi_power(1);
+
+	return 0;
+}
+
+subsys_initcall_sync(kai_wifi_prepower);
+#endif
 
 static int __init kai_wifi_init(void)
 {

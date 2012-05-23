@@ -588,7 +588,7 @@ int mmc_send_bk_ops_cmd(struct mmc_card *card, bool is_synchronous)
 
 	cmd.opcode = MMC_SWITCH;
 	cmd.arg = (MMC_SWITCH_MODE_WRITE_BYTE << 24) |
-		(EXT_CSD_BKOPS_EN << 16) |
+		(EXT_CSD_BKOPS_START << 16) |
 		(1 << 8) |
 		EXT_CSD_CMD_SET_NORMAL;
 	if (is_synchronous)

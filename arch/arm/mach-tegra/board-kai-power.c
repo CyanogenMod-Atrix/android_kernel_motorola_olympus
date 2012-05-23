@@ -181,7 +181,7 @@ MAX77663_PDATA_INIT(sd0,  600000, 3387500, NULL, 1, 0, 0,
 		    0, 0, -1, FPS_SRC_NONE, -1, -1, EN2_CTRL_SD0 | SD_FSRADE_DISABLE);
 
 MAX77663_PDATA_INIT(sd1,  800000, 1587500, NULL, 1, 0, 0,
-		    1, 1, -1, FPS_SRC_1, -1, -1, SD_FSRADE_DISABLE);
+		    1, 1, -1, FPS_SRC_1, FPS_POWER_PERIOD_0, -1, SD_FSRADE_DISABLE);
 
 MAX77663_PDATA_INIT(sd2,  1800000, 1800000, NULL, 1, 0, 0,
 		    1, 1, -1, FPS_SRC_NONE, -1, -1, 0);
@@ -459,7 +459,7 @@ FIXED_REG(3, en_1v8_cam_a00,	en_1v8_cam,		max77663_rails(sd2),
 FIXED_REG(4, en_vddio_vid_a00,	en_vddio_vid,		NULL,
 	0,	0,	TEGRA_GPIO_PB2,				true,	0,	5000);
 FIXED_REG(5, en_3v3_modem_a00,	en_3v3_modem,		NULL,
-	1,	1,	TEGRA_GPIO_PP0,				true,	0,	3300);
+	0,	1,	TEGRA_GPIO_PP0,				true,	0,	3300);
 FIXED_REG(6, en_vdd_pnl_a00,	en_vdd_pnl,		FIXED_SUPPLY(en_3v3_sys_a00),
 	0,	0,	TEGRA_GPIO_PW1,				true,	0,	3300);
 FIXED_REG(7, en_cam3_ldo_a00,	en_cam3_ldo,		FIXED_SUPPLY(en_3v3_sys_a00),
@@ -483,9 +483,9 @@ FIXED_REG(3, en_1v8_cam_a01,	en_1v8_cam,		max77663_rails(sd2),
 FIXED_REG(4, en_vddio_vid_a01,	en_vddio_vid,		NULL,
 	0,	0,	TEGRA_GPIO_PB2,				true,	0,	5000);
 FIXED_REG(5, en_3v3_modem_a01,	en_3v3_modem,		NULL,
-	1,	1,	TEGRA_GPIO_PP0,				true,	0,	3300);
+	0,	1,	TEGRA_GPIO_PP0,				true,	0,	3300);
 FIXED_REG(6, en_vdd_pnl_a01,	en_vdd_pnl,		FIXED_SUPPLY(en_3v3_sys_a01),
-	0,	0,	TEGRA_GPIO_PW1,				true,	0,	3300);
+	0,	1,	TEGRA_GPIO_PW1,				true,	0,	3300);
 FIXED_REG(7, en_cam3_ldo_a01,	en_cam3_ldo,		FIXED_SUPPLY(en_3v3_sys_a01),
 	0,	0,	TEGRA_GPIO_PR7,				true,	0,	3300);
 FIXED_REG(8, en_vdd_com_a01,	en_vdd_com,		FIXED_SUPPLY(en_3v3_sys_a01),

@@ -4,8 +4,6 @@
  * Copyright (C) 2010 Google, Inc.
  * Author: Erik Gilling <konkers@android.com>
  *
- * Copyright (C) 2010-2012 NVIDIA Corporation
- *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
  * may be copied, distributed, and modified under those terms.
@@ -23,12 +21,14 @@
 #include <linux/io.h>
 #include <linux/mutex.h>
 #include <linux/wait.h>
+#include <linux/fb.h>
 #include <linux/completion.h>
 #include <linux/switch.h>
 
 #include <mach/dc.h>
 
 #include "../host/dev.h"
+#include "../host/nvhost_acm.h"
 #include "../host/host1x/host1x_syncpt.h"
 
 #include <mach/tegra_dc_ext.h>
@@ -65,11 +65,13 @@ struct tegra_dc_out_ops {
 	void (*enable)(struct tegra_dc *dc);
 	/* disable output.  dc clocks are on at this point */
 	void (*disable)(struct tegra_dc *dc);
-
 	/* suspend output.  dc clocks are on at this point */
 	void (*suspend)(struct tegra_dc *dc);
 	/* resume output.  dc clocks are on at this point */
 	void (*resume)(struct tegra_dc *dc);
+	/* mode filter. to provide a list of supported modes*/
+	bool (*mode_filter)(const struct tegra_dc *dc,
+			struct fb_videomode *mode);
 };
 
 struct tegra_dc {
@@ -95,8 +97,6 @@ struct tegra_dc {
 	void				*out_data;
 
 	struct tegra_dc_mode		mode;
-	bool				mode_dirty;
-	spinlock_t                      mode_lock;
 
 	struct tegra_dc_win		windows[DC_N_WINDOWS];
 	struct tegra_dc_blend		blend;
@@ -137,6 +137,8 @@ struct tegra_dc {
 
 	struct tegra_dc_ext		*ext;
 
+	struct tegra_dc_feature		*feature;
+
 #ifdef CONFIG_DEBUG_FS
 	struct dentry			*debugdir;
 #endif
@@ -159,14 +161,19 @@ static inline void tegra_dc_io_end(struct tegra_dc *dc)
 static inline unsigned long tegra_dc_readl(struct tegra_dc *dc,
 					   unsigned long reg)
 {
+	unsigned long ret;
+
 	BUG_ON(!nvhost_module_powered(nvhost_get_host(dc->ndev)->dev));
-	return readl(dc->base + reg * 4);
+	ret = readl(dc->base + reg * 4);
+	trace_printk("readl %p=%#08lx\n", dc->base + reg * 4, ret);
+	return ret;
 }
 
 static inline void tegra_dc_writel(struct tegra_dc *dc, unsigned long val,
 				   unsigned long reg)
 {
 	BUG_ON(!nvhost_module_powered(nvhost_get_host(dc->ndev)->dev));
+	trace_printk("writel %p=%#08lx\n", dc->base + reg * 4, val);
 	writel(val, dc->base + reg * 4);
 }
 

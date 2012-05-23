@@ -33,6 +33,8 @@
 
 #include <mach/dma.h>
 
+#define MAX_DMA_REQ_COUNT 2
+
 struct tegra_pcm_dma_params {
 	unsigned long addr;
 	unsigned long wrap;
@@ -48,8 +50,24 @@ struct tegra_runtime_data {
 	int dma_pos_end;
 	int period_index;
 	int dma_req_idx;
-	struct tegra_dma_req dma_req[2];
+	struct tegra_dma_req dma_req[MAX_DMA_REQ_COUNT];
 	struct tegra_dma_channel *dma_chan;
+	int dma_req_count;
 };
+
+int tegra_pcm_trigger(struct snd_pcm_substream *substream, int cmd);
+int tegra_pcm_allocate(struct snd_pcm_substream *substream,
+					int dma_mode,
+					const struct snd_pcm_hardware *pcm_hardware);
+int tegra_pcm_close(struct snd_pcm_substream *substream);
+int tegra_pcm_hw_params(struct snd_pcm_substream *substream,
+				struct snd_pcm_hw_params *params);
+int tegra_pcm_trigger(struct snd_pcm_substream *substream, int cmd);
+int tegra_pcm_mmap(struct snd_pcm_substream *substream,
+				struct vm_area_struct *vma);
+int tegra_pcm_dma_allocate(struct snd_soc_pcm_runtime *rtd, size_t size);
+void tegra_pcm_free(struct snd_pcm *pcm);
+snd_pcm_uframes_t tegra_pcm_pointer(struct snd_pcm_substream *substream);
+int tegra_pcm_hw_free(struct snd_pcm_substream *substream);
 
 #endif

@@ -859,7 +859,7 @@ static void utmi_phy_clk_disable(struct tegra_usb_phy *phy)
 	val |= HOSTPC1_DEVLC_PHCD;
 	writel(val, base + HOSTPC1_DEVLC);
 #endif
-	if (phy->instance == 2) {
+	if (phy->hotplug) {
 		val = readl(base + USB_SUSP_CTRL);
 		val |= USB_PHY_CLK_VALID_INT_ENB;
 		writel(val, base + USB_SUSP_CTRL);
@@ -1667,8 +1667,11 @@ static int utmi_phy_preresume(struct tegra_usb_phy *phy, bool remote_wakeup)
 static int utmi_phy_postresume(struct tegra_usb_phy *phy, bool is_dpd)
 {
 	unsigned long val;
+#if defined(CONFIG_ARCH_TEGRA_2x_SOC)
 	void __iomem *base = phy->regs;
+#else
 	void __iomem *pmc_base = IO_ADDRESS(TEGRA_PMC_BASE);
+#endif
 	unsigned  int inst = phy->instance;
 
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
@@ -1723,7 +1726,7 @@ static int uhsic_phy_preresume(struct tegra_usb_phy *phy, bool remote_wakeup)
 	return 0;
 }
 
-static int uhsic_phy_postresume(struct tegra_usb_phy *phy, bool is_dpd)
+static int usb_phy_set_tx_fill_tuning(struct tegra_usb_phy *phy, bool is_dpd)
 {
 	unsigned long val;
 	void __iomem *base = phy->regs;
@@ -2401,11 +2404,7 @@ static int uhsic_phy_power_on(struct tegra_usb_phy *phy, bool is_dpd)
 	val |= HOSTPC1_DEVLC_PSPD(HOSTPC1_DEVLC_PSPD_HIGH_SPEED);
 	writel(val, base + HOSTPC1_DEVLC);
 #endif
-	val = readl(base + USB_TXFILLTUNING);
-	if ((val & USB_FIFO_TXFILL_MASK) != USB_FIFO_TXFILL_THRES(0x10)) {
-		val = USB_FIFO_TXFILL_THRES(0x10);
-		writel(val, base + USB_TXFILLTUNING);
-	}
+	usb_phy_set_tx_fill_tuning(phy, is_dpd);
 
 	val = readl(base + USB_PORTSC1);
 	val &= ~(USB_PORTSC1_WKOC | USB_PORTSC1_WKDS | USB_PORTSC1_WKCN);
@@ -2497,7 +2496,7 @@ struct tegra_usb_phy *tegra_usb_phy_open(int instance, void __iomem *regs,
 	int i;
 	int err;
 #ifndef CONFIG_ARCH_TEGRA_2x_SOC
-	struct tegra_ulpi_config *uhsic_config;
+	struct tegra_uhsic_config *uhsic_config;
 	int reset_gpio, enable_gpio;
 #endif
 
@@ -2763,11 +2762,14 @@ void tegra_usb_phy_postresume(struct tegra_usb_phy *phy, bool is_dpd)
 		utmi_phy_postresume,
 		NULL,
 		NULL,
-		uhsic_phy_postresume,
+		NULL,
 	};
 
-	if (postresume[phy->usb_phy_type])
-		postresume[phy->usb_phy_type](phy, is_dpd);
+	usb_phy_set_tx_fill_tuning(phy, is_dpd);
+
+	// If Phy type is utmi, call its post resume
+	if (phy->usb_phy_type == 0)
+		utmi_phy_postresume(phy, is_dpd);
 }
 
 void tegra_ehci_pre_reset(struct tegra_usb_phy *phy, bool is_dpd)

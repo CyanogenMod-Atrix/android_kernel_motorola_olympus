@@ -2,7 +2,7 @@
  * EHCI-compliant USB host controller driver for NVIDIA Tegra SoCs
  *
  * Copyright (C) 2010 Google, Inc.
- * Copyright (C) 2009 - 2011 NVIDIA Corporation
+ * Copyright (C) 2009 - 2012 NVIDIA Corporation
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -578,7 +578,6 @@ static int tegra_usb_suspend(struct usb_hcd *hcd, bool is_dpd)
 static int tegra_usb_resume(struct usb_hcd *hcd, bool is_dpd)
 {
 	struct tegra_ehci_hcd *tegra = dev_get_drvdata(hcd->self.controller);
-	struct usb_device *udev = hcd->self.root_hub;
 	struct ehci_hcd	*ehci = hcd_to_ehci(hcd);
 	struct ehci_regs __iomem *hw = ehci->regs;
 	unsigned long val;
@@ -939,6 +938,22 @@ static int tegra_ehci_map_urb_for_dma(struct usb_hcd *hcd, struct urb *urb,
 		return ret;
 
 	ret = usb_hcd_map_urb_for_dma(hcd, urb, mem_flags);
+
+	/* control packets over dma */
+	if (urb->setup_dma)
+		dma_sync_single_for_device(hcd->self.controller,
+				urb->setup_dma, sizeof(struct usb_ctrlrequest),
+				DMA_TO_DEVICE);
+
+	/* urb buffers over dma */
+	if (urb->transfer_dma) {
+		enum dma_data_direction dir;
+		dir = usb_urb_dir_in(urb) ? DMA_FROM_DEVICE : DMA_TO_DEVICE;
+
+		dma_sync_single_for_device(hcd->self.controller,
+			urb->transfer_dma, urb->transfer_buffer_length, dir);
+	}
+
 	if (ret)
 		free_dma_aligned_buffer(urb);
 
@@ -947,6 +962,25 @@ static int tegra_ehci_map_urb_for_dma(struct usb_hcd *hcd, struct urb *urb,
 
 static void tegra_ehci_unmap_urb_for_dma(struct usb_hcd *hcd, struct urb *urb)
 {
+	struct tegra_ehci_hcd *tegra = dev_get_drvdata(hcd->self.controller);
+
+	/* Fence read for coherency of AHB master intiated writes */
+	if (tegra->phy->instance == 0)
+		readb(IO_ADDRESS(IO_PPCS_PHYS + USB1_PREFETCH_ID));
+	else if (tegra->phy->instance == 1)
+		readb(IO_ADDRESS(IO_PPCS_PHYS + USB2_PREFETCH_ID));
+	else if (tegra->phy->instance == 2)
+		readb(IO_ADDRESS(IO_PPCS_PHYS + USB3_PREFETCH_ID));
+
+	if (urb->transfer_dma) {
+		enum dma_data_direction dir;
+		dir = usb_urb_dir_in(urb) ? DMA_FROM_DEVICE : DMA_TO_DEVICE;
+		if (dir == DMA_FROM_DEVICE)
+			dma_sync_single_for_cpu(hcd->self.controller,
+				urb->transfer_dma, urb->transfer_buffer_length,
+				DMA_FROM_DEVICE);
+	}
+
 	usb_hcd_unmap_urb_for_dma(hcd, urb);
 	free_dma_aligned_buffer(urb);
 }
@@ -1046,31 +1080,32 @@ static const struct hc_driver tegra_ehci_hc_driver = {
 	.description		= hcd_name,
 	.product_desc		= "Tegra EHCI Host Controller",
 	.hcd_priv_size		= sizeof(struct ehci_hcd),
-
 	.flags			= HCD_USB2 | HCD_MEMORY,
 
-	.reset			= tegra_ehci_setup,
-	.irq			= tegra_ehci_irq,
-
+	/* standard ehci functions */
 	.start			= ehci_run,
 	.stop			= ehci_stop,
-	.shutdown		= tegra_ehci_shutdown,
-	.urb_enqueue		= tegra_ehci_urb_enqueue,
 	.urb_dequeue		= ehci_urb_dequeue,
-	.map_urb_for_dma	= tegra_ehci_map_urb_for_dma,
-	.unmap_urb_for_dma	= tegra_ehci_unmap_urb_for_dma,
 	.endpoint_disable	= ehci_endpoint_disable,
 	.endpoint_reset		= ehci_endpoint_reset,
 	.get_frame_number	= ehci_get_frame,
 	.hub_status_data	= ehci_hub_status_data,
-	.hub_control		= tegra_ehci_hub_control,
 	.clear_tt_buffer_complete = ehci_clear_tt_buffer_complete,
+	.relinquish_port	= ehci_relinquish_port,
+	.port_handed_over	= ehci_port_handed_over,
+
+	/* modified ehci functions for tegra */
+	.reset			= tegra_ehci_setup,
+	.irq			= tegra_ehci_irq,
+	.shutdown		= tegra_ehci_shutdown,
+	.map_urb_for_dma	= tegra_ehci_map_urb_for_dma,
+	.unmap_urb_for_dma	= tegra_ehci_unmap_urb_for_dma,
+	.hub_control		= tegra_ehci_hub_control,
+	.urb_enqueue		= tegra_ehci_urb_enqueue,
 #ifdef CONFIG_PM
 	.bus_suspend		= tegra_ehci_bus_suspend,
 	.bus_resume		= tegra_ehci_bus_resume,
 #endif
-	.relinquish_port	= ehci_relinquish_port,
-	.port_handed_over	= ehci_port_handed_over,
 };
 
 static int tegra_ehci_probe(struct platform_device *pdev)
@@ -1243,11 +1278,10 @@ fail_hcd:
 }
 
 #ifdef CONFIG_PM
-static int tegra_ehci_resume(struct platform_device *pdev)
+static int tegra_ehci_resume_noirq(struct device *dev)
 {
+	struct platform_device *pdev = to_platform_device(dev);
 	struct tegra_ehci_hcd *tegra = platform_get_drvdata(pdev);
-	struct usb_hcd *hcd = ehci_to_hcd(tegra->ehci);
-	int ret;
 
 	mutex_lock(&tegra->tegra_ehci_hcd_mutex);
 	if ((tegra->bus_suspended) && (tegra->power_down_on_bus_suspend)) {
@@ -1260,13 +1294,31 @@ static int tegra_ehci_resume(struct platform_device *pdev)
 	if (tegra->default_enable)
 		clk_enable(tegra->clk);
 
+	mutex_unlock(&tegra->tegra_ehci_hcd_mutex);
+	return 0;
+}
+
+static int tegra_ehci_resume(struct device *dev)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct tegra_ehci_hcd *tegra = platform_get_drvdata(pdev);
+	struct usb_hcd *hcd = ehci_to_hcd(tegra->ehci);
+	int ret;
+
+	mutex_lock(&tegra->tegra_ehci_hcd_mutex);
+	if ((tegra->bus_suspended) && (tegra->power_down_on_bus_suspend)) {
+		mutex_unlock(&tegra->tegra_ehci_hcd_mutex);
+		return 0;
+	}
+
 	ret = tegra_usb_resume(hcd, true);
 	mutex_unlock(&tegra->tegra_ehci_hcd_mutex);
 	return ret;
 }
 
-static int tegra_ehci_suspend(struct platform_device *pdev, pm_message_t state)
+static int tegra_ehci_suspend(struct device *dev)
 {
+	struct platform_device *pdev = to_platform_device(dev);
 	struct tegra_ehci_hcd *tegra = platform_get_drvdata(pdev);
 	struct usb_hcd *hcd = ehci_to_hcd(tegra->ehci);
 	int ret;
@@ -1304,6 +1356,13 @@ static int tegra_ehci_suspend(struct platform_device *pdev, pm_message_t state)
 	mutex_unlock(&tegra->tegra_ehci_hcd_mutex);
 	return ret;
 }
+
+static struct dev_pm_ops tegra_ehci_dev_pm_ops = {
+	.suspend	= tegra_ehci_suspend,
+	.resume		= tegra_ehci_resume,
+	.resume_noirq	= tegra_ehci_resume_noirq,
+};
+
 #endif
 
 static int tegra_ehci_remove(struct platform_device *pdev)
@@ -1363,12 +1422,11 @@ static void tegra_ehci_hcd_shutdown(struct platform_device *pdev)
 static struct platform_driver tegra_ehci_driver = {
 	.probe		= tegra_ehci_probe,
 	.remove		= tegra_ehci_remove,
-#ifdef CONFIG_PM
-	.suspend	= tegra_ehci_suspend,
-	.resume		= tegra_ehci_resume,
-#endif
 	.shutdown	= tegra_ehci_hcd_shutdown,
 	.driver		= {
 		.name	= "tegra-ehci",
+#ifdef CONFIG_PM
+		.pm	= &tegra_ehci_dev_pm_ops,
+#endif
 	}
 };

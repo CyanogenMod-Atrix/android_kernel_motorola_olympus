@@ -24,11 +24,8 @@
 #include <linux/kernel.h>
 #include <linux/sched.h>
 #include <linux/nvhost.h>
-#include <mach/nvmap.h>
+#include <linux/nvmap.h>
 #include <linux/atomic.h>
-
-struct nvhost_syncpt;
-struct nvhost_waitchk;
 
 /* host managed and invalid syncpt id */
 #define NVSYNCPT_GRAPHICS_HOST		     (0)
@@ -59,9 +56,8 @@ void nvhost_syncpt_deinit(struct nvhost_syncpt *);
 
 #define client_managed(id) (BIT(id) & sp->client_managed)
 #define syncpt_to_dev(sp) container_of(sp, struct nvhost_master, syncpt)
-#define syncpt_op(sp) (syncpt_to_dev(sp)->op.syncpt)
-#define SYNCPT_CHECK_PERIOD (2*HZ)
-
+#define SYNCPT_CHECK_PERIOD (2 * HZ)
+#define MAX_STUCK_CHECK_COUNT 15
 
 /**
  * Updates the value sent to hardware.
@@ -151,6 +147,7 @@ static inline int nvhost_syncpt_wait(struct nvhost_syncpt *sp, u32 id, u32 thres
  * @param: wait - start of filled in array of waitchk structs
  * @param: waitend - end ptr (one beyond last valid waitchk)
  */
+struct nvhost_waitchk;
 int nvhost_syncpt_wait_check(struct nvhost_syncpt *sp,
 			struct nvmap_client *nvmap,
 			u32 mask,

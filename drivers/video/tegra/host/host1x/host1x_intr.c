@@ -3,6 +3,7 @@
  *
  * Tegra Graphics Host Interrupt Management
  *
+ * Copyright (C) 2010 Google, Inc.
  * Copyright (c) 2010-2012, NVIDIA Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -20,18 +21,69 @@
 
 #include <linux/interrupt.h>
 #include <linux/irq.h>
+#include <linux/io.h>
+#include <asm/mach/irq.h>
 
 #include "nvhost_intr.h"
 #include "dev.h"
 #include "host1x_hardware.h"
 
-
 /*** HW host sync management ***/
+
+static void syncpt_thresh_mask(struct irq_data *data)
+{
+	(void)data;
+}
+
+static void syncpt_thresh_unmask(struct irq_data *data)
+{
+	(void)data;
+}
+
+static void syncpt_thresh_cascade(unsigned int irq, struct irq_desc *desc)
+{
+	void __iomem *sync_regs = irq_desc_get_handler_data(desc);
+	unsigned long reg;
+	int id;
+	struct irq_chip *chip = irq_desc_get_chip(desc);
+
+	chained_irq_enter(chip, desc);
+
+	reg = readl(sync_regs + HOST1X_SYNC_SYNCPT_THRESH_CPU0_INT_STATUS);
+
+	for_each_set_bit(id, &reg, 32)
+		generic_handle_irq(id + INT_SYNCPT_THRESH_BASE);
+
+	chained_irq_exit(chip, desc);
+}
+
+static struct irq_chip syncpt_thresh_irq = {
+	.name		= "syncpt",
+	.irq_mask	= syncpt_thresh_mask,
+	.irq_unmask	= syncpt_thresh_unmask
+};
 
 static void t20_intr_init_host_sync(struct nvhost_intr *intr)
 {
 	struct nvhost_master *dev = intr_to_dev(intr);
 	void __iomem *sync_regs = dev->sync_aperture;
+	int i, irq;
+
+	writel(0xffffffffUL,
+		sync_regs + HOST1X_SYNC_SYNCPT_THRESH_INT_DISABLE);
+	writel(0xffffffffUL,
+		sync_regs + HOST1X_SYNC_SYNCPT_THRESH_CPU0_INT_STATUS);
+
+	for (i = 0; i < INT_SYNCPT_THRESH_NR; i++) {
+		irq = INT_SYNCPT_THRESH_BASE + i;
+		irq_set_chip_and_handler(irq, &syncpt_thresh_irq,
+			handle_simple_irq);
+		irq_set_chip_data(irq, sync_regs);
+		set_irq_flags(irq, IRQF_VALID);
+	}
+	irq_set_chained_handler(INT_HOST1X_MPCORE_SYNCPT,
+		syncpt_thresh_cascade);
+	irq_set_handler_data(INT_HOST1X_MPCORE_SYNCPT, sync_regs);
 	/* disable the ip_busy_timeout. this prevents write drops, etc.
 	 * there's no real way to recover from a hung client anyway.
 	 */
@@ -198,21 +250,16 @@ static int t20_request_syncpt_irq(struct nvhost_intr_syncpt *syncpt)
 	return 0;
 }
 
-int nvhost_init_t20_intr_support(struct nvhost_master *host)
+int nvhost_init_t20_intr_support(struct nvhost_chip_support *op)
 {
-	host->op.intr.init_host_sync = t20_intr_init_host_sync;
-	host->op.intr.set_host_clocks_per_usec =
-		t20_intr_set_host_clocks_per_usec;
-	host->op.intr.set_syncpt_threshold = t20_intr_set_syncpt_threshold;
-	host->op.intr.enable_syncpt_intr = t20_intr_enable_syncpt_intr;
-	host->op.intr.disable_all_syncpt_intrs =
-		t20_intr_disable_all_syncpt_intrs;
-	host->op.intr.request_host_general_irq =
-		t20_intr_request_host_general_irq;
-	host->op.intr.free_host_general_irq =
-		t20_intr_free_host_general_irq;
-	host->op.intr.request_syncpt_irq =
-		t20_request_syncpt_irq;
+	op->intr.init_host_sync = t20_intr_init_host_sync;
+	op->intr.set_host_clocks_per_usec = t20_intr_set_host_clocks_per_usec;
+	op->intr.set_syncpt_threshold = t20_intr_set_syncpt_threshold;
+	op->intr.enable_syncpt_intr = t20_intr_enable_syncpt_intr;
+	op->intr.disable_all_syncpt_intrs = t20_intr_disable_all_syncpt_intrs;
+	op->intr.request_host_general_irq = t20_intr_request_host_general_irq;
+	op->intr.free_host_general_irq = t20_intr_free_host_general_irq;
+	op->intr.request_syncpt_irq = t20_request_syncpt_irq;
 
 	return 0;
 }
