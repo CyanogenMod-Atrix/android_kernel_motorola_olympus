@@ -276,6 +276,10 @@ void tegra_asoc_utils_fini(struct tegra_asoc_utils_data *data)
 		clk_put(data->clk_out1);
 
 	clk_put(data->clk_cdev1);
+	/* Just to make sure that clk_cdev1 should turn off in case if it is
+	 * switched on by some codec whose hw switch is not registered.*/
+	if (tegra_is_clk_enabled(data->clk_cdev1))
+		clk_disable(data->clk_cdev1);
 
 	if (!IS_ERR(data->clk_pll_a_out0))
 		clk_put(data->clk_pll_a_out0);
