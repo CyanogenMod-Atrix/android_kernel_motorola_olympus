@@ -346,6 +346,7 @@ static int tegra30_i2s_tdm_setup_clocks(struct device *dev,
 			dev_err(dev, "Can't set parent of I2S clock\n");
 			return ret;
 		}
+
 		ret = clk_set_rate(i2s->clk_i2s, *i2sclock);
 		if (ret) {
 			dev_err(dev, "Can't set I2S clock rate: %d\n", ret);
@@ -359,6 +360,13 @@ static int tegra30_i2s_tdm_setup_clocks(struct device *dev,
 			return ret;
 		}
 
+		ret = clk_set_parent(clk_get_parent(i2s->clk_audio_2x),
+						i2s->clk_i2s_sync);
+		if (ret) {
+			dev_err(dev, "Can't set parent of audio2x clock\n");
+			return ret;
+		}
+
 		ret = clk_set_rate(i2s->clk_audio_2x, *i2sclock);
 		if (ret) {
 			dev_err(dev, "Can't set audio2x clock rate\n");
@@ -367,7 +375,7 @@ static int tegra30_i2s_tdm_setup_clocks(struct device *dev,
 
 		ret = clk_set_parent(i2s->clk_i2s, i2s->clk_audio_2x);
 		if (ret) {
-			dev_err(dev, "Can't set parent of audio2x clock\n");
+			dev_err(dev, "Can't set parent of i2s clock\n");
 			return ret;
 		}
 	}
@@ -382,7 +390,8 @@ static int tegra30_i2s_tdm_hw_params(struct snd_pcm_substream *substream,
 	struct device *dev = substream->pcm->card->dev;
 	struct tegra30_i2s *i2s = snd_soc_dai_get_drvdata(dai);
 	u32 val;
-	int i2s_client_ch, i2s_audio_ch, i2s_audio_bits, i2s_client_bits;
+	int i2s_client_ch, i2s_audio_ch;
+	int i2s_audio_bits = 0, i2s_client_bits = 0;
 	int i2sclock, srate;
 	int ret;
 
