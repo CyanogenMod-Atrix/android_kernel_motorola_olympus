@@ -57,42 +57,6 @@
 #include "gpio-names.h"
 #include "fuse.h"
 
-static struct tegra_utmip_config utmi_phy_config[] = {
-	[0] = {
-			.hssync_start_delay = 0,
-			.idle_wait_delay = 17,
-			.elastic_limit = 16,
-			.term_range_adj = 6,
-			.xcvr_setup = 15,
-			.xcvr_setup_offset = 0,
-			.xcvr_use_fuses = 1,
-			.xcvr_lsfslew = 2,
-			.xcvr_lsrslew = 2,
-	},
-	[1] = {
-			.hssync_start_delay = 0,
-			.idle_wait_delay = 17,
-			.elastic_limit = 16,
-			.term_range_adj = 6,
-			.xcvr_setup = 15,
-			.xcvr_setup_offset = 0,
-			.xcvr_use_fuses = 1,
-			.xcvr_lsfslew = 2,
-			.xcvr_lsrslew = 2,
-	},
-	[2] = {
-			.hssync_start_delay = 0,
-			.idle_wait_delay = 17,
-			.elastic_limit = 16,
-			.term_range_adj = 6,
-			.xcvr_setup = 8,
-			.xcvr_setup_offset = 0,
-			.xcvr_use_fuses = 1,
-			.xcvr_lsfslew = 2,
-			.xcvr_lsrslew = 2,
-	},
-};
-
 static __initdata struct tegra_clk_init_table p1852_clk_init_table[] = {
 	/* name		parent		rate		enabled */
 	{ "pll_m",		NULL,		0,		true},
@@ -349,56 +313,91 @@ static struct platform_device *p1852_devices[] __initdata = {
 	&tegra_wdt_device
 };
 
-static struct usb_phy_plat_data tegra_usb_phy_pdata[] = {
-	[0] = {
-			.instance = 0,
-			.vbus_gpio = -1,
-			.vbus_reg_supply = NULL,
+static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
+	.port_otg = false,
+	.has_hostpc = true,
+	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
+	.op_mode = TEGRA_USB_OPMODE_HOST,
+	.u_data.host = {
+		.vbus_gpio = -1,
+		.vbus_reg = NULL,
+		.hot_plug = false,
+		.remote_wakeup_supported = true,
+		.power_off_on_suspend = true,
 	},
-	[1] = {
-			.instance = 1,
-			.vbus_gpio = -1,
-	},
-	[2] = {
-			.instance = 2,
-			.vbus_gpio = -1,
-			.vbus_reg_supply = NULL,
+	.u_cfg.utmi = {
+		.hssync_start_delay = 0,
+		.idle_wait_delay = 17,
+		.elastic_limit = 16,
+		.term_range_adj = 6,
+		.xcvr_setup = 15,
+		.xcvr_setup_offset = 0,
+		.xcvr_use_fuses = 1,
+		.xcvr_lsfslew = 2,
+		.xcvr_lsrslew = 2,
 	},
 };
 
-static struct tegra_ehci_platform_data tegra_ehci_pdata[] = {
-	[0] = {
-			.phy_config = &utmi_phy_config[0],
-			.operating_mode = TEGRA_USB_HOST,
-			.power_down_on_bus_suspend = 1,
+static struct tegra_usb_platform_data tegra_ehci2_utmi_pdata = {
+	.port_otg = false,
+	.has_hostpc = true,
+	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
+	.op_mode = TEGRA_USB_OPMODE_HOST,
+	.u_data.host = {
+		.vbus_gpio = -1,
+		.vbus_reg = NULL,
+		.hot_plug = false,
+		.remote_wakeup_supported = true,
+		.power_off_on_suspend = true,
 	},
-	[1] = {
-			.phy_config = &utmi_phy_config[1],
-			.operating_mode = TEGRA_USB_HOST,
-			.power_down_on_bus_suspend = 1,
+	.u_cfg.utmi = {
+		.hssync_start_delay = 0,
+		.idle_wait_delay = 17,
+		.elastic_limit = 16,
+		.term_range_adj = 6,
+		.xcvr_setup = 15,
+		.xcvr_setup_offset = 0,
+		.xcvr_use_fuses = 1,
+		.xcvr_lsfslew = 2,
+		.xcvr_lsrslew = 2,
 	},
-	[2] = {
-			.phy_config = &utmi_phy_config[2],
-			.operating_mode = TEGRA_USB_HOST,
-			.power_down_on_bus_suspend = 1,
+};
+
+static struct tegra_usb_platform_data tegra_ehci3_utmi_pdata = {
+	.port_otg = false,
+	.has_hostpc = true,
+	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
+	.op_mode = TEGRA_USB_OPMODE_HOST,
+	.u_data.host = {
+		.vbus_gpio = -1,
+		.vbus_reg = NULL,
+		.hot_plug = false,
+		.remote_wakeup_supported = true,
+		.power_off_on_suspend = true,
+	},
+	.u_cfg.utmi = {
+		.hssync_start_delay = 0,
+		.idle_wait_delay = 17,
+		.elastic_limit = 16,
+		.term_range_adj = 6,
+		.xcvr_setup = 8,
+		.xcvr_setup_offset = 0,
+		.xcvr_use_fuses = 1,
+		.xcvr_lsfslew = 2,
+		.xcvr_lsrslew = 2,
 	},
 };
 
 static void p1852_usb_init(void)
 {
-	/* Need to parse sku info to decide host/device mode */
-	tegra_usb_phy_init(tegra_usb_phy_pdata,
-				ARRAY_SIZE(tegra_usb_phy_pdata));
-
-	tegra_ehci1_device.dev.platform_data = &tegra_ehci_pdata[0];
+	tegra_ehci1_device.dev.platform_data = &tegra_ehci1_utmi_pdata;
 	platform_device_register(&tegra_ehci1_device);
 
-	tegra_ehci2_device.dev.platform_data = &tegra_ehci_pdata[1];
+	tegra_ehci2_device.dev.platform_data = &tegra_ehci2_utmi_pdata;
 	platform_device_register(&tegra_ehci2_device);
 
-	tegra_ehci3_device.dev.platform_data = &tegra_ehci_pdata[2];
+	tegra_ehci3_device.dev.platform_data = &tegra_ehci3_utmi_pdata;
 	platform_device_register(&tegra_ehci3_device);
-
 }
 
 static struct tegra_nor_platform_data p1852_nor_data = {

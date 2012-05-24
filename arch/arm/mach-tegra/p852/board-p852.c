@@ -288,49 +288,6 @@ static struct platform_device debug_uart = {
 		},
 };
 
-static struct tegra_utmip_config utmi_phy_config[] = {
-	[0] = {
-	       .hssync_start_delay = 0,
-	       .idle_wait_delay = 17,
-	       .elastic_limit = 16,
-	       .term_range_adj = 6,
-	       .xcvr_setup = 15,
-	       .xcvr_lsfslew = 2,
-	       .xcvr_lsrslew = 2,
-	       },
-	[1] = {
-	       .hssync_start_delay = 0,
-	       .idle_wait_delay = 17,
-	       .elastic_limit = 16,
-	       .term_range_adj = 6,
-	       .xcvr_setup = 8,
-	       .xcvr_lsfslew = 2,
-	       .xcvr_lsrslew = 2,
-	       },
-};
-
-static struct tegra_ulpi_config ulpi_usb2_config = {
-	.reset_gpio = TEGRA_GPIO_PI5,
-};
-
-static struct tegra_ehci_platform_data tegra_ehci_pdata[] = {
-	[0] = {
-	       .phy_config = &utmi_phy_config[0],
-	       .operating_mode = TEGRA_USB_HOST,
-	       .power_down_on_bus_suspend = 0,
-	       },
-	[1] = {
-	       .phy_config = &ulpi_usb2_config,
-	       .operating_mode = TEGRA_USB_HOST,
-	       .power_down_on_bus_suspend = 0,
-	       .phy_type = TEGRA_USB_PHY_TYPE_LINK_ULPI,
-	       },
-	[2] = {
-	       .phy_config = &utmi_phy_config[1],
-	       .operating_mode = TEGRA_USB_HOST,
-	       .power_down_on_bus_suspend = 0,
-	       },
-};
 
 static void p852_usb_gpio_config(void)
 {
@@ -529,6 +486,97 @@ static void __init p852_register_spidev(void)
 #define p852_register_spidev() do {} while (0)
 #endif
 
+/*
+  FixMe: Copied below GPIO value from Ventana board.
+  Plz correct it accordingly for embedded board usage
+*/
+#define TEGRA_GPIO_PV1		169
+
+static void ulpi_link_platform_open(void)
+{
+	int reset_gpio = TEGRA_GPIO_PV1;
+
+	gpio_request(reset_gpio, "ulpi_phy_reset");
+	gpio_direction_output(reset_gpio, 0);
+	tegra_gpio_enable(reset_gpio);
+
+	gpio_direction_output(reset_gpio, 0);
+	msleep(5);
+	gpio_direction_output(reset_gpio, 1);
+}
+
+static struct tegra_usb_phy_platform_ops ulpi_link_plat_ops = {
+	.open = ulpi_link_platform_open,
+};
+
+static struct tegra_usb_platform_data tegra_ehci_ulpi_link_pdata = {
+	.port_otg = false,
+	.has_hostpc = false,
+	.phy_intf = TEGRA_USB_PHY_INTF_ULPI_LINK,
+	.op_mode	= TEGRA_USB_OPMODE_HOST,
+	.u_data.host = {
+		.vbus_gpio = -1,
+		.vbus_reg = NULL,
+		.hot_plug = false,
+		.remote_wakeup_supported = false,
+		.power_off_on_suspend = false,
+	},
+	.u_cfg.ulpi = {
+		.shadow_clk_delay = 10,
+		.clock_out_delay = 1,
+		.data_trimmer = 4,
+		.stpdirnxt_trimmer = 4,
+		.dir_trimmer = 4,
+		.clk = "cdev2",
+	},
+	.ops = &ulpi_link_plat_ops,
+};
+
+static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
+	.port_otg = false,
+	.has_hostpc = false,
+	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
+	.op_mode = TEGRA_USB_OPMODE_HOST,
+	.u_data.host = {
+		.vbus_gpio = -1,
+		.vbus_reg = NULL,
+		.hot_plug = true,
+		.remote_wakeup_supported = true,
+		.power_off_on_suspend = false,
+	},
+	.u_cfg.utmi = {
+	       .hssync_start_delay = 0,
+	       .idle_wait_delay = 17,
+	       .elastic_limit = 16,
+	       .term_range_adj = 6,
+	       .xcvr_setup = 15,
+	       .xcvr_lsfslew = 2,
+	       .xcvr_lsrslew = 2,
+	},
+};
+
+static struct tegra_usb_platform_data tegra_ehci3_utmi_pdata = {
+	.port_otg = false,
+	.has_hostpc = false,
+	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
+	.op_mode = TEGRA_USB_OPMODE_HOST,
+	.u_data.host = {
+		.vbus_gpio = -1,
+		.vbus_reg = NULL,
+		.hot_plug = true,
+		.remote_wakeup_supported = true,
+		.power_off_on_suspend = false,
+	},
+	.u_cfg.utmi = {
+	       .hssync_start_delay = 0,
+	       .idle_wait_delay = 17,
+	       .elastic_limit = 16,
+	       .term_range_adj = 6,
+	       .xcvr_setup = 8,
+	       .xcvr_lsfslew = 2,
+	       .xcvr_lsrslew = 2,
+	},
+};
 static void __init p852_usb_init(void)
 {
 
@@ -541,16 +589,16 @@ static void __init p852_usb_init(void)
 	   else
 	 */
 	{
-		tegra_ehci1_device.dev.platform_data = &tegra_ehci_pdata[0];
+		tegra_ehci1_device.dev.platform_data = &tegra_ehci1_utmi_pdata;
 		platform_device_register(&tegra_ehci1_device);
 	}
 
 	if (!(p852_sku_peripherals & P852_SKU_ULPI_DISABLE)) {
-		tegra_ehci2_device.dev.platform_data = &tegra_ehci_pdata[1];
+		tegra_ehci2_device.dev.platform_data = &tegra_ehci_ulpi_link_pdata;
 		platform_device_register(&tegra_ehci2_device);
 	}
 
-	tegra_ehci3_device.dev.platform_data = &tegra_ehci_pdata[2];
+	tegra_ehci3_device.dev.platform_data = &tegra_ehci3_utmi_pdata;
 	platform_device_register(&tegra_ehci3_device);
 }
 

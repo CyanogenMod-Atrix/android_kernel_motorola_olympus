@@ -79,43 +79,6 @@ static struct tegra_thermal_data thermal_data = {
 #endif
 };
 
-/* !!!TODO: Change for enterprise (Taken from Cardhu) */
-static struct tegra_utmip_config utmi_phy_config[] = {
-	[0] = {
-			.hssync_start_delay = 0,
-			.idle_wait_delay = 17,
-			.elastic_limit = 16,
-			.term_range_adj = 6,
-			.xcvr_setup = 15,
-			.xcvr_setup_offset = 0,
-			.xcvr_use_fuses = 1,
-			.xcvr_lsfslew = 2,
-			.xcvr_lsrslew = 2,
-	},
-	[1] = {
-			.hssync_start_delay = 0,
-			.idle_wait_delay = 17,
-			.elastic_limit = 16,
-			.term_range_adj = 6,
-			.xcvr_setup = 15,
-			.xcvr_setup_offset = 0,
-			.xcvr_use_fuses = 1,
-			.xcvr_lsfslew = 2,
-			.xcvr_lsrslew = 2,
-	},
-	[2] = {
-			.hssync_start_delay = 0,
-			.idle_wait_delay = 17,
-			.elastic_limit = 16,
-			.term_range_adj = 6,
-			.xcvr_setup = 8,
-			.xcvr_setup_offset = 0,
-			.xcvr_use_fuses = 1,
-			.xcvr_lsfslew = 2,
-			.xcvr_lsrslew = 2,
-	},
-};
-
 static struct resource enterprise_bcm4329_rfkill_resources[] = {
 	{
 		.name   = "bcm4329_nshutdown_gpio",
@@ -653,66 +616,120 @@ static int __init enterprise_touch_init(void)
 	return 0;
 }
 
-static struct usb_phy_plat_data tegra_usb_phy_pdata[] = {
-	[0] = {
-			.instance = 0,
-			.vbus_gpio = -1,
-			.vbus_reg_supply = "usb_vbus",
-			.vbus_irq = ENT_TPS80031_IRQ_BASE +
-							TPS80031_INT_VBUS_DET,
+static void enterprise_usb_hsic_postsupend(void)
+{
+	pr_debug("%s\n", __func__);
+#ifdef CONFIG_TEGRA_BB_XMM_POWER
+	baseband_xmm_set_power_status(BBXMM_PS_L2);
+#endif
+}
+
+static void enterprise_usb_hsic_preresume(void)
+{
+	pr_debug("%s\n", __func__);
+#ifdef CONFIG_TEGRA_BB_XMM_POWER
+	baseband_xmm_set_power_status(BBXMM_PS_L2TOL0);
+#endif
+}
+
+static void enterprise_usb_hsic_phy_power(void)
+{
+	pr_debug("%s\n", __func__);
+#ifdef CONFIG_TEGRA_BB_XMM_POWER
+	baseband_xmm_set_power_status(BBXMM_PS_L0);
+#endif
+}
+
+static void enterprise_usb_hsic_post_phy_off(void)
+{
+	pr_debug("%s\n", __func__);
+#ifdef CONFIG_TEGRA_BB_XMM_POWER
+	baseband_xmm_set_power_status(BBXMM_PS_L3);
+#endif
+}
+
+static struct tegra_usb_phy_platform_ops hsic_xmm_plat_ops = {
+	.post_suspend = enterprise_usb_hsic_postsupend,
+	.pre_resume = enterprise_usb_hsic_preresume,
+	.port_power = enterprise_usb_hsic_phy_power,
+	.post_phy_off = enterprise_usb_hsic_post_phy_off,
+};
+
+static struct tegra_usb_platform_data tegra_ehci2_hsic_xmm_pdata = {
+	.port_otg = false,
+	.has_hostpc = true,
+	.phy_intf = TEGRA_USB_PHY_INTF_HSIC,
+	.op_mode	= TEGRA_USB_OPMODE_HOST,
+	.u_data.host = {
+		.vbus_gpio = -1,
+		.hot_plug = false,
+		.remote_wakeup_supported = false,
+		.power_off_on_suspend = false,
 	},
-	[1] = {
-			.instance = 1,
-			.vbus_gpio = -1,
+	.u_cfg.hsic = {
+		.sync_start_delay = 9,
+		.idle_wait_delay = 17,
+		.term_range_adj = 0,
+		.elastic_underrun_limit = 16,
+		.elastic_overrun_limit = 16,
 	},
-	[2] = {
-			.instance = 2,
-			.vbus_gpio = -1,
+	.ops = &hsic_xmm_plat_ops,
+};
+
+
+
+static struct tegra_usb_platform_data tegra_udc_pdata = {
+	.port_otg = true,
+	.has_hostpc = true,
+	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
+	.op_mode = TEGRA_USB_OPMODE_DEVICE,
+	.u_data.dev = {
+		.vbus_pmu_irq = 0,
+		.vbus_gpio = -1,
+		.charging_supported = false,
+		.remote_wakeup_supported = false,
+	},
+	.u_cfg.utmi = {
+		.hssync_start_delay = 0,
+		.elastic_limit = 16,
+		.idle_wait_delay = 17,
+		.term_range_adj = 6,
+		.xcvr_setup = 8,
+		.xcvr_lsfslew = 2,
+		.xcvr_lsrslew = 2,
+		.xcvr_setup_offset = 0,
+		.xcvr_use_fuses = 1,
 	},
 };
 
-static struct tegra_uhsic_config uhsic_phy_config = {
-	.enable_gpio = -1,
-	.reset_gpio = -1,
-	.sync_start_delay = 9,
-	.idle_wait_delay = 17,
-	.term_range_adj = 0,
-	.elastic_underrun_limit = 16,
-	.elastic_overrun_limit = 16,
-};
-
-static struct tegra_ehci_platform_data tegra_ehci_uhsic_pdata = {
-	.phy_type = TEGRA_USB_PHY_TYPE_HSIC,
-	.phy_config = &uhsic_phy_config,
-	.operating_mode = TEGRA_USB_HOST,
-	.power_down_on_bus_suspend = 1,
-	.default_enable = true,
-};
-
-static struct tegra_ehci_platform_data tegra_ehci_pdata[] = {
-	[0] = {
-			.phy_config = &utmi_phy_config[0],
-			.operating_mode = TEGRA_USB_HOST,
-			.power_down_on_bus_suspend = 1,
-			.default_enable = false,
+static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
+	.port_otg = true,
+	.has_hostpc = true,
+	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
+	.op_mode = TEGRA_USB_OPMODE_HOST,
+	.u_data.host = {
+		.vbus_gpio = -1,
+		.vbus_reg = "usb_vbus",
+		.hot_plug = true,
+		.remote_wakeup_supported = true,
+		.power_off_on_suspend = true,
 	},
-	[1] = {
-			.phy_config = &utmi_phy_config[1],
-			.operating_mode = TEGRA_USB_HOST,
-			.power_down_on_bus_suspend = 1,
-			.default_enable = false,
-	},
-	[2] = {
-			.phy_config = &utmi_phy_config[2],
-			.operating_mode = TEGRA_USB_HOST,
-			.power_down_on_bus_suspend = 1,
-			.default_enable = false,
+	.u_cfg.utmi = {
+		.hssync_start_delay = 0,
+		.elastic_limit = 16,
+		.idle_wait_delay = 17,
+		.term_range_adj = 6,
+		.xcvr_setup = 15,
+		.xcvr_lsfslew = 2,
+		.xcvr_lsrslew = 2,
+		.xcvr_setup_offset = 0,
+		.xcvr_use_fuses = 1,
 	},
 };
 
-static struct tegra_otg_platform_data tegra_otg_pdata = {
+static struct tegra_usb_otg_data tegra_otg_pdata = {
 	.ehci_device = &tegra_ehci1_device,
-	.ehci_pdata = &tegra_ehci_pdata[0],
+	.ehci_pdata = &tegra_ehci1_utmi_pdata,
 };
 
 struct platform_device *tegra_usb_hsic_host_register(void)
@@ -733,8 +750,8 @@ struct platform_device *tegra_usb_hsic_host_register(void)
 	pdev->dev.dma_mask =  tegra_ehci2_device.dev.dma_mask;
 	pdev->dev.coherent_dma_mask = tegra_ehci2_device.dev.coherent_dma_mask;
 
-	val = platform_device_add_data(pdev, &tegra_ehci_uhsic_pdata,
-			sizeof(struct tegra_ehci_platform_data));
+	val = platform_device_add_data(pdev, &tegra_ehci2_hsic_xmm_pdata,
+			sizeof(struct tegra_usb_platform_data));
 	if (val)
 		goto error;
 
@@ -755,52 +772,12 @@ void tegra_usb_hsic_host_unregister(struct platform_device *pdev)
 	platform_device_unregister(pdev);
 }
 
-static int enterprise_usb_hsic_postsupend(void)
-{
-	pr_debug("%s\n", __func__);
-#ifdef CONFIG_TEGRA_BB_XMM_POWER
-	baseband_xmm_set_power_status(BBXMM_PS_L2);
-#endif
-	return 0;
-}
-
-static int enterprise_usb_hsic_preresume(void)
-{
-	pr_debug("%s\n", __func__);
-#ifdef CONFIG_TEGRA_BB_XMM_POWER
-	baseband_xmm_set_power_status(BBXMM_PS_L2TOL0);
-#endif
-	return 0;
-}
-
-static int enterprise_usb_hsic_phy_ready(void)
-{
-	pr_debug("%s\n", __func__);
-#ifdef CONFIG_TEGRA_BB_XMM_POWER
-	baseband_xmm_set_power_status(BBXMM_PS_L0);
-#endif
-	return 0;
-}
-
-static int enterprise_usb_hsic_phy_off(void)
-{
-	pr_debug("%s\n", __func__);
-#ifdef CONFIG_TEGRA_BB_XMM_POWER
-	baseband_xmm_set_power_status(BBXMM_PS_L3);
-#endif
-	return 0;
-}
-
 static void enterprise_usb_init(void)
 {
-	struct	fsl_usb2_platform_data *udc_pdata;
-
-	tegra_usb_phy_init(tegra_usb_phy_pdata, ARRAY_SIZE(tegra_usb_phy_pdata));
+	tegra_udc_device.dev.platform_data = &tegra_udc_pdata;
 
 	tegra_otg_device.dev.platform_data = &tegra_otg_pdata;
 	platform_device_register(&tegra_otg_device);
-
-	udc_pdata = tegra_udc_device.dev.platform_data;
 }
 
 static struct platform_device *enterprise_audio_devices[] __initdata = {
@@ -910,12 +887,9 @@ static void enterprise_baseband_init(void)
 		enterprise_modem_init();
 		break;
 	case TEGRA_BB_XMM6260: /* XMM6260 HSIC */
-		/* xmm baseband - do not switch off phy during suspend */
-		tegra_ehci_uhsic_pdata.power_down_on_bus_suspend = 0;
-		uhsic_phy_config.postsuspend = enterprise_usb_hsic_postsupend;
-		uhsic_phy_config.preresume = enterprise_usb_hsic_preresume;
-		uhsic_phy_config.usb_phy_ready = enterprise_usb_hsic_phy_ready;
-		uhsic_phy_config.post_phy_off = enterprise_usb_hsic_phy_off;
+		/* baseband-power.ko will register ehci2 device */
+		tegra_ehci2_device.dev.platform_data =
+					&tegra_ehci2_hsic_xmm_pdata;
 		/* enable XMM6260 baseband gpio(s) */
 		tegra_gpio_enable(tegra_baseband_power_data.modem.generic
 			.mdm_reset);
@@ -938,9 +912,9 @@ static void enterprise_baseband_init(void)
 		break;
 #ifdef CONFIG_TEGRA_BB_M7400
 	case TEGRA_BB_M7400: /* M7400 HSIC */
-		tegra_ehci_uhsic_pdata.power_down_on_bus_suspend = 0;
+		tegra_ehci2_hsic_xmm_pdata.u_data.host.power_off_on_suspend = 0;
 		tegra_ehci2_device.dev.platform_data
-			= &tegra_ehci_uhsic_pdata;
+			= &tegra_ehci2_hsic_xmm_pdata;
 		platform_device_register(&tegra_baseband_m7400_device);
 		break;
 #endif
