@@ -92,14 +92,6 @@ struct nvmap_handle_ref {
 
 #define nvmap_id_to_handle(_id) ((struct nvmap_handle *)(_id))
 
-struct nvmap_pinarray_elem {
-	__u32 patch_mem;
-	__u32 patch_offset;
-	__u32 pin_mem;
-	__u32 pin_offset;
-	__u32 reloc_shift;
-};
-
 struct nvmap_client *nvmap_create_client(struct nvmap_device *dev,
 					 const char *name);
 
@@ -125,16 +117,8 @@ phys_addr_t nvmap_handle_address(struct nvmap_client *c, unsigned long id);
 
 void nvmap_unpin(struct nvmap_client *client, struct nvmap_handle_ref *r);
 
-int nvmap_pin_array(struct nvmap_client *client, struct nvmap_handle *gather,
-		    const struct nvmap_pinarray_elem *arr, int nr,
-		    struct nvmap_handle **unique);
-
 void nvmap_unpin_handles(struct nvmap_client *client,
 			 struct nvmap_handle **h, int nr);
-
-int nvmap_patch_word(struct nvmap_client *client,
-		     struct nvmap_handle *patch,
-		     u32 patch_offset, u32 patch_value);
 
 struct nvmap_handle_ref *nvmap_duplicate_handle_id(struct nvmap_client *client,
 						   unsigned long id);
