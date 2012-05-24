@@ -105,6 +105,18 @@ static int rt5639_reg_init(struct snd_soc_codec *codec)
 }
 #endif
 
+static int rt5639_index_sync(struct snd_soc_codec *codec)
+{
+	int i;
+
+	for (i = 0; i < RT5639_INIT_REG_LEN; i++)
+		if (RT5639_PRIV_INDEX == init_list[i].reg ||
+			RT5639_PRIV_DATA == init_list[i].reg)
+			snd_soc_write(codec, init_list[i].reg,
+					init_list[i].val);
+	return 0;
+}
+
 static const u16 rt5639_reg[RT5639_VENDOR_ID2 + 1] = {
 	[RT5639_RESET] = 0x0008,
 	[RT5639_SPK_VOL] = 0xc8c8,
@@ -2213,7 +2225,9 @@ static int rt5639_set_bias_level(struct snd_soc_codec *codec,
 				RT5639_PWR_FV1 | RT5639_PWR_FV2,
 				RT5639_PWR_FV1 | RT5639_PWR_FV2);
 			codec->cache_only = false;
+			codec->cache_sync = 1;
 			snd_soc_cache_sync(codec);
+			rt5639_index_sync(codec);
 		}
 		break;
 
@@ -2311,13 +2325,23 @@ static int rt5639_remove(struct snd_soc_codec *codec)
 #ifdef CONFIG_PM
 static int rt5639_suspend(struct snd_soc_codec *codec, pm_message_t state)
 {
+	rt5639_reset(codec);
 	rt5639_set_bias_level(codec, SND_SOC_BIAS_OFF);
 	return 0;
 }
 
 static int rt5639_resume(struct snd_soc_codec *codec)
 {
+	int ret = 0 ;
+
+	codec->cache_sync = 1;
+	ret = snd_soc_cache_sync(codec);
+	if (ret) {
+		dev_err(codec->dev,"Failed to sync cache: %d\n", ret);
+		return ret;
+	}
 	rt5639_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
+
 	return 0;
 }
 #else
