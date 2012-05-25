@@ -87,6 +87,7 @@ static void nct1008_probe_callback(struct nct1008_data *data)
 
 	thermal_device->name = "nct72";
 	thermal_device->data = data;
+	thermal_device->id = THERMAL_DEVICE_ID_NCT_EXT;
 	thermal_device->offset = TDIODE_OFFSET;
 	thermal_device->get_temp = nct_get_temp;
 	thermal_device->get_temp_low = nct_get_temp_low;
@@ -94,7 +95,7 @@ static void nct1008_probe_callback(struct nct1008_data *data)
 	thermal_device->set_alert = nct_set_alert;
 	thermal_device->set_shutdown_temp = nct_set_shutdown_temp;
 
-	tegra_thermal_set_device(thermal_device);
+	tegra_thermal_device_register(thermal_device);
 }
 #endif
 

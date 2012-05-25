@@ -33,7 +33,6 @@
 #include "cpu-tegra.h"
 #include "dvfs.h"
 
-
 static struct mutex *cpu_throttle_lock;
 static DEFINE_MUTEX(bthrot_list_lock);
 static LIST_HEAD(bthrot_list);
@@ -63,13 +62,32 @@ unsigned int tegra_throttle_governor_speed(unsigned int requested_speed)
 	struct balanced_throttle *bthrot;
 	unsigned int throttle_speed = requested_speed;
 	int index;
+	unsigned int bthrot_speed;
+	unsigned int lowest_speed;
+	struct cpufreq_frequency_table *cpu_freq_table;
+	struct tegra_cpufreq_table_data *table_data =
+		tegra_cpufreq_table_get();
+
+	if (!table_data)
+		return requested_speed;
+
+
+	cpu_freq_table = table_data->freq_table;
+	lowest_speed = cpu_freq_table[table_data->throttle_lowest_index].frequency;
 
 	mutex_lock(&bthrot_list_lock);
+
 	list_for_each_entry(bthrot, &bthrot_list, node) {
 		if (bthrot->is_throttling) {
 			index = bthrot->throttle_index;
-			throttle_speed = min(throttle_speed,
-				bthrot->throt_tab[index].cpu_freq);
+			bthrot_speed = bthrot->throt_tab[index].cpu_freq;
+
+			if (bthrot_speed == 0)
+				bthrot_speed = lowest_speed;
+			else
+				bthrot_speed = clip_to_table(bthrot_speed);
+
+			throttle_speed = min(throttle_speed, bthrot_speed);
 		}
 	}
 	mutex_unlock(&bthrot_list_lock);
@@ -227,43 +245,24 @@ static struct dentry *throttle_debugfs_root;
 #endif /* CONFIG_DEBUG_FS */
 
 
-struct balanced_throttle *balanced_throttle_register(
-					int id,
-					struct throttle_table *table,
-					int tab_size)
+int balanced_throttle_register(struct balanced_throttle *bthrot)
 {
-	struct balanced_throttle *bthrot;
+#ifdef CONFIG_DEBUG_FS
 	char name[32];
-	int i, index;
-	struct cpufreq_frequency_table *cpu_freq_table;
-	struct tegra_cpufreq_table_data *table_data =
-		tegra_cpufreq_table_get();
-	if (IS_ERR_OR_NULL(table_data))
-		return ERR_PTR(-EINVAL);
+#endif
+	struct balanced_throttle *dev;
 
-	cpu_freq_table = table_data->freq_table;
-
-	bthrot = kzalloc(sizeof(struct balanced_throttle), GFP_KERNEL);
-
-	if (!bthrot)
-		return ERR_PTR(-ENOMEM);
-
-	bthrot->id = id;
-	bthrot->throt_tab = table;
-	bthrot->throt_tab_size = tab_size;
-
-
-	for (i = 0; i < bthrot->throt_tab_size; i++) {
-		unsigned int cpu_freq = bthrot->throt_tab[i].cpu_freq;
-		if (cpu_freq == 0) {
-			index = table_data->throttle_lowest_index;
-			cpu_freq = cpu_freq_table[index].frequency;
-		} else {
-			cpu_freq = clip_to_table(cpu_freq);
+	mutex_lock(&bthrot_list_lock);
+	list_for_each_entry(dev, &bthrot_list, node) {
+		if (dev->id == bthrot->id) {
+			mutex_unlock(&bthrot_list_lock);
+			return -EINVAL;
 		}
-
-		bthrot->throt_tab[i].cpu_freq = cpu_freq;
 	}
+
+
+	list_add(&bthrot->node, &bthrot_list);
+	mutex_unlock(&bthrot_list_lock);
 
 	bthrot->cdev = thermal_cooling_device_register(
 						"balanced",
@@ -272,21 +271,16 @@ struct balanced_throttle *balanced_throttle_register(
 
 	if (IS_ERR(bthrot->cdev)) {
 		bthrot->cdev = NULL;
-		kfree(bthrot);
-		return ERR_PTR(-ENODEV);
+		return -ENODEV;
 	}
 
-	mutex_lock(&bthrot_list_lock);
-	list_add(&bthrot->node, &bthrot_list);
-	mutex_unlock(&bthrot_list_lock);
-
 #ifdef CONFIG_DEBUG_FS
-	sprintf(name, "throttle_table%d", id);
+	sprintf(name, "throttle_table%d", bthrot->id);
 	debugfs_create_file(name,0644, throttle_debugfs_root,
 				bthrot, &table_fops);
 #endif
 
-	return bthrot;
+	return 0;
 }
 
 int __init tegra_throttle_init(struct mutex *cpu_lock)

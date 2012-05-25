@@ -54,6 +54,7 @@
 #include <mach/gpio.h>
 #include <mach/edp.h>
 #include <mach/thermal.h>
+#include <linux/therm_est.h>
 
 #include "gpio-names.h"
 #include "board-cardhu.h"
@@ -770,27 +771,56 @@ static int nct_set_shutdown_temp(void *_data, long shutdown_temp)
 	return nct1008_thermal_set_shutdown_temp(data, shutdown_temp);
 }
 
+#ifdef CONFIG_TEGRA_SKIN_THROTTLE
+static int nct_get_itemp(void *dev_data, long *temp)
+{
+	struct nct1008_data *data = dev_data;
+	return nct1008_thermal_get_temps(data, NULL, temp);
+}
+#endif
+
 static void nct1008_probe_callback(struct nct1008_data *data)
 {
-	struct tegra_thermal_device *thermal_device;
+	struct tegra_thermal_device *ext_nct;
 
-	thermal_device = kzalloc(sizeof(struct tegra_thermal_device),
+	ext_nct = kzalloc(sizeof(struct tegra_thermal_device),
 					GFP_KERNEL);
-	if (!thermal_device) {
+	if (!ext_nct) {
 		pr_err("unable to allocate thermal device\n");
 		return;
 	}
 
-	thermal_device->name = "nct1008";
-	thermal_device->data = data;
-	thermal_device->offset = TDIODE_OFFSET;
-	thermal_device->get_temp = nct_get_temp;
-	thermal_device->get_temp_low = nct_get_temp_low;
-	thermal_device->set_limits = nct_set_limits;
-	thermal_device->set_alert = nct_set_alert;
-	thermal_device->set_shutdown_temp = nct_set_shutdown_temp;
+	ext_nct->name = "nct_ext";
+	ext_nct->id = THERMAL_DEVICE_ID_NCT_EXT;
+	ext_nct->data = data;
+	ext_nct->offset = TDIODE_OFFSET;
+	ext_nct->get_temp = nct_get_temp;
+	ext_nct->get_temp_low = nct_get_temp_low;
+	ext_nct->set_limits = nct_set_limits;
+	ext_nct->set_alert = nct_set_alert;
+	ext_nct->set_shutdown_temp = nct_set_shutdown_temp;
 
-	tegra_thermal_set_device(thermal_device);
+	tegra_thermal_device_register(ext_nct);
+
+#ifdef CONFIG_TEGRA_SKIN_THROTTLE
+	{
+		struct tegra_thermal_device *int_nct;
+		int_nct = kzalloc(sizeof(struct tegra_thermal_device),
+						GFP_KERNEL);
+		if (!int_nct) {
+			kfree(int_nct);
+			pr_err("unable to allocate thermal device\n");
+			return;
+		}
+
+		int_nct->name = "nct_int";
+		int_nct->id = THERMAL_DEVICE_ID_NCT_INT;
+		int_nct->data = data;
+		int_nct->get_temp = nct_get_itemp;
+
+		tegra_thermal_device_register(int_nct);
+	}
+#endif
 }
 
 static struct nct1008_platform_data cardhu_nct1008_pdata = {
