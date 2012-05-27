@@ -81,7 +81,9 @@
 
 /* Display Board ID */
 #define BOARD_DISPLAY_PM313		0x030D
+#define BOARD_DISPLAY_E1213		0x0C0D
 #define BOARD_DISPLAY_E1247		0x0C2F
+#define BOARD_DISPLAY_E1253		0x0C35
 #define BOARD_DISPLAY_E1506		0x0F06
 
 /* External peripheral act as gpio */
