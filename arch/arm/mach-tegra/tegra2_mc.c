@@ -896,8 +896,10 @@ static enum hrtimer_restart sample_timer_function(struct hrtimer *handle)
 #define REGISTER_SYSFS(_name, _val)					\
 	tegra_mc_dram_##_name##_kobj =					\
 		kobject_create_and_add(#_name, tegra_mc_dram_kobj);	\
-	sysfs_create_group(tegra_mc_dram_##_name##_kobj,		\
-			   &tegra_mc_dram_##_name##_attr_group);
+	if (sysfs_create_group(tegra_mc_dram_##_name##_kobj,		\
+			   &tegra_mc_dram_##_name##_attr_group))	\
+		printk(KERN_ERR "\n sysfs_create_group failed at %s"	\
+				" line %d\n", __FILE__, __LINE__);
 
 static int tegra_mc_init(void)
 {

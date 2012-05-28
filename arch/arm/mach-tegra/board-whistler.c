@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-whistler.c
  *
- * Copyright (c) 2010 - 2011, NVIDIA Corporation.
+ * Copyright (c) 2010-2012 NVIDIA Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -482,36 +482,12 @@ static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
 	},
 };
 
-static struct tegra_usb_platform_data tegra_ehci3_utmi_pdata = {
-	.port_otg = false,
-	.has_hostpc = false,
-	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
-	.op_mode	= TEGRA_USB_OPMODE_HOST,
-	.u_data.host = {
-		.vbus_gpio = TEGRA_GPIO_PD3,
-		.vbus_reg = NULL,
-		.hot_plug = true,
-		.remote_wakeup_supported = false,
-		.power_off_on_suspend = true,
-	},
-	.u_cfg.utmi = {
-		.hssync_start_delay = 9,
-		.elastic_limit = 16,
-		.idle_wait_delay = 17,
-		.term_range_adj = 6,
-		.xcvr_setup = 8,
-		.xcvr_lsfslew = 2,
-		.xcvr_lsrslew = 2,
-	},
-};
-
 static struct tegra_usb_otg_data tegra_otg_pdata = {
 	.ehci_device = &tegra_ehci1_device,
 	.ehci_pdata = &tegra_ehci1_utmi_pdata,
 };
 
 #define SERIAL_NUMBER_LENGTH 20
-static char usb_serial_num[SERIAL_NUMBER_LENGTH];
 static void whistler_usb_init(void)
 {
 	tegra_otg_device.dev.platform_data = &tegra_otg_pdata;

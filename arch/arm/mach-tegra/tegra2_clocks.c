@@ -779,8 +779,9 @@ static int tegra2_pll_clk_set_rate(struct clk *c, unsigned long rate)
 
 	if (sel->input_rate == 0) {
 		unsigned long cfreq;
-		BUG_ON(c->flags & PLLU);
 		struct clk_pll_freq_table cfg;
+
+		BUG_ON(c->flags & PLLU);
 		sel = &cfg;
 
 		switch (input_rate) {

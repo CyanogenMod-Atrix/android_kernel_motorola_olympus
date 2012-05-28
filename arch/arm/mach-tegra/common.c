@@ -974,12 +974,14 @@ void cpufreq_store_default_gov(void)
 
 int cpufreq_change_gov(char *target_gov)
 {
-	unsigned int cpu = 0;
+	unsigned int cpu = 0, ret = -EINVAL;
 
 #ifndef CONFIG_TEGRA_AUTO_HOTPLUG
 	for_each_online_cpu(cpu)
 #endif
-	return cpufreq_set_gov(target_gov, cpu);
+	ret = cpufreq_set_gov(target_gov, cpu);
+
+	return ret;
 }
 
 int cpufreq_restore_default_gov(void)
