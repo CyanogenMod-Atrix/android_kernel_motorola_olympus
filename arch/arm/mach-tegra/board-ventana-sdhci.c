@@ -1,7 +1,6 @@
 /*
- * arch/arm/mach-tegra/board-harmony-sdhci.c
- *
  * Copyright (C) 2010 Google, Inc.
+ * Copyright (C) 2010-2012 NVIDIA Corporation.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -257,10 +256,6 @@ static int __init ventana_wifi_init(void)
 	gpio_request(VENTANA_WLAN_RST, "wlan_rst");
 	gpio_request(VENTANA_WLAN_WOW, "bcmsdh_sdmmc");
 
-	tegra_gpio_enable(VENTANA_WLAN_PWR);
-	tegra_gpio_enable(VENTANA_WLAN_RST);
-	tegra_gpio_enable(VENTANA_WLAN_WOW);
-
 	gpio_direction_output(VENTANA_WLAN_PWR, 0);
 	gpio_direction_output(VENTANA_WLAN_RST, 0);
 	gpio_direction_input(VENTANA_WLAN_WOW);
@@ -274,11 +269,6 @@ static int __init ventana_wifi_init(void)
 }
 int __init ventana_sdhci_init(void)
 {
-	tegra_gpio_enable(tegra_sdhci_platform_data2.power_gpio);
-	tegra_gpio_enable(tegra_sdhci_platform_data2.cd_gpio);
-	tegra_gpio_enable(tegra_sdhci_platform_data2.wp_gpio);
-	tegra_gpio_enable(tegra_sdhci_platform_data3.power_gpio);
-
 	platform_device_register(&tegra_sdhci_device3);
 	platform_device_register(&tegra_sdhci_device2);
 	platform_device_register(&tegra_sdhci_device0);

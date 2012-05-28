@@ -186,7 +186,6 @@ static struct ssl3250a_platform_data ventana_ssl3250a_pdata = {
 
 static void ventana_isl29018_init(void)
 {
-	tegra_gpio_enable(ISL29018_IRQ_GPIO);
 	gpio_request(ISL29018_IRQ_GPIO, "isl29018");
 	gpio_direction_input(ISL29018_IRQ_GPIO);
 }
@@ -194,7 +193,6 @@ static void ventana_isl29018_init(void)
 #ifdef CONFIG_SENSORS_AK8975
 static void ventana_akm8975_init(void)
 {
-	tegra_gpio_enable(AKM8975_IRQ_GPIO);
 	gpio_request(AKM8975_IRQ_GPIO, "akm8975");
 	gpio_direction_input(AKM8975_IRQ_GPIO);
 }
@@ -202,7 +200,6 @@ static void ventana_akm8975_init(void)
 
 static void ventana_nct1008_init(void)
 {
-	tegra_gpio_enable(NCT1008_THERM2_GPIO);
 	gpio_request(NCT1008_THERM2_GPIO, "temp_alert");
 	gpio_direction_input(NCT1008_THERM2_GPIO);
 }
@@ -379,7 +376,6 @@ static void mpuirq_init(void)
 #if (MPU_GYRO_TYPE == MPU_TYPE_MPU3050)
 #if	MPU_ACCEL_IRQ_GPIO
 	/* ACCEL-IRQ assignment */
-	tegra_gpio_enable(MPU_ACCEL_IRQ_GPIO);
 	ret = gpio_request(MPU_ACCEL_IRQ_GPIO, MPU_ACCEL_NAME);
 	if (ret < 0) {
 		pr_err("%s: gpio_request failed %d\n", __func__, ret);
@@ -396,7 +392,6 @@ static void mpuirq_init(void)
 #endif
 
 	/* MPU-IRQ assignment */
-	tegra_gpio_enable(MPU_GYRO_IRQ_GPIO);
 	ret = gpio_request(MPU_GYRO_IRQ_GPIO, MPU_GYRO_NAME);
 	if (ret < 0) {
 		pr_err("%s: gpio_request failed %d\n", __func__, ret);
@@ -465,37 +460,35 @@ int __init ventana_sensors_init(void)
 struct tegra_camera_gpios {
 	const char *name;
 	int gpio;
-	bool tegra_internal_gpio;
 	int enabled;
 };
 
-#define TEGRA_CAMERA_GPIO(_name, _gpio, _tegra_internal_gpio, _enabled)	\
+#define TEGRA_CAMERA_GPIO(_name, _gpio, _enabled)	\
 	{								\
 		.name = _name,						\
 		.gpio = _gpio,						\
-		.tegra_internal_gpio = _tegra_internal_gpio,		\
 		.enabled = _enabled,					\
 	}
 
 static struct tegra_camera_gpios ventana_camera_gpio_keys[] = {
-	[0] = TEGRA_CAMERA_GPIO("camera_power_en", CAMERA_POWER_GPIO, true, 1),
-	[1] = TEGRA_CAMERA_GPIO("camera_csi_sel", CAMERA_CSI_MUX_SEL_GPIO, true, 0),
-	[2] = TEGRA_CAMERA_GPIO("torch_gpio_act", CAMERA_FLASH_ACT_GPIO, true, 0),
+	[0] = TEGRA_CAMERA_GPIO("camera_power_en", CAMERA_POWER_GPIO, 1),
+	[1] = TEGRA_CAMERA_GPIO("camera_csi_sel", CAMERA_CSI_MUX_SEL_GPIO, 0),
+	[2] = TEGRA_CAMERA_GPIO("torch_gpio_act", CAMERA_FLASH_ACT_GPIO, 0),
 
-	[3] = TEGRA_CAMERA_GPIO("en_avdd_csi", AVDD_DSI_CSI_ENB_GPIO, false, 1),
-	[4] = TEGRA_CAMERA_GPIO("cam_i2c_mux_rst_lo", CAM_I2C_MUX_RST_GPIO, false, 1),
+	[3] = TEGRA_CAMERA_GPIO("en_avdd_csi", AVDD_DSI_CSI_ENB_GPIO, 1),
+	[4] = TEGRA_CAMERA_GPIO("cam_i2c_mux_rst_lo", CAM_I2C_MUX_RST_GPIO, 1),
 
-	[5] = TEGRA_CAMERA_GPIO("cam2_af_pwdn_lo", CAM2_AF_PWR_DN_L_GPIO, false, 0),
-	[6] = TEGRA_CAMERA_GPIO("cam2_pwdn", CAM2_PWR_DN_GPIO, false, 0),
-	[7] = TEGRA_CAMERA_GPIO("cam2_rst_lo", CAM2_RST_L_GPIO, false, 1),
+	[5] = TEGRA_CAMERA_GPIO("cam2_af_pwdn_lo", CAM2_AF_PWR_DN_L_GPIO, 0),
+	[6] = TEGRA_CAMERA_GPIO("cam2_pwdn", CAM2_PWR_DN_GPIO, 0),
+	[7] = TEGRA_CAMERA_GPIO("cam2_rst_lo", CAM2_RST_L_GPIO, 1),
 
-	[8] = TEGRA_CAMERA_GPIO("cam3_af_pwdn_lo", CAM3_AF_PWR_DN_L_GPIO, false, 0),
-	[9] = TEGRA_CAMERA_GPIO("cam3_pwdn", CAM3_PWR_DN_GPIO, false, 0),
-	[10] = TEGRA_CAMERA_GPIO("cam3_rst_lo", CAM3_RST_L_GPIO, false, 1),
+	[8] = TEGRA_CAMERA_GPIO("cam3_af_pwdn_lo", CAM3_AF_PWR_DN_L_GPIO, 0),
+	[9] = TEGRA_CAMERA_GPIO("cam3_pwdn", CAM3_PWR_DN_GPIO, 0),
+	[10] = TEGRA_CAMERA_GPIO("cam3_rst_lo", CAM3_RST_L_GPIO, 1),
 
-	[11] = TEGRA_CAMERA_GPIO("cam1_af_pwdn_lo", CAM1_AF_PWR_DN_L_GPIO, false, 0),
-	[12] = TEGRA_CAMERA_GPIO("cam1_pwdn", CAM1_PWR_DN_GPIO, false, 0),
-	[13] = TEGRA_CAMERA_GPIO("cam1_rst_lo", CAM1_RST_L_GPIO, false, 1),
+	[11] = TEGRA_CAMERA_GPIO("cam1_af_pwdn_lo", CAM1_AF_PWR_DN_L_GPIO, 0),
+	[12] = TEGRA_CAMERA_GPIO("cam1_pwdn", CAM1_PWR_DN_GPIO, 0),
+	[13] = TEGRA_CAMERA_GPIO("cam1_rst_lo", CAM1_RST_L_GPIO, 1),
 };
 
 int __init ventana_camera_late_init(void)
@@ -522,10 +515,6 @@ int __init ventana_camera_late_init(void)
 	i2c_new_device(i2c_get_adapter(3), ventana_i2c3_board_info_tca6416);
 
 	for (i = 0; i < ARRAY_SIZE(ventana_camera_gpio_keys); i++) {
-
-		if (ventana_camera_gpio_keys[i].tegra_internal_gpio)
-			tegra_gpio_enable(ventana_camera_gpio_keys[i].gpio);
-
 		ret = gpio_request(ventana_camera_gpio_keys[i].gpio,
 			ventana_camera_gpio_keys[i].name);
 		if (ret < 0) {

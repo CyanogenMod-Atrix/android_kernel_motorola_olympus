@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-ventana.c
  *
- * Copyright (c) 2010-2011, NVIDIA Corporation.
+ * Copyright (c) 2010-2011 NVIDIA Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -119,8 +119,6 @@ static struct platform_device ventana_bluesleep_device = {
 static void __init ventana_setup_bluesleep(void)
 {
 	platform_device_register(&ventana_bluesleep_device);
-	tegra_gpio_enable(TEGRA_GPIO_PU6);
-	tegra_gpio_enable(TEGRA_GPIO_PU1);
 	return;
 }
 
@@ -342,14 +340,6 @@ static struct platform_device ventana_keys_device = {
 		.platform_data	= &ventana_keys_platform_data,
 	},
 };
-
-static void ventana_keys_init(void)
-{
-	int i;
-
-	for (i = 0; i < ARRAY_SIZE(ventana_keys); i++)
-		tegra_gpio_enable(ventana_keys[i].gpio);
-}
 #endif
 
 static struct platform_device tegra_camera = {
@@ -624,10 +614,6 @@ static void __init tegra_ventana_init(void)
 		pr_info("Initializing Panjit touch driver\n");
 		ventana_touch_init_panjit();
 	}
-
-#ifdef CONFIG_KEYBOARD_GPIO
-	ventana_keys_init();
-#endif
 
 	ventana_usb_init();
 	ventana_gps_init();
