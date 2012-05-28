@@ -138,6 +138,52 @@ TRACE_EVENT(nvhost_channel_write_cmdbuf,
 	  __entry->words, __entry->offset)
 );
 
+TRACE_EVENT(nvhost_cdma_end,
+	TP_PROTO(const char *name, int prio,
+		int hi_count, int med_count, int low_count),
+
+	TP_ARGS(name, prio, hi_count, med_count, low_count),
+
+	TP_STRUCT__entry(
+		__field(const char *, name)
+		__field(int, prio)
+		__field(int, hi_count)
+		__field(int, med_count)
+		__field(int, low_count)
+	),
+
+	TP_fast_assign(
+		__entry->name = name;
+		__entry->prio = prio;
+		__entry->hi_count = hi_count;
+		__entry->med_count = med_count;
+		__entry->low_count = low_count;
+	),
+
+	TP_printk("name=%s, prio=%d, hi=%d, med=%d, low=%d",
+		__entry->name, __entry->prio,
+		__entry->hi_count, __entry->med_count, __entry->low_count)
+);
+
+TRACE_EVENT(nvhost_cdma_flush,
+	TP_PROTO(const char *name, int timeout),
+
+	TP_ARGS(name, timeout),
+
+	TP_STRUCT__entry(
+		__field(const char *, name)
+		__field(int, timeout)
+	),
+
+	TP_fast_assign(
+		__entry->name = name;
+		__entry->timeout = timeout;
+	),
+
+	TP_printk("name=%s, timeout=%d",
+		__entry->name, __entry->timeout)
+);
+
 TRACE_EVENT(nvhost_cdma_push,
 	TP_PROTO(const char *name, u32 op1, u32 op2),
 
@@ -425,24 +471,32 @@ TRACE_EVENT(nvhost_channel_submitted,
 );
 
 TRACE_EVENT(nvhost_channel_submit_complete,
-	TP_PROTO(const char *name, int count, u32 thresh),
+	TP_PROTO(const char *name, int count, u32 thresh,
+		int hi_count, int med_count, int low_count),
 
-	TP_ARGS(name, count, thresh),
+	TP_ARGS(name, count, thresh, hi_count, med_count, low_count),
 
 	TP_STRUCT__entry(
 		__field(const char *, name)
 		__field(int, count)
 		__field(u32, thresh)
+		__field(int, hi_count)
+		__field(int, med_count)
+		__field(int, low_count)
 	),
 
 	TP_fast_assign(
 		__entry->name = name;
 		__entry->count = count;
 		__entry->thresh = thresh;
+		__entry->hi_count = hi_count;
+		__entry->med_count = med_count;
+		__entry->low_count = low_count;
 	),
 
-	TP_printk("name=%s, count=%d, thresh=%d",
-		__entry->name, __entry->count, __entry->thresh)
+	TP_printk("name=%s, count=%d, thresh=%d, hi=%d, med=%d, low=%d",
+		__entry->name, __entry->count, __entry->thresh,
+		__entry->hi_count, __entry->med_count, __entry->low_count)
 );
 
 TRACE_EVENT(nvhost_wait_cdma,
