@@ -1776,7 +1776,7 @@ static int uhsic_phy_power_on(struct tegra_usb_phy *phy)
 
 	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
 
-	utmip_powerup_pmc_wake_detect(phy);
+	uhsic_powerup_pmc_wake_detect(phy);
 
 	if (phy->phy_clk_on) {
 		DBG("%s(%d) inst:[%d] phy clk is already On\n",
@@ -1897,7 +1897,7 @@ static int uhsic_phy_power_off(struct tegra_usb_phy *phy)
 	writel(val, base + USB_SUSP_CTRL);
 	udelay(30);
 
-	utmip_powerdown_pmc_wake_detect(phy);
+	uhsic_powerdown_pmc_wake_detect(phy);
 
 	phy->phy_clk_on = false;
 	phy->hw_accessible = false;
@@ -2153,31 +2153,6 @@ static void ulpi_set_host(void __iomem *base)
 }
 
 
-
-static inline void null_phy_set_tristate(bool enable)
-{
-#ifndef CONFIG_ARCH_TEGRA_2x_SOC
-	int tristate = (enable) ? TEGRA_TRI_TRISTATE : TEGRA_TRI_NORMAL;
-	DBG("%s(%d) inst:[%s] FIXME enable pin group +++\n", __func__,
-				__LINE__, enable ? "TRISTATE" : "NORMAL");
-
-	tegra_pinmux_set_tristate(TEGRA_PINGROUP_ULPI_DATA0, tristate);
-	tegra_pinmux_set_tristate(TEGRA_PINGROUP_ULPI_DATA1, tristate);
-	tegra_pinmux_set_tristate(TEGRA_PINGROUP_ULPI_DATA2, tristate);
-	tegra_pinmux_set_tristate(TEGRA_PINGROUP_ULPI_DATA3, tristate);
-	tegra_pinmux_set_tristate(TEGRA_PINGROUP_ULPI_DATA4, tristate);
-	tegra_pinmux_set_tristate(TEGRA_PINGROUP_ULPI_DATA5, tristate);
-	tegra_pinmux_set_tristate(TEGRA_PINGROUP_ULPI_DATA6, tristate);
-	tegra_pinmux_set_tristate(TEGRA_PINGROUP_ULPI_DATA7, tristate);
-	tegra_pinmux_set_tristate(TEGRA_PINGROUP_ULPI_NXT, tristate);
-
-	if (enable)
-		tegra_pinmux_set_tristate(TEGRA_PINGROUP_ULPI_DIR, tristate);
-#endif
-
-}
-
-
 static int ulpi_null_phy_power_off(struct tegra_usb_phy *phy)
 {
 	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
@@ -2187,8 +2162,6 @@ static int ulpi_null_phy_power_off(struct tegra_usb_phy *phy)
 							__LINE__, phy->inst);
 		return 0;
 	}
-
-	null_phy_set_tristate(true);
 
 	phy->phy_clk_on = false;
 	phy->hw_accessible = false;
@@ -2237,6 +2210,52 @@ static int ulpi_null_phy_cmd_reset(struct tegra_usb_phy *phy)
 	val &=	~ULPIS2S_SLV0_CLAMP_XMIT;
 	writel(val, base + ULPIS2S_CTRL);
 	udelay(10);
+
+	return 0;
+}
+
+static int ulpi_null_phy_lp0_resume(struct tegra_usb_phy *phy)
+{
+	unsigned long val;
+	void __iomem *base = phy->regs;
+
+	ulpi_null_phy_init(phy);
+
+	val = readl(base + USB_USBCMD);
+	val |= USB_CMD_RESET;
+	writel(val, base + USB_USBCMD);
+
+	if (usb_phy_reg_status_wait(base + USB_USBCMD,
+		USB_CMD_RESET, 0, 2500) < 0) {
+		pr_err("%s: timeout waiting for reset\n", __func__);
+	}
+
+	val = readl(base + USB_USBMODE);
+	val &= ~USB_USBMODE_MASK;
+	val |= USB_USBMODE_HOST;
+	writel(val, base + USB_USBMODE);
+
+	ulpi_null_phy_cmd_reset(phy);
+
+	val = readl(base + USB_USBCMD);
+	val |= USB_USBCMD_RS;
+	writel(val, base + USB_USBCMD);
+	if (usb_phy_reg_status_wait(base + USB_USBCMD, USB_USBCMD_RS,
+						 USB_USBCMD_RS, 2000)) {
+		pr_err("%s: timeout waiting for USB_USBCMD_RS\n", __func__);
+		return -ETIMEDOUT;
+	}
+
+	/* Enable Port Power */
+	val = readl(base + USB_PORTSC);
+	val |= USB_PORTSC_PP;
+	writel(val, base + USB_PORTSC);
+	udelay(10);
+
+	/* disable ULPI pinmux bypass */
+	val = readl(base + ULPI_TIMING_CTRL_0);
+	val &= ~ULPI_OUTPUT_PINMUX_BYP;
+	writel(val, base + ULPI_TIMING_CTRL_0);
 
 	return 0;
 }
@@ -2334,6 +2353,9 @@ static int ulpi_null_phy_power_on(struct tegra_usb_phy *phy)
 		val |= ULPI_CLK_PADOUT_ENA;
 		writel(val, base + ULPI_TIMING_CTRL_0);
 		cold_boot = false;
+	} else {
+		if (!readl(base + USB_ASYNCLISTADDR))
+			ulpi_null_phy_lp0_resume(phy);
 	}
 	udelay(10);
 
@@ -2351,6 +2373,32 @@ int ulpi_null_phy_pre_resume(struct tegra_usb_phy *phy, bool remote_wakeup)
 	usb_phy_wait_for_sof(phy);
 	return 0;
 }
+
+static int ulpi_null_phy_resume(struct tegra_usb_phy *phy)
+{
+	unsigned long val;
+	void __iomem *base = phy->regs;
+
+	if (!readl(base + USB_ASYNCLISTADDR)) {
+		/* enable ULPI CLK output pad */
+		val = readl(base + ULPI_TIMING_CTRL_0);
+		val |= ULPI_CLK_PADOUT_ENA;
+		writel(val, base + ULPI_TIMING_CTRL_0);
+
+		/* enable ULPI pinmux bypass */
+		val = readl(base + ULPI_TIMING_CTRL_0);
+		val |= ULPI_OUTPUT_PINMUX_BYP;
+		writel(val, base + ULPI_TIMING_CTRL_0);
+		udelay(5);
+#ifndef CONFIG_ARCH_TEGRA_2x_SOC
+		/* remove DIR tristate */
+		tegra_pinmux_set_tristate(TEGRA_PINGROUP_ULPI_DIR, TEGRA_TRI_NORMAL);
+#endif
+	}
+	return 0;
+}
+
+
 
 static struct tegra_usb_phy_ops utmi_phy_ops = {
 	.open		= utmi_phy_open,
@@ -2382,6 +2430,7 @@ static struct tegra_usb_phy_ops ulpi_null_phy_ops = {
 	.power_on	= ulpi_null_phy_power_on,
 	.power_off	= ulpi_null_phy_power_off,
 	.pre_resume = ulpi_null_phy_pre_resume,
+	.resume = ulpi_null_phy_resume,
 	.reset		= ulpi_null_phy_cmd_reset,
 };
 

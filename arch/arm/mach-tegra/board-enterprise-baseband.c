@@ -69,11 +69,14 @@ static struct gpio modem_gpios[] = {
 
 static void baseband_phy_init(void);
 static void baseband_phy_on(void);
-static void baseband_phy_off(void);
+static void baseband_pre_phy_off(void);
+static void baseband_post_phy_off(void);
+static bool ap2mdm_ack_gpio_off = false;
 
 static struct tegra_usb_phy_platform_ops ulpi_null_plat_ops = {
 	.init = baseband_phy_init,
-	.pre_phy_off = baseband_phy_off,
+	.pre_phy_off = baseband_pre_phy_off,
+	.post_phy_off = baseband_post_phy_off,
 	.post_phy_on = baseband_phy_on,
 };
 
@@ -133,16 +136,65 @@ static void baseband_phy_init(void)
 	pr_info("%s\n", __func__);
 }
 
-static void baseband_phy_off(void)
+static inline void null_phy_set_tristate(bool enable)
+{
+	int tristate = (enable) ? TEGRA_TRI_TRISTATE : TEGRA_TRI_NORMAL;
+
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_ULPI_DATA0, tristate);
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_ULPI_DATA1, tristate);
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_ULPI_DATA2, tristate);
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_ULPI_DATA3, tristate);
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_ULPI_DATA4, tristate);
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_ULPI_DATA5, tristate);
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_ULPI_DATA6, tristate);
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_ULPI_DATA7, tristate);
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_ULPI_NXT, tristate);
+
+	if (enable)
+		tegra_pinmux_set_tristate(TEGRA_PINGROUP_ULPI_DIR, tristate);
+}
+
+
+static void baseband_post_phy_off(void)
+{
+	null_phy_set_tristate(true);
+}
+
+
+static void baseband_pre_phy_off(void)
 {
 	/* set AP2MDM_ACK2 high */
 	gpio_set_value(AP2MDM_ACK2, 1);
+	ap2mdm_ack_gpio_off = true;
 }
 
 static void baseband_phy_on(void)
 {
-	/* set AP2MDM_ACK2 low */
-	gpio_set_value(AP2MDM_ACK2, 0);
+	if (ap2mdm_ack_gpio_off) {
+
+		/* driving linestate using GPIO */
+		gpio_set_value(ULPI_D0, 0);
+		gpio_set_value(ULPI_D1, 0);
+
+		/* remove ULPI tristate */
+		null_phy_set_tristate(false);
+
+		gpio_set_value(AP2MDM_ACK2, 0);
+
+		if (gpio_is_valid(MDM2AP_ACK2)) {
+			int retry = 20000;
+			while (retry) {
+				/* poll phy_restore_gpio high */
+				if (gpio_get_value(MDM2AP_ACK2))
+					break;
+				retry--;
+			}
+
+			if (retry == 0)
+				pr_info("phy_restore_gpio timeout\n");
+		}
+		ap2mdm_ack_gpio_off = false;
+	}
 }
 
 static void baseband_start(void)
