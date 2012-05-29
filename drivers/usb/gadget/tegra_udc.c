@@ -2517,11 +2517,20 @@ static int __init tegra_udc_probe(struct platform_device *pdev)
 		goto err_iounmap;
 	}
 
-	err = request_irq(udc->irq, tegra_udc_irq, IRQF_SHARED,
+	err = request_irq(udc->irq, tegra_udc_irq,
+				IRQF_SHARED | IRQF_TRIGGER_HIGH,
 				driver_name, udc);
 	if (err) {
 		ERR("cannot request irq %d err %d\n", udc->irq, err);
 		goto err_iounmap;
+	}
+
+	err = enable_irq_wake(udc->irq);
+	if (err < 0) {
+		dev_warn(&pdev->dev,
+			"Couldn't enable USB udc mode wakeup, irq=%d, error=%d\n",
+			udc->irq, err);
+		err = 0;
 	}
 
 	udc->phy = tegra_usb_phy_open(pdev);

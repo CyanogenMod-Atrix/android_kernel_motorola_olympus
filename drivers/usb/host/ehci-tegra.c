@@ -472,7 +472,7 @@ static int tegra_ehci_probe(struct platform_device *pdev)
 		goto fail_phy;
 	}
 
-	err = usb_add_hcd(hcd, irq, IRQF_DISABLED | IRQF_SHARED);
+	err = usb_add_hcd(hcd, irq, IRQF_SHARED | IRQF_TRIGGER_HIGH);
 	if (err) {
 		dev_err(&pdev->dev, "Failed to add USB HCD, error=%d\n", err);
 		goto fail_phy;
