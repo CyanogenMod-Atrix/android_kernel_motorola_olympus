@@ -684,7 +684,8 @@ static struct tegra_usb_platform_data tegra_udc_pdata = {
 	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
 	.op_mode = TEGRA_USB_OPMODE_DEVICE,
 	.u_data.dev = {
-		.vbus_pmu_irq = 0,
+		.vbus_pmu_irq = ENT_TPS80031_IRQ_BASE +
+				TPS80031_INT_VBUS_DET,
 		.vbus_gpio = -1,
 		.charging_supported = false,
 		.remote_wakeup_supported = false,

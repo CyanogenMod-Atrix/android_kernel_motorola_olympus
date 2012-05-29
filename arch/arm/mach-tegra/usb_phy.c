@@ -131,15 +131,24 @@ int tegra_usb_phy_init_ops(struct tegra_usb_phy *phy)
 
 static irqreturn_t usb_phy_dev_vbus_pmu_irq_thr(int irq, void *pdata)
 {
-	/* FIXME : Need to enable pmu vbus handling */
+	struct tegra_usb_phy *phy = pdata;
 
-	return IRQ_NONE;
+	/* clk is disabled during phy power off and not here*/
+	if (!phy->ctrl_clk_on) {
+		clk_enable(phy->ctrlr_clk);
+		phy->ctrl_clk_on = true;
+	}
+
+	return IRQ_HANDLED;
 }
 
 static void tegra_usb_phy_release_clocks(struct tegra_usb_phy *phy)
 {
 	clk_put(phy->emc_clk);
 	clk_put(phy->sys_clk);
+	if (phy->pdata->op_mode == TEGRA_USB_OPMODE_HOST &&
+		phy->pdata->u_data.host.hot_plug)
+		clk_disable(phy->ctrlr_clk);
 	clk_put(phy->ctrlr_clk);
 	clk_disable(phy->pllu_clk);
 	clk_put(phy->pllu_clk);
@@ -163,6 +172,10 @@ static int tegra_usb_phy_get_clocks(struct tegra_usb_phy *phy)
 		err = PTR_ERR(phy->ctrlr_clk);
 		goto fail_ctrlr_clk;
 	}
+
+	if (phy->pdata->op_mode == TEGRA_USB_OPMODE_HOST &&
+		phy->pdata->u_data.host.hot_plug)
+		clk_enable(phy->ctrlr_clk);
 
 	phy->sys_clk = clk_get(&phy->pdev->dev, "sclk");
 	if (IS_ERR(phy->sys_clk)) {
@@ -273,6 +286,8 @@ struct tegra_usb_phy *tegra_usb_phy_open(struct platform_device *pdev)
 								phy->inst);
 				goto fail_init;
 			}
+		} else {
+			clk_enable(phy->ctrlr_clk);
 		}
 	} else {
 		if (phy->pdata->u_data.host.vbus_reg) {
@@ -365,6 +380,8 @@ void tegra_usb_phy_close(struct tegra_usb_phy *phy)
 	if (phy->pdata->op_mode == TEGRA_USB_OPMODE_DEVICE) {
 		if (phy->pdata->u_data.dev.vbus_pmu_irq)
 			free_irq(phy->pdata->u_data.dev.vbus_pmu_irq, phy);
+		else
+			clk_disable(phy->ctrlr_clk);
 	} else {
 		usb_host_vbus_enable(phy, false);
 
@@ -439,7 +456,18 @@ int tegra_usb_phy_power_off(struct tegra_usb_phy *phy)
 
 	clk_disable(phy->emc_clk);
 	clk_disable(phy->sys_clk);
-	clk_disable(phy->ctrlr_clk);
+	if (phy->pdata->op_mode == TEGRA_USB_OPMODE_HOST) {
+		if (!phy->pdata->u_data.host.hot_plug)
+			clk_disable(phy->ctrlr_clk);
+	} else {
+		/* In device mode clock is turned on by pmu irq handler
+		 * if pmu irq is not available clocks will not be turned off/on
+		 */
+		if (phy->pdata->u_data.dev.vbus_pmu_irq) {
+			clk_disable(phy->ctrlr_clk);
+			phy->ctrl_clk_on = false;
+		}
+	}
 
 	phy->phy_power_on = false;
 
@@ -455,7 +483,19 @@ int tegra_usb_phy_power_on(struct tegra_usb_phy *phy)
 	if (phy->phy_power_on)
 		return status;
 
-	clk_enable(phy->ctrlr_clk);
+	/* In device mode clock is turned on by pmu irq handler
+	 * if pmu irq is not available clocks will not be turned off/on
+	 */
+	if (phy->pdata->op_mode == TEGRA_USB_OPMODE_HOST) {
+		if (!phy->pdata->u_data.host.hot_plug)
+			clk_enable(phy->ctrlr_clk);
+	} else {
+		if (phy->pdata->u_data.dev.vbus_pmu_irq &&
+			!phy->ctrl_clk_on) {
+			clk_enable(phy->ctrlr_clk);
+			phy->ctrl_clk_on = true;
+		}
+	}
 	clk_enable(phy->sys_clk);
 	clk_enable(phy->emc_clk);
 

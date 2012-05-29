@@ -465,6 +465,8 @@ static int tegra_otg_probe(struct platform_device *pdev)
 		goto err_irq;
 	}
 
+	clk_disable(tegra->clk);
+
 	return 0;
 
 err_irq:
