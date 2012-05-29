@@ -37,7 +37,6 @@
 #include "gpio-names.h"
 #include "board.h"
 #include "board-cardhu.h"
-#include "wakeups-t3.h"
 
 #define PMC_CTRL		0x0
 #define PMC_CTRL_INTR_LOW	(1 << 17)

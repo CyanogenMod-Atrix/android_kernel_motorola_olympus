@@ -26,7 +26,6 @@
 
 #include "pm.h"
 #include "board.h"
-#include "wakeups-t3.h"
 
 static int ac_online(void)
 {

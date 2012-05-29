@@ -44,7 +44,6 @@
 #include "board.h"
 #include "board-enterprise.h"
 #include "pm.h"
-#include "wakeups-t3.h"
 #include "tegra3_tsensor.h"
 
 #define PMC_CTRL		0x0

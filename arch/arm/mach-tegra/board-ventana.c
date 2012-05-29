@@ -324,7 +324,8 @@ static int ventana_wakeup_key(void)
 	unsigned long status =
 		readl(IO_ADDRESS(TEGRA_PMC_BASE) + PMC_WAKE_STATUS);
 
-	return status & TEGRA_WAKE_GPIO_PV2 ? KEY_POWER : KEY_RESERVED;
+	return (status & (1 << TEGRA_WAKE_GPIO_PV2)) ?
+		KEY_POWER : KEY_RESERVED;
 }
 
 static struct gpio_keys_platform_data ventana_keys_platform_data = {

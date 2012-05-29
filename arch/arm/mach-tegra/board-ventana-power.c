@@ -34,7 +34,6 @@
 #include "gpio-names.h"
 #include "fuse.h"
 #include "pm.h"
-#include "wakeups-t2.h"
 #include "board.h"
 #include "board-ventana.h"
 
