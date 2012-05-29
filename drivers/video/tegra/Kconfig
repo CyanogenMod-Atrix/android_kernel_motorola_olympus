@@ -14,6 +14,14 @@ config TEGRA_GRHOST_USE_NVMAP
 	  Use nvmap as the graphics memory manager. This is the only
 	  choice at the moment.
 
+config TEGRA_GRHOST_DEFAULT_TIMEOUT
+	depends on TEGRA_GRHOST
+	int "Default timeout for submits"
+	default 0 if TEGRA_SIMULATION_PLATFORM
+	default 30000
+	help
+	  Default timeout for jobs in milliseconds. Set to zero for no timeout.
+
 config TEGRA_DC
 	tristate "Tegra Display Contoller"
 	depends on ARCH_TEGRA && TEGRA_GRHOST
