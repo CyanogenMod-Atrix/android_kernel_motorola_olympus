@@ -288,6 +288,15 @@ static void irq_work(struct work_struct *work)
 	else
 		to = OTG_STATE_A_SUSPEND;
 
+	if (from != OTG_STATE_A_HOST) {
+		if (tegra->int_status & USB_VBUS_INT_STATUS) {
+			if (status & USB_VBUS_STATUS)
+				to = OTG_STATE_B_PERIPHERAL;
+			else
+				to = OTG_STATE_A_SUSPEND;
+		}
+	}
+
 	spin_unlock_irqrestore(&tegra->lock, flags);
 	tegra_change_otg_state(tegra, to);
 	clk_disable(tegra->clk);
