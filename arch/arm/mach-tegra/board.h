@@ -164,8 +164,8 @@ extern char cpufreq_default_gov[][MAX_GOV_NAME_LEN];
 extern char *cpufreq_conservative_gov;
 
 void cpufreq_store_default_gov(void);
-int cpufreq_restore_default_gov(void);
-int cpufreq_change_gov(char *target_gov);
+void cpufreq_restore_default_gov(void);
+void cpufreq_change_gov(char *target_gov);
 #endif
 
 int get_core_edp(void);

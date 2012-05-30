@@ -959,38 +959,61 @@ char *cpufreq_conservative_gov = "conservative";
 
 void cpufreq_store_default_gov(void)
 {
-	unsigned int cpu;
+	unsigned int cpu = 0;
 	struct cpufreq_policy *policy;
-
-	for (cpu = 0; cpu < CONFIG_NR_CPUS; cpu++) {
-		policy = cpufreq_cpu_get(cpu);
-		if (policy) {
-			sprintf(cpufreq_default_gov[cpu], "%s",
-					policy->governor->name);
-			cpufreq_cpu_put(policy);
-		}
-	}
-}
-
-int cpufreq_change_gov(char *target_gov)
-{
-	unsigned int cpu = 0, ret = -EINVAL;
 
 #ifndef CONFIG_TEGRA_AUTO_HOTPLUG
 	for_each_online_cpu(cpu)
 #endif
-	ret = cpufreq_set_gov(target_gov, cpu);
-
-	return ret;
+	{
+		policy = cpufreq_cpu_get(cpu);
+		if (policy && policy->governor) {
+			sprintf(cpufreq_default_gov[cpu], "%s",
+					policy->governor->name);
+			cpufreq_cpu_put(policy);
+		} else {
+			/* No policy or no gov set for this
+			 * online cpu. If we are here, require
+			 * serious debugging hence setting
+			 * as pr_error.
+			 */
+			pr_err("No gov or No policy for online cpu:%d,"
+					, cpu);
+		}
+	}
 }
 
-int cpufreq_restore_default_gov(void)
+void cpufreq_change_gov(char *target_gov)
 {
-	int ret = 0;
-	unsigned int cpu;
+	int ret = -EINVAL;
+	unsigned int cpu = 0;
 
-	for (cpu = 0; cpu < CONFIG_NR_CPUS; cpu++) {
-		if (strlen((const char *)&cpufreq_default_gov[cpu])) {
+#ifndef CONFIG_TEGRA_AUTO_HOTPLUG
+	for_each_online_cpu(cpu)
+#endif
+	{
+		ret = cpufreq_set_gov(target_gov, cpu);
+		if (ret < 0)
+			/* Unable to set gov for the online cpu.
+			 * If it happens, needs to debug.
+			 */
+			pr_info("Unable to set gov:%s for online cpu:%d,"
+				, cpufreq_default_gov[cpu]
+					, cpu);
+	}
+}
+
+void cpufreq_restore_default_gov(void)
+{
+	int ret = -EINVAL;
+	unsigned int cpu = 0;
+
+#ifndef CONFIG_TEGRA_AUTO_HOTPLUG
+	for_each_online_cpu(cpu)
+#endif
+	{
+		if (&cpufreq_default_gov[cpu] &&
+			strlen((const char *)&cpufreq_default_gov[cpu])) {
 			ret = cpufreq_set_gov(cpufreq_default_gov[cpu], cpu);
 			if (ret < 0)
 				/* Unable to restore gov for the cpu as
@@ -1003,6 +1026,5 @@ int cpufreq_restore_default_gov(void)
 		}
 		cpufreq_default_gov[cpu][0] = '\0';
 	}
-	return ret;
 }
 #endif /* CONFIG_TEGRA_CONVSERVATIVE_GOV_ON_EARLYSUPSEND */
