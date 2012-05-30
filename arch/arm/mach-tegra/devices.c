@@ -1166,6 +1166,11 @@ struct platform_device tegra_pcm_device = {
 	.id = -1,
 };
 
+struct platform_device tegra_tdm_pcm_device = {
+	.name = "tegra-tdm-pcm-audio",
+	.id = -1,
+};
+
 static struct resource w1_resources[] = {
 	[0] = {
 		.start = INT_OWR,

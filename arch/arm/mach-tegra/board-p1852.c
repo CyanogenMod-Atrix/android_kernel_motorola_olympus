@@ -200,12 +200,14 @@ static void __init p1852_uart_init(void)
 				ARRAY_SIZE(p1852_uart_devices));
 }
 
-static struct tegra_p1852_platform_data p1852_audio_pdata = {
+#if defined(CONFIG_TEGRA_P1852_TDM)
+static struct tegra_p1852_platform_data p1852_audio_tdm_pdata = {
 	.codec_info[0] = {
 		.codec_dai_name = "dit-hifi",
 		.cpu_dai_name = "tegra30-i2s.0",
 		.codec_name = "spdif-dit.0",
 		.name = "tegra-i2s-1",
+		.pcm_driver = "tegra-tdm-pcm-audio",
 		.i2s_format = format_tdm,
 		.master = 1,
 		.num_slots = 4,
@@ -218,6 +220,7 @@ static struct tegra_p1852_platform_data p1852_audio_pdata = {
 		.cpu_dai_name = "tegra30-i2s.4",
 		.codec_name = "spdif-dit.1",
 		.name = "tegra-i2s-2",
+		.pcm_driver = "tegra-tdm-pcm-audio",
 		.i2s_format = format_tdm,
 		.master = 1,
 		.num_slots = 8,
@@ -225,9 +228,29 @@ static struct tegra_p1852_platform_data p1852_audio_pdata = {
 		.tx_mask = 0xff,
 		.rx_mask = 0xff,
 	},
-
 };
-
+#else
+static struct tegra_p1852_platform_data p1852_audio_i2s_pdata = {
+	.codec_info[0] = {
+		.codec_dai_name = "dit-hifi",
+		.cpu_dai_name = "tegra30-i2s.0",
+		.codec_name = "spdif-dit.0",
+		.name = "tegra-i2s-1",
+		.pcm_driver = "tegra-pcm-audio",
+		.i2s_format = format_i2s,
+		.master = 1,
+	},
+	.codec_info[1] = {
+		.codec_dai_name = "dit-hifi",
+		.cpu_dai_name = "tegra30-i2s.4",
+		.codec_name = "spdif-dit.1",
+		.name = "tegra-i2s-2",
+		.pcm_driver = "tegra-pcm-audio",
+		.i2s_format = format_i2s,
+		.master = 0,
+	},
+};
+#endif
 static struct platform_device generic_codec_1 = {
 	.name		= "spdif-dit",
 	.id			= 0,
@@ -241,13 +264,18 @@ static struct platform_device tegra_snd_p1852 = {
 	.name       = "tegra-snd-p1852",
 	.id = 0,
 	.dev    = {
-	    .platform_data = &p1852_audio_pdata,
+#if defined(CONFIG_TEGRA_P1852_TDM)
+		.platform_data = &p1852_audio_tdm_pdata,
+#else
+		.platform_data = &p1852_audio_i2s_pdata,
+#endif
 	},
 };
 
 static void p1852_i2s_audio_init(void)
 {
 	platform_device_register(&tegra_pcm_device);
+	platform_device_register(&tegra_tdm_pcm_device);
 	platform_device_register(&generic_codec_1);
 	platform_device_register(&generic_codec_2);
 	platform_device_register(&tegra_i2s_device0);
