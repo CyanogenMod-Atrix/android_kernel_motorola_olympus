@@ -418,6 +418,10 @@ static int tegra30_i2s_tdm_hw_params(struct snd_pcm_substream *substream,
 		i2s_client_bits = TEGRA30_AUDIOCIF_BITS_32;
 		i2s->reg_ctrl |= TEGRA30_I2S_CTRL_BIT_SIZE_32;
 		break;
+	default:
+		dev_err(dev, "unknown slot_width %d\n",
+				i2s->dsp_config.slot_width);
+		return -EINVAL;
 	}
 
 	val = (0 << TEGRA30_AUDIOCIF_CTRL_FIFO_THRESHOLD_SHIFT) |
