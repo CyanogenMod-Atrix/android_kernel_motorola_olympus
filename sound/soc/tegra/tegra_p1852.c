@@ -227,6 +227,9 @@ static __devinit int tegra_p1852_driver_probe(struct platform_device *pdev)
 				pdata->codec_info[i].codec_dai_name;
 		tegra_p1852_dai_link[i].name =
 				pdata->codec_info[i].name;
+		if (pdata->codec_info[i].pcm_driver)
+			tegra_p1852_dai_link[i].platform_name =
+				pdata->codec_info[i].pcm_driver;
 	}
 
 	ret = tegra_asoc_utils_init(&machine->util_data, &pdev->dev, card);
