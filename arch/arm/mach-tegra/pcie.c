@@ -36,6 +36,8 @@
 #include <linux/slab.h>
 #include <linux/platform_device.h>
 #include <linux/regulator/consumer.h>
+#include <linux/workqueue.h>
+#include <linux/gpio.h>
 
 #include <asm/sizes.h>
 #include <asm/mach/pci.h>
@@ -308,6 +310,7 @@ struct tegra_pcie_port {
 	char			mem_space_name[16];
 	char			prefetch_space_name[20];
 	struct resource		res[3];
+	struct pci_bus*		bus;
 };
 
 struct tegra_pcie_info {
@@ -319,6 +322,7 @@ struct tegra_pcie_info {
 	struct resource		res_mmio;
 	int			power_rails_enabled;
 	int			pcie_power_enabled;
+	struct work_struct 	hotplug_detect;
 
 	struct regulator	*regulator_hvdd;
 	struct regulator	*regulator_pexio;
@@ -620,6 +624,31 @@ static struct hw_pci tegra_pcie_hw = {
 	.map_irq	= tegra_pcie_map_irq,
 };
 
+static void work_hotplug_handler(struct work_struct *work)
+{
+	struct tegra_pcie_info *pcie_driver =
+		container_of(work, struct tegra_pcie_info, hotplug_detect);
+	int val;
+
+	if (pcie_driver->plat_data->gpio == -1)
+		return;
+	val = gpio_get_value(pcie_driver->plat_data->gpio);
+	if (val == 0) {
+		pr_info("Pcie Dock Connected but hotplug functionality not supported yet\n");
+	} else {
+		struct pci_dev *dev = NULL;
+
+		pr_info("Pcie Dock DisConnected\n");
+		for_each_pci_dev(dev)
+			pci_stop_bus_device(dev);
+	}
+}
+
+static irqreturn_t gpio_pcie_detect_isr(int irq, void *arg)
+{
+	schedule_work(&tegra_pcie.hotplug_detect);
+	return IRQ_HANDLED;
+}
 
 static irqreturn_t tegra_pcie_isr(int irq, void *arg)
 {
@@ -1169,6 +1198,8 @@ static int tegra_pcie_init(void)
 	pcibios_min_mem = 0x03000000ul;
 	pcibios_min_io = 0x10000000ul;
 #endif
+
+	INIT_WORK(&tegra_pcie.hotplug_detect, work_hotplug_handler);
 	err = tegra_pcie_get_resources();
 	if (err)
 		return err;
@@ -1184,10 +1215,35 @@ static int tegra_pcie_init(void)
 	}
 
 	tegra_pcie.pcie_power_enabled = 1;
+	if (tegra_pcie.plat_data->use_dock_detect) {
+		unsigned int irq;
+
+		pr_info("acquiring dock_detect = %d\n",
+				tegra_pcie.plat_data->gpio);
+		gpio_request(tegra_pcie.plat_data->gpio, "pcie_dock_detect");
+		gpio_direction_input(tegra_pcie.plat_data->gpio);
+		irq = gpio_to_irq(tegra_pcie.plat_data->gpio);
+		if (irq < 0) {
+			pr_err("Unable to get irq number for dock_detect\n");
+			goto err_irq;
+		}
+		err = request_irq(irq,
+				gpio_pcie_detect_isr,
+				IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
+				"pcie_dock_detect",
+				(void *)tegra_pcie.plat_data);
+		if (err < 0) {
+			pr_err("Unable to claim irq number for dock_detect\n");
+			goto err_irq;
+		}
+	}
+
 	if (tegra_pcie.num_ports)
 		pci_common_init(&tegra_pcie_hw);
 	else
 		err = tegra_pcie_power_off();
+
+err_irq:
 
 	return err;
 }
