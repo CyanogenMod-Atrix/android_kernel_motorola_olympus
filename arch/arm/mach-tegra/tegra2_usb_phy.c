@@ -1545,6 +1545,189 @@ static int ulpi_link_phy_resume(struct tegra_usb_phy *phy)
 	return status;
 }
 
+
+static int ulpi_null_phy_power_off(struct tegra_usb_phy *phy)
+{
+	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
+
+	if (!phy->phy_clk_on) {
+		DBG("%s(%d) inst:[%d] phy clk is already off\n", __func__,
+							__LINE__, phy->inst);
+		return 0;
+	}
+
+	phy->phy_clk_on = false;
+	phy->hw_accessible = false;
+
+	return 0;
+}
+
+static int ulpi_null_phy_irq(struct tegra_usb_phy *phy)
+{
+	usb_phy_fence_read(phy);
+	return IRQ_HANDLED;
+}
+
+static int ulpi_null_phy_lp0_resume(struct tegra_usb_phy *phy)
+{
+	unsigned long val;
+	void __iomem *base = phy->regs;
+
+	val = readl(base + USB_USBCMD);
+	val |= USB_USBCMD_RESET;
+	writel(val, base + USB_USBCMD);
+
+	if (usb_phy_reg_status_wait(base + USB_USBCMD,
+		USB_USBCMD_RESET, 0, 2500) < 0) {
+		pr_err("%s: timeout waiting for reset\n", __func__);
+	}
+
+	val = readl(base + USB_USBMODE_REG_OFFSET);
+	val &= ~USB_USBMODE_MASK;
+	val |= USB_USBMODE_HOST;
+	writel(val, base + USB_USBMODE_REG_OFFSET);
+
+	val = readl(base + USB_USBCMD);
+	val |= USB_USBCMD_RS;
+	writel(val, base + USB_USBCMD);
+	if (usb_phy_reg_status_wait(base + USB_USBCMD, USB_USBCMD_RS,
+						 USB_USBCMD_RS, 2000)) {
+		pr_err("%s: timeout waiting for USB_USBCMD_RS\n", __func__);
+		return -ETIMEDOUT;
+	}
+
+	/* Enable Port Power */
+	val = readl(base + USB_PORTSC);
+	val |= USB_PORTSC_PP;
+	writel(val, base + USB_PORTSC);
+	udelay(10);
+
+	/* disable ULPI pinmux bypass */
+	val = readl(base + ULPI_TIMING_CTRL_0);
+	val &= ~ULPI_OUTPUT_PINMUX_BYP;
+	writel(val, base + ULPI_TIMING_CTRL_0);
+
+	return 0;
+}
+
+static int ulpi_null_phy_power_on(struct tegra_usb_phy *phy)
+{
+	unsigned long val;
+	void __iomem *base = phy->regs;
+	struct tegra_ulpi_config *config = &phy->pdata->u_cfg.ulpi;
+	static bool cold_boot = true;
+
+	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
+	if (phy->phy_clk_on) {
+		DBG("%s(%d) inst:[%d] phy clk is already On\n", __func__,
+							__LINE__, phy->inst);
+		return 0;
+	}
+
+	val = readl(base + USB_SUSP_CTRL);
+	val |= UHSIC_RESET;
+	writel(val, base + USB_SUSP_CTRL);
+
+	val = readl(base + ULPI_TIMING_CTRL_0);
+	val |= ULPI_OUTPUT_PINMUX_BYP | ULPI_CLKOUT_PINMUX_BYP;
+	writel(val, base + ULPI_TIMING_CTRL_0);
+
+	val = readl(base + USB_SUSP_CTRL);
+	val |= ULPI_PHY_ENABLE;
+	writel(val, base + USB_SUSP_CTRL);
+	udelay(10);
+
+	/* set timming parameters */
+	val = readl(base + ULPI_TIMING_CTRL_0);
+	val |= ULPI_SHADOW_CLK_LOOPBACK_EN;
+	val |= ULPI_SHADOW_CLK_SEL;
+	val |= ULPI_LBK_PAD_EN;
+	val |= ULPI_SHADOW_CLK_DELAY(config->shadow_clk_delay);
+	val |= ULPI_CLOCK_OUT_DELAY(config->clock_out_delay);
+	val |= ULPI_LBK_PAD_E_INPUT_OR;
+	writel(val, base + ULPI_TIMING_CTRL_0);
+
+	writel(0, base + ULPI_TIMING_CTRL_1);
+	udelay(10);
+
+	/* start internal 60MHz clock */
+	val = readl(base + ULPIS2S_CTRL);
+	val |= ULPIS2S_ENA;
+	val |= ULPIS2S_SUPPORT_DISCONNECT;
+	val |= ULPIS2S_SPARE((phy->pdata->op_mode == TEGRA_USB_OPMODE_HOST) ? 3 : 1);
+	val |= ULPIS2S_PLLU_MASTER_BLASTER60;
+	writel(val, base + ULPIS2S_CTRL);
+
+	/* select ULPI_CORE_CLK_SEL to SHADOW_CLK */
+	val = readl(base + ULPI_TIMING_CTRL_0);
+	val |= ULPI_CORE_CLK_SEL;
+	writel(val, base + ULPI_TIMING_CTRL_0);
+	udelay(10);
+
+	/* enable ULPI null phy clock - can't set the trimmers before this */
+	val = readl(base + ULPI_TIMING_CTRL_0);
+	val |= ULPI_CLK_OUT_ENA;
+	writel(val, base + ULPI_TIMING_CTRL_0);
+	udelay(10);
+
+	if (usb_phy_reg_status_wait(base + USB_SUSP_CTRL, USB_PHY_CLK_VALID,
+						 USB_PHY_CLK_VALID, 2500)) {
+		pr_err("%s: timeout waiting for phy to stabilize\n", __func__);
+		return -ETIMEDOUT;
+	}
+
+	/* set ULPI trimmers */
+	ulpi_set_trimmer(phy);
+
+	if (cold_boot) {
+		val = readl(base + ULPI_TIMING_CTRL_0);
+		val |= ULPI_CLK_PADOUT_ENA;
+		writel(val, base + ULPI_TIMING_CTRL_0);
+		cold_boot = false;
+	} else {
+		if (!readl(base + USB_ASYNCLISTADDR))
+			ulpi_null_phy_lp0_resume(phy);
+	}
+	udelay(10);
+
+	phy->phy_clk_on = true;
+	phy->hw_accessible = true;
+
+	return 0;
+}
+
+
+static int ulpi_null_phy_pre_resume(struct tegra_usb_phy *phy, bool remote_wakeup)
+{
+	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
+
+	usb_phy_wait_for_sof(phy);
+	return 0;
+}
+
+static int ulpi_null_phy_resume(struct tegra_usb_phy *phy)
+{
+	unsigned long val;
+	void __iomem *base = phy->regs;
+
+	if (!readl(base + USB_ASYNCLISTADDR)) {
+		/* enable ULPI CLK output pad */
+		val = readl(base + ULPI_TIMING_CTRL_0);
+		val |= ULPI_CLK_PADOUT_ENA;
+		writel(val, base + ULPI_TIMING_CTRL_0);
+
+		/* enable ULPI pinmux bypass */
+		val = readl(base + ULPI_TIMING_CTRL_0);
+		val |= ULPI_OUTPUT_PINMUX_BYP;
+		writel(val, base + ULPI_TIMING_CTRL_0);
+		udelay(5);
+	}
+
+	return 0;
+}
+
+
+
 static struct tegra_usb_phy_ops utmi_phy_ops = {
 	.open		= utmi_phy_open,
 	.close		= utmi_phy_close,
@@ -1578,7 +1761,14 @@ static struct tegra_usb_phy_ops ulpi_link_phy_ops = {
 	.resume		= ulpi_link_phy_resume,
 };
 
-static struct tegra_usb_phy_ops ulpi_null_phy_ops;
+static struct tegra_usb_phy_ops ulpi_null_phy_ops = {
+	.irq		= ulpi_null_phy_irq,
+	.power_on	= ulpi_null_phy_power_on,
+	.power_off	= ulpi_null_phy_power_off,
+	.pre_resume = ulpi_null_phy_pre_resume,
+	.resume = ulpi_null_phy_resume,
+};
+
 static struct tegra_usb_phy_ops icusb_phy_ops;
 
 
