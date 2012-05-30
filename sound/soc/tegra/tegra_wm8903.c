@@ -902,8 +902,8 @@ err_unregister_card:
 err_unregister_switch:
 #ifdef CONFIG_SWITCH
 	switch_dev_unregister(&tegra_wm8903_headset_switch);
-#endif
 err_fini_utils:
+#endif
 	tegra_asoc_utils_fini(&machine->util_data);
 err_free_machine:
 	kfree(machine);
