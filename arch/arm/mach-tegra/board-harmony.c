@@ -32,6 +32,8 @@
 #include <linux/i2c-tegra.h>
 #include <linux/memblock.h>
 #include <linux/delay.h>
+#include <linux/mfd/tps6586x.h>
+#include <linux/platform_data/tegra_usb.h>
 
 #include <sound/wm8903.h>
 
@@ -81,20 +83,52 @@ static int __init parse_tag_nvidia(const struct tag *tag)
 }
 __tagtable(ATAG_NVIDIA, parse_tag_nvidia);
 
-static struct tegra_utmip_config utmi_phy_config = {
-	.hssync_start_delay = 0,
-	.idle_wait_delay = 17,
-	.elastic_limit = 16,
-	.term_range_adj = 6,
-	.xcvr_setup = 9,
-	.xcvr_lsfslew = 2,
-	.xcvr_lsrslew = 2,
+
+static struct tegra_usb_platform_data tegra_udc_pdata = {
+	.port_otg = false,
+	.has_hostpc = false,
+	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
+	.op_mode = TEGRA_USB_OPMODE_DEVICE,
+	.u_data.dev = {
+		.vbus_pmu_irq = 0,
+		.vbus_gpio = -1,
+		.charging_supported = false,
+		.remote_wakeup_supported = false,
+	},
+	.u_cfg.utmi = {
+		.hssync_start_delay = 0,
+		.elastic_limit = 16,
+		.idle_wait_delay = 17,
+		.term_range_adj = 6,
+		.xcvr_setup = 8,
+		.xcvr_lsfslew = 2,
+		.xcvr_lsrslew = 2,
+		.xcvr_setup_offset = 0,
+		.xcvr_use_fuses = 1,
+	},
 };
 
-static struct tegra_ehci_platform_data tegra_ehci_pdata = {
-	.phy_config = &utmi_phy_config,
-	.operating_mode = TEGRA_USB_HOST,
-	.power_down_on_bus_suspend = 1,
+static struct tegra_usb_platform_data tegra_ehci3_utmi_pdata = {
+	.port_otg = false,
+	.has_hostpc = false,
+	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
+	.op_mode	= TEGRA_USB_OPMODE_HOST,
+	.u_data.host = {
+		.vbus_gpio = TEGRA_GPIO_PD3,
+		.vbus_reg = NULL,
+		.hot_plug = true,
+		.remote_wakeup_supported = false,
+		.power_off_on_suspend = true,
+	},
+	.u_cfg.utmi = {
+		.hssync_start_delay = 9,
+		.elastic_limit = 16,
+		.idle_wait_delay = 17,
+		.term_range_adj = 6,
+		.xcvr_setup = 8,
+		.xcvr_lsfslew = 2,
+		.xcvr_lsrslew = 2,
+	},
 };
 
 static struct tegra_nand_chip_parms nand_chip_parms[] = {
@@ -283,39 +317,6 @@ static void __init harmony_i2c_init(void)
 	i2c_register_board_info(0, &wm8903_board_info, 1);
 }
 
-/* OTG gadget device */
-/*static u64 tegra_otg_dmamask = DMA_BIT_MASK(32);
-
-
-static struct resource tegra_otg_resources[] = {
-	[0] = {
-		.start  = TEGRA_USB_BASE,
-		.end    = TEGRA_USB_BASE + TEGRA_USB_SIZE - 1,
-		.flags  = IORESOURCE_MEM,
-	},
-	[1] = {
-		.start  = INT_USB,
-		.end    = INT_USB,
-		.flags  = IORESOURCE_IRQ,
-	},
-};
-
-static struct fsl_usb2_platform_data tegra_otg_pdata = {
-	.operating_mode	= FSL_USB2_DR_DEVICE,
-	.phy_mode	= FSL_USB2_PHY_UTMI,
-};
-
-static struct platform_device tegra_otg = {
-	.name = "fsl-tegra-udc",
-	.id   = -1,
-	.dev  = {
-		.dma_mask		= &tegra_otg_dmamask,
-		.coherent_dma_mask	= 0xffffffff,
-		.platform_data = &tegra_otg_pdata,
-	},
-	.resource = tegra_otg_resources,
-	.num_resources = ARRAY_SIZE(tegra_otg_resources),
-};*/
 
 /* PDA power */
 static struct pda_power_pdata pda_power_pdata = {
@@ -476,7 +477,8 @@ static void __init tegra_harmony_init(void)
 	tegra_sdhci_device2.dev.platform_data = &sdhci_pdata2;
 	tegra_sdhci_device4.dev.platform_data = &sdhci_pdata4;
 
-	tegra_ehci3_device.dev.platform_data = &tegra_ehci_pdata;
+	tegra_udc_device.dev.platform_data = &tegra_udc_pdata;
+	tegra_ehci3_device.dev.platform_data = &tegra_ehci3_utmi_pdata;
 
 	platform_add_devices(harmony_devices, ARRAY_SIZE(harmony_devices));
 	harmony_i2c_init();

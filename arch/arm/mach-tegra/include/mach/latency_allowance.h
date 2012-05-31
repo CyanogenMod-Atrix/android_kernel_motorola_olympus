@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/include/mach/latency_allowance.h
  *
- * Copyright (C) 2011, NVIDIA Corporation.
+ * Copyright (C) 2011-2012 NVIDIA Corporation.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -104,7 +104,7 @@ static inline int tegra_enable_latency_scaling(enum tegra_la_id id,
 
 static inline void tegra_disable_latency_scaling(enum tegra_la_id id)
 {
-	return 0;
+	return;
 }
 #else
 int tegra_set_latency_allowance(enum tegra_la_id id,

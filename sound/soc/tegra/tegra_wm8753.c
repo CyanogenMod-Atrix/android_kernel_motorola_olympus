@@ -379,7 +379,6 @@ static int tegra_bt_call_hw_params(struct snd_pcm_substream *substream,
 					struct snd_pcm_hw_params *params)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct snd_soc_dai *codec_dai = rtd->codec_dai;
 	struct snd_soc_codec *codec = rtd->codec;
 	struct snd_soc_card *card = codec->card;
 	struct tegra_wm8753 *machine = snd_soc_card_get_drvdata(card);
@@ -780,6 +779,10 @@ static int tegra_wm8753_init(struct snd_soc_pcm_runtime *rtd)
        /* Add call mode switch control */
 	ret = snd_ctl_add(codec->card->snd_card,
 			snd_ctl_new1(&tegra_call_mode_control, machine));
+	if (ret < 0)
+		return ret;
+
+	ret = tegra_asoc_utils_register_ctls(&machine->util_data);
 	if (ret < 0)
 		return ret;
 

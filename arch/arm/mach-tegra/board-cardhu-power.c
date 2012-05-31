@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-cardhu-power.c
  *
- * Copyright (C) 2011 NVIDIA, Inc.
+ * Copyright (C) 2011-2012 NVIDIA, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -604,6 +604,7 @@ static struct regulator_consumer_supply fixed_reg_en_vdd_pnl1_supply[] = {
 static struct regulator_consumer_supply fixed_reg_cam1_ldo_en_supply[] = {
 	REGULATOR_SUPPLY("vdd_2v8_cam1", NULL),
 	REGULATOR_SUPPLY("avdd", "6-0072"),
+	REGULATOR_SUPPLY("vdd", "6-000e"),
 };
 
 /* CAM2_LDO_EN from AP GPIO KB_ROW7 R07*/
@@ -649,6 +650,7 @@ static struct regulator_consumer_supply fixed_reg_en_1v8_cam_supply[] = {
 	REGULATOR_SUPPLY("vdd_1v8_cam3", NULL),
 	REGULATOR_SUPPLY("dvdd", "6-0072"),
 	REGULATOR_SUPPLY("dvdd", "7-0072"),
+	REGULATOR_SUPPLY("vdd_i2c", "6-000e"),
 	REGULATOR_SUPPLY("vdd_i2c", "2-0033"),
 };
 
@@ -1072,13 +1074,6 @@ int __init cardhu_fixed_regulator_init(void)
 		break;
 	}
 
-	for (i = 0; i < nfixreg_devs; ++i) {
-		struct fixed_voltage_config *fixed_reg_pdata =
-				fixed_reg_devs[i]->dev.platform_data;
-		int gpio_nr = fixed_reg_pdata->gpio;
-		if (gpio_nr < TEGRA_NR_GPIOS)
-			tegra_gpio_enable(gpio_nr);
-	}
 	return platform_add_devices(fixed_reg_devs, nfixreg_devs);
 }
 subsys_initcall_sync(cardhu_fixed_regulator_init);

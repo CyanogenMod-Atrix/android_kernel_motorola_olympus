@@ -38,21 +38,11 @@
 #include <mach/iovmm.h>
 #include <linux/nvmap.h>
 
-#include <linux/vmstat.h>
-#include <linux/swap.h>
 #include <linux/shrinker.h>
 #include <linux/moduleparam.h>
-
 #include "nvmap.h"
 #include "nvmap_mru.h"
 #include "nvmap_common.h"
-
-#define PRINT_CARVEOUT_CONVERSION 0
-#if PRINT_CARVEOUT_CONVERSION
-#define PR_INFO pr_info
-#else
-#define PR_INFO(...)
-#endif
 
 #define NVMAP_SECURE_HEAPS	(NVMAP_HEAP_CARVEOUT_IRAM | NVMAP_HEAP_IOVMM | \
 				 NVMAP_HEAP_CARVEOUT_VPR)
@@ -646,36 +636,19 @@ fail:
 static void alloc_handle(struct nvmap_client *client,
 			 struct nvmap_handle *h, unsigned int type)
 {
+	unsigned int carveout_mask = NVMAP_HEAP_CARVEOUT_MASK;
+	unsigned int iovmm_mask = NVMAP_HEAP_IOVMM;
+
 	BUG_ON(type & (type - 1));
 
 #ifdef CONFIG_NVMAP_CONVERT_CARVEOUT_TO_IOVMM
-#define __NVMAP_HEAP_CARVEOUT	(NVMAP_HEAP_CARVEOUT_IRAM | NVMAP_HEAP_CARVEOUT_VPR)
-#define __NVMAP_HEAP_IOVMM	(NVMAP_HEAP_IOVMM | NVMAP_HEAP_CARVEOUT_GENERIC)
-	if (type & NVMAP_HEAP_CARVEOUT_GENERIC) {
-#ifdef CONFIG_NVMAP_ALLOW_SYSMEM
-		if (h->size <= PAGE_SIZE) {
-			PR_INFO("###CARVEOUT CONVERTED TO SYSMEM "
-				"0x%x bytes %s(%d)###\n",
-				h->size, current->comm, current->pid);
-			goto sysheap;
-		}
-#endif
-		PR_INFO("###CARVEOUT CONVERTED TO IOVM "
-			"0x%x bytes %s(%d)###\n",
-			h->size, current->comm, current->pid);
-	}
-#else
-#define __NVMAP_HEAP_CARVEOUT	NVMAP_HEAP_CARVEOUT_MASK
-#define __NVMAP_HEAP_IOVMM	NVMAP_HEAP_IOVMM
+	/* Convert generic carveout requests to iovmm requests. */
+	carveout_mask &= ~NVMAP_HEAP_CARVEOUT_GENERIC;
+	iovmm_mask |= NVMAP_HEAP_CARVEOUT_GENERIC;
 #endif
 
-	if (type & __NVMAP_HEAP_CARVEOUT) {
+	if (type & carveout_mask) {
 		struct nvmap_heap_block *b;
-#ifdef CONFIG_NVMAP_CONVERT_CARVEOUT_TO_IOVMM
-		PR_INFO("###IRAM REQUEST RETAINED "
-			"0x%x bytes %s(%d)###\n",
-			h->size, current->comm, current->pid);
-#endif
 		/* Protect handle from relocation */
 		nvmap_usecount_inc(h);
 
@@ -689,7 +662,7 @@ static void alloc_handle(struct nvmap_client *client,
 		}
 		nvmap_usecount_dec(h);
 
-	} else if (type & __NVMAP_HEAP_IOVMM) {
+	} else if (type & iovmm_mask) {
 		size_t reserved = PAGE_ALIGN(h->size);
 		int commit = 0;
 		int ret;
@@ -713,10 +686,6 @@ static void alloc_handle(struct nvmap_client *client,
 		}
 
 	} else if (type & NVMAP_HEAP_SYSMEM) {
-#if defined(CONFIG_NVMAP_CONVERT_CARVEOUT_TO_IOVMM) && \
-	defined(CONFIG_NVMAP_ALLOW_SYSMEM)
-sysheap:
-#endif
 		if (handle_page_alloc(client, h, true) == 0) {
 			BUG_ON(!h->pgalloc.contig);
 			h->heap_pgalloc = true;
@@ -751,10 +720,6 @@ static const unsigned int heap_policy_large[] = {
 	0,
 };
 
-/* Do not override single page policy if there is not much space to
-avoid invoking system oom killer. */
-#define NVMAP_SMALL_POLICY_SYSMEM_THRESHOLD 50000000
-
 int nvmap_alloc_handle_id(struct nvmap_client *client,
 			  unsigned long id, unsigned int heap_mask,
 			  size_t align, unsigned int flags)
@@ -779,32 +744,22 @@ int nvmap_alloc_handle_id(struct nvmap_client *client,
 	h->align = max_t(size_t, align, L1_CACHE_BYTES);
 
 #ifndef CONFIG_TEGRA_IOVMM
+	/* convert iovmm requests to generic carveout. */
 	if (heap_mask & NVMAP_HEAP_IOVMM) {
-		heap_mask &= NVMAP_HEAP_IOVMM;
-		heap_mask |= NVMAP_HEAP_CARVEOUT_GENERIC;
+		heap_mask = heap_mask & ~NVMAP_HEAP_IOVMM |
+			    NVMAP_HEAP_CARVEOUT_GENERIC;
 	}
 #endif
-#ifndef CONFIG_NVMAP_CONVERT_CARVEOUT_TO_IOVMM
 #ifdef CONFIG_NVMAP_ALLOW_SYSMEM
 	/* Allow single pages allocations in system memory to save
 	 * carveout space and avoid extra iovm mappings */
 	if (nr_page == 1) {
-		if (heap_mask & NVMAP_HEAP_IOVMM)
+		if (heap_mask &
+		    (NVMAP_HEAP_IOVMM | NVMAP_HEAP_CARVEOUT_GENERIC))
 			heap_mask |= NVMAP_HEAP_SYSMEM;
-		else if (heap_mask & NVMAP_HEAP_CARVEOUT_GENERIC) {
-			/* Calculate size of free physical pages
-			 * managed by kernel */
-			unsigned long freeMem =
-				(global_page_state(NR_FREE_PAGES) +
-				global_page_state(NR_FILE_PAGES) -
-				total_swapcache_pages) << PAGE_SHIFT;
-
-			if (freeMem > NVMAP_SMALL_POLICY_SYSMEM_THRESHOLD)
-				heap_mask |= NVMAP_HEAP_SYSMEM;
-		}
 	}
 #endif
-
+#ifndef CONFIG_NVMAP_CONVERT_CARVEOUT_TO_IOVMM
 	/* This restriction is deprecated as alignments greater than
 	   PAGE_SIZE are now correctly handled, but it is retained for
 	   AP20 compatibility. */

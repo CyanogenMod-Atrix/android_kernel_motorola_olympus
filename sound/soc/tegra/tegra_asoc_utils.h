@@ -25,6 +25,8 @@
 
 
 #define TEGRA30_I2S_MASTER_PLAYBACK 1
+#define TEGRA_ALSA_MAX_DEVICES 6
+#define TEGRA_DMA_MAX_CHANNELS 32
 
 struct clk;
 struct device;
@@ -41,6 +43,7 @@ struct tegra_asoc_utils_data {
 	int set_baseclock;
 	int set_mclk;
 	int lock_count;
+	int avp_device_id;
 };
 
 int tegra_asoc_utils_set_rate(struct tegra_asoc_utils_data *data, int srate,
@@ -52,6 +55,7 @@ int tegra_asoc_utils_init(struct tegra_asoc_utils_data *data,
 void tegra_asoc_utils_fini(struct tegra_asoc_utils_data *data);
 int tegra_asoc_utils_clk_enable(struct tegra_asoc_utils_data *data);
 int tegra_asoc_utils_clk_disable(struct tegra_asoc_utils_data *data);
+int tegra_asoc_utils_register_ctls(struct tegra_asoc_utils_data *data);
 
 #endif
 

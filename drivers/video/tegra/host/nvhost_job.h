@@ -27,7 +27,15 @@ struct nvhost_channel;
 struct nvhost_hwctx;
 struct nvmap_client;
 struct nvhost_waitchk;
-struct nvmap_handle;
+struct nvhost_syncpt;
+
+struct nvhost_job_gather {
+	u32 words;
+	phys_addr_t mem;
+	u32 mem_id;
+	int offset;
+	struct nvmap_handle_ref *ref;
+};
 
 /*
  * Each submit is tracked as a nvhost_job.
@@ -50,10 +58,8 @@ struct nvhost_job {
 	struct nvmap_client *nvmap;
 
 	/* Gathers and their memory */
-	struct nvmap_handle_ref *gather_mem;
-	struct nvhost_channel_gather *gathers;
+	struct nvhost_job_gather *gathers;
 	int num_gathers;
-	int gather_mem_size;
 
 	/* Wait checks to be processed at submit time */
 	struct nvhost_waitchk *waitchk;
@@ -61,9 +67,10 @@ struct nvhost_job {
 	u32 waitchk_mask;
 
 	/* Array of handles to be pinned & unpinned */
-	struct nvmap_pinarray_elem *pinarray;
-	int num_pins;
-	struct nvmap_handle **unpins;
+	struct nvhost_reloc *relocarray;
+	struct nvhost_reloc_shift *relocshiftarray;
+	int num_relocs;
+	struct nvmap_handle_ref **unpins;
 	int num_unpins;
 
 	/* Sync point id, number of increments and end related to the submit */
@@ -99,17 +106,6 @@ struct nvhost_job *nvhost_job_alloc(struct nvhost_channel *ch,
 		int priority, int clientid);
 
 /*
- * Allocate memory for a job. Just enough memory will be allocated to
- * accomodate the submit announced in submit header. Gather memory from
- * oldjob will be reused, and nvhost_job_put() will be called to it.
- */
-struct nvhost_job *nvhost_job_realloc(struct nvhost_job *oldjob,
-		struct nvhost_hwctx *hwctx,
-		struct nvhost_submit_hdr_ext *hdr,
-		struct nvmap_client *nvmap,
-		int priority, int clientid);
-
-/*
  * Add a gather to a job.
  */
 void nvhost_job_add_gather(struct nvhost_job *job,
@@ -134,8 +130,11 @@ void nvhost_job_put(struct nvhost_job *job);
  * Pin memory related to job. This handles relocation of addresses to the
  * host1x address space. Handles both the gather memory and any other memory
  * referred to from the gather buffers.
+ *
+ * Handles also patching out host waits that would wait for an expired sync
+ * point value.
  */
-int nvhost_job_pin(struct nvhost_job *job);
+int nvhost_job_pin(struct nvhost_job *job, struct nvhost_syncpt *sp);
 
 /*
  * Unpin memory related to job.

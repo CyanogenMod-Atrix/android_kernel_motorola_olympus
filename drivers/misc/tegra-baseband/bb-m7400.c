@@ -28,10 +28,12 @@
 #include <linux/device.h>
 #include <linux/usb.h>
 #include <linux/wakelock.h>
+#include <linux/platform_data/tegra_usb.h>
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
 #include <mach/tegra-bb-power.h>
 #include <mach/usb_phy.h>
+
 #include "bb-power.h"
 
 static struct tegra_bb_gpio_data m7400_gpios[] = {
@@ -193,20 +195,17 @@ static int m7400_power(int code)
 
 static void m7400_ehci_customize(struct platform_device *pdev)
 {
-	struct tegra_ehci_platform_data *ehci_pdata;
-	struct tegra_uhsic_config *hsic_config;
+	struct tegra_usb_platform_data *ehci_pdata;
 
-	ehci_pdata = (struct tegra_ehci_platform_data *)
+	ehci_pdata = (struct usb_platform_data *)
 			pdev->dev.platform_data;
-	hsic_config = (struct tegra_uhsic_config *)
-			ehci_pdata->phy_config;
 
 	/* Register PHY callbacks */
-	hsic_config->postsuspend = m7400_l2_suspend;
-	hsic_config->preresume = m7400_l2_resume;
+	ehci_pdata->ops->post_suspend = m7400_l2_suspend;
+	ehci_pdata->ops->pre_resume = m7400_l2_resume;
 
 	/* Override required settings */
-	ehci_pdata->power_down_on_bus_suspend = 0;
+	ehci_pdata->u_data.host.power_off_on_suspend = false;
 }
 
 static int m7400_attrib_write(struct device *dev, int value)

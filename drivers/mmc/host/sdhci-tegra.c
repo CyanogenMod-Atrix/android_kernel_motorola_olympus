@@ -545,11 +545,6 @@ static int tegra_sdhci_signal_voltage_switch(struct sdhci_host *sdhci,
 	u16 clk, ctrl;
 	unsigned int val;
 
-	/* Switch OFF the card clock to prevent glitches on the clock line */
-	clk = sdhci_readw(sdhci, SDHCI_CLOCK_CONTROL);
-	clk &= ~SDHCI_CLOCK_CARD_EN;
-	sdhci_writew(sdhci, clk, SDHCI_CLOCK_CONTROL);
-
 	ctrl = sdhci_readw(sdhci, SDHCI_HOST_CONTROL2);
 	if (signal_voltage == MMC_SIGNAL_VOLTAGE_180) {
 		ctrl |= SDHCI_CTRL_VDD_180;
@@ -559,6 +554,17 @@ static int tegra_sdhci_signal_voltage_switch(struct sdhci_host *sdhci,
 		if (ctrl & SDHCI_CTRL_VDD_180)
 			ctrl &= ~SDHCI_CTRL_VDD_180;
 	}
+
+	/* Check if the slot can support the required voltage */
+	if (min_uV > tegra_host->vddio_max_uv)
+		return 0;
+
+	/* Switch OFF the card clock to prevent glitches on the clock line */
+	clk = sdhci_readw(sdhci, SDHCI_CLOCK_CONTROL);
+	clk &= ~SDHCI_CLOCK_CARD_EN;
+	sdhci_writew(sdhci, clk, SDHCI_CLOCK_CONTROL);
+
+	/* Set/clear the 1.8V signalling */
 	sdhci_writew(sdhci, ctrl, SDHCI_HOST_CONTROL2);
 
 	/* Switch the I/O rail voltage */

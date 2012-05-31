@@ -83,6 +83,23 @@ config SATA_AHCI_PLATFORM
 
 	  If unsure, say N.
 
+config SATA_AHCI_TEGRA
+	tristate "TEGRA AHCI SATA support"
+	depends on ARCH_TEGRA_3x_SOC
+	help
+	  This option enables support for TEGRA AHCI Serial ATA.
+
+	  If unsure, say N.
+
+config TEGRA_SATA_IDLE_POWERGATE
+	bool "TEGRA SATA idle power-gating"
+	depends on SATA_AHCI_TEGRA && PM && PM_RUNTIME
+	help
+	  This option enables power-gating during SATA idling.
+	  This option should not be enabled if sata clocks are in dvfs_table.
+
+	  If unsure, say N.
+
 config SATA_FSL
 	tristate "Freescale 3.0Gbps SATA support"
 	depends on FSL_SOC

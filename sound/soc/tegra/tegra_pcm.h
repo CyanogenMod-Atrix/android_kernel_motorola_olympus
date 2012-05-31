@@ -53,6 +53,7 @@ struct tegra_runtime_data {
 	struct tegra_dma_req dma_req[MAX_DMA_REQ_COUNT];
 	struct tegra_dma_channel *dma_chan;
 	int dma_req_count;
+	int disable_intr;
 };
 
 int tegra_pcm_trigger(struct snd_pcm_substream *substream, int cmd);

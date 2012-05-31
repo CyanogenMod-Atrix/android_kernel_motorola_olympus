@@ -472,7 +472,6 @@ static __initdata struct tegra_pingroup_config cardhu_pinmux_cardhu_a03[] = {
 
 static __initdata struct tegra_pingroup_config cardhu_pinmux_e1291_a04[] = {
 	DEFAULT_PINMUX(GMI_AD15,        NAND,            PULL_DOWN,   NORMAL,   OUTPUT),
-	DEFAULT_PINMUX(ULPI_DATA5,      UARTA,           PULL_UP,   NORMAL,     INPUT),
 	DEFAULT_PINMUX(ULPI_DATA6,      UARTA,           NORMAL,    NORMAL,     OUTPUT),
 	DEFAULT_PINMUX(SPI2_MOSI,       SPI6,            NORMAL,    NORMAL,     INPUT),
 	DEFAULT_PINMUX(DAP3_SCLK,       RSVD1,           NORMAL,    NORMAL,     OUTPUT),
@@ -544,11 +543,8 @@ static __initdata struct tegra_pingroup_config gmi_pins_269[] = {
 
 static void __init cardhu_pinmux_audio_init(void)
 {
-	tegra_gpio_enable(TEGRA_GPIO_CDC_IRQ);
 	gpio_request(TEGRA_GPIO_CDC_IRQ, "wm8903");
 	gpio_direction_input(TEGRA_GPIO_CDC_IRQ);
-
-	tegra_gpio_enable(TEGRA_GPIO_HP_DET);
 }
 
 #define GPIO_INIT_PIN_MODE(_gpio, _is_input, _value)	\
@@ -755,7 +751,6 @@ static void set_unused_pin_gpio(struct gpio_init_pin_info *lpm_pin_info,
 			gpio_free(pin_info->gpio_nr);
 			continue;
 		}
-		tegra_gpio_enable(pin_info->gpio_nr);
 	}
 }
 

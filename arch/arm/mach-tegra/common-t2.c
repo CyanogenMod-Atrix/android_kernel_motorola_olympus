@@ -3,7 +3,7 @@
  *
  * Tegra 2 SoC-specific initialization (memory controller, etc.)
  *
- * Copyright (c) 2009-2011, NVIDIA Corporation.
+ * Copyright (c) 2009-2012 NVIDIA Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -177,16 +177,18 @@ out:
 	return IRQ_HANDLED;
 }
 
-void __init tegra_mc_init(void)
+static int __init tegra_mc_init(void)
 {
 	if (request_irq(INT_MC_GENERAL, tegra_mc_error_isr, 0,
 			"mc_status", NULL)) {
 		pr_err("%s: unable to register MC error interrupt\n", __func__);
+		return -EINVAL;
 	} else {
 		void __iomem *mc = IO_ADDRESS(TEGRA_MC_BASE);
 		u32 reg = MC_INT_SECURITY_VIOLATION | MC_INT_INVALID_GART_PAGE |
 			MC_INT_DECERR_EMEM_OTHERS;
 		writel(reg, mc + MC_INT_MASK);
 	}
+	return 0;
 }
 arch_initcall(tegra_mc_init);

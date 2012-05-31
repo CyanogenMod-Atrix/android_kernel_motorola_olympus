@@ -53,6 +53,18 @@ static void add_to_sync_queue(struct nvhost_cdma *cdma,
 	job->num_slots = nr_slots;
 	nvhost_job_get(job);
 	list_add_tail(&job->list, &cdma->sync_queue);
+
+	switch (job->priority) {
+	case NVHOST_PRIORITY_HIGH:
+		cdma->high_prio_count++;
+		break;
+	case NVHOST_PRIORITY_MEDIUM:
+		cdma->med_prio_count++;
+		break;
+	case NVHOST_PRIORITY_LOW:
+		cdma->low_prio_count++;
+		break;
+	}
 }
 
 /**
@@ -200,6 +212,19 @@ static void update_cdma_locked(struct nvhost_cdma *cdma)
 		}
 
 		list_del(&job->list);
+
+		switch (job->priority) {
+		case NVHOST_PRIORITY_HIGH:
+			cdma->high_prio_count--;
+			break;
+		case NVHOST_PRIORITY_MEDIUM:
+			cdma->med_prio_count--;
+			break;
+		case NVHOST_PRIORITY_LOW:
+			cdma->low_prio_count--;
+			break;
+		}
+
 		nvhost_job_put(job);
 	}
 
@@ -371,15 +396,13 @@ int nvhost_cdma_begin(struct nvhost_cdma *cdma, struct nvhost_job *job)
 }
 
 static void trace_write_gather(struct nvhost_cdma *cdma,
-		struct nvmap_handle *handle,
+		struct nvmap_handle_ref *ref,
 		u32 offset, u32 words)
 {
-	struct nvmap_handle_ref ref;
 	void *mem = NULL;
 
 	if (nvhost_debug_trace_cmdbuf) {
-		ref.handle = handle;
-		mem = nvmap_mmap(&ref);
+		mem = nvmap_mmap(ref);
 		if (IS_ERR_OR_NULL(mem))
 			mem = NULL;
 	};
@@ -393,12 +416,12 @@ static void trace_write_gather(struct nvhost_cdma *cdma,
 		for (i = 0; i < words; i += TRACE_MAX_LENGTH) {
 			trace_nvhost_cdma_push_gather(
 				cdma_to_channel(cdma)->dev->name,
-				(u32)handle,
+				(u32)ref->handle,
 				min(words - i, TRACE_MAX_LENGTH),
 				offset + i * sizeof(u32),
 				mem);
 		}
-		nvmap_munmap(&ref, mem);
+		nvmap_munmap(ref, mem);
 	}
 }
 
@@ -421,7 +444,7 @@ void nvhost_cdma_push(struct nvhost_cdma *cdma, u32 op1, u32 op2)
  */
 void nvhost_cdma_push_gather(struct nvhost_cdma *cdma,
 		struct nvmap_client *client,
-		struct nvmap_handle *handle,
+		struct nvmap_handle_ref *handle,
 		u32 offset, u32 op1, u32 op2)
 {
 	u32 slots_free = cdma->slots_free;
@@ -468,6 +491,12 @@ void nvhost_cdma_end(struct nvhost_cdma *cdma,
 	if (job->timeout && was_idle)
 		cdma_start_timer_locked(cdma, job);
 
+	trace_nvhost_cdma_end(job->ch->dev->name,
+			job->priority,
+			job->ch->cdma.high_prio_count,
+			job->ch->cdma.med_prio_count,
+			job->ch->cdma.low_prio_count);
+
 	mutex_unlock(&cdma->lock);
 }
 
@@ -491,6 +520,8 @@ int nvhost_cdma_flush(struct nvhost_cdma *cdma, int timeout)
 {
 	unsigned int space, err = 0;
 	unsigned long end_jiffies = jiffies + msecs_to_jiffies(timeout);
+
+	trace_nvhost_cdma_flush(cdma_to_channel(cdma)->dev->name, timeout);
 
 	/*
 	 * Wait for at most timeout ms. Recalculate timeout at each iteration

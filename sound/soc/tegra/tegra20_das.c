@@ -50,7 +50,7 @@ static inline u32 tegra20_das_read(u32 reg)
 }
 
 #ifdef CONFIG_PM
-int tegra20_das_resume()
+int tegra20_das_resume(void)
 {
 	int i, reg;
 
@@ -67,7 +67,7 @@ int tegra20_das_resume()
 }
 #endif
 
-int tegra20_das_set_tristate(int dap_id, int is_tristate)
+void tegra20_das_set_tristate(int dap_id, int is_tristate)
 {
 	enum tegra_pingroup pin;
 	enum tegra_tristate tristate;
@@ -86,7 +86,7 @@ int tegra20_das_set_tristate(int dap_id, int is_tristate)
 		pin = TEGRA_PINGROUP_DAP4;
 		break;
 	default:
-		return -EINVAL;
+		return;
 	}
 
 	if (is_tristate)

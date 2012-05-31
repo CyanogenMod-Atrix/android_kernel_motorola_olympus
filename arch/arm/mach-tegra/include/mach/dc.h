@@ -503,6 +503,7 @@ struct tegra_dc_platform_data {
 
 #define TEGRA_DC_FLAG_ENABLED		(1 << 0)
 
+int tegra_dc_get_stride(struct tegra_dc *dc, unsigned win);
 struct tegra_dc *tegra_dc_get_dc(unsigned idx);
 struct tegra_dc_win *tegra_dc_get_window(struct tegra_dc *dc, unsigned win);
 bool tegra_dc_get_connected(struct tegra_dc *);

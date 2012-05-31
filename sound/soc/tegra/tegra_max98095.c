@@ -542,6 +542,10 @@ static int tegra_max98095_init(struct snd_soc_pcm_runtime *rtd)
 		tegra_max98095_hp_jack_pins);
 #endif
 
+	ret = tegra_asoc_utils_register_ctls(&machine->util_data);
+	if (ret < 0)
+		return ret;
+
 	/* max98095_headset_detect(codec, &tegra_max98095_hp_jack,
 		SND_JACK_HEADSET); */
 

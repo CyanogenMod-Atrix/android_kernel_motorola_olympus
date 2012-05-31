@@ -49,7 +49,8 @@ struct tegra_p1852 {
 };
 
 static int tegra_p1852_hw_params(struct snd_pcm_substream *substream,
-					struct snd_pcm_hw_params *params)
+					struct snd_pcm_hw_params *params,
+					int codec_id)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_dai *codec_dai = rtd->codec_dai;
@@ -61,7 +62,6 @@ static int tegra_p1852_hw_params(struct snd_pcm_substream *substream,
 	int i2s_daifmt = 0;
 	int err;
 	struct tegra_p1852_platform_data *pdata;
-	int codec_id = codec_dai->id;
 
 	pdata = machine->pdata;
 
@@ -120,13 +120,37 @@ static int tegra_p1852_hw_params(struct snd_pcm_substream *substream,
 		dev_err(card->dev, "cpu_dai fmt not set\n");
 		return err;
 	}
-
 	err = snd_soc_dai_set_sysclk(codec_dai, 0, mclk,
 					SND_SOC_CLOCK_IN);
 	if (err < 0)
 		dev_info(card->dev, "codec_dai clock not set\n");
 
+	if (pdata->codec_info[codec_id].i2s_format ==
+			format_tdm) {
+		err = snd_soc_dai_set_tdm_slot(cpu_dai,
+					pdata->codec_info[codec_id].rx_mask,
+					pdata->codec_info[codec_id].tx_mask,
+					pdata->codec_info[codec_id].num_slots,
+					pdata->codec_info[codec_id].slot_width);
+		if (err < 0)
+			dev_err(card->dev, "cpu_dai tdm mode setting not done\n");
+	}
+
 	return 0;
+}
+
+static int tegra_p1852_hw_params_controller1(
+				struct snd_pcm_substream *substream,
+				struct snd_pcm_hw_params *params)
+{
+	return tegra_p1852_hw_params(substream, params, 0);
+}
+
+static int tegra_p1852_hw_params_controller2(
+				struct snd_pcm_substream *substream,
+				struct snd_pcm_hw_params *params)
+{
+	return tegra_p1852_hw_params(substream, params, 1);
 }
 
 static int tegra_hw_free(struct snd_pcm_substream *substream)
@@ -139,8 +163,12 @@ static int tegra_hw_free(struct snd_pcm_substream *substream)
 	return 0;
 }
 
-static struct snd_soc_ops tegra_p1852_ops = {
-	.hw_params = tegra_p1852_hw_params,
+static struct snd_soc_ops tegra_p1852_ops_controller1 = {
+	.hw_params = tegra_p1852_hw_params_controller1,
+	.hw_free = tegra_hw_free,
+};
+static struct snd_soc_ops tegra_p1852_ops_controller2 = {
+	.hw_params = tegra_p1852_hw_params_controller2,
 	.hw_free = tegra_hw_free,
 };
 
@@ -149,13 +177,13 @@ static struct snd_soc_dai_link tegra_p1852_dai_link[] = {
 		.name = "I2S-TDM-1",
 		.stream_name = "TEGRA PCM",
 		.platform_name = "tegra-pcm-audio",
-		.ops = &tegra_p1852_ops,
+		.ops = &tegra_p1852_ops_controller1,
 	},
 	{
 		.name = "I2S-TDM-2",
 		.stream_name = "TEGRA PCM",
 		.platform_name = "tegra-pcm-audio",
-		.ops = &tegra_p1852_ops,
+		.ops = &tegra_p1852_ops_controller2,
 	}
 };
 

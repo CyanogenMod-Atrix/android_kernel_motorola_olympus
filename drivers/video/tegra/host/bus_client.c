@@ -141,12 +141,6 @@ static int nvhost_channelopen(struct inode *inode, struct file *filp)
 	priv->clientid = atomic_add_return(1,
 			&nvhost_get_host(ch->dev)->clientid);
 	priv->timeout = MAX_STUCK_CHECK_COUNT * SYNCPT_CHECK_PERIOD;
-
-	priv->job = nvhost_job_alloc(ch, priv->hwctx, &priv->hdr,
-			NULL, priv->priority, priv->clientid);
-	if (!priv->job)
-		goto fail;
-
 	return 0;
 fail:
 	nvhost_channelrelease(inode, filp);
@@ -166,7 +160,7 @@ static int set_submit(struct nvhost_channel_userctx *ctx)
 		return -EFAULT;
 	}
 
-	ctx->job = nvhost_job_realloc(ctx->job,
+	ctx->job = nvhost_job_alloc(ctx->ch,
 			ctx->hwctx,
 			&ctx->hdr,
 			ctx->nvmap,
@@ -238,17 +232,28 @@ static ssize_t nvhost_channelwrite(struct file *filp, const char __user *buf,
 				cmdbuf.mem, cmdbuf.words, cmdbuf.offset);
 			hdr->num_cmdbufs--;
 		} else if (hdr->num_relocs) {
-			consumed = sizeof(struct nvhost_reloc);
-			if (remaining < consumed)
+			int numrelocs = remaining / sizeof(struct nvhost_reloc);
+			if (!numrelocs)
 				break;
-			if (copy_from_user(&job->pinarray[job->num_pins],
+			numrelocs = min_t(int, numrelocs, priv->hdr.num_relocs);
+			consumed = numrelocs * sizeof(struct nvhost_reloc);
+			if (copy_from_user(&job->relocarray[job->num_relocs],
 					buf, consumed)) {
 				err = -EFAULT;
 				break;
 			}
-			trace_nvhost_channel_write_reloc(chname);
-			job->num_pins++;
-			hdr->num_relocs--;
+			while (numrelocs) {
+				struct nvhost_reloc *reloc =
+					&job->relocarray[job->num_relocs];
+				trace_nvhost_channel_write_reloc(chname,
+					reloc->cmdbuf_mem,
+					reloc->cmdbuf_offset,
+					reloc->target,
+					reloc->target_offset);
+				job->num_relocs++;
+				hdr->num_relocs--;
+				numrelocs--;
+			}
 		} else if (hdr->num_waitchks) {
 			int numwaitchks =
 				(remaining / sizeof(struct nvhost_waitchk));
@@ -269,17 +274,19 @@ static ssize_t nvhost_channelwrite(struct file *filp, const char __user *buf,
 			hdr->num_waitchks -= numwaitchks;
 		} else if (priv->num_relocshifts) {
 			int next_shift =
-				job->num_pins - priv->num_relocshifts;
-			consumed = sizeof(struct nvhost_reloc_shift);
-			if (remaining < consumed)
+				job->num_relocs - priv->num_relocshifts;
+			int num =
+				(remaining / sizeof(struct nvhost_reloc_shift));
+			if (!num)
 				break;
-			if (copy_from_user(
-					&job->pinarray[next_shift].reloc_shift,
+			num = min_t(int, num, priv->num_relocshifts);
+			consumed = num * sizeof(struct nvhost_reloc_shift);
+			if (copy_from_user(&job->relocshiftarray[next_shift],
 					buf, consumed)) {
 				err = -EFAULT;
 				break;
 			}
-			priv->num_relocshifts--;
+			priv->num_relocshifts -= num;
 		} else {
 			err = -EFAULT;
 			break;
@@ -302,7 +309,7 @@ static int nvhost_ioctl_channel_flush(
 	struct nvhost_get_param_args *args,
 	int null_kickoff)
 {
-	struct device *device = &ctx->ch->dev->dev;
+	struct nvhost_device *ndev = to_nvhost_device(&ctx->ch->dev->dev);
 	int err;
 
 	trace_nvhost_ioctl_channel_flush(ctx->ch->dev->name);
@@ -312,13 +319,13 @@ static int nvhost_ioctl_channel_flush(
 	    ctx->hdr.num_cmdbufs ||
 	    ctx->hdr.num_waitchks) {
 		reset_submit(ctx);
-		dev_err(device, "channel submit out of sync\n");
+		dev_err(&ndev->dev, "channel submit out of sync\n");
 		return -EFAULT;
 	}
 
-	err = nvhost_job_pin(ctx->job);
+	err = nvhost_job_pin(ctx->job, &nvhost_get_host(ndev)->syncpt);
 	if (err) {
-		dev_warn(device, "nvhost_job_pin failed: %d\n", err);
+		dev_warn(&ndev->dev, "nvhost_job_pin failed: %d\n", err);
 		return err;
 	}
 
@@ -336,6 +343,9 @@ static int nvhost_ioctl_channel_flush(
 	args->value = ctx->job->syncpt_end;
 	if (err)
 		nvhost_job_unpin(ctx->job);
+
+	nvhost_job_put(ctx->job);
+	ctx->job = NULL;
 
 	return err;
 }

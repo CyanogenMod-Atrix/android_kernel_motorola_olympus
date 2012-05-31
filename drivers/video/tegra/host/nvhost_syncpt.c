@@ -74,7 +74,7 @@ u32 nvhost_syncpt_update_min(struct nvhost_syncpt *sp, u32 id)
 
 	BUG_ON(!syncpt_op().update_min);
 
-	return syncpt_op().update_min(sp, id);
+	val = syncpt_op().update_min(sp, id);
 	trace_nvhost_syncpt_update_min(id, val);
 
 	return val;
@@ -127,6 +127,19 @@ void nvhost_syncpt_incr(struct nvhost_syncpt *sp, u32 id)
 	nvhost_module_busy(syncpt_to_dev(sp)->dev);
 	nvhost_syncpt_cpu_incr(sp, id);
 	nvhost_module_idle(syncpt_to_dev(sp)->dev);
+}
+
+/**
+ * Updated sync point form hardware, and returns true if syncpoint is expired,
+ * false if we may need to wait
+ */
+static bool syncpt_update_min_is_expired(
+	struct nvhost_syncpt *sp,
+	u32 id,
+	u32 thresh)
+{
+	syncpt_op().update_min(sp, id);
+	return nvhost_syncpt_is_expired(sp, id, thresh);
 }
 
 /**
@@ -190,9 +203,9 @@ int nvhost_syncpt_wait_timeout(struct nvhost_syncpt *sp, u32 id,
 	while (timeout) {
 		u32 check = min_t(u32, SYNCPT_CHECK_PERIOD, timeout);
 		int remain = wait_event_interruptible_timeout(wq,
-				nvhost_syncpt_is_expired(sp, id, thresh),
+				syncpt_update_min_is_expired(sp, id, thresh),
 				check);
-		if (remain > 0) {
+		if (remain > 0 || nvhost_syncpt_is_expired(sp, id, thresh)) {
 			if (value)
 				*value = nvhost_syncpt_read_min(sp, id);
 			err = 0;
@@ -317,15 +330,10 @@ void nvhost_mutex_unlock(struct nvhost_syncpt *sp, int idx)
 	atomic_dec(&sp->lock_counts[idx]);
 }
 
-/* check for old WAITs to be removed (avoiding a wrap) */
-int nvhost_syncpt_wait_check(struct nvhost_syncpt *sp,
-			     struct nvmap_client *nvmap,
-			     u32 waitchk_mask,
-			     struct nvhost_waitchk *wait,
-			     int num_waitchk)
+/* remove a wait pointed to by patch_addr */
+int nvhost_syncpt_patch_wait(struct nvhost_syncpt *sp, void *patch_addr)
 {
-	return syncpt_op().wait_check(sp, nvmap,
-			waitchk_mask, wait, num_waitchk);
+	return syncpt_op().patch_wait(sp, patch_addr);
 }
 
 /* Displays the current value of the sync point via sysfs */

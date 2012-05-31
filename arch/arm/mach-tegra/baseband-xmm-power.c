@@ -33,6 +33,7 @@
 #include <linux/suspend.h>
 #include <linux/pm_qos_params.h>
 #include <mach/usb_phy.h>
+#include <linux/regulator/consumer.h>
 #include "board.h"
 #include "board-enterprise.h"
 #include "devices.h"

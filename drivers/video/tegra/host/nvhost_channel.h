@@ -31,17 +31,9 @@
 #define NVHOST_MAX_POWERGATE_IDS	2
 
 struct nvhost_master;
-struct nvhost_waitchk;
 struct nvhost_device;
 struct nvhost_channel;
 struct nvhost_hwctx;
-
-struct nvhost_channel_gather {
-	u32 words;
-	phys_addr_t mem;
-	u32 mem_id;
-	int offset;
-};
 
 struct nvhost_channel {
 	int refcount;

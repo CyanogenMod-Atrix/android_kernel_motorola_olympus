@@ -48,7 +48,7 @@ struct nvhost_job;
 
 struct nvmap_client_handle {
 	struct nvmap_client *client;
-	struct nvmap_handle *handle;
+	struct nvmap_handle_ref *handle;
 };
 
 struct push_buffer {
@@ -99,6 +99,9 @@ struct nvhost_cdma {
 	struct buffer_timeout timeout;	/* channel's timeout state/wq */
 	bool running;
 	bool torndown;
+	int high_prio_count;
+	int med_prio_count;
+	int low_prio_count;
 };
 
 #define cdma_to_channel(cdma) container_of(cdma, struct nvhost_channel, cdma)
@@ -113,7 +116,7 @@ int	nvhost_cdma_begin(struct nvhost_cdma *cdma, struct nvhost_job *job);
 void	nvhost_cdma_push(struct nvhost_cdma *cdma, u32 op1, u32 op2);
 void	nvhost_cdma_push_gather(struct nvhost_cdma *cdma,
 		struct nvmap_client *client,
-		struct nvmap_handle *handle, u32 offset, u32 op1, u32 op2);
+		struct nvmap_handle_ref *handle, u32 offset, u32 op1, u32 op2);
 void	nvhost_cdma_end(struct nvhost_cdma *cdma,
 		struct nvhost_job *job);
 void	nvhost_cdma_update(struct nvhost_cdma *cdma);

@@ -143,7 +143,7 @@ static void submit_ctxrestore(struct nvhost_job *job)
 	/* Send restore buffer to channel */
 	nvhost_cdma_push_gather(&ch->cdma,
 		host->nvmap,
-		nvmap_ref_to_handle(ctx->restore),
+		ctx->restore,
 		0,
 		nvhost_opcode_gather(ctx->restore_size),
 		ctx->restore_phys);
@@ -188,7 +188,7 @@ void submit_gathers(struct nvhost_job *job)
 		u32 op2 = job->gathers[i].mem;
 		nvhost_cdma_push_gather(&job->ch->cdma,
 				job->nvmap,
-				nvmap_id_to_handle(job->gathers[i].mem_id),
+				job->gathers[i].ref,
 				job->gathers[i].offset,
 				op1, op2);
 	}
@@ -240,22 +240,6 @@ int host1x_channel_submit(struct nvhost_job *job)
 		mutex_unlock(&ch->submitlock);
 		err = -ENOMEM;
 		goto error;
-	}
-
-	/* remove stale waits */
-	if (job->num_waitchk) {
-		err = nvhost_syncpt_wait_check(sp,
-					       job->nvmap,
-					       job->waitchk_mask,
-					       job->waitchk,
-					       job->num_waitchk);
-		if (err) {
-			dev_warn(&ch->dev->dev,
-				 "nvhost_syncpt_wait_check failed: %d\n", err);
-			mutex_unlock(&ch->submitlock);
-			nvhost_module_idle(ch->dev);
-			goto error;
-		}
 	}
 
 	/* begin a CDMA submit */

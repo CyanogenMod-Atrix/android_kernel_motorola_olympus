@@ -28,8 +28,8 @@
 #define __user
 #endif
 
-#ifndef __NVMAP_H
-#define __NVMAP_H
+#ifndef _LINUX_NVMAP_H
+#define _LINUX_NVMAP_H
 
 #define NVMAP_HEAP_SYSMEM  (1ul<<31)
 #define NVMAP_HEAP_IOVMM   (1ul<<30)
@@ -50,20 +50,31 @@
 
 #define NVMAP_HANDLE_SECURE          (0x1ul << 2)
 
-
 #if defined(__KERNEL__)
 
 #if defined(CONFIG_TEGRA_NVMAP)
 struct nvmap_handle;
 struct nvmap_client;
 struct nvmap_device;
+
 #define nvmap_ref_to_handle(_ref) (*(struct nvmap_handle **)(_ref))
 /* Convert User space handle to Kernel. */
 #define nvmap_convert_handle_u2k(h) (h)
+
+/* handle_ref objects are client-local references to an nvmap_handle;
+ * they are distinct objects so that handles can be unpinned and
+ * unreferenced the correct number of times when a client abnormally
+ * terminates */
+struct nvmap_handle_ref {
+	struct nvmap_handle *handle;
+	struct rb_node	node;
+	atomic_t	dupes;	/* number of times to free on file close */
+	atomic_t	pin;	/* number of times to unpin on free */
+};
+
 #elif defined(CONFIG_ION_TEGRA)
 /* For Ion Mem Manager support through nvmap_* API's. */
 #include "../../../../../drivers/gpu/ion/ion_priv.h"
-
 #define nvmap_client ion_client
 #define nvmap_device ion_device
 #define nvmap_handle ion_handle
@@ -76,31 +87,10 @@ struct nvmap_device;
 		BUG(); \
 	} \
 	(*((u32 *)h)); })
-#endif
+
+#endif /* CONFIG_ION_TEGRA */
 
 #define nvmap_id_to_handle(_id) ((struct nvmap_handle *)(_id))
-
-
-struct nvmap_pinarray_elem {
-	__u32 patch_mem;
-	__u32 patch_offset;
-	__u32 pin_mem;
-	__u32 pin_offset;
-	__u32 reloc_shift;
-};
-
-#if defined(CONFIG_TEGRA_NVMAP)
-/* handle_ref objects are client-local references to an nvmap_handle;
- * they are distinct objects so that handles can be unpinned and
- * unreferenced the correct number of times when a client abnormally
- * terminates */
-struct nvmap_handle_ref {
-	struct nvmap_handle *handle;
-	struct rb_node	node;
-	atomic_t	dupes;	/* number of times to free on file close */
-	atomic_t	pin;	/* number of times to unpin on free */
-};
-#endif
 
 struct nvmap_client *nvmap_create_client(struct nvmap_device *dev,
 					 const char *name);
@@ -127,16 +117,8 @@ phys_addr_t nvmap_handle_address(struct nvmap_client *c, unsigned long id);
 
 void nvmap_unpin(struct nvmap_client *client, struct nvmap_handle_ref *r);
 
-int nvmap_pin_array(struct nvmap_client *client, struct nvmap_handle *gather,
-		    const struct nvmap_pinarray_elem *arr, int nr,
-		    struct nvmap_handle **unique);
-
 void nvmap_unpin_handles(struct nvmap_client *client,
 			 struct nvmap_handle **h, int nr);
-
-int nvmap_patch_word(struct nvmap_client *client,
-		     struct nvmap_handle *patch,
-		     u32 patch_offset, u32 patch_value);
 
 struct nvmap_handle_ref *nvmap_duplicate_handle_id(struct nvmap_client *client,
 						   unsigned long id);
@@ -156,6 +138,6 @@ struct nvmap_platform_data {
 
 extern struct nvmap_device *nvmap_dev;
 
-#endif
+#endif /* __KERNEL__ */
 
-#endif
+#endif /* _LINUX_NVMAP_H */
