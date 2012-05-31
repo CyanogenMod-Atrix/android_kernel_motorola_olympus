@@ -27,6 +27,7 @@
 #include "nvhost_intr.h"
 #include "dev.h"
 #include "host1x_hardware.h"
+#include "chip_support.h"
 
 /*** HW host sync management ***/
 

@@ -10,7 +10,8 @@ nvhost-objs = \
 	dev.o \
 	debug.o \
 	bus_client.o \
-	chip_support.o
+	chip_support.o \
+	nvhost_memmgr.o
 
 obj-$(CONFIG_TEGRA_GRHOST) += mpe/
 obj-$(CONFIG_TEGRA_GRHOST) += gr3d/
@@ -21,3 +22,5 @@ obj-$(CONFIG_TEGRA_GRHOST) += gr2d/
 obj-$(CONFIG_TEGRA_GRHOST) += isp/
 obj-$(CONFIG_TEGRA_GRHOST) += vi/
 obj-$(CONFIG_TEGRA_GRHOST) += nvhost.o
+
+obj-$(CONFIG_TEGRA_GRHOST_USE_NVMAP) += nvmap.o

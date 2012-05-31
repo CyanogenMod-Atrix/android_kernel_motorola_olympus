@@ -7,6 +7,13 @@ config TEGRA_GRHOST
 	help
 	  Driver for the Tegra graphics host hardware.
 
+config TEGRA_GRHOST_USE_NVMAP
+	bool "Use nvmap as graphics memory manager"
+	default y
+	help
+	  Use nvmap as the graphics memory manager. This is the only
+	  choice at the moment.
+
 config TEGRA_DC
 	tristate "Tegra Display Contoller"
 	depends on ARCH_TEGRA && TEGRA_GRHOST
