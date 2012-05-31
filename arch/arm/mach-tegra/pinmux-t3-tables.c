@@ -3,7 +3,7 @@
  *
  * Common pinmux configurations for Tegra 3 SoCs
  *
- * Copyright (C) 2010-2011 NVIDIA Corporation
+ * Copyright (C) 2010-2012 NVIDIA Corporation
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -64,11 +64,16 @@
 const struct tegra_drive_pingroup_desc tegra_soc_drive_pingroups[TEGRA_MAX_DRIVE_PINGROUP] = {
 	DEFAULT_DRIVE_PINGROUP(AO1,		0x868),
 	DEFAULT_DRIVE_PINGROUP(AO2,		0x86c),
-	DEFAULT_DRIVE_PINGROUP(AT1,		0x870),
-	DEFAULT_DRIVE_PINGROUP(AT2,		0x874),
-	DEFAULT_DRIVE_PINGROUP(AT3,		0x878),
-	DEFAULT_DRIVE_PINGROUP(AT4,		0x87c),
-	DEFAULT_DRIVE_PINGROUP(AT5,		0x880),
+	SET_DRIVE_PINGROUP(AT1,		0x870,	14,	0x1f,	19,	0x1f,
+	24,	0x3,	28,	0x3),
+	SET_DRIVE_PINGROUP(AT2,		0x874,	14,	0x1f,	19,	0x1f,
+	24,	0x3,	28,	0x3),
+	SET_DRIVE_PINGROUP(AT3,		0x878,	14,	0x1f,	19,	0x1f,
+	28,	0x3,	30,	0x3),
+	SET_DRIVE_PINGROUP(AT4,		0x87c,	14,	0x1f,	19,	0x1f,
+	28,	0x3,	30,	0x3),
+	SET_DRIVE_PINGROUP(AT5,		0x880,	14,	0x1f,	19,	0x1f,
+	28,	0x3,	30,	0x3),
 	DEFAULT_DRIVE_PINGROUP(CDEV1,		0x884),
 	DEFAULT_DRIVE_PINGROUP(CDEV2,		0x888),
 	DEFAULT_DRIVE_PINGROUP(CSUS,		0x88c),
@@ -101,10 +106,14 @@ const struct tegra_drive_pingroup_desc tegra_soc_drive_pingroups[TEGRA_MAX_DRIVE
 		24,	0xf,	28,	0xf),
 	SET_DRIVE_PINGROUP(GMD,			0x90c,	14,	0x1f,	19,	0x1f,
 		24,	0xf,	28,	0xf),
-	DEFAULT_DRIVE_PINGROUP(GME,		0x910),
-	DEFAULT_DRIVE_PINGROUP(GMF,		0x914),
-	DEFAULT_DRIVE_PINGROUP(GMG,		0x918),
-	DEFAULT_DRIVE_PINGROUP(GMH,		0x91c),
+	SET_DRIVE_PINGROUP(GME,		0x910,	14,	0x1f,	19,	0x1f,
+	28,	0x3,	30,	0x3),
+	SET_DRIVE_PINGROUP(GMF,		0x914,	14,	0x1f,	19,	0x1f,
+	28,	0x3,	30,	0x3),
+	SET_DRIVE_PINGROUP(GMG,		0x918,	14,	0x1f,	19,	0x1f,
+	28,	0x3,	30,	0x3),
+	SET_DRIVE_PINGROUP(GMH,		0x91c,	14,	0x1f,	19,	0x1f,
+	28,	0x3,	30,	0x3),
 	DEFAULT_DRIVE_PINGROUP(OWR,		0x920),
 	DEFAULT_DRIVE_PINGROUP(UAD,		0x924),
 	DEFAULT_DRIVE_PINGROUP(GPV,		0x928),
