@@ -224,7 +224,7 @@ static int tegra_ehci_hub_control(
 			status_reg = &ehci->regs->port_status[(wIndex & 0xff) - 1];
 			/* Ensure the port PORT_SUSPEND and PORT_RESUME has cleared */
 			if (handshake(ehci, status_reg, (PORT_SUSPEND | PORT_RESUME), 0, 25000)) {
-				pr_err("%s: timeout waiting for SUSPEND to clear\n", __func__);
+				EHCI_DBG("%s: timeout waiting for SUSPEND to clear\n", __func__);
 			}
 			tegra_usb_phy_post_resume(tegra->phy);
 			tegra->port_resuming = 0;
@@ -241,6 +241,11 @@ static int tegra_ehci_hub_control(
 		if (wValue == USB_PORT_FEAT_SUSPEND) {
 			tegra_usb_phy_pre_resume(tegra->phy, false);
 			tegra->port_resuming = 1;
+		} else if (wValue == USB_PORT_FEAT_ENABLE) {
+			u32 temp;
+			temp = ehci_readl(ehci, &ehci->regs->port_status[0]) & ~PORT_RWC_BITS;
+			ehci_writel(ehci, temp & ~PORT_PE, &ehci->regs->port_status[0]);
+			return retval;
 		}
 		break;
 	}
@@ -262,6 +267,12 @@ static int tegra_ehci_hub_control(
 			} else if (wValue == USB_PORT_FEAT_POWER) {
 				if (wIndex == 1)
 					tegra_usb_phy_port_power(tegra->phy);
+			}
+			break;
+		case ClearPortFeature:
+			if (wValue == USB_PORT_FEAT_SUSPEND) {
+				/* tegra USB controller needs 25 ms to resume the port */
+				ehci->reset_done[wIndex-1] = jiffies + msecs_to_jiffies(25);
 			}
 			break;
 		}

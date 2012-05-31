@@ -1341,16 +1341,20 @@ static int utmi_phy_pre_resume(struct tegra_usb_phy *phy, bool remote_wakeup)
 	unsigned  int inst = phy->inst;
 
 	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
-
-	val = (readl(base + HOSTPC1_DEVLC) >> 25) &
+	phy->port_speed = (readl(base + HOSTPC1_DEVLC) >> 25) &
 			HOSTPC1_DEVLC_PSPD_MASK;
-	if (val == USB_PHY_PORT_SPEED_HIGH) {
+
+	if (phy->port_speed == USB_PHY_PORT_SPEED_HIGH) {
 		/* Disable interrupts */
 		writel(0, base + USB_USBINTR);
 		/* Clear the run bit to stop SOFs - 2LS WAR */
 		val = readl(base + USB_USBCMD);
 		val &= ~USB_USBCMD_RS;
 		writel(val, base + USB_USBCMD);
+		if (usb_phy_reg_status_wait(base + USB_USBSTS, USB_USBSTS_HCH,
+							 USB_USBSTS_HCH, 2000)) {
+			pr_err("%s: timeout waiting for USB_USBSTS_HCH\n", __func__);
+		}
 	}
 
 	val = readl(pmc_base + PMC_SLEEP_CFG);
@@ -1388,6 +1392,21 @@ static int utmi_phy_power_off(struct tegra_usb_phy *phy)
 		val |= UTMIP_PD_CHRG;
 		writel(val, base + UTMIP_BAT_CHRG_CFG0);
 	} else {
+		phy->port_speed = (readl(base + HOSTPC1_DEVLC) >> 25) &
+				HOSTPC1_DEVLC_PSPD_MASK;
+
+		/* Disable interrupts */
+		writel(0, base + USB_USBINTR);
+
+		/* Clear the run bit to stop SOFs - 2LS WAR */
+		val = readl(base + USB_USBCMD);
+		val &= ~USB_USBCMD_RS;
+		writel(val, base + USB_USBCMD);
+
+		if (usb_phy_reg_status_wait(base + USB_USBSTS, USB_USBSTS_HCH,
+							 USB_USBSTS_HCH, 2000)) {
+			pr_err("%s: timeout waiting for USB_USBSTS_HCH\n", __func__);
+		}
 		utmip_setup_pmc_wake_detect(phy);
 	}
 
@@ -1408,9 +1427,6 @@ static int utmi_phy_power_off(struct tegra_usb_phy *phy)
 	writel(val, base + UTMIP_BIAS_CFG1);
 
 	utmi_phy_pad_power_off(phy);
-
-	phy->port_speed = (readl(base + HOSTPC1_DEVLC) >> 25) &
-			HOSTPC1_DEVLC_PSPD_MASK;
 
 	if (phy->pdata->u_data.host.hot_plug) {
 		bool enable_hotplug = true;
