@@ -346,6 +346,8 @@ static struct platform_device *ventana_gfx_devices[] __initdata = {
 	&ventana_nvmap_device,
 #endif
 	&tegra_pwfm2_device,
+};
+static struct platform_device *ventana_backlight_devices[] __initdata = {
 	&ventana_backlight_device,
 };
 
@@ -445,6 +447,9 @@ int __init ventana_panel_init(void)
 	if (!err)
 		err = nvhost_device_register(&ventana_disp2_device);
 #endif
+
+	err = platform_add_devices(ventana_backlight_devices,
+				   ARRAY_SIZE(ventana_backlight_devices));
 
 	return err;
 }
