@@ -411,7 +411,8 @@ static int tegra_ehci_probe(struct platform_device *pdev)
 	int err = 0;
 	int irq;
 
-	tegra = kzalloc(sizeof(struct tegra_ehci_hcd), GFP_KERNEL);
+	tegra = devm_kzalloc(&pdev->dev, sizeof(struct tegra_ehci_hcd),
+		GFP_KERNEL);
 	if (!tegra) {
 		dev_err(&pdev->dev, "memory alloc failed\n");
 		return -ENOMEM;
@@ -423,8 +424,7 @@ static int tegra_ehci_probe(struct platform_device *pdev)
 					dev_name(&pdev->dev));
 	if (!hcd) {
 		dev_err(&pdev->dev, "unable to create HCD\n");
-		err = -ENOMEM;
-		goto fail_hcd;
+		return -ENOMEM;
 	}
 
 	platform_set_drvdata(pdev, tegra);
@@ -445,7 +445,7 @@ static int tegra_ehci_probe(struct platform_device *pdev)
 	}
 
 	irq = platform_get_irq(pdev, 0);
-	if (!irq) {
+	if (irq < 0) {
 		dev_err(&pdev->dev, "failed to get IRQ\n");
 		err = -ENODEV;
 		goto fail_irq;
@@ -504,8 +504,6 @@ fail_irq:
 	iounmap(hcd->regs);
 fail_io:
 	usb_put_hcd(hcd);
-fail_hcd:
-	kfree(tegra);
 
 	return err;
 }
@@ -553,7 +551,6 @@ static int tegra_ehci_remove(struct platform_device *pdev)
 	tegra_usb_phy_power_off(tegra->phy);
 	tegra_usb_phy_close(tegra->phy);
 	iounmap(hcd->regs);
-	kfree(tegra);
 
 	return 0;
 }
