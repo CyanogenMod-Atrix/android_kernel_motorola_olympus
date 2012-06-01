@@ -1142,10 +1142,6 @@ static void utmi_phy_close(struct tegra_usb_phy *phy)
 		writel(val, base + USB_SUSP_CTRL);
 	}
 
-	val = readl(base + USB_PORTSC);
-	val |= USB_PORTSC_WKCN;
-	writel(val, base + USB_PORTSC);
-
 	clk_put(phy->utmi_pad_clk);
 }
 
