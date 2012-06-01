@@ -254,11 +254,9 @@ static int ad5816_gpio_wr(struct ad5816_info *info, ad5816_gpio_types i,
 {
 	int err = -EINVAL;
 	if (info->gpio[i].valid) {
-		if (val)
-			val = 1;
+		val = !!val;
 		if (!info->gpio[i].active_high)
 			val = !val;
-		val &= 1;
 		err = val;
 		gpio_set_value_cansleep(info->gpio[i].gpio, val);
 		dev_dbg(&info->i2c_client->dev, "%s %u %d\n", __func__, info->gpio[i].gpio, val);
@@ -271,7 +269,7 @@ static int ad5816_gpio_reset(struct ad5816_info *info, int val)
 	int err = 0;
 
 	if (val) {
-		if (!info->reset_flag) {
+		if(!info->reset_flag) {
 			info->reset_flag = true;
 			err = ad5816_gpio_wr(info, AD5816_GPIO_RESET, 1);
 			if (err < 0)
@@ -444,7 +442,7 @@ static int ad5816_vreg_init(struct ad5816_info *info)
 		info->vreg[j].vreg = regulator_get(&info->i2c_client->dev,
 								info->vreg[j].vreg_name);
 		if (IS_ERR_OR_NULL(info->vreg[j].vreg)) {
-			dev_dbg(&info->i2c_client->dev, "%s %s ERR: %d\n",
+			dev_err(&info->i2c_client->dev, "%s %s ERR: %d\n",
 					__func__, info->vreg[j].vreg_name,
 					(int)info->vreg[j].vreg);
 			err |= PTR_ERR(info->vreg[j].vreg);
@@ -460,8 +458,7 @@ static int ad5816_vreg_init(struct ad5816_info *info)
 void ad5816_set_power_down(struct ad5816_info *info)
 {
 	int err;
-	u16 data = 0x0000;
-	err = ad5816_i2c_wr16(info, VCM_CODE_MSB, data);
+	err = ad5816_i2c_wr16(info, VCM_CODE_MSB, 0x0000);
 	if (err)
 		dev_err(&info->i2c_client->dev, " %s: failed \n",
 			__func__);
@@ -469,7 +466,7 @@ void ad5816_set_power_down(struct ad5816_info *info)
 
 void ad5816_set_arc_mode(struct ad5816_info *info)
 {
-	int err = 0;
+	int err;
 	/* set ARC enable */
 	err = ad5816_i2c_wr8(info, CONTROL, 0x02);
 	if (err)
@@ -501,29 +498,28 @@ static int ad5816_pm_wr(struct ad5816_info *info, int pwr)
 	if (pwr == info->pwr_dev)
 		return 0;
 
-	switch (pwr)
-	{
-		case NVC_PWR_OFF_FORCE:
-		case NVC_PWR_OFF:
-			err = ad5816_vreg_dis_all(info);
-			ad5816_gpio_able(info, 0);
-			ad5816_gpio_reset(info, 0);
-			break;
-		case NVC_PWR_STDBY_OFF:
-		case NVC_PWR_STDBY:
-			err = ad5816_vreg_en_all(info);
-			ad5816_gpio_able(info, 1);
-			ad5816_gpio_reset(info, 1);
-			break;
-		case NVC_PWR_COMM:
-		case NVC_PWR_ON:
-			err = ad5816_vreg_en_all(info);
-			ad5816_gpio_able(info, 1);
-			ad5816_gpio_reset(info, 1);
-			break;
-		default:
-			err = -EINVAL;
-			break;
+	switch (pwr) {
+	case NVC_PWR_OFF_FORCE:
+	case NVC_PWR_OFF:
+		err = ad5816_vreg_dis_all(info);
+		ad5816_gpio_able(info, 0);
+		ad5816_gpio_reset(info, 0);
+		break;
+	case NVC_PWR_STDBY_OFF:
+	case NVC_PWR_STDBY:
+		err = ad5816_vreg_en_all(info);
+		ad5816_gpio_able(info, 1);
+		ad5816_gpio_reset(info, 1);
+		break;
+	case NVC_PWR_COMM:
+	case NVC_PWR_ON:
+		err = ad5816_vreg_en_all(info);
+		ad5816_gpio_able(info, 1);
+		ad5816_gpio_reset(info, 1);
+		break;
+	default:
+		err = -EINVAL;
+		break;
 	}
 
 	if (err < 0) {
@@ -563,8 +559,9 @@ static int ad5816_pm_api_wr(struct ad5816_info *info, int pwr)
 	}
 	if (!err) {
 		info->pwr_api = pwr;
-	} else
+	} else {
 		info->pwr_api = NVC_PWR_ERR;
+	}
 	if (info->pdata->cfg & NVC_CFG_NOERR)
 		return 0;
 	return err;
@@ -680,68 +677,68 @@ static int ad5816_param_rd(struct ad5816_info *info, unsigned long arg)
 	if (info->s_mode == NVC_SYNC_SLAVE)
 		info = info->s_info;
 	switch (params.param) {
-		case NVC_PARAM_LOCUS:
-			ad5816_pm_dev_wr(info, NVC_PWR_COMM);
-			err = ad5816_position_rd(info, &position);
-			if (err && !(info->pdata->cfg & NVC_CFG_NOERR))
-				return err;
-			data_ptr = &position;
-			data_size = sizeof(position);
-			ad5816_pm_dev_wr(info, NVC_PWR_STDBY);
-			dev_dbg(&info->i2c_client->dev, "%s LOCUS: %d\n",
-					__func__, position);
-			break;
-		case NVC_PARAM_FOCAL_LEN:
-			info->nvc.focal_length = AD5816_FOCAL_LENGTH;
-			data_ptr = &info->nvc.focal_length;
-			data_size = sizeof(info->nvc.focal_length);
-			break;
-		case NVC_PARAM_MAX_APERTURE:
-			data_ptr = &info->nvc.max_aperature;
-			data_size = sizeof(info->nvc.max_aperature);
-			dev_dbg(&info->i2c_client->dev, "%s MAX_APERTURE: %x\n",
-					__func__, info->nvc.max_aperature);
-			break;
-		case NVC_PARAM_FNUMBER:
-			data_ptr = &info->nvc.fnumber;
-			data_size = sizeof(info->nvc.fnumber);
-			dev_dbg(&info->i2c_client->dev, "%s FNUMBER: %u\n",
-					__func__, info->nvc.fnumber);
-			break;
-		case NVC_PARAM_CAPS:
-			data_ptr = &info->cap;
-			/* there are different sizes depending on the version */
-			/* send back just what's requested or our max size */
-			if (params.sizeofvalue < sizeof(info->cap))
-				data_size = params.sizeofvalue;
-			else
-				data_size = sizeof(info->cap);
-			dev_err(&info->i2c_client->dev, "%s CAPS\n", __func__);
-			break;
-		case NVC_PARAM_STS:
-			/*data_ptr = &info->sts;
-			data_size = sizeof(info->sts);*/
-			dev_dbg(&info->i2c_client->dev, "%s \n", __func__);
-			break;
-		case NVC_PARAM_STEREO:
-			data_ptr = &info->s_mode;
-			data_size = sizeof(info->s_mode);
-			dev_err(&info->i2c_client->dev, "%s STEREO: %d\n", __func__, info->s_mode);
-			break;
-		default:
-			dev_err(&info->i2c_client->dev, "%s unsupported parameter: %d\n",
-					__func__, params.param);
-			return -EINVAL;
+	case NVC_PARAM_LOCUS:
+		ad5816_pm_dev_wr(info, NVC_PWR_COMM);
+		err = ad5816_position_rd(info, &position);
+		if (err && !(info->pdata->cfg & NVC_CFG_NOERR))
+			return err;
+		data_ptr = &position;
+		data_size = sizeof(position);
+		ad5816_pm_dev_wr(info, NVC_PWR_STDBY);
+		dev_dbg(&info->i2c_client->dev, "%s LOCUS: %d\n",
+			__func__, position);
+		break;
+	case NVC_PARAM_FOCAL_LEN:
+		info->nvc.focal_length = AD5816_FOCAL_LENGTH;
+		data_ptr = &info->nvc.focal_length;
+		data_size = sizeof(info->nvc.focal_length);
+		break;
+	case NVC_PARAM_MAX_APERTURE:
+		data_ptr = &info->nvc.max_aperature;
+		data_size = sizeof(info->nvc.max_aperature);
+		dev_dbg(&info->i2c_client->dev, "%s MAX_APERTURE: %x\n",
+				__func__, info->nvc.max_aperature);
+		break;
+	case NVC_PARAM_FNUMBER:
+		data_ptr = &info->nvc.fnumber;
+		data_size = sizeof(info->nvc.fnumber);
+		dev_dbg(&info->i2c_client->dev, "%s FNUMBER: %u\n",
+				__func__, info->nvc.fnumber);
+		break;
+	case NVC_PARAM_CAPS:
+		data_ptr = &info->cap;
+		/* there are different sizes depending on the version */
+		/* send back just what's requested or our max size */
+		if (params.sizeofvalue < sizeof(info->cap))
+			data_size = params.sizeofvalue;
+		else
+			data_size = sizeof(info->cap);
+		dev_err(&info->i2c_client->dev, "%s CAPS\n", __func__);
+		break;
+	case NVC_PARAM_STS:
+		/*data_ptr = &info->sts;
+		data_size = sizeof(info->sts);*/
+		dev_dbg(&info->i2c_client->dev, "%s \n", __func__);
+		break;
+	case NVC_PARAM_STEREO:
+		data_ptr = &info->s_mode;
+		data_size = sizeof(info->s_mode);
+		dev_err(&info->i2c_client->dev, "%s STEREO: %d\n", __func__, info->s_mode);
+		break;
+	default:
+		dev_err(&info->i2c_client->dev, "%s unsupported parameter: %d\n",
+			__func__, params.param);
+		return -EINVAL;
 	}
 	if (params.sizeofvalue < data_size) {
 		dev_err(&info->i2c_client->dev,
 			"%s data size mismatch %d != %d Param: %d\n",
-			__func__, params.sizeofvalue, data_size, params.param);
+		__func__, params.sizeofvalue, data_size, params.param);
 		return -EINVAL;
 	}
 	if (copy_to_user((void __user *)params.p_value, data_ptr, data_size)) {
 		dev_err(&info->i2c_client->dev, "%s copy_to_user err line %d\n",
-				__func__, __LINE__);
+			__func__, __LINE__);
 		return -EFAULT;
 	}
 	return 0;
@@ -750,27 +747,25 @@ static int ad5816_param_rd(struct ad5816_info *info, unsigned long arg)
 static int ad5816_param_wr_s(struct ad5816_info *info,
 		struct nvc_param *params, u32 u32val)
 {
-	u8 u8val;
 	int err = 0;
-	u8val = (u8)u32val;
 	switch (params->param) {
-		case NVC_PARAM_LOCUS:
-			dev_dbg(&info->i2c_client->dev, "%s LOCUS: %u\n", __func__, u32val);
-			err = ad5816_position_wr(info, u32val);
-			return err;
-		case NVC_PARAM_RESET:
-			err = ad5816_reset(info, u32val);
-			dev_dbg(&info->i2c_client->dev, "%s RESET: %d\n", __func__, err);
-			return err;
-		case NVC_PARAM_SELF_TEST:
-			err = 0;
-			dev_dbg(&info->i2c_client->dev, "%s SELF_TEST: %d\n", __func__, err);
-			return err;
-		default:
-			dev_dbg(&info->i2c_client->dev,
-				"%s unsupported parameter: %d\n",
-					__func__, params->param);
-			return -EINVAL;
+	case NVC_PARAM_LOCUS:
+		dev_dbg(&info->i2c_client->dev, "%s LOCUS: %u\n", __func__, u32val);
+		err = ad5816_position_wr(info, u32val);
+		return err;
+	case NVC_PARAM_RESET:
+		err = ad5816_reset(info, u32val);
+		dev_dbg(&info->i2c_client->dev, "%s RESET: %d\n", __func__, err);
+		return err;
+	case NVC_PARAM_SELF_TEST:
+		err = 0;
+		dev_dbg(&info->i2c_client->dev, "%s SELF_TEST: %d\n", __func__, err);
+		return err;
+	default:
+		dev_dbg(&info->i2c_client->dev,
+			"%s unsupported parameter: %d\n",
+			__func__, params->param);
+		return -EINVAL;
 	}
 }
 
@@ -793,131 +788,131 @@ static int ad5816_param_wr(struct ad5816_info *info, unsigned long arg)
 	u8val = (u8)u32val;
 	/* parameters independent of sync mode */
 	switch (params.param) {
-		case NVC_PARAM_STEREO:
-			dev_dbg(&info->i2c_client->dev, "%s STEREO: %d\n", __func__, u8val);
-			if (u8val == info->s_mode)
-				return 0;
-			switch (u8val) {
-				case NVC_SYNC_OFF:
-					info->s_mode = u8val;
-					ad5816_gpio_wr(info, AD5816_GPIO_I2CMUX, 0);
-					if (info->s_info != NULL) {
-						info->s_info->s_mode = u8val;
-						ad5816_pm_wr(info->s_info, NVC_PWR_OFF);
-					}
-					break;
-				case NVC_SYNC_MASTER:
-					info->s_mode = u8val;
-					ad5816_gpio_wr(info, AD5816_GPIO_I2CMUX, 0);
-					if (info->s_info != NULL)
-						info->s_info->s_mode = u8val;
-					break;
-				case NVC_SYNC_SLAVE:
-					if (info->s_info != NULL) {
-						/* default slave lens position */
-						err = ad5816_position_wr(info->s_info,
-								info->s_info->cap.focus_infinity);
-						if (!err) {
-							info->s_mode = u8val;
-							info->s_info->s_mode = u8val;
-							ad5816_gpio_wr(info,
-							AD5816_GPIO_I2CMUX, 0);
-						}
-						else {
-							if (info->s_mode != NVC_SYNC_STEREO)
-								ad5816_pm_wr(info->s_info,
-								NVC_PWR_OFF);
-								err = -EIO;
-						}
-					} else {
-						err = -EINVAL;
-					}
-					break;
-				case NVC_SYNC_STEREO:
-					if (info->s_info != NULL) {
-						/* sync power */
-						info->s_info->pwr_api = info->pwr_api;
-						/* move slave lens to master position */
-						err = ad5816_position_wr(info->s_info, info->pos);
-						if (!err) {
-							info->s_mode = u8val;
-							info->s_info->s_mode = u8val;
-							ad5816_gpio_wr(info, AD5816_GPIO_I2CMUX, 1);
-						}
-						else {
-							if (info->s_mode != NVC_SYNC_SLAVE)
-							ad5816_pm_wr(info->s_info, NVC_PWR_OFF);
-							err = -EIO;
-						}
-					} else {
-						err = -EINVAL;
-					}
-					break;
-				default:
-					err = -EINVAL;
+	case NVC_PARAM_STEREO:
+		dev_dbg(&info->i2c_client->dev, "%s STEREO: %d\n", __func__, u8val);
+		if (u8val == info->s_mode)
+			return 0;
+		switch (u8val) {
+		case NVC_SYNC_OFF:
+			info->s_mode = u8val;
+			ad5816_gpio_wr(info, AD5816_GPIO_I2CMUX, 0);
+			if (info->s_info != NULL) {
+				info->s_info->s_mode = u8val;
+				ad5816_pm_wr(info->s_info, NVC_PWR_OFF);
 			}
-			if (info->pdata->cfg & NVC_CFG_NOERR)
-				return 0;
+			break;
+		case NVC_SYNC_MASTER:
+			info->s_mode = u8val;
+			ad5816_gpio_wr(info, AD5816_GPIO_I2CMUX, 0);
+			if (info->s_info != NULL)
+				info->s_info->s_mode = u8val;
+			break;
+		case NVC_SYNC_SLAVE:
+			if (info->s_info != NULL) {
+				/* default slave lens position */
+				err = ad5816_position_wr(info->s_info,
+						info->s_info->cap.focus_infinity);
+				if (!err) {
+					info->s_mode = u8val;
+					info->s_info->s_mode = u8val;
+					ad5816_gpio_wr(info,
+					AD5816_GPIO_I2CMUX, 0);
+				}
+				else {
+					if (info->s_mode != NVC_SYNC_STEREO)
+						ad5816_pm_wr(info->s_info,
+						NVC_PWR_OFF);
+						err = -EIO;
+				}
+			} else {
+				err = -EINVAL;
+			}
+			break;
+		case NVC_SYNC_STEREO:
+			if (info->s_info != NULL) {
+				/* sync power */
+				info->s_info->pwr_api = info->pwr_api;
+				/* move slave lens to master position */
+				err = ad5816_position_wr(info->s_info, info->pos);
+				if (!err) {
+					info->s_mode = u8val;
+					info->s_info->s_mode = u8val;
+					ad5816_gpio_wr(info, AD5816_GPIO_I2CMUX, 1);
+				}
+				else {
+					if (info->s_mode != NVC_SYNC_SLAVE)
+						ad5816_pm_wr(info->s_info, NVC_PWR_OFF);
+					err = -EIO;
+				}
+			} else {
+				err = -EINVAL;
+			}
+			break;
+		default:
+			err = -EINVAL;
+		}
+		if (info->pdata->cfg & NVC_CFG_NOERR)
+			return 0;
+		return err;
+	default:
+		/* parameters dependent on sync mode */
+		switch (info->s_mode) {
+		case NVC_SYNC_OFF:
+		case NVC_SYNC_MASTER:
+			return ad5816_param_wr_s(info, &params, u32val);
+		case NVC_SYNC_SLAVE:
+			return ad5816_param_wr_s(info->s_info, &params, u32val);
+		case NVC_SYNC_STEREO:
+			err = ad5816_param_wr_s(info, &params, u32val);
+			if (!(info->pdata->cfg & NVC_CFG_SYNC_I2C_MUX))
+				err |= ad5816_param_wr_s(info->s_info,
+						&params,
+						u32val);
 			return err;
 		default:
-			/* parameters dependent on sync mode */
-			switch (info->s_mode) {
-				case NVC_SYNC_OFF:
-				case NVC_SYNC_MASTER:
-					return ad5816_param_wr_s(info, &params, u32val);
-				case NVC_SYNC_SLAVE:
-					return ad5816_param_wr_s(info->s_info, &params, u32val);
-				case NVC_SYNC_STEREO:
-					err = ad5816_param_wr_s(info, &params, u32val);
-					if (!(info->pdata->cfg & NVC_CFG_SYNC_I2C_MUX))
-						err |= ad5816_param_wr_s(info->s_info,
-								&params,
-								u32val);
-					return err;
-				default:
-					dev_err(&info->i2c_client->dev, "%s %d internal err\n",
-							__func__, __LINE__);
-					return -EINVAL;
-			}
+			dev_err(&info->i2c_client->dev, "%s %d internal err\n",
+					__func__, __LINE__);
+			return -EINVAL;
 		}
+	}
 }
 
 static long ad5816_ioctl(struct file *file,
-							unsigned int cmd,
-							unsigned long arg)
+					unsigned int cmd,
+					unsigned long arg)
 {
 	struct ad5816_info *info = file->private_data;
 	int pwr;
 	int err = 0;
 	switch (cmd) {
-		case NVC_IOCTL_PARAM_WR:
-			err = ad5816_param_wr(info, arg);
-			return err;
-		case NVC_IOCTL_PARAM_RD:
-			err = ad5816_param_rd(info, arg);
-			return err;
-		case NVC_IOCTL_PWR_WR:
-			/* This is a Guaranteed Level of Service (GLOS) call */
-			pwr = (int)arg * 2;
-			dev_dbg(&info->i2c_client->dev, "%s PWR_WR: %d\n",
-					__func__, pwr);
-			err = ad5816_pm_api_wr(info, pwr);
-			return err;
-		case NVC_IOCTL_PWR_RD:
-			if (info->s_mode == NVC_SYNC_SLAVE)
-				pwr = info->s_info->pwr_api / 2;
-			else
-				pwr = info->pwr_api / 2;
-			dev_dbg(&info->i2c_client->dev, "%s PWR_RD: %d\n",
-					__func__, pwr);
-			if (copy_to_user((void __user *)arg, (const void *)&pwr, sizeof(pwr))) {
-				dev_err(&info->i2c_client->dev, "%s copy_to_user err line %d\n",
-						__func__, __LINE__);
-				return -EFAULT;
-			}
-			return 0;
-		default:
-			dev_dbg(&info->i2c_client->dev, "%s unsupported ioctl: %x\n", __func__, cmd);
+	case NVC_IOCTL_PARAM_WR:
+		err = ad5816_param_wr(info, arg);
+		return err;
+	case NVC_IOCTL_PARAM_RD:
+		err = ad5816_param_rd(info, arg);
+		return err;
+	case NVC_IOCTL_PWR_WR:
+		/* This is a Guaranteed Level of Service (GLOS) call */
+		pwr = (int)arg * 2;
+		dev_dbg(&info->i2c_client->dev, "%s PWR_WR: %d\n",
+				__func__, pwr);
+		err = ad5816_pm_api_wr(info, pwr);
+		return err;
+	case NVC_IOCTL_PWR_RD:
+		if (info->s_mode == NVC_SYNC_SLAVE)
+			pwr = info->s_info->pwr_api / 2;
+		else
+			pwr = info->pwr_api / 2;
+		dev_dbg(&info->i2c_client->dev, "%s PWR_RD: %d\n",
+				__func__, pwr);
+		if (copy_to_user((void __user *)arg, (const void *)&pwr, sizeof(pwr))) {
+			dev_err(&info->i2c_client->dev, "%s copy_to_user err line %d\n",
+					__func__, __LINE__);
+			return -EFAULT;
+		}
+		return 0;
+	default:
+		dev_dbg(&info->i2c_client->dev, "%s unsupported ioctl: %x\n", __func__, cmd);
 	}
 	return -EINVAL;
 }
@@ -1118,21 +1113,23 @@ static int ad5816_probe(
 	ad5816_pm_init(info);
 	ad5816_sdata_init(info);
 
-	err = ad5816_dev_id(info);
-	if (err < 0) {
-		dev_err(&client->dev, "%s device not found\n", __func__);
-		ad5816_pm_wr(info, NVC_PWR_OFF);
-		if (info->pdata->cfg & NVC_CFG_NODEV) {
-			ad5816_del(info);
-			return -ENODEV;
-		}
-	} else {
-		dev_dbg(&client->dev, "%s device found\n", __func__);
-		if (info->pdata->cfg & NVC_CFG_BOOT_INIT) {
-			/* initial move causes full initialization */
-			ad5816_pm_dev_wr(info, NVC_PWR_ON);
-			ad5816_position_wr(info, info->cap.focus_infinity);
-			ad5816_pm_dev_wr(info, NVC_PWR_OFF);
+	if (info->pdata->cfg & (NVC_CFG_NODEV | NVC_CFG_BOOT_INIT)) {
+		err = ad5816_dev_id(info);
+		if (err < 0) {
+			dev_err(&client->dev, "%s device not found\n", __func__);
+			ad5816_pm_wr(info, NVC_PWR_OFF);
+			if (info->pdata->cfg & NVC_CFG_NODEV) {
+				ad5816_del(info);
+				return -ENODEV;
+			}
+		} else {
+			dev_dbg(&client->dev, "%s device found\n", __func__);
+			if (info->pdata->cfg & NVC_CFG_BOOT_INIT) {
+				/* initial move causes full initialization */
+				ad5816_pm_dev_wr(info, NVC_PWR_ON);
+				ad5816_position_wr(info, info->cap.focus_infinity);
+				ad5816_pm_dev_wr(info, NVC_PWR_OFF);
+			}
 		}
 	}
 
