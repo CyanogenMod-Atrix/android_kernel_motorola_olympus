@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra3_dvfs.c
  *
- * Copyright (C) 2010-2011 NVIDIA Corporation.
+ * Copyright (C) 2010-2012, NVIDIA Corporation.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -783,8 +783,6 @@ static void core_cap_update(void)
 
 static void core_cap_enable(bool enable)
 {
-	int i;
-
 	if (enable)
 		tegra3_core_cap.refcnt++;
 	else if (tegra3_core_cap.refcnt)

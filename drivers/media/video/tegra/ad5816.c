@@ -249,9 +249,8 @@ static int ad5816_i2c_wr16(struct ad5816_info *info, u8 reg, u16 val)
 	return 0;
 }
 
-static int ad5816_gpio_wr(struct ad5816_info *info,
-						enum ad5816_gpio_types i,
-						int val) /* val: 0=deassert, 1=assert */
+static int ad5816_gpio_wr(struct ad5816_info *info, ad5816_gpio_types i,
+				int val) /* val: 0=deassert, 1=assert */
 {
 	int err = -EINVAL;
 	if (info->gpio[i].valid) {
@@ -370,8 +369,7 @@ static void ad5816_gpio_init(struct ad5816_info *info)
 	}
 }
 
-static int ad5816_vreg_dis(struct ad5816_info *info,
-			enum ad5816_vreg i)
+static int ad5816_vreg_dis(struct ad5816_info *info, ad5816_vreg i)
 {
 	int err = 0;
 	if (info->vreg[i].vreg_flag && (info->vreg[i].vreg != NULL)) {
@@ -396,8 +394,7 @@ static int ad5816_vreg_dis_all(struct ad5816_info *info)
 	return err;
 }
 
-static int ad5816_vreg_en(struct ad5816_info *info,
-							enum ad5816_vreg i)
+static int ad5816_vreg_en(struct ad5816_info *info, ad5816_vreg i)
 {
 	int err = 0;
 	if (!info->vreg[i].vreg_flag && (info->vreg[i].vreg != NULL)) {

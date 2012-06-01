@@ -22,21 +22,19 @@
 #include <media/nvc_focus.h>
 #include <media/nvc.h>
 
-typedef enum ad5816_vreg
-{
+typedef enum {
 	AD5816_VREG_VDD = 0,
 	AD5816_VREG_VDD_AF,
 	AD5816_VREG_VDD_I2C
-};
+} ad5816_vreg;
 
-typedef enum ad5816_gpio_types
-{
+typedef enum {
 	AD5816_GPIO_RESET = 0,
 	AD5816_GPIO_I2CMUX,
 	AD5816_GPIO_GP1,
 	AD5816_GPIO_GP2,
 	AD5816_GPIO_GP3
-};
+} ad5816_gpio_types;
 
 
 struct ad5816_platform_data {

@@ -888,6 +888,7 @@ static void uhsic_powerup_pmc_wake_detect(struct tegra_usb_phy *phy)
 	mdelay(1);
 }
 
+#ifdef KERNEL_WARNING
 static void usb_phy_power_down_pmc(void)
 {
 	unsigned long val;
@@ -931,6 +932,7 @@ static void usb_phy_power_down_pmc(void)
 	UHSIC_MASTER_ENABLE_P0;
 	writel(val, pmc_base + PMC_SLEEP_CFG);
 }
+#endif
 
 static int usb_phy_bringup_host_controller(struct tegra_usb_phy *phy)
 {

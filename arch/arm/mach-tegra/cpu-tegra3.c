@@ -302,8 +302,8 @@ static int min_cpus_notify(struct notifier_block *nb, unsigned long n, void *p)
 
 	if ((n >= 1) && is_lp_cluster()) {
 		/* make sure cpu rate is within g-mode range before switching */
-		unsigned int speed = max(
-			tegra_getspeed(0), clk_get_min_rate(cpu_g_clk) / 1000);
+		unsigned int speed = max((unsigned long)tegra_getspeed(0),
+			clk_get_min_rate(cpu_g_clk) / 1000);
 		tegra_update_cpu_speed(speed);
 
 		if (!clk_set_parent(cpu_clk, cpu_g_clk)) {

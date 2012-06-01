@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-cardhu-power.c
  *
- * Copyright (C) 2011-2012 NVIDIA, Inc.
+ * Copyright (C) 2011-2012, NVIDIA Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -993,7 +993,6 @@ static struct platform_device *fixed_reg_devs_e1291_a04[] = {
 
 int __init cardhu_fixed_regulator_init(void)
 {
-	int i;
 	struct board_info board_info;
 	struct board_info pmu_board_info;
 	struct board_info display_board_info;

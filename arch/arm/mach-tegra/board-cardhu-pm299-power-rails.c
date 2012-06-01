@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-cardhu-pm299-power-rails.c
  *
- * Copyright (C) 2011 NVIDIA, Inc.
+ * Copyright (C) 2011-2012, NVIDIA Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -665,7 +665,6 @@ static struct platform_device *fixed_reg_devs_pm269[] = {
 
 int __init cardhu_pm299_gpio_switch_regulator_init(void)
 {
-	int i;
 	struct board_info board_info;
 	struct platform_device **fixed_reg_devs;
 	int    nfixreg_devs;
