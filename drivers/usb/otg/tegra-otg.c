@@ -366,10 +366,8 @@ static ssize_t store_host_en(struct device *dev, struct device_attribute *attr,
 	unsigned long host;
 	int err;
 
-	err = kstrtoul(buf, 10, &host);
-	if (err < 0) {
-		return err;
-	}
+	if (sscanf(buf, "%d", &host) != 1 || host < 0 || host > 1)
+		return -EINVAL;
 
 	if (host) {
 		enable_interrupt(tegra, false);
