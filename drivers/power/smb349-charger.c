@@ -36,6 +36,9 @@
 #include <linux/interrupt.h>
 #include <linux/irq.h>
 #include <linux/usb/otg.h>
+#include <linux/debugfs.h>
+#include <linux/seq_file.h>
+#include <linux/uaccess.h>
 
 #define SMB349_CHARGE		0x00
 #define SMB349_CHRG_CRNTS	0x01
@@ -286,7 +289,7 @@ error:
 int update_charger_status(void)
 {
 	struct i2c_client *client;
-	int ret, val;
+	int val;
 
 	if (!charger)
 		return -ENODEV;
@@ -315,8 +318,6 @@ int update_charger_status(void)
 	return 0;
 val_error:
 	return val;
-ret_error:
-	return ret;
 }
 EXPORT_SYMBOL_GPL(update_charger_status);
 
@@ -425,12 +426,96 @@ static int smb349_enable_charging(struct regulator_dev *rdev,
 	if (charger->charger_cb)
 		charger->charger_cb(charger->state, charger->chrg_type,
 						charger->charger_cb_data);
-return 0;
+	return 0;
 }
 
 static struct regulator_ops smb349_tegra_regulator_ops = {
 	.set_current_limit = smb349_enable_charging,
 };
+
+#if defined(CONFIG_DEBUG_FS)
+static struct dentry *smb349_dentry_regs;
+
+static int smb349_dump_regs(struct i2c_client *client, u8 *addrs, int num_addrs,
+		char *buf, ssize_t *len)
+{
+	ssize_t count = *len;
+	int ret = 0;
+	int i;
+
+	if (count >= PAGE_SIZE - 1)
+		return -ERANGE;
+
+	for (i = 0; i < num_addrs; i++) {
+		count += sprintf(buf + count, "0x%02x: ", addrs[i]);
+		if (count >= PAGE_SIZE - 1)
+			return -ERANGE;
+
+		ret = smb349_read(client, addrs[i]);
+		if (ret < 0)
+			count += sprintf(buf + count, "<read fail: %d\n", ret);
+		else
+			count += sprintf(buf + count, "0x%02x\n", ret);
+
+		if (count >= PAGE_SIZE - 1)
+			return -ERANGE;
+	}
+	*len = count;
+
+	return 0;
+}
+
+static ssize_t smb349_debugfs_open(struct inode *inode, struct file *file)
+{
+	file->private_data = inode->i_private;
+	return 0;
+}
+
+static u8 regs[] = {
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x09, 0x0A, 0x0B,
+	0x0C, 0x0D, 0x0E, 0x10, 0x11, 0x12, 0x30, 0x31, 0x33, 0x35, 0x36,
+	0x37, 0x38, 0x39, 0x3A, 0x3B, 0x3C, 0x3D, 0x3E, 0x3F
+};
+static ssize_t smb349_debugfs_read(struct file *file, char __user *user_buf,
+				size_t count, loff_t *ppos)
+{
+	ssize_t ret;
+	struct i2c_client *client = file->private_data;
+	char *buf;
+	size_t len = 0;
+
+	buf = kzalloc(PAGE_SIZE, GFP_KERNEL);
+	if (!buf)
+		return -ENOMEM;
+
+	len += sprintf(buf + len, "SMB349 Registers\n");
+	smb349_dump_regs(client, regs, ARRAY_SIZE(regs), buf, &len);
+
+	ret = simple_read_from_buffer(user_buf, count, ppos, buf, len);
+	kfree(buf);
+	return ret;
+}
+
+static const struct file_operations smb349_debugfs_fops = {
+	.open = smb349_debugfs_open,
+	.read = smb349_debugfs_read,
+};
+
+static void smb349_debugfs_init(struct i2c_client *client)
+{
+	smb349_dentry_regs = debugfs_create_file(client->name,
+						0444, 0, client,
+						&smb349_debugfs_fops);
+}
+
+static void smb349_debugfs_exit(struct i2c_client *client)
+{
+	debugfs_remove(smb349_dentry_regs);
+}
+#else
+static void smb349_debugfs_init(struct i2c_client *client){}
+static void smb349_debugfs_exit(struct i2c_client *client){}
+#endif /* CONFIG_DEBUG_FS */
 
 static int __devinit smb349_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
@@ -493,12 +578,16 @@ static int __devinit smb349_probe(struct i2c_client *client,
 
 	charger->rdev = regulator_register(&charger->reg_desc, charger->dev,
 					&charger->reg_init_data, charger);
+
+	smb349_debugfs_init(client);
+
 	if (IS_ERR(charger->rdev)) {
 		dev_err(&client->dev, "failed to register %s\n",
 				charger->reg_desc.name);
 		ret = PTR_ERR(charger->rdev);
 		goto regulator_error;
 	}
+
 
 	/* disable OTG */
 	ret = smb349_configure_otg(client, 0);
@@ -537,6 +626,7 @@ static int __devinit smb349_probe(struct i2c_client *client,
 
 	return 0;
 error:
+	smb349_debugfs_exit(client);
 	regulator_unregister(charger->rdev);
 regulator_error:
 	kfree(charger);
@@ -548,6 +638,7 @@ static int __devexit smb349_remove(struct i2c_client *client)
 {
 	struct smb349_charger *charger = i2c_get_clientdata(client);
 
+	smb349_debugfs_exit(client);
 	regulator_unregister(charger->rdev);
 	kfree(charger);
 
