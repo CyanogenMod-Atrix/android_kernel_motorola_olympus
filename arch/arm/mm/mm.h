@@ -31,3 +31,8 @@ extern u32 arm_dma_limit;
 
 void __init bootmem_init(void);
 void arm_mm_memblock_reserve(void);
+
+#ifdef CONFIG_NON_ALIASED_COHERENT_MEM
+void dma_coherent_reserve(void);
+void dma_coherent_mapping(void);
+#endif

@@ -75,6 +75,27 @@ static inline dma_addr_t virt_to_dma(struct device *dev, void *addr)
  * Private support functions: these are not part of the API and are
  * liable to change.  Drivers must not use these.
  */
+#if defined(CONFIG_NON_ALIASED_COHERENT_MEM)
+static inline void __dma_single_cpu_to_dev(struct device *dev,
+	const void *kaddr, size_t size, enum dma_data_direction dir)
+{
+	extern void ___dma_single_cpu_to_dev(struct device *dev,
+		const void *, size_t, enum dma_data_direction);
+
+	if (!arch_is_coherent())
+		___dma_single_cpu_to_dev(dev, kaddr, size, dir);
+}
+
+static inline void __dma_single_dev_to_cpu(struct device *dev,
+	const void *kaddr, size_t size, enum dma_data_direction dir)
+{
+	extern void ___dma_single_dev_to_cpu(struct device *dev,
+		const void *, size_t, enum dma_data_direction);
+
+	if (!arch_is_coherent())
+		___dma_single_dev_to_cpu(dev, kaddr, size, dir);
+}
+#else
 static inline void __dma_single_cpu_to_dev(const void *kaddr, size_t size,
 	enum dma_data_direction dir)
 {
@@ -94,6 +115,7 @@ static inline void __dma_single_dev_to_cpu(const void *kaddr, size_t size,
 	if (!arch_is_coherent())
 		___dma_single_dev_to_cpu(kaddr, size, dir);
 }
+#endif
 
 static inline void __dma_page_cpu_to_dev(struct page *page, unsigned long off,
 	size_t size, enum dma_data_direction dir)
@@ -199,8 +221,12 @@ int dma_mmap_coherent(struct device *, struct vm_area_struct *,
 extern void *dma_alloc_writecombine(struct device *, size_t, dma_addr_t *,
 		gfp_t);
 
+#if defined(CONFIG_NON_ALIASED_COHERENT_MEM)
+extern void dma_free_writecombine(struct device *, size_t, void *, dma_addr_t);
+#else
 #define dma_free_writecombine(dev,size,cpu_addr,handle) \
 	dma_free_coherent(dev,size,cpu_addr,handle)
+#endif
 
 int dma_mmap_writecombine(struct device *, struct vm_area_struct *,
 		void *, dma_addr_t, size_t);
@@ -421,7 +447,12 @@ static inline void dma_sync_single_range_for_cpu(struct device *dev,
 	if (!dmabounce_sync_for_cpu(dev, handle, offset, size, dir))
 		return;
 
+#if defined(CONFIG_NON_ALIASED_COHERENT_MEM)
+	__dma_single_dev_to_cpu(dev, dma_to_virt(dev, handle) + offset,
+		size, dir);
+#else
 	__dma_single_dev_to_cpu(dma_to_virt(dev, handle) + offset, size, dir);
+#endif
 }
 
 static inline void dma_sync_single_range_for_device(struct device *dev,
@@ -435,7 +466,12 @@ static inline void dma_sync_single_range_for_device(struct device *dev,
 	if (!dmabounce_sync_for_device(dev, handle, offset, size, dir))
 		return;
 
+#if defined(CONFIG_NON_ALIASED_COHERENT_MEM)
+	__dma_single_cpu_to_dev(dev, dma_to_virt(dev, handle) + offset,
+		size, dir);
+#else
 	__dma_single_cpu_to_dev(dma_to_virt(dev, handle) + offset, size, dir);
+#endif
 }
 
 static inline void dma_sync_single_for_cpu(struct device *dev,

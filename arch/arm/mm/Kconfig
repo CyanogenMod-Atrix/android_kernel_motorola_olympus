@@ -885,6 +885,17 @@ config ARM_DMA_MEM_BUFFERABLE
 
 	  You are recommended say 'Y' here and debug any affected drivers.
 
+config NON_ALIASED_COHERENT_MEM
+	bool "Avoid aliasing mappings in DMA coherent allocator" if CPU_V7
+	help
+	  Avoid multiple mappings with DMA coherent/writecombine allocator by
+	  pre-allocating the mappings, and removing that memory from the
+	  system memory mapping.
+
+	  This will make sure DMA memory is fully coherent, so cache
+	  dma_sync APIs will not be necessary to maintain cache cohereny
+	  for DMA coherent region.
+
 config ARCH_HAS_BARRIERS
 	bool
 	help

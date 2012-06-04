@@ -364,6 +364,9 @@ void __init arm_memblock_init(struct meminfo *mi, struct machine_desc *mdesc)
 #endif
 
 	arm_mm_memblock_reserve();
+#if defined(CONFIG_NON_ALIASED_COHERENT_MEM)
+	dma_coherent_reserve();
+#endif
 	arm_dt_memblock_reserve();
 
 	/* reserve any platform specific memblock areas */
