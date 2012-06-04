@@ -37,6 +37,7 @@
 #include <linux/fsl_devices.h>
 #include <linux/i2c/atmel_mxt_ts.h>
 #include <linux/memblock.h>
+#include <linux/rfkill-gpio.h>
 
 #include <linux/nfc/pn544.h>
 #include <sound/max98088.h>
@@ -79,20 +80,21 @@ static struct tegra_thermal_data thermal_data = {
 #endif
 };
 
-static struct resource enterprise_bcm4329_rfkill_resources[] = {
+static struct rfkill_gpio_platform_data enterprise_bt_rfkill_pdata[] = {
 	{
-		.name   = "bcm4329_nshutdown_gpio",
-		.start  = TEGRA_GPIO_PE6,
-		.end    = TEGRA_GPIO_PE6,
-		.flags  = IORESOURCE_IO,
+		.name           = "bt_rfkill",
+		.shutdown_gpio  = TEGRA_GPIO_PE6,
+		.reset_gpio     = TEGRA_GPIO_INVALID,
+		.type           = RFKILL_TYPE_BLUETOOTH,
 	},
 };
 
-static struct platform_device enterprise_bcm4329_rfkill_device = {
-	.name = "bcm4329_rfkill",
+static struct platform_device enterprise_bt_rfkill_device = {
+	.name = "rfkill_gpio",
 	.id		= -1,
-	.num_resources  = ARRAY_SIZE(enterprise_bcm4329_rfkill_resources),
-	.resource       = enterprise_bcm4329_rfkill_resources,
+	.dev = {
+		.platform_data = &enterprise_bt_rfkill_pdata,
+	},
 };
 
 static struct resource enterprise_bluesleep_resources[] = {
@@ -516,7 +518,7 @@ static struct platform_device *enterprise_devices[] __initdata = {
 	&tegra_avp_device,
 #endif
 	&tegra_camera,
-	&enterprise_bcm4329_rfkill_device,
+	&enterprise_bt_rfkill_device,
 	&tegra_spi_device4,
 	&tegra_hda_device,
 #if defined(CONFIG_CRYPTO_DEV_TEGRA_SE)

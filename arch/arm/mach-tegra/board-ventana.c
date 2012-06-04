@@ -38,6 +38,7 @@
 #include <linux/memblock.h>
 #include <linux/i2c/atmel_mxt_ts.h>
 #include <linux/tegra_uart.h>
+#include <linux/rfkill-gpio.h>
 
 #include <sound/wm8903.h>
 
@@ -64,26 +65,27 @@
 #include "pm.h"
 
 
-static struct resource ventana_bcm4329_rfkill_resources[] = {
+static struct rfkill_gpio_platform_data ventana_bt_rfkill_pdata[] = {
 	{
-		.name   = "bcm4329_nshutdown_gpio",
-		.start  = TEGRA_GPIO_PU0,
-		.end    = TEGRA_GPIO_PU0,
-		.flags  = IORESOURCE_IO,
+		.name           = "bt_rfkill",
+		.shutdown_gpio  = TEGRA_GPIO_PU0,
+		.reset_gpio     = TEGRA_GPIO_INVALID,
+		.type           = RFKILL_TYPE_BLUETOOTH,
 	},
 };
 
-static struct platform_device ventana_bcm4329_rfkill_device = {
-	.name = "bcm4329_rfkill",
+static struct platform_device ventana_bt_rfkill_device = {
+	.name = "rfkill_gpio",
 	.id             = -1,
-	.num_resources  = ARRAY_SIZE(ventana_bcm4329_rfkill_resources),
-	.resource       = ventana_bcm4329_rfkill_resources,
+	.dev = {
+		.platform_data  = ventana_bt_rfkill_pdata,
+	},
 };
 
 static void __init ventana_bt_rfkill(void)
 {
 	/*Add Clock Resource*/
-	clk_add_alias("bcm4329_32k_clk", ventana_bcm4329_rfkill_device.name, \
+	clk_add_alias("bcm4329_32k_clk", ventana_bt_rfkill_device.name, \
 				"blink", NULL);
 	return;
 }
@@ -380,7 +382,7 @@ static struct platform_device *ventana_devices[] __initdata = {
 	&tegra_das_device,
 	&spdif_dit_device,
 	&bluetooth_dit_device,
-	&ventana_bcm4329_rfkill_device,
+	&ventana_bt_rfkill_device,
 	&tegra_pcm_device,
 	&ventana_audio_device,
 };

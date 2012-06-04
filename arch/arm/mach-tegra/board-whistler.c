@@ -37,6 +37,7 @@
 #include <linux/mfd/max8907c.h>
 #include <linux/memblock.h>
 #include <linux/tegra_uart.h>
+#include <linux/rfkill-gpio.h>
 
 #include <mach/clk.h>
 #include <mach/iomap.h>
@@ -169,21 +170,21 @@ static void __init whistler_uart_init(void)
 	platform_add_devices(whistler_uart_devices,
 				ARRAY_SIZE(whistler_uart_devices));
 }
-
-static struct resource whistler_bcm4329_rfkill_resources[] = {
+static struct rfkill_gpio_platform_data whistler_bt_rfkill_pdata[] = {
 	{
-		.name	= "bcm4329_nshutdown_gpio",
-		.start	= TEGRA_GPIO_PU0,
-		.end	= TEGRA_GPIO_PU0,
-		.flags	= IORESOURCE_IO,
+		.name		= "bt_rfkill",
+		.shutdown_gpio  = TEGRA_GPIO_PU0,
+		.reset_gpio     = TEGRA_GPIO_INVALID,
+		.type		= RFKILL_TYPE_BLUETOOTH,
 	},
 };
 
-static struct platform_device whistler_bcm4329_rfkill_device = {
-	.name		= "bcm4329_rfkill",
-	.id		= -1,
-	.num_resources	= ARRAY_SIZE(whistler_bcm4329_rfkill_resources),
-	.resource	= whistler_bcm4329_rfkill_resources,
+static struct platform_device whistler_bt_rfkill_device = {
+	.name = "rfkill_gpio",
+	.id   = -1,
+	.dev  = {
+		.platform_data  = whistler_bt_rfkill_pdata,
+	},
 };
 
 static struct resource whistler_bluesleep_resources[] = {
@@ -393,7 +394,7 @@ static struct platform_device *whistler_devices[] __initdata = {
 	&spdif_dit_device,
 	&bluetooth_dit_device,
 	&baseband_dit_device,
-	&whistler_bcm4329_rfkill_device,
+	&whistler_bt_rfkill_device,
 	&tegra_pcm_device,
 	&whistler_audio_aic326x_device,
 	&whistler_audio_wm8753_device,
