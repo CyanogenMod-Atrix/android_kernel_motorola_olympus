@@ -507,9 +507,9 @@ static int tegra_otg_suspend(struct device *dev)
 					tegra_state_name(otg->state));
 
 	clk_enable(tegra->clk);
-	val = readl(tegra->regs + USB_PHY_WAKEUP);
-	val &= ~USB_INT_EN;
-	writel(val, tegra->regs + USB_PHY_WAKEUP);
+	val = otg_readl(tegra, USB_PHY_WAKEUP);
+	val &= ~(USB_ID_INT_EN | USB_VBUS_INT_EN);
+	otg_writel(tegra, val, USB_PHY_WAKEUP);
 	clk_disable(tegra->clk);
 
 	/* Suspend peripheral mode, host mode is taken care by host driver */
@@ -531,8 +531,8 @@ static void tegra_otg_resume(struct device *dev)
 
 	/* Clear pending interrupts */
 	clk_enable(tegra->clk);
-	val = readl(tegra->regs + USB_PHY_WAKEUP);
-	writel(val, tegra->regs + USB_PHY_WAKEUP);
+	val = otg_readl(tegra, USB_PHY_WAKEUP);
+	otg_writel(tegra, val, USB_PHY_WAKEUP);
 	DBG("%s(%d) PHY WAKEUP register : 0x%x\n", __func__, __LINE__, val);
 	clk_disable(tegra->clk);
 
@@ -546,11 +546,7 @@ static void tegra_otg_resume(struct device *dev)
 	spin_unlock_irqrestore(&tegra->lock, flags);
 	irq_work(&tegra->work);
 
-	clk_enable(tegra->clk);
-	val = readl(tegra->regs + USB_PHY_WAKEUP);
-	val |= USB_INT_EN;
-	writel(val, tegra->regs + USB_PHY_WAKEUP);
-	clk_disable(tegra->clk);
+	enable_interrupt(tegra, true);
 	DBG("%s(%d) END\n", __func__, __LINE__);
 }
 
