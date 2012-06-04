@@ -628,16 +628,6 @@ static int ad5816_dev_id(struct ad5816_info *info)
 	return err;
 }
 
-static void ad5816_sts_rd(struct ad5816_info *info)
-{
-	/**
-	* Device specific code for status
-	*
-	* TODO: Ad5816 has support to get status for over/under
-	* voltage conditions but currently this feature is not
-	* required.
-	*/
-}
 /**
  * Below are device specific functions.
  */
@@ -663,12 +653,13 @@ static int ad5816_position_rd(struct ad5816_info *info, unsigned *position)
 
 static int ad5816_position_wr(struct ad5816_info *info, unsigned position)
 {
-	position = position + info->config.pos_low;
+	u16 data;
 
+	position = position + info->config.pos_low;
 	if(position > info->config.pos_high)
 		position = info->config.pos_high;
 
-	u16 data = position & 0x03ff;
+	data = position & 0x03ff;
 
 	return ad5816_i2c_wr16(info, VCM_CODE_MSB, data);
 }
@@ -757,10 +748,8 @@ static int ad5816_param_rd(struct ad5816_info *info, unsigned long arg)
 }
 
 static int ad5816_param_wr_s(struct ad5816_info *info,
-								struct nvc_param *params,
-								u32 u32val)
+		struct nvc_param *params, u32 u32val)
 {
-	struct nvc_focus_cap cap;
 	u8 u8val;
 	int err = 0;
 	u8val = (u8)u32val;
@@ -1102,10 +1091,11 @@ static int ad5816_probe(
 		struct i2c_client *client,
 		const struct i2c_device_id *id)
 {
-	pr_info("ad5816: probing focuser.\n");
 	struct ad5816_info *info;
 	char dname[16];
 	int err;
+
+	pr_info("ad5816: probing focuser.\n");
 	dev_dbg(&client->dev, "%s\n", __func__);
 	info = devm_kzalloc(&client->dev, sizeof(*info), GFP_KERNEL);
 	if (info == NULL) {
