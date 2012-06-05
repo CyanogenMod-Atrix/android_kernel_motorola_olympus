@@ -131,7 +131,6 @@ static void enterprise_nct1008_init(void)
 {
 	int ret;
 
-	tegra_gpio_enable(TEGRA_GPIO_PH7);
 	ret = gpio_request(TEGRA_GPIO_PH7, "temp_alert");
 	if (ret < 0) {
 		pr_err("%s: gpio_request failed %d\n", __func__, ret);
@@ -213,7 +212,6 @@ static void mpuirq_init(void)
 #if (MPU_GYRO_TYPE == MPU_TYPE_MPU3050)
 #if	MPU_ACCEL_IRQ_GPIO
 	/* ACCEL-IRQ assignment */
-	tegra_gpio_enable(MPU_ACCEL_IRQ_GPIO);
 	ret = gpio_request(MPU_ACCEL_IRQ_GPIO, MPU_ACCEL_NAME);
 	if (ret < 0) {
 		pr_err("%s: gpio_request failed %d\n", __func__, ret);
@@ -230,7 +228,6 @@ static void mpuirq_init(void)
 #endif
 
 	/* MPU-IRQ assignment */
-	tegra_gpio_enable(MPU_GYRO_IRQ_GPIO);
 	ret = gpio_request(MPU_GYRO_IRQ_GPIO, MPU_GYRO_NAME);
 	if (ret < 0) {
 		pr_err("%s: gpio_request failed %d\n", __func__, ret);
@@ -589,7 +586,6 @@ static int enterprise_cam_init(void)
 		gpio_direction_output(enterprise_cam_gpio_data[i].gpio,
 				      enterprise_cam_gpio_data[i].value);
 		gpio_export(enterprise_cam_gpio_data[i].gpio, false);
-		tegra_gpio_enable(enterprise_cam_gpio_data[i].gpio);
 	}
 
 	tegra_get_board_info(&bi);

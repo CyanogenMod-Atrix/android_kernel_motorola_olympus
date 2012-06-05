@@ -264,10 +264,6 @@ static int __init enterprise_wifi_init(void)
 	if (rc)
 		pr_err("WLAN_WOW gpio request failed:%d\n", rc);
 
-	tegra_gpio_enable(ENTERPRISE_WLAN_PWR);
-	tegra_gpio_enable(ENTERPRISE_WLAN_RST);
-	tegra_gpio_enable(ENTERPRISE_WLAN_WOW);
-
 	rc = gpio_direction_output(ENTERPRISE_WLAN_PWR, 0);
 	if (rc)
 		pr_err("WLAN_PWR gpio direction configuration failed:%d\n", rc);
@@ -286,7 +282,6 @@ int __init enterprise_sdhci_init(void)
 {
 	platform_device_register(&tegra_sdhci_device3);
 
-	tegra_gpio_enable(ENTERPRISE_SD_CD);
 	tegra_sdhci_platform_data2.cd_gpio = ENTERPRISE_SD_CD;
 	platform_device_register(&tegra_sdhci_device2);
 

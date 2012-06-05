@@ -126,8 +126,6 @@ static struct platform_device enterprise_bluesleep_device = {
 static void __init enterprise_setup_bluesleep(void)
 {
 	platform_device_register(&enterprise_bluesleep_device);
-	tegra_gpio_enable(TEGRA_GPIO_PS2);
-	tegra_gpio_enable(TEGRA_GPIO_PE7);
 	return;
 }
 
@@ -599,9 +597,6 @@ static struct i2c_board_info __initdata atmel_i2c_info[] = {
 
 static int __init enterprise_touch_init(void)
 {
-	tegra_gpio_enable(TEGRA_GPIO_PH6);
-	tegra_gpio_enable(TEGRA_GPIO_PF5);
-
 	gpio_request(TEGRA_GPIO_PH6, "atmel-irq");
 	gpio_direction_input(TEGRA_GPIO_PH6);
 
@@ -812,11 +807,6 @@ static void enterprise_audio_init(void)
 			ARRAY_SIZE(enterprise_audio_devices));
 }
 
-static void enterprise_gps_init(void)
-{
-	tegra_gpio_enable(TEGRA_GPIO_PE4);
-	tegra_gpio_enable(TEGRA_GPIO_PE5);
-}
 
 static struct baseband_power_platform_data tegra_baseband_power_data = {
 	.baseband_type = BASEBAND_XMM,
@@ -891,23 +881,11 @@ static void enterprise_baseband_init(void)
 		/* baseband-power.ko will register ehci2 device */
 		tegra_ehci2_device.dev.platform_data =
 					&tegra_ehci2_hsic_xmm_pdata;
-		/* enable XMM6260 baseband gpio(s) */
-		tegra_gpio_enable(tegra_baseband_power_data.modem.generic
-			.mdm_reset);
-		tegra_gpio_enable(tegra_baseband_power_data.modem.generic
-			.mdm_on);
-		tegra_gpio_enable(tegra_baseband_power_data.modem.generic
-			.ap2mdm_ack);
-		tegra_gpio_enable(tegra_baseband_power_data.modem.generic
-			.mdm2ap_ack);
-		tegra_gpio_enable(tegra_baseband_power_data.modem.generic
-			.ap2mdm_ack2);
-		tegra_gpio_enable(tegra_baseband_power_data.modem.generic
-			.mdm2ap_ack2);
 		tegra_baseband_power_data.hsic_register =
 						&tegra_usb_hsic_host_register;
 		tegra_baseband_power_data.hsic_unregister =
 						&tegra_usb_hsic_host_unregister;
+
 		platform_device_register(&tegra_baseband_power_device);
 		platform_device_register(&tegra_baseband_power2_device);
 		break;
@@ -919,21 +897,6 @@ static void enterprise_baseband_init(void)
 		platform_device_register(&tegra_baseband_m7400_device);
 		break;
 #endif
-	}
-}
-
-static void enterprise_nfc_init(void)
-{
-	struct board_info bi;
-
-	tegra_gpio_enable(TEGRA_GPIO_PS4);
-	tegra_gpio_enable(TEGRA_GPIO_PM6);
-
-	/* Enable firmware GPIO PX7 for board E1205 */
-	tegra_get_board_info(&bi);
-	if (bi.board_id == BOARD_E1205 && bi.fab >= BOARD_FAB_A03) {
-		nfc_pdata.firm_gpio = TEGRA_GPIO_PX7;
-		tegra_gpio_enable(TEGRA_GPIO_PX7);
 	}
 }
 
@@ -955,7 +918,6 @@ static void __init tegra_enterprise_init(void)
 	enterprise_kbc_init();
 	enterprise_touch_init();
 	enterprise_audio_init();
-	enterprise_gps_init();
 	enterprise_baseband_init();
 	enterprise_panel_init();
 	enterprise_setup_bluesleep();
@@ -964,7 +926,6 @@ static void __init tegra_enterprise_init(void)
 	enterprise_suspend_init();
 	enterprise_bpc_mgmt_init();
 	tegra_release_bootloader_fb();
-	enterprise_nfc_init();
 }
 
 static void __init tegra_enterprise_reserve(void)
