@@ -50,10 +50,28 @@
 #include "nvhost_job.h"
 #include "nvhost_hwctx.h"
 
-void nvhost_read_module_regs(struct nvhost_device *ndev,
+static int validate_reg(struct nvhost_device *ndev, u32 offset, int count)
+{
+	struct resource *r = nvhost_get_resource(ndev, IORESOURCE_MEM, 0);
+	int err = 0;
+
+	if (offset + 4 * count > resource_size(r)
+			|| (offset + 4 * count < offset))
+		err = -EPERM;
+
+	return err;
+}
+
+int nvhost_read_module_regs(struct nvhost_device *ndev,
 			u32 offset, int count, u32 *values)
 {
 	void __iomem *p = ndev->aperture + offset;
+	int err;
+
+	/* verify offset */
+	err = validate_reg(ndev, offset, count);
+	if (err)
+		return err;
 
 	nvhost_module_busy(ndev);
 	while (count--) {
@@ -62,12 +80,20 @@ void nvhost_read_module_regs(struct nvhost_device *ndev,
 	}
 	rmb();
 	nvhost_module_idle(ndev);
+
+	return 0;
 }
 
-void nvhost_write_module_regs(struct nvhost_device *ndev,
+int nvhost_write_module_regs(struct nvhost_device *ndev,
 			u32 offset, int count, const u32 *values)
 {
 	void __iomem *p = ndev->aperture + offset;
+	int err;
+
+	/* verify offset */
+	err = validate_reg(ndev, offset, count);
+	if (err)
+		return err;
 
 	nvhost_module_busy(ndev);
 	while (count--) {
@@ -76,6 +102,8 @@ void nvhost_write_module_regs(struct nvhost_device *ndev,
 	}
 	wmb();
 	nvhost_module_idle(ndev);
+
+	return 0;
 }
 
 struct nvhost_channel_userctx {
@@ -140,7 +168,9 @@ static int nvhost_channelopen(struct inode *inode, struct file *filp)
 	priv->priority = NVHOST_PRIORITY_MEDIUM;
 	priv->clientid = atomic_add_return(1,
 			&nvhost_get_host(ch->dev)->clientid);
-	priv->timeout = MAX_STUCK_CHECK_COUNT * SYNCPT_CHECK_PERIOD;
+	priv->timeout =
+		jiffies_to_msecs(MAX_STUCK_CHECK_COUNT * SYNCPT_CHECK_PERIOD);
+
 	return 0;
 fail:
 	nvhost_channelrelease(inode, filp);
@@ -149,14 +179,17 @@ fail:
 
 static int set_submit(struct nvhost_channel_userctx *ctx)
 {
-	struct device *device = &ctx->ch->dev->dev;
+	struct nvhost_device *ndev = ctx->ch->dev;
+	struct nvhost_master *host = nvhost_get_host(ndev);
 
 	/* submit should have at least 1 cmdbuf */
-	if (!ctx->hdr.num_cmdbufs)
+	if (!ctx->hdr.num_cmdbufs ||
+			!nvhost_syncpt_is_valid(&host->syncpt,
+				ctx->hdr.syncpt_id))
 		return -EIO;
 
 	if (!ctx->nvmap) {
-		dev_err(device, "no nvmap context set\n");
+		dev_err(&ndev->dev, "no nvmap context set\n");
 		return -EFAULT;
 	}
 
@@ -182,6 +215,11 @@ static void reset_submit(struct nvhost_channel_userctx *ctx)
 	ctx->hdr.num_relocs = 0;
 	ctx->num_relocshifts = 0;
 	ctx->hdr.num_waitchks = 0;
+
+	if (ctx->job) {
+		nvhost_job_put(ctx->job);
+		ctx->job = NULL;
+	}
 }
 
 static ssize_t nvhost_channelwrite(struct file *filp, const char __user *buf,
@@ -367,10 +405,9 @@ static long nvhost_channelctl(struct file *filp,
 
 	if ((_IOC_TYPE(cmd) != NVHOST_IOCTL_MAGIC) ||
 		(_IOC_NR(cmd) == 0) ||
-		(_IOC_NR(cmd) > NVHOST_IOCTL_CHANNEL_LAST))
+		(_IOC_NR(cmd) > NVHOST_IOCTL_CHANNEL_LAST) ||
+		(_IOC_SIZE(cmd) > NVHOST_IOCTL_CHANNEL_MAX_ARG_SIZE))
 		return -EFAULT;
-
-	BUG_ON(_IOC_SIZE(cmd) > NVHOST_IOCTL_CHANNEL_MAX_ARG_SIZE);
 
 	if (_IOC_DIR(cmd) & _IOC_WRITE) {
 		if (copy_from_user(buf, (void __user *)arg, _IOC_SIZE(cmd)))

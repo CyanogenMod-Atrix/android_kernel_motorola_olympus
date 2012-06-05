@@ -532,7 +532,7 @@ static int sh532u_vreg_init(struct sh532u_info *info)
 			else
 				dev_info(&info->i2c_client->dev,
 					 "%s no regulator found for %s. "
-					 "This board may not have an"
+					 "This board may not have an "
 					 "independent %s regulator.\n",
 					 __func__, info->vreg[j].vreg_name,
 					 info->vreg[j].vreg_name);

@@ -1082,7 +1082,7 @@ woal_cfg80211_assoc(moal_private * priv, void *sme)
         goto done;
     }
 
-    if (channel) {
+    if (mode == MLAN_BSS_MODE_IBSS && channel) {
         /* Get the secondary channel offset */
         req = woal_alloc_mlan_ioctl_req(sizeof(mlan_ds_radio_cfg));
         if (req == NULL) {

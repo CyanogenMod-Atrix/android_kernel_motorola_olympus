@@ -55,7 +55,6 @@
 #include "../pm.h"
 #include "../devices.h"
 #include "../gpio-names.h"
-#include "../wakeups-t2.h"
 
 
 #define P852_SKU3      0x030000UL

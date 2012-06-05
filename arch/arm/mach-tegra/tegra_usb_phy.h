@@ -89,6 +89,7 @@ struct tegra_usb_phy {
 	void __iomem *regs;
 	int inst;
 	bool phy_clk_on;
+	bool ctrl_clk_on; /* used only for pmu irq */
 	bool phy_power_on;
 	bool remote_wakeup;
 	bool hw_accessible;

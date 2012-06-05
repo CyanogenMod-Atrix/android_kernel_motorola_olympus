@@ -205,6 +205,7 @@ static int nvhost_ioctl_ctrl_module_regrdwr(struct nvhost_ctrl_userctx *ctx,
 		return -EINVAL;
 
 	while (num_offsets--) {
+		int err;
 		int remaining = args->block_size >> 2;
 		u32 offs;
 		if (get_user(offs, offsets))
@@ -216,17 +217,21 @@ static int nvhost_ioctl_ctrl_module_regrdwr(struct nvhost_ctrl_userctx *ctx,
 				if (copy_from_user(vals, values,
 							batch*sizeof(u32)))
 					return -EFAULT;
-				nvhost_write_module_regs(ndev,
+				err = nvhost_write_module_regs(ndev,
 						offs, batch, vals);
+				if (err)
+					return err;
 			} else {
-				nvhost_read_module_regs(ndev,
+				err = nvhost_read_module_regs(ndev,
 						offs, batch, vals);
+				if (err)
+					return err;
 				if (copy_to_user(values, vals,
 							batch*sizeof(u32)))
 					return -EFAULT;
 			}
 			remaining -= batch;
-			offs += batch;
+			offs += batch*sizeof(u32);
 			values += batch;
 		}
 	}
@@ -250,10 +255,9 @@ static long nvhost_ctrlctl(struct file *filp,
 
 	if ((_IOC_TYPE(cmd) != NVHOST_IOCTL_MAGIC) ||
 		(_IOC_NR(cmd) == 0) ||
-		(_IOC_NR(cmd) > NVHOST_IOCTL_CTRL_LAST))
+		(_IOC_NR(cmd) > NVHOST_IOCTL_CTRL_LAST) ||
+		(_IOC_SIZE(cmd) > NVHOST_IOCTL_CTRL_MAX_ARG_SIZE))
 		return -EFAULT;
-
-	BUG_ON(_IOC_SIZE(cmd) > NVHOST_IOCTL_CTRL_MAX_ARG_SIZE);
 
 	if (_IOC_DIR(cmd) & _IOC_WRITE) {
 		if (copy_from_user(buf, (void __user *)arg, _IOC_SIZE(cmd)))

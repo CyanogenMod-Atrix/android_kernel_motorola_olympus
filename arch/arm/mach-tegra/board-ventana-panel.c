@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-ventana-panel.c
  *
- * Copyright (c) 2010-2012, NVIDIA Corporation.
+ * Copyright (c) 2010-2012 NVIDIA Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -63,8 +63,6 @@ static int ventana_backlight_init(struct device *dev) {
 	ret = gpio_direction_output(ventana_bl_enb, 1);
 	if (ret < 0)
 		gpio_free(ventana_bl_enb);
-	else
-		tegra_gpio_enable(ventana_bl_enb);
 
 	return ret;
 };
@@ -72,7 +70,6 @@ static int ventana_backlight_init(struct device *dev) {
 static void ventana_backlight_exit(struct device *dev) {
 	gpio_set_value(ventana_bl_enb, 0);
 	gpio_free(ventana_bl_enb);
-	tegra_gpio_disable(ventana_bl_enb);
 }
 
 static int ventana_backlight_notify(struct device *unused, int brightness)
@@ -392,13 +389,10 @@ int __init ventana_panel_init(void)
 
 	gpio_request(ventana_lvds_shutdown, "lvds_shdn");
 	gpio_direction_output(ventana_lvds_shutdown, 1);
-	tegra_gpio_enable(ventana_lvds_shutdown);
 
-	tegra_gpio_enable(ventana_hdmi_enb);
 	gpio_request(ventana_hdmi_enb, "hdmi_5v_en");
 	gpio_direction_output(ventana_hdmi_enb, 1);
 
-	tegra_gpio_enable(ventana_hdmi_hpd);
 	gpio_request(ventana_hdmi_hpd, "hdmi_hpd");
 	gpio_direction_input(ventana_hdmi_hpd);
 

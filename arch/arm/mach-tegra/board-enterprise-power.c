@@ -44,7 +44,6 @@
 #include "board.h"
 #include "board-enterprise.h"
 #include "pm.h"
-#include "wakeups-t3.h"
 #include "tegra3_tsensor.h"
 
 #define PMC_CTRL		0x0
@@ -298,6 +297,7 @@ static struct tps80031_rtc_platform_data rtc_data = {
 		.tm_min = 2,
 		.tm_sec = 3,
 	},
+	.msecure_gpio = TEGRA_GPIO_PF7,
 };
 
 int battery_charger_init(void *board_data)
@@ -745,6 +745,8 @@ int __init enterprise_regulator_init(void)
 		bcharger_pdata.consumer_supplies = NULL;
 		battery_gauge_data.battery_present = 0;
 	}
+
+	tegra_gpio_enable(TEGRA_GPIO_PF7);
 
 	if (board_info.fab < BOARD_FAB_A03) {
 		tps_platform.num_subdevs = ARRAY_SIZE(tps80031_devs_a02);

@@ -131,15 +131,25 @@ int tegra_usb_phy_init_ops(struct tegra_usb_phy *phy)
 
 static irqreturn_t usb_phy_dev_vbus_pmu_irq_thr(int irq, void *pdata)
 {
-	/* FIXME : Need to enable pmu vbus handling */
+	struct tegra_usb_phy *phy = pdata;
 
-	return IRQ_NONE;
+	/* clk is disabled during phy power off and not here*/
+	if (!phy->ctrl_clk_on) {
+		clk_enable(phy->ctrlr_clk);
+		phy->ctrl_clk_on = true;
+	}
+
+	return IRQ_HANDLED;
 }
 
 static void tegra_usb_phy_release_clocks(struct tegra_usb_phy *phy)
 {
 	clk_put(phy->emc_clk);
 	clk_put(phy->sys_clk);
+	if (phy->pdata->op_mode == TEGRA_USB_OPMODE_HOST)
+		if (phy->pdata->u_data.host.hot_plug ||
+			phy->pdata->u_data.host.remote_wakeup_supported)
+			clk_disable(phy->ctrlr_clk);
 	clk_put(phy->ctrlr_clk);
 	clk_disable(phy->pllu_clk);
 	clk_put(phy->pllu_clk);
@@ -163,6 +173,11 @@ static int tegra_usb_phy_get_clocks(struct tegra_usb_phy *phy)
 		err = PTR_ERR(phy->ctrlr_clk);
 		goto fail_ctrlr_clk;
 	}
+
+	if (phy->pdata->op_mode == TEGRA_USB_OPMODE_HOST)
+		if (phy->pdata->u_data.host.hot_plug ||
+			phy->pdata->u_data.host.remote_wakeup_supported)
+			clk_enable(phy->ctrlr_clk);
 
 	phy->sys_clk = clk_get(&phy->pdev->dev, "sclk");
 	if (IS_ERR(phy->sys_clk)) {
@@ -273,6 +288,8 @@ struct tegra_usb_phy *tegra_usb_phy_open(struct platform_device *pdev)
 								phy->inst);
 				goto fail_init;
 			}
+		} else {
+			clk_enable(phy->ctrlr_clk);
 		}
 	} else {
 		if (phy->pdata->u_data.host.vbus_reg) {
@@ -365,6 +382,8 @@ void tegra_usb_phy_close(struct tegra_usb_phy *phy)
 	if (phy->pdata->op_mode == TEGRA_USB_OPMODE_DEVICE) {
 		if (phy->pdata->u_data.dev.vbus_pmu_irq)
 			free_irq(phy->pdata->u_data.dev.vbus_pmu_irq, phy);
+		else
+			clk_disable(phy->ctrlr_clk);
 	} else {
 		usb_host_vbus_enable(phy, false);
 
@@ -379,8 +398,6 @@ void tegra_usb_phy_close(struct tegra_usb_phy *phy)
 		}
 	}
 
-	tegra_usb_phy_release_clocks(phy);
-
 	if (phy->vdd_reg) {
 		regulator_disable(phy->vdd_reg);
 		regulator_put(phy->vdd_reg);
@@ -391,6 +408,8 @@ void tegra_usb_phy_close(struct tegra_usb_phy *phy)
 
 	if (phy->pdata->ops && phy->pdata->ops->close)
 		phy->pdata->ops->close();
+
+	tegra_usb_phy_release_clocks(phy);
 
 	kfree(phy->pdata);
 	kfree(phy);
@@ -439,7 +458,19 @@ int tegra_usb_phy_power_off(struct tegra_usb_phy *phy)
 
 	clk_disable(phy->emc_clk);
 	clk_disable(phy->sys_clk);
-	clk_disable(phy->ctrlr_clk);
+	if (phy->pdata->op_mode == TEGRA_USB_OPMODE_HOST) {
+		if (!phy->pdata->u_data.host.hot_plug &&
+			!phy->pdata->u_data.host.remote_wakeup_supported)
+			clk_disable(phy->ctrlr_clk);
+	} else {
+		/* In device mode clock is turned on by pmu irq handler
+		 * if pmu irq is not available clocks will not be turned off/on
+		 */
+		if (phy->pdata->u_data.dev.vbus_pmu_irq) {
+			clk_disable(phy->ctrlr_clk);
+			phy->ctrl_clk_on = false;
+		}
+	}
 
 	phy->phy_power_on = false;
 
@@ -455,7 +486,20 @@ int tegra_usb_phy_power_on(struct tegra_usb_phy *phy)
 	if (phy->phy_power_on)
 		return status;
 
-	clk_enable(phy->ctrlr_clk);
+	/* In device mode clock is turned on by pmu irq handler
+	 * if pmu irq is not available clocks will not be turned off/on
+	 */
+	if (phy->pdata->op_mode == TEGRA_USB_OPMODE_HOST) {
+		if (!phy->pdata->u_data.host.hot_plug &&
+			!phy->pdata->u_data.host.remote_wakeup_supported)
+			clk_enable(phy->ctrlr_clk);
+	} else {
+		if (phy->pdata->u_data.dev.vbus_pmu_irq &&
+			!phy->ctrl_clk_on) {
+			clk_enable(phy->ctrlr_clk);
+			phy->ctrl_clk_on = true;
+		}
+	}
 	clk_enable(phy->sys_clk);
 	clk_enable(phy->emc_clk);
 
@@ -506,11 +550,7 @@ int tegra_usb_phy_suspend(struct tegra_usb_phy *phy)
 		err = phy->ops->suspend(phy);
 
 	if (!err && phy->pdata->u_data.host.power_off_on_suspend) {
-		if (phy->pdata->ops && phy->pdata->ops->pre_phy_off)
-			phy->pdata->ops->pre_phy_off();
-		err = phy->ops->power_off(phy);
-		if (phy->pdata->ops && phy->pdata->ops->post_phy_off)
-			phy->pdata->ops->post_phy_off();
+		tegra_usb_phy_power_off(phy);
 	}
 
 	return err;
@@ -550,11 +590,7 @@ int tegra_usb_phy_resume(struct tegra_usb_phy *phy)
 	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
 
 	if (phy->pdata->u_data.host.power_off_on_suspend) {
-		if (phy->pdata->ops && phy->pdata->ops->pre_phy_on)
-			phy->pdata->ops->pre_phy_on();
-		err = phy->ops->power_on(phy);
-		if (phy->pdata->ops && phy->pdata->ops->post_phy_on)
-			phy->pdata->ops->post_phy_on();
+		tegra_usb_phy_power_on(phy);
 	}
 
 	if (!err && phy->ops && phy->ops->resume)

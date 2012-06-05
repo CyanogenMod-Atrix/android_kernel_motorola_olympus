@@ -106,6 +106,18 @@ static int rt5640_reg_init(struct snd_soc_codec *codec)
 }
 #endif
 
+static int rt5640_index_sync(struct snd_soc_codec *codec)
+{
+	int i;
+
+	for (i = 0; i < RT5640_INIT_REG_LEN; i++)
+		if (RT5640_PRIV_INDEX == init_list[i].reg ||
+			RT5640_PRIV_DATA == init_list[i].reg)
+			snd_soc_write(codec, init_list[i].reg,
+					init_list[i].val);
+	return 0;
+}
+
 static const u16 rt5640_reg[RT5640_VENDOR_ID2 + 1] = {
 	[RT5640_RESET] = 0x000c,
 	[RT5640_SPK_VOL] = 0xc8c8,
@@ -2269,7 +2281,9 @@ static int rt5640_set_bias_level(struct snd_soc_codec *codec,
 				RT5640_PWR_FV1 | RT5640_PWR_FV2,
 				RT5640_PWR_FV1 | RT5640_PWR_FV2);
 			codec->cache_only = false;
+			codec->cache_sync = 1;
 			snd_soc_cache_sync(codec);
+			rt5640_index_sync(codec);
 		}
 		break;
 
@@ -2381,6 +2395,7 @@ static int rt5640_remove(struct snd_soc_codec *codec)
 #ifdef CONFIG_PM
 static int rt5640_suspend(struct snd_soc_codec *codec, pm_message_t state)
 {
+	rt5640_reset(codec);
 	rt5640_set_bias_level(codec, SND_SOC_BIAS_OFF);
 	snd_soc_write(codec, RT5640_PWR_ANLG1, 0);
 
@@ -2389,6 +2404,14 @@ static int rt5640_suspend(struct snd_soc_codec *codec, pm_message_t state)
 
 static int rt5640_resume(struct snd_soc_codec *codec)
 {
+	int ret = 0 ;
+
+	codec->cache_sync = 1;
+	ret = snd_soc_cache_sync(codec);
+	if (ret) {
+		dev_err(codec->dev,"Failed to sync cache: %d\n", ret);
+		return ret;
+	}
 	rt5640_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
 
 	return 0;

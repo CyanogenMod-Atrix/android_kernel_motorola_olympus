@@ -31,6 +31,7 @@
 #include <linux/platform_device.h>
 #include <linux/rtc.h>
 #include <linux/slab.h>
+#include <linux/gpio.h>
 
 #define RTC_CTRL		0x10
 #define RTC_STATUS		0x11
@@ -65,7 +66,24 @@ struct tps80031_rtc {
 	int			irq;
 	struct rtc_device	*rtc;
 	u8 			alarm_irq_enabled;
+	int			msecure_gpio;
 };
+
+static inline void tps80031_enable_rtc_write(struct device *dev)
+{
+	struct tps80031_rtc *rtc = dev_get_drvdata(dev);
+
+	if (rtc->msecure_gpio >= 0)
+		gpio_set_value(rtc->msecure_gpio, 1);
+}
+
+static inline void tps80031_disable_rtc_write(struct device *dev)
+{
+	struct tps80031_rtc *rtc = dev_get_drvdata(dev);
+
+	if (rtc->msecure_gpio >= 0)
+		gpio_set_value(rtc->msecure_gpio, 0);
+}
 
 static int tps80031_read_regs(struct device *dev, int reg, int len,
 	uint8_t *val)
@@ -93,13 +111,16 @@ static int tps80031_write_regs(struct device *dev, int reg, int len,
 	uint8_t *val)
 {
 	int ret;
+
+	tps80031_enable_rtc_write(dev);
 	ret = tps80031_writes(dev->parent, 1, reg, len, val);
 	if (ret < 0) {
+		tps80031_disable_rtc_write(dev);
 		dev_err(dev->parent, "failed writing reg: %d\n", reg);
 		WARN_ON(1);
 		return ret;
 	}
-
+	tps80031_disable_rtc_write(dev);
 	return 0;
 }
 
@@ -150,18 +171,24 @@ static int tps80031_rtc_read_time(struct device *dev, struct rtc_time *tm)
 static int tps80031_rtc_stop(struct device *dev)
 {
 	int err;
+
+	tps80031_enable_rtc_write(dev);
 	err = tps80031_clr_bits(dev->parent, 1, RTC_CTRL, STOP_RTC);
 	if (err < 0)
 		dev_err(dev->parent, "failed to stop RTC. err: %d\n", err);
+	tps80031_disable_rtc_write(dev);
 	return err;
 }
 
 static int tps80031_rtc_start(struct device *dev)
 {
 	int err;
+
+	tps80031_enable_rtc_write(dev);
 	err = tps80031_set_bits(dev->parent, 1, RTC_CTRL, STOP_RTC);
 	if (err < 0)
 		dev_err(dev->parent, "failed to start RTC. err: %d\n", err);
+	tps80031_disable_rtc_write(dev);
 	return err;
 }
 
@@ -262,7 +289,9 @@ static int tps80031_rtc_alarm_irq_enable(struct device *dev,
 		if (rtc->alarm_irq_enabled)
 			return 0;
 
+		tps80031_enable_rtc_write(dev);
 		err = tps80031_set_bits(p, 1, RTC_INT, ENABLE_ALARM_INT);
+		tps80031_disable_rtc_write(dev);
 		if (err < 0) {
 			dev_err(p, "failed to set ALRM int. err: %d\n", err);
 			return err;
@@ -271,7 +300,9 @@ static int tps80031_rtc_alarm_irq_enable(struct device *dev,
 	} else {
 		if(!rtc->alarm_irq_enabled)
 			return 0;
+		tps80031_enable_rtc_write(dev);
 		err = tps80031_clr_bits(p, 1, RTC_INT, ENABLE_ALARM_INT);
+		tps80031_disable_rtc_write(dev);
 		if (err < 0) {
 			dev_err(p, "failed to clear ALRM int. err: %d\n", err);
 			return err;
@@ -303,8 +334,10 @@ static irqreturn_t tps80031_rtc_irq(int irq, void *data)
 		return -EBUSY;
 	}
 
+	tps80031_enable_rtc_write(dev);
 	err = tps80031_force_update(dev->parent, 1, RTC_STATUS,
 		ALARM_INT_STATUS, ALARM_INT_STATUS);
+	tps80031_disable_rtc_write(dev);
 	if (err) {
 		dev_err(dev->parent, "unable to set Alarm INT\n");
 		return -EBUSY;
@@ -335,8 +368,19 @@ static int __devinit tps80031_rtc_probe(struct platform_device *pdev)
 	if (pdata->irq < 0)
 		dev_err(&pdev->dev, "no IRQ specified, wakeup is disabled\n");
 
+	rtc->msecure_gpio = -1;
+	if (gpio_is_valid(pdata->msecure_gpio)) {
+		err = gpio_request(pdata->msecure_gpio, "tps80031 msecure");
+		if (err == 0) {
+			rtc->msecure_gpio = pdata->msecure_gpio;
+			gpio_direction_output(rtc->msecure_gpio, 0);
+		} else
+			dev_warn(&pdev->dev, "could not get msecure GPIO\n");
+	}
+
 	rtc->rtc = rtc_device_register(pdev->name, &pdev->dev,
 				       &tps80031_rtc_ops, THIS_MODULE);
+	dev_set_drvdata(&pdev->dev, rtc);
 
 	if (IS_ERR(rtc->rtc)) {
 		err = PTR_ERR(rtc->rtc);
@@ -379,7 +423,9 @@ static int __devinit tps80031_rtc_probe(struct platform_device *pdev)
 		return -EBUSY;
 	}
 
+	tps80031_enable_rtc_write(&pdev->dev);
 	err = tps80031_set_bits(pdev->dev.parent, 1, RTC_INT, ENABLE_ALARM_INT);
+	tps80031_disable_rtc_write(&pdev->dev);
 	if (err) {
 		dev_err(&pdev->dev, "unable to program Interrupt Mask reg\n");
 		err = -EBUSY;
@@ -388,7 +434,6 @@ static int __devinit tps80031_rtc_probe(struct platform_device *pdev)
 	} else
 		rtc->alarm_irq_enabled = 1;
 
-	dev_set_drvdata(&pdev->dev, rtc);
 	if (pdata && (pdata->irq >= 0)) {
 		rtc->irq = pdata->irq;
 		err = request_threaded_irq(pdata->irq, NULL, tps80031_rtc_irq,

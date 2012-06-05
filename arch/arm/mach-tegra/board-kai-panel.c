@@ -111,8 +111,6 @@ static int kai_backlight_init(struct device *dev)
 	if (WARN_ON(ARRAY_SIZE(kai_bl_output_measured) != 256))
 		pr_err("bl_output array does not have 256 elements\n");
 
-	tegra_gpio_disable(kai_bl_pwm);
-
 	ret = gpio_request(kai_bl_enb, "backlight_enb");
 	if (ret < 0)
 		return ret;
@@ -120,8 +118,6 @@ static int kai_backlight_init(struct device *dev)
 	ret = gpio_direction_output(kai_bl_enb, 1);
 	if (ret < 0)
 		gpio_free(kai_bl_enb);
-	else
-		tegra_gpio_enable(kai_bl_enb);
 
 	return ret;
 };
@@ -132,7 +128,6 @@ static void kai_backlight_exit(struct device *dev)
 	/*ret = gpio_request(kai_bl_enb, "backlight_enb");*/
 	gpio_set_value(kai_bl_enb, 0);
 	gpio_free(kai_bl_enb);
-	tegra_gpio_disable(kai_bl_enb);
 	return;
 }
 
@@ -654,35 +649,27 @@ int __init kai_panel_init(void)
 #endif
 	gpio_request(kai_lvds_avdd_en, "lvds_avdd_en");
 	gpio_direction_output(kai_lvds_avdd_en, 1);
-	tegra_gpio_enable(kai_lvds_avdd_en);
 
 	gpio_request(kai_lvds_stdby, "lvds_stdby");
 	gpio_direction_output(kai_lvds_stdby, 1);
-	tegra_gpio_enable(kai_lvds_stdby);
 
 	gpio_request(kai_lvds_rst, "lvds_rst");
 	gpio_direction_output(kai_lvds_rst, 1);
-	tegra_gpio_enable(kai_lvds_rst);
 
 	if (board_info.fab == BOARD_FAB_A00) {
 		gpio_request(kai_lvds_rs_a00, "lvds_rs");
 		gpio_direction_output(kai_lvds_rs_a00, 0);
-		tegra_gpio_enable(kai_lvds_rs_a00);
 	} else {
 		gpio_request(kai_lvds_rs, "lvds_rs");
 		gpio_direction_output(kai_lvds_rs, 0);
-		tegra_gpio_enable(kai_lvds_rs);
 	}
 
 	gpio_request(kai_lvds_lr, "lvds_lr");
 	gpio_direction_output(kai_lvds_lr, 1);
-	tegra_gpio_enable(kai_lvds_lr);
 
 	gpio_request(kai_lvds_shutdown, "lvds_shutdown");
 	gpio_direction_output(kai_lvds_shutdown, 1);
-	tegra_gpio_enable(kai_lvds_shutdown);
 
-	tegra_gpio_enable(kai_hdmi_hpd);
 	gpio_request(kai_hdmi_hpd, "hdmi_hpd");
 	gpio_direction_input(kai_hdmi_hpd);
 
