@@ -187,13 +187,13 @@ static struct device_attribute fn_01_attrs[] = {
 	       rmi_fn_01_datecode_show, rmi_store_error),
 
 	/* control register access */
-	__ATTR(sleepmode, RMI_RW_ATTR,
+	__ATTR(sleepmode, RMI_RO_ATTR,
 	       rmi_fn_01_sleepmode_show, rmi_fn_01_sleepmode_store),
-	__ATTR(nosleep, RMI_RW_ATTR,
+	__ATTR(nosleep, RMI_RO_ATTR,
 	       rmi_fn_01_nosleep_show, rmi_fn_01_nosleep_store),
-	__ATTR(chargerinput, RMI_RW_ATTR,
+	__ATTR(chargerinput, RMI_RO_ATTR,
 	       rmi_fn_01_chargerinput_show, rmi_fn_01_chargerinput_store),
-	__ATTR(reportrate, RMI_RW_ATTR,
+	__ATTR(reportrate, RMI_RO_ATTR,
 	       rmi_fn_01_reportrate_show, rmi_fn_01_reportrate_store),
 	/* We make report rate RO, since the driver uses that to look for
 	 * resets.  We don't want someone faking us out by changing that
@@ -203,7 +203,7 @@ static struct device_attribute fn_01_attrs[] = {
 	       rmi_fn_01_configured_show, rmi_store_error),
 
 	/* Command register access. */
-	__ATTR(reset, RMI_WO_ATTR,
+	__ATTR(reset, RMI_RO_ATTR,
 	       rmi_show_error, rmi_fn_01_reset_store),
 
 	/* STatus register access. */

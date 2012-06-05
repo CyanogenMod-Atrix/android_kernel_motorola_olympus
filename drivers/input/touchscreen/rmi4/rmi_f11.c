@@ -99,15 +99,15 @@ static ssize_t rmi_f11_rezero_store(struct device *dev,
 
 
 static struct device_attribute attrs[] = {
-	__ATTR(flip, RMI_RW_ATTR, rmi_fn_11_flip_show, rmi_fn_11_flip_store),
-	__ATTR(clip, RMI_RW_ATTR, rmi_fn_11_clip_show, rmi_fn_11_clip_store),
-	__ATTR(offset, RMI_RW_ATTR,
+	__ATTR(flip, RMI_RO_ATTR, rmi_fn_11_flip_show, rmi_fn_11_flip_store),
+	__ATTR(clip, RMI_RO_ATTR, rmi_fn_11_clip_show, rmi_fn_11_clip_store),
+	__ATTR(offset, RMI_RO_ATTR,
 		rmi_fn_11_offset_show, rmi_fn_11_offset_store),
-	__ATTR(swap, RMI_RW_ATTR, rmi_fn_11_swap_show, rmi_fn_11_swap_store),
-	__ATTR(relreport, RMI_RW_ATTR,
+	__ATTR(swap, RMI_RO_ATTR, rmi_fn_11_swap_show, rmi_fn_11_swap_store),
+	__ATTR(relreport, RMI_RO_ATTR,
 		rmi_fn_11_relreport_show, rmi_fn_11_relreport_store),
 	__ATTR(maxPos, RMI_RO_ATTR, rmi_fn_11_maxPos_show, rmi_store_error),
-	__ATTR(rezero, RMI_WO_ATTR, rmi_show_error, rmi_f11_rezero_store)
+	__ATTR(rezero, RMI_RO_ATTR, rmi_show_error, rmi_f11_rezero_store)
 };
 
 

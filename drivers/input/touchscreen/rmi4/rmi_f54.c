@@ -303,11 +303,11 @@ static ssize_t rmi_fn_54_fifoindex_store(struct device *dev,
 				   const char *buf, size_t count);
 
 static struct device_attribute attrs[] = {
-	__ATTR(report_type, RMI_RW_ATTR,
+	__ATTR(report_type, RMI_RO_ATTR,
 		rmi_fn_54_report_type_show, rmi_fn_54_report_type_store),
-	__ATTR(get_report, RMI_WO_ATTR,
+	__ATTR(get_report, RMI_RO_ATTR,
 		rmi_show_error, rmi_fn_54_get_report_store),
-	__ATTR(force_cal, RMI_WO_ATTR,
+	__ATTR(force_cal, RMI_RO_ATTR,
 		rmi_show_error, rmi_fn_54_force_cal_store),
 	__ATTR(status, RMI_RO_ATTR,
 		rmi_fn_54_status_show, rmi_store_error),
@@ -358,9 +358,9 @@ static struct device_attribute attrs[] = {
 	      rmi_fn_54_has_perf_frequency_noisecontrol_show, rmi_store_error),
 	__ATTR(number_of_sensing_frequencies, RMI_RO_ATTR,
 		rmi_fn_54_number_of_sensing_frequencies_show, rmi_store_error),
-	__ATTR(no_auto_cal, RMI_RW_ATTR,
+	__ATTR(no_auto_cal, RMI_RO_ATTR,
 		rmi_fn_54_no_auto_cal_show, rmi_fn_54_no_auto_cal_store),
-	__ATTR(fifoindex, RMI_RW_ATTR,
+	__ATTR(fifoindex, RMI_RO_ATTR,
 		rmi_fn_54_fifoindex_show, rmi_fn_54_fifoindex_store),
 };
 
