@@ -410,31 +410,39 @@ int __init p1852_pinmux_init(void)
 	return 0;
 }
 
-static struct gpio p1852_sku8_gpios[] = {
-	{TEGRA_GPIO_PW4,	GPIOF_OUT_INIT_HIGH,	"w4"},
-	{TEGRA_GPIO_PEE2,	GPIOF_OUT_INIT_HIGH,	"ee2"},
-	{TEGRA_GPIO_PZ4,	GPIOF_OUT_INIT_HIGH,	"z4"},
-	{TEGRA_GPIO_PD2,	GPIOF_OUT_INIT_HIGH,	"d2"},
-	{TEGRA_GPIO_PD1,	GPIOF_OUT_INIT_HIGH,	"d1"},
-	{TEGRA_GPIO_PD0,	GPIOF_OUT_INIT_HIGH,	"d0"},
-	{TEGRA_GPIO_PW3,	GPIOF_IN,		"therm_alert"},
-	{TEGRA_GPIO_PK5,	GPIOF_OUT_INIT_HIGH,	"user1"},
-	{TEGRA_GPIO_PX5,	GPIOF_OUT_INIT_HIGH,	"user2"},
-	{TEGRA_GPIO_PX6,	GPIOF_OUT_INIT_HIGH,	"user3"},
-	{TEGRA_GPIO_PX7,	GPIOF_OUT_INIT_HIGH,	"user4"},
+#define GPIO_INIT_PIN_MODE(_gpio, _is_input, _value)	\
+	{					\
+		.gpio_nr	= _gpio,	\
+		.is_input	= _is_input,	\
+		.value		= _value,	\
+	}
+
+static struct gpio_init_pin_info p1852_sku8_gpios[] = {
+
+	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PW4,	false, 1),
+	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PEE2,	false, 1),
+	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PZ4,	false, 1),
+	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PD2,	false, 1),
+	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PD1,	false, 1),
+	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PD0,	false, 1),
+	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PW3,	true,  0),
+	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PK5,	false, 1),
+	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PX5,	false, 1),
+	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PX6,	false, 1),
+	GPIO_INIT_PIN_MODE(TEGRA_GPIO_PX7,	false, 1),
 };
 
 int __init p1852_gpio_init(void)
 {
 	int i, pin_count = 0;
-	struct gpio *gpios_info = NULL;
+	struct gpio_init_pin_info *gpios_info = NULL;
 	gpios_info = p1852_sku8_gpios;
 	pin_count = ARRAY_SIZE(p1852_sku8_gpios);
 
-	gpio_request_array(gpios_info, pin_count);
-	for (i = 0; i < pin_count; i++) {
-		tegra_gpio_enable(gpios_info[i].gpio);
-		gpio_export(gpios_info[i].gpio, true);
+	for (i = 0; i < pin_count; ++i) {
+		tegra_gpio_init_configure(gpios_info->gpio_nr,
+			gpios_info->is_input, gpios_info->value);
+		gpios_info++;
 	}
 	return 0;
 }
