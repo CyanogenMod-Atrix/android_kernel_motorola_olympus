@@ -11,6 +11,10 @@
 #include <linux/interrupt.h>
 #include <linux/device.h>
 
+#define MMC_SLOW_WRITE_TIME	500000	/* time (us) */
+#define MMC_REFRESH_INTERVAL	60	/* time (s) */
+#define MMC_BKOPS_INTERVAL	20	/* time (s) */
+
 struct request;
 struct mmc_data;
 struct mmc_request;
@@ -138,6 +142,7 @@ extern struct mmc_async_req *mmc_start_req(struct mmc_host *,
 					   struct mmc_async_req *, int *);
 extern int mmc_interrupt_hpi(struct mmc_card *);
 extern int mmc_bkops_start(struct mmc_card *card, bool is_synchronous);
+extern void mmc_refresh(unsigned long data);
 
 extern void mmc_wait_for_req(struct mmc_host *, struct mmc_request *);
 extern int mmc_wait_for_cmd(struct mmc_host *, struct mmc_command *, int);

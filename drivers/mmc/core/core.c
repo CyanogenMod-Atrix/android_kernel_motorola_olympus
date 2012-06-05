@@ -272,13 +272,44 @@ struct mmc_async_req *mmc_start_req(struct mmc_host *host,
 {
 	int err = 0;
 	struct mmc_async_req *data = host->areq;
+	struct mmc_card *card = host->card;
+	struct timeval before_time, after_time;
 
 	/* Prepare a new request */
 	if (areq)
 		mmc_pre_req(host, areq->mrq, !host->areq);
 
 	if (host->areq) {
+		if (card->ext_csd.refresh &&
+			(host->areq->mrq->data->flags & MMC_DATA_WRITE))
+				do_gettimeofday(&before_time);
 		mmc_wait_for_req_done(host, host->areq->mrq);
+		if (card->ext_csd.refresh &&
+			(host->areq->mrq->data->flags & MMC_DATA_WRITE)) {
+			do_gettimeofday(&after_time);
+			switch (after_time.tv_sec - before_time.tv_sec) {
+				case 0:
+					if (after_time.tv_usec -
+						before_time.tv_usec >=
+							MMC_SLOW_WRITE_TIME) {
+						card->ext_csd.last_tv_sec =
+							after_time.tv_sec;
+						card->ext_csd.last_bkops_tv_sec =
+							after_time.tv_sec;
+					}
+					break;
+				case 1:
+					if (after_time.tv_usec -
+						before_time.tv_usec <
+							MMC_SLOW_WRITE_TIME - 1000000)
+						break;
+				default:
+					card->ext_csd.last_tv_sec =
+						after_time.tv_sec;
+					card->ext_csd.last_bkops_tv_sec =
+						after_time.tv_sec;
+			}
+		}
 		err = host->areq->err_check(host->card, host->areq);
 		if (err) {
 			mmc_post_req(host, host->areq->mrq, 0);
@@ -331,6 +362,7 @@ int mmc_bkops_start(struct mmc_card *card, bool is_synchronous)
 {
 	int err;
 	unsigned long flags;
+	struct timeval before_time, after_time;
 
 	BUG_ON(!card);
 
@@ -338,10 +370,29 @@ int mmc_bkops_start(struct mmc_card *card, bool is_synchronous)
 		return 1;
 
 	mmc_claim_host(card->host);
+	if (card->ext_csd.refresh)
+		do_gettimeofday(&before_time);
 	err = mmc_send_bk_ops_cmd(card, is_synchronous);
 	if (err)
 		pr_err("%s: abort bk ops (%d error)\n",
 			mmc_hostname(card->host), err);
+	if (card->ext_csd.refresh) {
+		do_gettimeofday(&after_time);
+		switch (after_time.tv_sec - before_time.tv_sec) {
+			case 0:
+				if (after_time.tv_usec - before_time.tv_usec >=
+					MMC_SLOW_WRITE_TIME)
+					card->ext_csd.last_tv_sec = after_time.tv_sec;
+				break;
+			case 1:
+				if (after_time.tv_usec - before_time.tv_usec <
+					MMC_SLOW_WRITE_TIME - 1000000)
+					break;
+			default:
+				card->ext_csd.last_tv_sec = after_time.tv_sec;
+		}
+		card->ext_csd.last_bkops_tv_sec = after_time.tv_sec;
+	}
 
 	/*
 	 * Incase of asynchronous backops, set card state
@@ -359,6 +410,57 @@ int mmc_bkops_start(struct mmc_card *card, bool is_synchronous)
 	return err;
 }
 EXPORT_SYMBOL(mmc_bkops_start);
+
+static void mmc_bkops_work(struct work_struct *work)
+{
+	struct mmc_card *card = container_of(work, struct mmc_card, bkops);
+	mmc_bkops_start(card, true);
+}
+
+static void mmc_refresh_work(struct work_struct *work)
+{
+	struct mmc_card *card = container_of(work, struct mmc_card, refresh);
+	char buf[512];
+	mmc_gen_cmd(card, buf, 0x44, 0x1, 0x0, 0x1);
+}
+
+void mmc_refresh(unsigned long data)
+{
+	struct mmc_card *card = (struct mmc_card *) data;
+	struct timeval cur_time;
+	__kernel_time_t timeout, timeout1, timeout2;
+
+	if ((!card) || (!card->ext_csd.refresh))
+		return;
+
+	INIT_WORK(&card->bkops, (work_func_t) mmc_bkops_work);
+	INIT_WORK(&card->refresh, (work_func_t) mmc_refresh_work);
+
+	do_gettimeofday(&cur_time);
+	timeout1 = MMC_REFRESH_INTERVAL - (cur_time.tv_sec -
+		card->ext_csd.last_tv_sec);
+	if ((cur_time.tv_sec < card->ext_csd.last_tv_sec) ||
+		(timeout1 <= 0)) {
+		queue_work(workqueue, &card->refresh);
+		card->ext_csd.last_tv_sec = cur_time.tv_sec;
+		card->ext_csd.last_bkops_tv_sec = cur_time.tv_sec;
+		timeout1 = MMC_REFRESH_INTERVAL;
+	}
+
+	timeout2 = MMC_BKOPS_INTERVAL - (cur_time.tv_sec -
+		card->ext_csd.last_bkops_tv_sec);
+	if ((cur_time.tv_sec < card->ext_csd.last_bkops_tv_sec) ||
+		(timeout2 <= 0)) {
+		mmc_card_set_need_bkops(card);
+		queue_work(workqueue, &card->bkops);
+		timeout2 = MMC_BKOPS_INTERVAL;
+	}
+
+	timeout = timeout1 < timeout2 ? timeout1 : timeout2;
+	card->timer.expires = jiffies + timeout*HZ;
+	add_timer(&card->timer);
+}
+EXPORT_SYMBOL(mmc_refresh);
 
 /**
  *	mmc_interrupt_hpi - Issue for High priority Interrupt
