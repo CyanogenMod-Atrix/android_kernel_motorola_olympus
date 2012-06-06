@@ -90,6 +90,22 @@ struct tegra_dc *tegra_dcs[TEGRA_MAX_DC];
 DEFINE_MUTEX(tegra_dc_lock);
 DEFINE_MUTEX(shared_lock);
 
+static inline void tegra_dc_clk_enable(struct tegra_dc *dc)
+{
+	if (!tegra_is_clk_enabled(dc->clk)) {
+		clk_enable(dc->clk);
+		tegra_dvfs_set_rate(dc->clk, dc->mode.pclk);
+	}
+}
+
+static inline void tegra_dc_clk_disable(struct tegra_dc *dc)
+{
+	if (tegra_is_clk_enabled(dc->clk)) {
+		clk_disable(dc->clk);
+		tegra_dvfs_set_rate(dc->clk, 0);
+	}
+}
+
 #define DUMP_REG(a) do {			\
 	snprintf(buff, sizeof(buff), "%-32s\t%03x\t%08lx\n", \
 		 #a, a, tegra_dc_readl(dc, a));		      \
@@ -131,7 +147,7 @@ static void _dump_regs(struct tegra_dc *dc, void *data,
 	char buff[256];
 
 	tegra_dc_io_start(dc);
-	clk_enable(dc->clk);
+	tegra_dc_clk_enable(dc);
 
 	DUMP_REG(DC_CMD_DISPLAY_COMMAND_OPTION0);
 	DUMP_REG(DC_CMD_DISPLAY_COMMAND);
@@ -281,7 +297,7 @@ static void _dump_regs(struct tegra_dc *dc, void *data,
 	DUMP_REG(DC_COM_PM1_DUTY_CYCLE);
 	DUMP_REG(DC_DISP_SD_CONTROL);
 
-	clk_disable(dc->clk);
+	tegra_dc_clk_disable(dc->clk);
 	tegra_dc_io_end(dc);
 }
 
@@ -787,6 +803,17 @@ static void tegra_dc_set_scaling_filter(struct tegra_dc *dc)
 	}
 }
 
+void tegra_dc_host_suspend(struct tegra_dc *dc)
+{
+	tegra_dsi_host_suspend(dc);
+	tegra_dc_clk_disable(dc);
+}
+
+void tegra_dc_host_resume(struct tegra_dc *dc) {
+	tegra_dc_clk_enable(dc);
+	tegra_dsi_host_resume(dc);
+}
+
 static inline u32 compute_dda_inc(fixed20_12 in, unsigned out_int,
 				  bool v, unsigned Bpp)
 {
@@ -860,6 +887,9 @@ int tegra_dc_update_windows(struct tegra_dc_win *windows[], int n)
 			mutex_unlock(&dc->one_shot_lock);
 		return -EFAULT;
 	}
+
+	if (dc->out->flags & TEGRA_DC_OUT_ONE_SHOT_LP_MODE)
+		tegra_dc_host_resume(dc);
 
 	if (no_vsync)
 		tegra_dc_writel(dc, WRITE_MUX_ACTIVE | READ_MUX_ACTIVE, DC_CMD_STATE_ACCESS);
@@ -1590,6 +1620,9 @@ tegra_dc_config_pwm(struct tegra_dc *dc, struct tegra_dc_pwm_params *cfg)
 		return;
 	}
 
+	if (dc->out->flags & TEGRA_DC_OUT_ONE_SHOT_LP_MODE)
+		tegra_dc_host_resume(dc);
+
 	ctrl = ((cfg->period << PM_PERIOD_SHIFT) |
 		(cfg->clk_div << PM_CLK_DIVIDER_SHIFT) |
 		cfg->clk_select);
@@ -1826,8 +1859,13 @@ static void tegra_dc_one_shot_worker(struct work_struct *work)
 	struct tegra_dc *dc = container_of(
 		to_delayed_work(work), struct tegra_dc, one_shot_work);
 	mutex_lock(&dc->lock);
+
 	/* memory client has gone idle */
 	tegra_dc_clear_bandwidth(dc);
+
+	if (dc->out->flags & TEGRA_DC_OUT_ONE_SHOT_LP_MODE)
+		tegra_dc_host_suspend(dc);
+
 	mutex_unlock(&dc->lock);
 }
 
@@ -2254,7 +2292,7 @@ static bool _tegra_dc_controller_enable(struct tegra_dc *dc)
 		dc->out->enable();
 
 	tegra_dc_setup_clk(dc, dc->clk);
-	clk_enable(dc->clk);
+	tegra_dc_clk_enable(dc);
 
 	/* do not accept interrupts during initialization */
 	tegra_dc_writel(dc, 0, DC_CMD_INT_ENABLE);
@@ -2292,7 +2330,7 @@ static bool _tegra_dc_controller_reset_enable(struct tegra_dc *dc)
 		dc->out->enable();
 
 	tegra_dc_setup_clk(dc, dc->clk);
-	clk_enable(dc->clk);
+	tegra_dc_clk_enable(dc);
 
 	if (dc->ndev->id == 0 && tegra_dcs[1] != NULL) {
 		mutex_lock(&tegra_dcs[1]->lock);
@@ -2407,8 +2445,7 @@ static void _tegra_dc_controller_disable(struct tegra_dc *dc)
 	disable_irq(dc->irq);
 
 	tegra_dc_clear_bandwidth(dc);
-	clk_disable(dc->clk);
-	tegra_dvfs_set_rate(dc->clk, 0);
+	tegra_dc_clk_disable(dc);
 
 	if (dc->out && dc->out->disable)
 		dc->out->disable();
@@ -2504,6 +2541,9 @@ void tegra_dc_disable(struct tegra_dc *dc)
 
 	mutex_lock(&dc->lock);
 
+	if (dc->out->flags & TEGRA_DC_OUT_ONE_SHOT_LP_MODE)
+		tegra_dc_host_resume(dc);
+
 	if (dc->enabled) {
 		dc->enabled = false;
 
@@ -2582,6 +2622,9 @@ static void tegra_dc_underflow_worker(struct work_struct *work)
 		to_delayed_work(work), struct tegra_dc, underflow_work);
 
 	mutex_lock(&dc->lock);
+	if (dc->out->flags & TEGRA_DC_OUT_ONE_SHOT_LP_MODE)
+		tegra_dc_host_resume(dc);
+
 	if (dc->enabled) {
 		tegra_dc_underflow_handler(dc);
 	}
