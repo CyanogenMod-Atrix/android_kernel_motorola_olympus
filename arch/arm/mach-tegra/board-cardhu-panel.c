@@ -59,7 +59,7 @@
 #define pm313_MODE0			TEGRA_GPIO_PZ4
 #define pm313_MODE1			TEGRA_GPIO_PW1
 #define pm313_BPP			TEGRA_GPIO_PN6 /* 0:24bpp, 1:18bpp */
-#define pm313_lvds_shutdown		TEGRA_GPIO_PH1
+#define pm313_lvds_shutdown		TEGRA_GPIO_PL2
 
 /* E1506 display board pins */
 #define e1506_lcd_te		TEGRA_GPIO_PJ1
