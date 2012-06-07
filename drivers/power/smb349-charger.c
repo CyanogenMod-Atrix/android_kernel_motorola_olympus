@@ -392,16 +392,28 @@ static int smb349_enable_charging(struct regulator_dev *rdev,
 	int ret;
 
 	if (!max_uA) {
-		charger->state = stopped;
-		/* Disable charger */
-		ret = smb349_configure_charger(client, 0);
+		/* Wait for SMB349 to reload OTP*/
+		msleep(50);
+		ret =  smb349_read(client, SMB349_STS_REG_D);
 		if (ret < 0) {
-			dev_err(&client->dev, "%s() error in configuring"
-				"charger..\n", __func__);
-			return ret;
+			dev_err(&client->dev, "%s(): Failed in reading register"
+				"0x%02x\n", __func__, SMB349_STS_REG_D);
+		} else if (ret == 0) {
+
+			charger->state = stopped;
+			/* Disable charger */
+			ret = smb349_configure_charger(client, 0);
+			if (ret < 0) {
+				dev_err(&client->dev, "%s() error in configuring"
+					"charger..\n", __func__);
+				return ret;
+			}
+			charger->chrg_type = NONE;
 		}
-		charger->chrg_type = NONE;
 	} else {
+		/* Wait for SMB349 to reload OTP setting and detect type*/
+		msleep(500);
+
 		ret =  smb349_read(client, SMB349_STS_REG_D);
 		if (ret < 0) {
 			dev_err(&client->dev, "%s(): Failed in reading register"
