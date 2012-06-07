@@ -34,6 +34,7 @@
 #include <linux/delay.h>
 #include <linux/mfd/tps6586x.h>
 #include <linux/platform_data/tegra_usb.h>
+#include <linux/tegra_uart.h>
 
 #include <sound/wm8903.h>
 
@@ -330,17 +331,36 @@ static struct platform_device pda_power_device = {
 	},
 };
 
-static void harmony_debug_uart_init(void)
+static struct platform_device *harmony_uart_devices[] __initdata = {
+	&tegra_uartd_device,
+};
+
+static struct uart_clk_parent uart_parent_clk[] __initdata = {
+	[0] = {.name = "pll_p"},
+	[1] = {.name = "pll_m"},
+	[2] = {.name = "clk_m"},
+};
+
+static struct tegra_uart_platform_data harmony_uart_pdata;
+
+static void __init uart_debug_init(void)
 {
+	unsigned long rate;
 	struct clk *c;
 
-	debug_uart_clk = clk_get_sys("serial8250.0", "uartd");
+	/* UARTD is the debug port. */
+	pr_info("Selecting UARTD as the debug console\n");
+	harmony_uart_devices[0] = &debug_uartd_device;
 	debug_uart_port_base = ((struct plat_serial8250_port *)(
-		debug_uartd_device.dev.platform_data))->mapbase;
+			debug_uartd_device.dev.platform_data))->mapbase;
+	debug_uart_clk = clk_get_sys("serial8250.0", "uartd");
 
+	/* Clock enable for the debug channel */
 	if (!IS_ERR_OR_NULL(debug_uart_clk)) {
+		rate = ((struct plat_serial8250_port *)(
+			debug_uartd_device.dev.platform_data))->uartclk;
 		pr_info("The debug console clock name is %s\n",
-			debug_uart_clk->name);
+						debug_uart_clk->name);
 		c = tegra_get_clock_by_name("pll_p");
 		if (IS_ERR_OR_NULL(c))
 			pr_err("Not getting the parent clock pll_p\n");
@@ -348,16 +368,41 @@ static void harmony_debug_uart_init(void)
 			clk_set_parent(debug_uart_clk, c);
 
 		clk_enable(debug_uart_clk);
-		clk_set_rate(debug_uart_clk, clk_get_rate(c));
+		clk_set_rate(debug_uart_clk, rate);
 	} else {
 		pr_err("Not getting the clock %s for debug console\n",
 					debug_uart_clk->name);
 	}
-	return;
+}
+
+static void __init harmony_uart_init(void)
+{
+	int i;
+	struct clk *c;
+
+	for (i = 0; i < ARRAY_SIZE(uart_parent_clk); ++i) {
+		c = tegra_get_clock_by_name(uart_parent_clk[i].name);
+		if (IS_ERR_OR_NULL(c)) {
+			pr_err("Not able to get the clock for %s\n",
+						uart_parent_clk[i].name);
+			continue;
+		}
+		uart_parent_clk[i].parent_clk = c;
+		uart_parent_clk[i].fixed_clk_rate = clk_get_rate(c);
+	}
+	harmony_uart_pdata.parent_clk_list = uart_parent_clk;
+	harmony_uart_pdata.parent_clk_count = ARRAY_SIZE(uart_parent_clk);
+	tegra_uartd_device.dev.platform_data = &harmony_uart_pdata;
+
+	/* Register low speed only if it is selected */
+	if (!is_tegra_debug_uartport_hs())
+		uart_debug_init();
+
+	platform_add_devices(harmony_uart_devices,
+				ARRAY_SIZE(harmony_uart_devices));
 }
 
 static struct platform_device *harmony_devices[] __initdata = {
-	&debug_uartd_device,
 	&tegra_sdhci_device1,
 	&tegra_sdhci_device2,
 	&tegra_sdhci_device4,
@@ -471,7 +516,7 @@ static void __init tegra_harmony_init(void)
 
 	harmony_keys_init();
 
-	harmony_debug_uart_init();
+	harmony_uart_init();
 
 	tegra_sdhci_device1.dev.platform_data = &sdhci_pdata1;
 	tegra_sdhci_device2.dev.platform_data = &sdhci_pdata2;
