@@ -379,6 +379,12 @@ void tegra_usb_phy_close(struct tegra_usb_phy *phy)
 {
 	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
 
+	if (phy->ops && phy->ops->close)
+		phy->ops->close(phy);
+
+	if (phy->pdata->ops && phy->pdata->ops->close)
+		phy->pdata->ops->close();
+
 	if (phy->pdata->op_mode == TEGRA_USB_OPMODE_DEVICE) {
 		if (phy->pdata->u_data.dev.vbus_pmu_irq)
 			free_irq(phy->pdata->u_data.dev.vbus_pmu_irq, phy);
@@ -403,11 +409,6 @@ void tegra_usb_phy_close(struct tegra_usb_phy *phy)
 		regulator_put(phy->vdd_reg);
 	}
 
-	if (phy->ops && phy->ops->close)
-		phy->ops->close(phy);
-
-	if (phy->pdata->ops && phy->pdata->ops->close)
-		phy->pdata->ops->close();
 
 	tegra_usb_phy_release_clocks(phy);
 
