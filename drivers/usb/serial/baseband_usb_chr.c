@@ -649,10 +649,15 @@ static void baseband_usb_chr_rx_urb_comp(struct urb *urb)
 	}
 
 	switch (urb->status) {
+	case 0:
+		/* success */
+		break;
 	case -ENOENT:
 	case -ESHUTDOWN:
 	case -EPROTO:
 		pr_info("%s: link down\n", __func__);
+	default:
+		pr_err("%s: urb error status %d\n", __func__, urb->status);
 		return;
 	}
 
@@ -924,6 +929,9 @@ static void baseband_usb_close(struct baseband_usb *usb)
 	if (!usb)
 		return;
 
+	/* we need proper lock, maybe...*/
+	usb_device_connection = false;
+
 	/* free re-usable rx urb + rx urb transfer buffer */
 	if (usb->usb.rx_urb) {
 		pr_debug("%s: free rx urb\n", __func__);
@@ -936,7 +944,6 @@ static void baseband_usb_close(struct baseband_usb *usb)
 	}
 
 	if (usb->ipc) {
-		usb_device_connection = false;
 		flush_work_sync(&usb->ipc->work);
 		flush_work_sync(&usb->ipc->rx_work);
 	}
