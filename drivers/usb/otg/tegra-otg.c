@@ -66,6 +66,7 @@ struct tegra_otg_data {
 	callback_t	charger_cb;
 	void	*charger_cb_data;
 	bool interrupt_mode;
+	bool builtin_host;
 };
 
 static struct tegra_otg_data *tegra_clone;
@@ -104,8 +105,12 @@ static unsigned long enable_interrupt(struct tegra_otg_data *tegra, bool en)
 
 	clk_enable(tegra->clk);
 	val = otg_readl(tegra, USB_PHY_WAKEUP);
-	if (en)
-		val |= USB_INT_EN;
+	if (en) {
+		if (tegra->builtin_host)
+			val |= USB_INT_EN;
+		else
+			val = USB_VBUS_INT_EN | USB_VBUS_WAKEUP_EN | USB_ID_PIN_WAKEUP_EN;
+	}
 	else
 		val &= ~USB_INT_EN;
 	otg_writel(tegra, val, USB_PHY_WAKEUP);
@@ -147,6 +152,7 @@ static void tegra_start_host(struct tegra_otg_data *tegra)
 	memcpy(platform_data, pdata->ehci_pdata,
 					sizeof(struct tegra_usb_platform_data));
 	pdev->dev.platform_data = platform_data;
+	tegra->builtin_host = !pdata->ehci_pdata->builtin_host_disabled;
 
 	val = platform_device_add(pdev);
 	if (val)
@@ -253,7 +259,7 @@ static void irq_work(struct work_struct *work)
 			DBG("%s(%d) got vbus interrupt\n", __func__, __LINE__);
 	}
 
-	if (!(status & USB_ID_STATUS))
+	if (!(status & USB_ID_STATUS) && (status & USB_ID_INT_EN))
 		to = OTG_STATE_A_HOST;
 	else if (status & USB_VBUS_STATUS && from != OTG_STATE_A_HOST)
 		to = OTG_STATE_B_PERIPHERAL;
@@ -302,8 +308,12 @@ static int tegra_otg_set_peripheral(struct otg_transceiver *otg,
 
 	if ((val & USB_ID_STATUS) && (val & USB_VBUS_STATUS))
 		val |= USB_VBUS_INT_STATUS;
-	else if (!(val & USB_ID_STATUS))
-		val |= USB_ID_INT_STATUS;
+	else if (!(val & USB_ID_STATUS)) {
+		if(!tegra->builtin_host)
+			val &= ~USB_ID_INT_STATUS;
+		else
+			val |= USB_ID_INT_STATUS;
+	}
 	else
 		val &= ~(USB_ID_INT_STATUS | USB_VBUS_INT_STATUS);
 
@@ -364,7 +374,6 @@ static ssize_t store_host_en(struct device *dev, struct device_attribute *attr,
 	struct platform_device *pdev = to_platform_device(dev);
 	struct tegra_otg_data *tegra = platform_get_drvdata(pdev);
 	unsigned long host;
-	int err;
 
 	if (sscanf(buf, "%d", &host) != 1 || host < 0 || host > 1)
 		return -EINVAL;
@@ -542,7 +551,12 @@ static void tegra_otg_resume(struct device *dev)
 
 	/* Enable interrupt and call work to set to appropriate state */
 	spin_lock_irqsave(&tegra->lock, flags);
-	tegra->int_status = (val | USB_INT_EN);
+	if (tegra->builtin_host)
+		tegra->int_status = val | USB_INT_EN;
+	else
+		tegra->int_status = val | USB_VBUS_INT_EN | USB_VBUS_WAKEUP_EN |
+			USB_ID_PIN_WAKEUP_EN;
+
 	spin_unlock_irqrestore(&tegra->lock, flags);
 	irq_work(&tegra->work);
 
