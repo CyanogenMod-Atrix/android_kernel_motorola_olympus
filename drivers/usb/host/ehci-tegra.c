@@ -201,6 +201,7 @@ static int tegra_ehci_hub_control(
 {
 	struct tegra_ehci_hcd *tegra = dev_get_drvdata(hcd->self.controller);
 	struct ehci_hcd *ehci = hcd_to_ehci(hcd);
+	unsigned long	flags;
 	int	retval = 0;
 	u32 __iomem	*status_reg;
 
@@ -253,23 +254,20 @@ static int tegra_ehci_hub_control(
 	retval = ehci_hub_control(hcd, typeReq, wValue, wIndex, buf, wLength);
 
 	/* do tegra phy specific actions based on the type request */
-	if (!retval && (typeReq == SetPortFeature)) {
-		wIndex--;
-
-		switch (wValue) {
-		case USB_PORT_FEAT_SUSPEND:
-			/* Need a 4ms delay for controller to suspend */
-			mdelay(4);
-			tegra_usb_phy_post_suspend(tegra->phy);
-			break;
-		case USB_PORT_FEAT_RESET:
-			if (ehci->reset_done[0] && wIndex == 0)
-				tegra_usb_phy_bus_reset(tegra->phy);
-			break;
-		case USB_PORT_FEAT_POWER:
-			if (wIndex == 0)
-				tegra_usb_phy_port_power(tegra->phy);
-		default:
+	if (!retval) {
+		switch (typeReq) {
+		case SetPortFeature:
+			if (wValue == USB_PORT_FEAT_SUSPEND) {
+				/* Need a 4ms delay for controller to suspend */
+				mdelay(4);
+				tegra_usb_phy_post_suspend(tegra->phy);
+			} else if (wValue == USB_PORT_FEAT_RESET) {
+				if (ehci->reset_done[0] && wIndex == 0)
+					tegra_usb_phy_bus_reset(tegra->phy);
+			} else if (wValue == USB_PORT_FEAT_POWER) {
+				if (wIndex == 1)
+					tegra_usb_phy_port_power(tegra->phy);
+			}
 			break;
 		case ClearPortFeature:
 			if (wValue == USB_PORT_FEAT_SUSPEND) {
