@@ -262,7 +262,7 @@ static int tegra_ehci_hub_control(
 				mdelay(4);
 				tegra_usb_phy_post_suspend(tegra->phy);
 			} else if (wValue == USB_PORT_FEAT_RESET) {
-				if (ehci->reset_done[0] && wIndex == 0)
+				if (wIndex == 1)
 					tegra_usb_phy_bus_reset(tegra->phy);
 			} else if (wValue == USB_PORT_FEAT_POWER) {
 				if (wIndex == 1)
