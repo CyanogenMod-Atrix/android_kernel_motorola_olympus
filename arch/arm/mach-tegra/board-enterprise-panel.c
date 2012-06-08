@@ -541,7 +541,6 @@ static int enterprise_dsi_panel_enable(void)
 			gpio_free(enterprise_dsi_panel_reset);
 			return ret;
 		}
-		tegra_gpio_enable(enterprise_dsi_panel_reset);
 
 		gpio_set_value(enterprise_dsi_panel_reset, 0);
 		udelay(2000);
@@ -560,7 +559,6 @@ static int enterprise_dsi_panel_disable(void)
 
 #if DSI_PANEL_RESET
 	if (kernel_1st_panel_init != true) {
-		tegra_gpio_disable(enterprise_dsi_panel_reset);
 		gpio_free(enterprise_dsi_panel_reset);
 	} else
 		kernel_1st_panel_init = false;
@@ -863,22 +861,18 @@ int __init enterprise_panel_init(void)
 	enterprise_carveouts[1].size = tegra_carveout_size;
 #endif
 
-	tegra_gpio_enable(enterprise_hdmi_hpd);
 	gpio_request(enterprise_hdmi_hpd, "hdmi_hpd");
 	gpio_direction_input(enterprise_hdmi_hpd);
 
-	tegra_gpio_enable(enterprise_lcd_2d_3d);
 	gpio_request(enterprise_lcd_2d_3d, "lcd_2d_3d");
 	gpio_direction_output(enterprise_lcd_2d_3d, 0);
 	enterprise_stereo_set_mode(enterprise_stereo.mode_2d_3d);
 
-	tegra_gpio_enable(enterprise_lcd_swp_pl);
 	gpio_request(enterprise_lcd_swp_pl, "lcd_swp_pl");
 	gpio_direction_output(enterprise_lcd_swp_pl, 0);
 	enterprise_stereo_set_orientation(enterprise_stereo.orientation);
 
 #if !(DC_CTRL_MODE & TEGRA_DC_OUT_ONE_SHOT_MODE)
-	tegra_gpio_enable(enterprise_lcd_te);
 	gpio_request(enterprise_lcd_swp_pl, "lcd_te");
 	gpio_direction_input(enterprise_lcd_te);
 #endif

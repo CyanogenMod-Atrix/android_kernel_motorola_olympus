@@ -895,7 +895,7 @@ static int tegra_startup(struct uart_port *u)
 		goto fail;
 
 	pdata = u->dev->platform_data;
-	if (pdata->is_loopback)
+	if (pdata && pdata->is_loopback)
 		t->mcr_shadow |= UART_MCR_LOOP;
 
 	dev_dbg(u->dev, "Requesting IRQ %d\n", u->irq);

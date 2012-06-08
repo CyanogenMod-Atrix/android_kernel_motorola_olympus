@@ -233,16 +233,6 @@ static int baseband_init(void)
 	tegra_pinmux_set_pullupdown(TEGRA_PINGROUP_GPIO_PV0,
 				    TEGRA_PUPD_PULL_UP);
 
-	tegra_gpio_enable(MODEM_PWR_ON);
-	tegra_gpio_enable(MODEM_RESET);
-	tegra_gpio_enable(AP2MDM_ACK2);
-	tegra_gpio_enable(BB_RST_OUT);
-	tegra_gpio_enable(AP2MDM_ACK);
-	tegra_gpio_enable(MDM2AP_ACK);
-	tegra_gpio_enable(TEGRA_GPIO_PY3);
-	tegra_gpio_enable(TEGRA_GPIO_PO1);
-	tegra_gpio_enable(TEGRA_GPIO_PO2);
-
 	/* export GPIO for user space access through sysfs */
 	gpio_export(MODEM_PWR_ON, false);
 

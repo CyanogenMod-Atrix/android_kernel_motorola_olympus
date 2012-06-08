@@ -111,7 +111,9 @@ static int bcm4329_rfkill_probe(struct platform_device *pdev)
 		ret = gpio_request(bcm4329_rfkill->gpio_reset,
 						"bcm4329_nreset_gpio");
 	} else {
-		pr_warn("%s : can't find reset gpio.\n", __func__);
+		pr_warn("%s : can't find reset gpio. "
+			"reset gpio may not be defined for "
+			"this platform \n", __func__);
 		bcm4329_rfkill->gpio_reset = 0;
 	}
 
@@ -123,7 +125,9 @@ static int bcm4329_rfkill_probe(struct platform_device *pdev)
 		ret = gpio_request(bcm4329_rfkill->gpio_shutdown,
 						"bcm4329_nshutdown_gpio");
 	} else {
-		pr_warn("%s : can't find shutdown gpio.\n", __func__);
+		pr_warn("%s : can't find shutdown gpio "
+			"shutdown gpio may not be defined for "
+			"this platform \n", __func__);
 		bcm4329_rfkill->gpio_shutdown = 0;
 	}
 

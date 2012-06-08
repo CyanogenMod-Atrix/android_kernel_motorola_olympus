@@ -367,11 +367,12 @@ static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
 		.idle_wait_delay = 17,
 		.elastic_limit = 16,
 		.term_range_adj = 6,
-		.xcvr_setup = 15,
-		.xcvr_setup_offset = 0,
+		.xcvr_setup = 63,
+		.xcvr_setup_offset = 6,
 		.xcvr_use_fuses = 1,
 		.xcvr_lsfslew = 2,
 		.xcvr_lsrslew = 2,
+		.xcvr_use_lsb = 1,
 	},
 };
 
@@ -392,11 +393,12 @@ static struct tegra_usb_platform_data tegra_ehci2_utmi_pdata = {
 		.idle_wait_delay = 17,
 		.elastic_limit = 16,
 		.term_range_adj = 6,
-		.xcvr_setup = 15,
-		.xcvr_setup_offset = 0,
+		.xcvr_setup = 63,
+		.xcvr_setup_offset = 6,
 		.xcvr_use_fuses = 1,
 		.xcvr_lsfslew = 2,
 		.xcvr_lsrslew = 2,
+		.xcvr_use_lsb = 1,
 	},
 };
 
@@ -417,11 +419,12 @@ static struct tegra_usb_platform_data tegra_ehci3_utmi_pdata = {
 		.idle_wait_delay = 17,
 		.elastic_limit = 16,
 		.term_range_adj = 6,
-		.xcvr_setup = 8,
-		.xcvr_setup_offset = 0,
+		.xcvr_setup = 63,
+		.xcvr_setup_offset = 6,
 		.xcvr_use_fuses = 1,
 		.xcvr_lsfslew = 2,
 		.xcvr_lsrslew = 2,
+		.xcvr_use_lsb = 1,
 	},
 };
 

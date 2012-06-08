@@ -47,6 +47,7 @@ struct tegra_utmi_config {
 	u8 xcvr_lsfslew;
 	u8 xcvr_lsrslew;
 	signed char xcvr_setup_offset;
+	u8 xcvr_use_lsb;
 	u8 xcvr_use_fuses;
 };
 
@@ -119,6 +120,7 @@ struct tegra_usb_host_mode_data {
 struct tegra_usb_platform_data {
 	bool port_otg;
 	bool has_hostpc;
+	bool builtin_host_disabled;
 	enum tegra_usb_phy_interface phy_intf;
 	enum tegra_usb_operation_mode op_mode;
 

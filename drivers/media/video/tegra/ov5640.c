@@ -108,6 +108,7 @@ static int ov5640_read_reg(struct i2c_client *client, u16 addr, u8 *val)
 	return 0;
 }
 
+#ifdef KERNEL_WARNING
 static int ov5640_write_reg(struct i2c_client *client, u8 addr, u8 value)
 {
 	int count;
@@ -134,6 +135,7 @@ static int ov5640_write_reg(struct i2c_client *client, u8 addr, u8 value)
 	       addr, (u32)value);
 	return -EIO;
 }
+#endif
 
 static int ov5640_write_bulk_reg(struct i2c_client *client, u8 *data, int len)
 {

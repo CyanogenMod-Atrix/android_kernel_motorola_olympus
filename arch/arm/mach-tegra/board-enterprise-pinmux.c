@@ -534,7 +534,6 @@ static void enterprise_set_unused_pin_gpio(struct pin_info_low_power_mode *lpm_p
 			gpio_free(pin_info->gpio_nr);
 			continue;
 		}
-		tegra_gpio_enable(pin_info->gpio_nr);
 	}
 }
 

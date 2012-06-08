@@ -202,6 +202,10 @@ static struct dvfs cpu_dvfs_table[] = {
 	CPU_DVFS("cpu_g", -1, -1, MHZ, 1,   1, 216, 216, 300),
 };
 
+static struct dvfs cpu_0_dvfs_table[] = {
+	/* Cpu voltages (mV):	      800, 825, 850, 875,  900,  916,  950,  975, 1000, 1007, 1025, 1050, 1075, 1100, 1125, 1150, 1175, 1200, 1212, 1237 */
+};
+
 #define CORE_DVFS(_clk_name, _speedo_id, _auto, _mult, _freqs...)	\
 	{							\
 		.clk_name	= _clk_name,			\
@@ -352,6 +356,11 @@ static struct dvfs core_dvfs_table[] = {
 	CORE_DVFS("spdif_out", -1, 1, KHZ,    1,  26000,  26000,  26000,  26000,  26000,   26000,    26000,   26000),
 };
 
+/* CPU alternative DVFS table for cold zone */
+static unsigned long cpu_cold_freqs[MAX_DVFS_FREQS];
+
+/* CPU alternative DVFS table for single G CPU core 0 */
+static unsigned long *cpu_0_freqs;
 
 int tegra_dvfs_disable_core_set(const char *arg, const struct kernel_param *kp)
 {
@@ -473,19 +482,18 @@ static void __init init_dvfs_cold(struct dvfs *d, int nominal_mv_index)
 	for (i = 0; i < d->num_freqs; i++) {
 		offs = cpu_cold_offs_mhz[i] * MHZ;
 		if (i > nominal_mv_index)
-			d->alt_freqs[i] = d->alt_freqs[i - 1];
+			cpu_cold_freqs[i] = cpu_cold_freqs[i - 1];
 		else if (d->freqs[i] > offs)
-			d->alt_freqs[i] = d->freqs[i] - offs;
+			cpu_cold_freqs[i] = d->freqs[i] - offs;
 		else {
-			d->alt_freqs[i] = d->freqs[i];
+			cpu_cold_freqs[i] = d->freqs[i];
 			pr_warn("tegra3_dvfs: cold offset %lu is too high for"
 				" regular dvfs limit %lu\n", offs, d->freqs[i]);
 		}
 
 		if (i)
-			BUG_ON(d->alt_freqs[i] < d->alt_freqs[i - 1]);
+			BUG_ON(cpu_cold_freqs[i] < cpu_cold_freqs[i - 1]);
 	}
-	d->alt_freqs_state = ALT_FREQS_DISABLED;
 }
 
 static bool __init match_dvfs_one(struct dvfs *d, int speedo_id, int process_id)
@@ -498,6 +506,35 @@ static bool __init match_dvfs_one(struct dvfs *d, int speedo_id, int process_id)
 		return false;
 	}
 	return true;
+}
+
+static void __init init_cpu_0_dvfs(struct dvfs *cpud)
+{
+	int i;
+	struct dvfs *d = NULL;
+
+	/* Init single G CPU core 0 dvfs if this particular SKU/bin has it.
+	   Max rates in multi-core and single-core tables must be the same */
+	for (i = 0; i <  ARRAY_SIZE(cpu_0_dvfs_table); i++) {
+		if (match_dvfs_one(&cpu_0_dvfs_table[i],
+				   cpud->speedo_id, cpud->process_id)) {
+			d = &cpu_0_dvfs_table[i];
+			break;
+		}
+	}
+
+	if (d) {
+		for (i = 0; i < cpud->num_freqs; i++) {
+			d->freqs[i] *= d->freqs_mult;
+			if (d->freqs[i] == 0) {
+				BUG_ON(i == 0);
+				d->freqs[i] = d->freqs[i - 1];
+			}
+		}
+		BUG_ON(cpud->freqs[cpud->num_freqs - 1] !=
+		       d->freqs[cpud->num_freqs - 1]);
+		cpu_0_freqs = d->freqs;
+	}
 }
 
 static int __init get_cpu_nominal_mv_index(
@@ -646,7 +683,10 @@ void __init tegra_soc_init_dvfs(void)
 	/* Initialize matching cpu dvfs entry already found when nominal
 	   voltage was determined */
 	init_dvfs_one(cpu_dvfs, cpu_nominal_mv_index);
+
+	/* Initialize alternative cold zone and single core tables */
 	init_dvfs_cold(cpu_dvfs, cpu_nominal_mv_index);
+	init_cpu_0_dvfs(cpu_dvfs);
 
 	/* Finally disable dvfs on rails if necessary */
 	if (tegra_dvfs_core_disabled)
@@ -662,14 +702,18 @@ void __init tegra_soc_init_dvfs(void)
 		tegra_dvfs_core_disabled ? "disabled" : "enabled");
 }
 
-void tegra_cpu_dvfs_alter(int edp_thermal_index, bool before_clk_update)
+void tegra_cpu_dvfs_alter(int edp_thermal_index, const cpumask_t *cpus,
+			  bool before_clk_update)
 {
-	bool enable = !edp_thermal_index;
+	bool cpu_warm = !!edp_thermal_index;
+	unsigned int n = cpumask_weight(cpus);
+	unsigned long *alt_freqs = cpu_warm ?
+		(n > 1 ? NULL : cpu_0_freqs) : cpu_cold_freqs;
 
-	if (enable != before_clk_update) {
-		int ret = tegra_dvfs_alt_freqs_set(cpu_dvfs, enable);
-		WARN_ONCE(ret, "tegra dvfs: failed to set CPU alternative"
-			       " frequency limits for cold temeperature\n");
+	if (cpu_warm == before_clk_update) {
+		int ret = tegra_dvfs_alt_freqs_set(cpu_dvfs, alt_freqs);
+		WARN_ONCE(ret, "tegra dvfs: failed to update CPU alternative"
+			       " frequency limits\n");
 	}
 }
 
