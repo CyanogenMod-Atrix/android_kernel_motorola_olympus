@@ -27,9 +27,7 @@
 
 #include <mach/dc.h>
 
-#include "../host/dev.h"
 #include "../host/nvhost_acm.h"
-#include "../host/host1x/host1x_syncpt.h"
 
 #include <mach/tegra_dc_ext.h>
 #include <mach/clk.h>
@@ -152,12 +150,12 @@ struct tegra_dc {
 
 static inline void tegra_dc_io_start(struct tegra_dc *dc)
 {
-	nvhost_module_busy(nvhost_get_host(dc->ndev)->dev);
+	nvhost_module_busy(to_nvhost_device(dc->ndev->dev.parent));
 }
 
 static inline void tegra_dc_io_end(struct tegra_dc *dc)
 {
-	nvhost_module_idle(nvhost_get_host(dc->ndev)->dev);
+	nvhost_module_idle(to_nvhost_device(dc->ndev->dev.parent));
 }
 
 static inline unsigned long tegra_dc_readl(struct tegra_dc *dc,
@@ -165,7 +163,7 @@ static inline unsigned long tegra_dc_readl(struct tegra_dc *dc,
 {
 	unsigned long ret;
 
-	BUG_ON(!nvhost_module_powered(nvhost_get_host(dc->ndev)->dev));
+	BUG_ON(!nvhost_module_powered(to_nvhost_device(dc->ndev->dev.parent)));
 	if (!tegra_is_clk_enabled(dc->clk))
 		WARN(1, "DC is clock-gated.\n");
 
@@ -177,7 +175,7 @@ static inline unsigned long tegra_dc_readl(struct tegra_dc *dc,
 static inline void tegra_dc_writel(struct tegra_dc *dc, unsigned long val,
 				   unsigned long reg)
 {
-	BUG_ON(!nvhost_module_powered(nvhost_get_host(dc->ndev)->dev));
+	BUG_ON(!nvhost_module_powered(to_nvhost_device(dc->ndev->dev.parent)));
 	if (!tegra_is_clk_enabled(dc->clk))
 		WARN(1, "DC is clock-gated.\n");
 
