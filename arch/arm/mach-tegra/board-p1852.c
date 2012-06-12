@@ -71,7 +71,7 @@ static __initdata struct tegra_clk_init_table p1852_clk_init_table[] = {
 	/* audio cif clock should be faster than i2s */
 	{ "pll_a_out0",		NULL,		24576000,	false},
 	{ "d_audio",		"pll_a_out0",	24576000,	false},
-	{ "nor",		"pll_p",	86500000,	true},
+	{ "nor",		"pll_p",	102000000,	true},
 	{ "uarta",		"pll_p",	480000000,	true},
 	{ "uartd",		"pll_p",	480000000,	true},
 	{ "uarte",		"pll_p",	480000000,	true},
