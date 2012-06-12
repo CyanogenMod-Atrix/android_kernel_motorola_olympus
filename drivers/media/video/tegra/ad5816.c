@@ -664,7 +664,7 @@ static int ad5816_position_wr(struct ad5816_info *info, unsigned position)
 static int ad5816_param_rd(struct ad5816_info *info, unsigned long arg)
 {
 	struct nvc_param params;
-	const void *data_ptr;
+	const void *data_ptr = NULL;
 	u32 data_size = 0;
 	u32 position;
 	int err;
