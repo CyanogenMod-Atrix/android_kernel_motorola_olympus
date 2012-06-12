@@ -623,9 +623,6 @@ int tegra_usb_phy_port_power(struct tegra_usb_phy *phy)
 	if (phy->ops && phy->ops->port_power)
 		status = phy->ops->port_power(phy);
 
-	if (phy->pdata->ops && phy->pdata->ops->port_power)
-		phy->pdata->ops->port_power();
-
 	return status;
 }
 int tegra_usb_phy_bus_reset(struct tegra_usb_phy *phy)

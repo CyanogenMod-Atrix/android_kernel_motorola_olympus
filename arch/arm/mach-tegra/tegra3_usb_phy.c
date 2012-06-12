@@ -2212,9 +2212,6 @@ int uhsic_phy_bus_port_power(struct tegra_usb_phy *phy)
 	void __iomem *base = phy->regs;
 
 	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
-	val = readl(base + UHSIC_STAT_CFG0);
-	val &= ~UHSIC_CONNECT_DETECT;
-	writel(val, base + UHSIC_STAT_CFG0);
 
 	val = readl(base + USB_USBMODE);
 	val |= USB_USBMODE_HOST;
@@ -2239,13 +2236,10 @@ int uhsic_phy_bus_port_power(struct tegra_usb_phy *phy)
 
 	val = readl(base + UHSIC_PADS_CFG1);
 	val &= ~UHSIC_RPD_STROBE;
-	/* safe to enable RPU on STROBE at all times during idle */
-	val |= UHSIC_RPU_STROBE;
 	writel(val, base + UHSIC_PADS_CFG1);
 
-	val = readl(base + USB_USBCMD);
-	val &= ~USB_USBCMD_RS;
-	writel(val, base + USB_USBCMD);
+	if (phy->pdata->ops && phy->pdata->ops->port_power)
+		phy->pdata->ops->port_power();
 
 	if (usb_phy_reg_status_wait(base + UHSIC_STAT_CFG0,
 			UHSIC_CONNECT_DETECT, UHSIC_CONNECT_DETECT, 25000)) {

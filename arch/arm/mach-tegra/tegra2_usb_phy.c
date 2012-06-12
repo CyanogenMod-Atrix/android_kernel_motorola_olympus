@@ -1177,6 +1177,9 @@ static int uhsic_phy_bus_port_power(struct tegra_usb_phy *phy)
 	val &= ~USB_USBCMD_RS;
 	writel(val, base + USB_USBCMD);
 
+	if (phy->pdata->ops && phy->pdata->ops->port_power)
+		phy->pdata->ops->port_power();
+
 	if (usb_phy_reg_status_wait(base + UHSIC_STAT_CFG0,
 			UHSIC_CONNECT_DETECT, UHSIC_CONNECT_DETECT, 2000)) {
 		pr_err("%s: timeout waiting for UHSIC_CONNECT_DETECT\n",
