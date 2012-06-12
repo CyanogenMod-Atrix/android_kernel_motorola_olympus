@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/wdt-recovery.c
  *
- * Copyright (c) 2011, NVIDIA Corporation.
+ * Copyright (c) 2012, NVIDIA Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -45,7 +45,7 @@ static int wdt_heartbeat = 30;
 #define TIMER_PCR			0x4
  #define TIMER_PCR_INTR			(1 << 30)
 #define WDT_CFG				(0)
- #define WDT_CFG_TMR_SRC		(7 << 0) /* for TMR7. */
+ #define WDT_CFG_TMR_SRC		(0 << 0) /* for TMR10. */
  #define WDT_CFG_PERIOD			(1 << 4)
  #define WDT_CFG_INT_EN			(1 << 12)
  #define WDT_CFG_SYS_RST_EN		(1 << 14)
@@ -56,8 +56,8 @@ static int wdt_heartbeat = 30;
 #define WDT_UNLOCK			(0xC)
  #define WDT_UNLOCK_PATTERN		(0xC45A << 0)
 
-static void __iomem *wdt_timer  = IO_ADDRESS(TEGRA_TMR7_BASE);
-static void __iomem *wdt_source = IO_ADDRESS(TEGRA_WDT0_BASE);
+static void __iomem *wdt_timer  = IO_ADDRESS(TEGRA_TMR10_BASE);
+static void __iomem *wdt_source = IO_ADDRESS(TEGRA_WDT3_BASE);
 
 static void tegra_wdt_reset_enable(void)
 {
