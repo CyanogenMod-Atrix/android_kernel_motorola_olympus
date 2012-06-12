@@ -664,7 +664,6 @@ static struct platform_device *gpio_regs_devices[] = {
 
 static int __init enterprise_fixed_regulator_init(void)
 {
-	int i;
 	struct board_info board_info;
 	struct platform_device **fixed_regs_devices;
 	int nfixreg_devs;
@@ -679,17 +678,11 @@ static int __init enterprise_fixed_regulator_init(void)
 		nfixreg_devs = ARRAY_SIZE(fixed_regs_devices_a03);
 	}
 
-	for (i = 0; i < nfixreg_devs; ++i) {
-		struct fixed_voltage_config *fixed_reg_pdata =
-				fixed_regs_devices[i]->dev.platform_data;
-	}
 	return platform_add_devices(fixed_regs_devices, nfixreg_devs);
 }
 
 static int __init enterprise_gpio_regulator_init(void)
 {
-	int i, j;
-
 	return platform_add_devices(gpio_regs_devices,
 				    ARRAY_SIZE(gpio_regs_devices));
 }

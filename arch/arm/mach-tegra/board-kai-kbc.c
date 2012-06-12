@@ -86,10 +86,7 @@ static struct platform_device kai_keys_device = {
 
 int __init kai_keys_init(void)
 {
-	int i;
-
 	pr_info("Registering gpio keys\n");
-
 	platform_device_register(&kai_keys_device);
 
 	return 0;

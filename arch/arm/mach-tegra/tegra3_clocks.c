@@ -1692,12 +1692,14 @@ static void tegra3_pllp_clk_init(struct clk *c)
 	tegra3_pllp_init_dependencies(c->u.pll.fixed_rate);
 }
 
+#if defined(CONFIG_PM_SLEEP)
 static void tegra3_pllp_clk_resume(struct clk *c)
 {
 	unsigned long rate = c->u.pll.fixed_rate;
 	tegra3_pll_clk_init(c);
 	BUG_ON(rate != c->u.pll.fixed_rate);
 }
+#endif
 
 static struct clk_ops tegra_pllp_ops = {
 	.init			= tegra3_pllp_clk_init,

@@ -682,10 +682,6 @@ static void __init p852_uart_init(void)
 	}
 }
 
-static struct platform_device generic_codec_driver = {
-	.name = "generic-dit",
-};
-
 static void __init p852_flash_init(void)
 {
 	if (p852_sku_peripherals & P852_SKU_NAND_ENABLE)

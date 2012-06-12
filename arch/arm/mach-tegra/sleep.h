@@ -209,8 +209,8 @@ void tegra_sleep_cpu_save(unsigned long v2p);
 void tegra_resume(void);
 
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
-extern void tegra2_iram_start;
-extern void tegra2_iram_end;
+extern unsigned int tegra2_iram_start;
+extern unsigned int tegra2_iram_end;
 int  tegra2_cpu_is_resettable_soon(void);
 void tegra2_cpu_reset(int cpu);
 void tegra2_cpu_set_resettable_soon(void);
@@ -219,8 +219,8 @@ void tegra2_sleep_core(unsigned long v2p);
 void tegra2_hotplug_shutdown(void);
 void tegra2_sleep_wfi(unsigned long v2p);
 #else
-extern void tegra3_iram_start;
-extern void tegra3_iram_end;
+extern unsigned int tegra3_iram_start;
+extern unsigned int tegra3_iram_end;
 void tegra3_sleep_core(unsigned long v2p);
 void tegra3_sleep_cpu_secondary(unsigned long v2p);
 void tegra3_hotplug_shutdown(void);

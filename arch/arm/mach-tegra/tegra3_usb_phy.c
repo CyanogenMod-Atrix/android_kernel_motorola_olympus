@@ -1076,8 +1076,9 @@ static unsigned int utmi_phy_xcvr_setup_value(struct tegra_usb_phy *phy)
 	if (cfg->xcvr_use_fuses) {
 		val = XCVR_SETUP(tegra_fuse_readl(FUSE_USB_CALIB_0));
 		if (cfg->xcvr_use_lsb) {
-			val = min(((val & XCVR_SETUP_LSB_MASK) + cfg->xcvr_setup_offset),
-					XCVR_SETUP_LSB_MAX_VAL);
+			val = min((unsigned int) ((val & XCVR_SETUP_LSB_MASK)
+				+ cfg->xcvr_setup_offset),
+				(unsigned int) XCVR_SETUP_LSB_MAX_VAL);
 			val |= (cfg->xcvr_setup & XCVR_SETUP_MSB_MASK);
 		} else {
 			if (cfg->xcvr_setup_offset <= UTMIP_XCVR_MAX_OFFSET)

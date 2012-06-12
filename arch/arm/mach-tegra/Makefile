@@ -1,5 +1,7 @@
 GCOV_PROFILE := y
 
+subdir-ccflags-y := -Werror
+
 obj-y                                   += ahb.o
 obj-y                                   += apbio.o
 obj-y                                   += common.o
