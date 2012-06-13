@@ -97,12 +97,16 @@ void syscore_resume(void)
 
 	list_for_each_entry(ops, &syscore_ops_list, node)
 		if (ops->resume) {
-			if (initcall_debug)
-				pr_info("PM: Calling %pF\n", ops->resume);
 			ops->resume();
 			WARN_ONCE(!irqs_disabled(),
 				"Interrupts enabled after %pF\n", ops->resume);
 		}
+	if (initcall_debug) {
+		list_for_each_entry(ops, &syscore_ops_list, node)
+			if (ops->resume) {
+				pr_info("PM: Called %pF\n", ops->resume);
+			}
+	}
 }
 EXPORT_SYMBOL_GPL(syscore_resume);
 #endif /* CONFIG_PM_SLEEP */
