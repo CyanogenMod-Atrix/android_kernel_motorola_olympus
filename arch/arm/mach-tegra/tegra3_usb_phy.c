@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra3_usb_phy.c
  *
- * Copyright (C) 2011 NVIDIA Corporation
+ * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
  *
  *
  * This software is licensed under the terms of the GNU General Public
@@ -1288,11 +1288,16 @@ static int utmi_phy_disable_obs_bus(struct tegra_usb_phy *phy)
 {
 	unsigned long val;
 	void __iomem *base = phy->regs;
+	unsigned long flags;
 
 	/* check if OBS bus is already enabled */
 	val = readl(base + UTMIP_MISC_CFG0);
 	if (val & UTMIP_DPDM_OBSERVE) {
 		PHY_DBG("DISABLE_OBS_BUS\n");
+
+		/* disable ALL interrupts on current CPU */
+		local_irq_save(flags);
+
 		/* Change the UTMIP OBS bus to drive SE0 */
 		val = readl(base + UTMIP_MISC_CFG0);
 		val &= ~UTMIP_DPDM_OBSERVE_SEL(~0);
@@ -1316,6 +1321,10 @@ static int utmi_phy_disable_obs_bus(struct tegra_usb_phy *phy)
 		val = readl(base + USB_USBCMD);
 		val |= USB_USBCMD_RS;
 		writel(val, base + USB_USBCMD);
+
+		/* restore ALL interrupts on current CPU */
+		local_irq_restore(flags);
+
 		if (usb_phy_reg_status_wait(base + USB_USBCMD, USB_USBCMD_RS,
 							 USB_USBCMD_RS, 2000)) {
 			pr_err("%s: timeout waiting for USB_USBCMD_RS\n", __func__);
