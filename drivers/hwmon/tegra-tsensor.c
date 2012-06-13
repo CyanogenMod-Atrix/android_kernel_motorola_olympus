@@ -654,7 +654,7 @@ int tsensor_thermal_get_temp_low(struct tegra_tsensor_data *data,
 					long *milli_temp)
 {
 	/* temp to counter below 20C seems to be inaccurate */
-	*milli_temp = 20000;
+	*milli_temp = 0;
 	return 0;
 }
 
@@ -2015,6 +2015,8 @@ static int tsensor_suspend(struct platform_device *pdev,
 	struct tegra_tsensor_data *data = platform_get_drvdata(pdev);
 	unsigned int config0;
 
+	disable_irq(data->irq);
+	cancel_delayed_work_sync(&data->work);
 	/* set STOP bit, else OVERFLOW interrupt seen in LP1 */
 	config0 = tsensor_readl(data, ((data->instance << 16) | SENSOR_CFG0));
 	config0 |= (1 << SENSOR_CFG0_STOP_SHIFT);
@@ -2045,6 +2047,7 @@ static int tsensor_resume(struct platform_device *pdev)
 	if (data->is_edp_supported)
 		schedule_delayed_work(&data->work, 0);
 
+	enable_irq(data->irq);
 	return 0;
 }
 #endif
