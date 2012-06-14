@@ -24,11 +24,6 @@ config BCMDHD_NVRAM_DIR
 	---help---
 	  Path to the calibration file.
 
-choice
-	prompt "Select API"
-	depends on BCMDHD
-	default BCMDHD_NOAPI
-
 config BCMDHD_WEXT
 	bool "Enable WEXT support"
 	select WIRELESS_EXT
@@ -67,8 +62,6 @@ config BCMDHD_NOAPI
 	bool "No wireless API"
 	help
 	  No wireless API is needed
-
-endchoice
 
 config BCMDHD_WIFI_CONTROL_FUNC
 	bool "Use bcmdhd_wlan device"

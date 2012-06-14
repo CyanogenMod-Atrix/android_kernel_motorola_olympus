@@ -48,7 +48,7 @@ bcmdhd-objs += wl_iw.o
 DHDCFLAGS += -DSOFTAP -DWL_WIRELESS_EXT
 endif
 
-ifeq ($(CONFIG_BCMDHD_CFG80211),y)
+ifneq ($(CONFIG_CFG80211),)
 bcmdhd-objs += wl_cfg80211.o wl_cfgp2p.o wl_linux_mon.o
 DHDCFLAGS += -DWL_CFG80211
 endif
