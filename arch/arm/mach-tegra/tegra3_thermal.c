@@ -28,6 +28,7 @@
 #include <mach/thermal.h>
 #include <mach/edp.h>
 #include <linux/slab.h>
+#include <linux/suspend.h>
 
 #include "clock.h"
 #include "cpu-tegra.h"
@@ -49,6 +50,7 @@ static int skin_devs_bitmap;
 static struct therm_est_subdevice *skin_devs[THERMAL_DEVICE_MAX];
 static int skin_devs_count;
 #endif
+static bool tegra_thermal_suspend;
 
 #ifdef CONFIG_DEBUG_FS
 static struct dentry *thermal_debugfs_root;
@@ -132,7 +134,8 @@ static int tegra_thermal_zone_get_temp(struct thermal_zone_device *thz,
 {
 	struct tegra_thermal_device *device = thz->devdata;
 
-	device->get_temp(device->data, temp);
+	if (!tegra_thermal_suspend)
+		device->get_temp(device->data, temp);
 
 	return 0;
 }
@@ -178,6 +181,25 @@ static struct thermal_zone_device_ops tegra_thermal_zone_ops = {
 };
 #endif
 
+static int tegra_thermal_pm_notify(struct notifier_block *nb,
+				unsigned long event, void *data)
+{
+	switch (event) {
+	case PM_SUSPEND_PREPARE:
+		tegra_thermal_suspend = true;
+		break;
+	case PM_POST_SUSPEND:
+		tegra_thermal_suspend = false;
+		break;
+	}
+
+	return NOTIFY_OK;
+};
+
+static struct notifier_block tegra_thermal_nb = {
+	.notifier_call = tegra_thermal_pm_notify,
+};
+
 static void tegra_thermal_alert_unlocked(void *data)
 {
 	struct tegra_thermal_device *device = data;
@@ -194,7 +216,7 @@ static void tegra_thermal_alert_unlocked(void *data)
 
 #ifdef CONFIG_TEGRA_THERMAL_THROTTLE
 	if (device->thz) {
-		if (!device->thz->passive)
+		if ((!device->thz->passive) && (!tegra_thermal_suspend))
 			thermal_zone_device_update(device->thz);
 	}
 #endif
@@ -409,6 +431,7 @@ int tegra_thermal_device_register(struct tegra_thermal_device *device)
 		tegra_skin_device_register(device);
 #endif
 
+	register_pm_notifier(&tegra_thermal_nb);
 	return 0;
 }
 
