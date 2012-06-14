@@ -921,6 +921,7 @@ static int tegra_dtv_probe(struct platform_device *pdev)
 		ret = -EIO;
 		goto fail_no_clk;
 	}
+	dtv_ctx->clk = clk;
 	ret = clk_enable(clk);
 	if (ret < 0) {
 		dev_err(&pdev->dev, "cannot enable clk for tegra_dtv.\n");
