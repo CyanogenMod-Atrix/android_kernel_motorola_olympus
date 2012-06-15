@@ -213,7 +213,6 @@ static int __devinit gr3d_probe(struct nvhost_device *dev,
 	drv->prepare_poweroff		= gr3d[index].prepare_poweroff;
 	drv->alloc_hwctx_handler	= gr3d[index].alloc_hwctx_handler;
 
-	nvhost_set_register_sets(tegra_gpu_register_sets());
 	return nvhost_client_device_init(dev);
 }
 
