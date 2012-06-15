@@ -193,7 +193,7 @@ static bool ltr558_set_proxim_high_threshold(struct i2c_client *client,
 	bool st;
 	st = ltr558_i2c_write_reg(client, LTR558_PS_THRES_UP_0,
 			thresh & 0xFF);
-	if (st)
+	if (!st)
 		st = ltr558_i2c_write_reg(client, LTR558_PS_THRES_UP_1,
 				(thresh >> 8) & 0x07);
 	return st;
@@ -205,7 +205,7 @@ static bool ltr558_set_proxim_low_threshold(struct i2c_client *client,
 	bool st;
 	st = ltr558_i2c_write_reg(client, LTR558_PS_THRES_LOW_0,
 			thresh & 0xFF);
-	if (st)
+	if (!st)
 		st = ltr558_i2c_write_reg(client, LTR558_PS_THRES_LOW_1,
 				(thresh >> 8) & 0x07);
 	return st;
@@ -216,7 +216,7 @@ static bool ltr558_set_als_high_threshold(struct i2c_client *client, u32 thresh)
 	bool st;
 	st = ltr558_i2c_write_reg(client, LTR558_ALS_THRES_UP_0,
 			thresh & 0xFF);
-	if (st)
+	if (!st)
 		st = ltr558_i2c_write_reg(client, LTR558_ALS_THRES_UP_1,
 				(thresh >> 8) & 0xFF);
 	return st;
@@ -227,7 +227,7 @@ static bool ltr558_set_als_low_threshold(struct i2c_client *client, u32 thresh)
 	bool st;
 	st = ltr558_i2c_write_reg(client, LTR558_ALS_THRES_LOW_0,
 			thresh & 0xFF);
-	if (st)
+	if (!st)
 		st = ltr558_i2c_write_reg(client, LTR558_ALS_THRES_LOW_1,
 				((thresh >> 8) & 0xFF));
 	return st;
@@ -314,7 +314,7 @@ static ssize_t store_proxim_low_threshold(struct device *dev,
 
 	mutex_lock(&chip->lock);
 	st = ltr558_set_proxim_low_threshold(client, (u8)lval);
-	if (st)
+	if (!st)
 		chip->prox_low_thres = (int)lval;
 	else
 		dev_err(dev, "Error in setting proximity low threshold\n");
@@ -355,7 +355,7 @@ static ssize_t store_proxim_high_threshold(struct device *dev,
 
 	mutex_lock(&chip->lock);
 	st = ltr558_set_proxim_high_threshold(client, lval);
-	if (st)
+	if (!st)
 		chip->prox_high_thres = (int)lval;
 	else
 		dev_err(dev, "Error in setting proximity high threshold\n");
@@ -443,7 +443,7 @@ static ssize_t store_als_low_threshold(struct device *dev,
 
 	mutex_lock(&chip->lock);
 	st = ltr558_set_als_low_threshold(client, (int)lval);
-	if (st)
+	if (!st)
 		chip->als_low_thres = (int)lval;
 	else
 		dev_err(dev, "Error in setting als low threshold\n");
@@ -483,7 +483,7 @@ static ssize_t store_als_high_threshold(struct device *dev,
 
 	mutex_lock(&chip->lock);
 	st = ltr558_set_als_high_threshold(client, (int)lval);
-	if (st)
+	if (!st)
 		chip->als_high_thres = (int)lval;
 	else
 		dev_err(dev, "Error in setting als high threshold\n");
