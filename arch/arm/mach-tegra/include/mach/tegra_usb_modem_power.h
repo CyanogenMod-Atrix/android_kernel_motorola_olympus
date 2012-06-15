@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/include/mach/tegra_usb_modem_power.c
  *
- * Copyright (c) 2011, NVIDIA Corporation.
+ * Copyright (c) 2011-2012, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -40,8 +40,14 @@ struct tegra_modem_operations {
 /* tegra usb modem power platform data */
 struct tegra_usb_modem_power_platform_data {
 	const struct tegra_modem_operations *ops;
-	unsigned int wake_gpio;	/* remote wakeup gpio */
-	unsigned int flags;	/* remote wakeup irq flags */
+	unsigned int wake_gpio;		/* remote wakeup gpio */
+	unsigned long wake_irq_flags;	/* remote wakeup irq flags */
+	unsigned int boot_gpio;		/* modem boot gpio */
+	unsigned long boot_irq_flags;	/* modem boot irq flags */
+	int autosuspend_delay;		/* autosuspend delay in milliseconds */
+	int short_autosuspend_delay;	/* short autosuspend delay in ms */
+	const struct platform_device *tegra_ehci_device;
+	const struct tegra_usb_platform_data *tegra_ehci_pdata;
 };
 
 #endif /* __MACH_TEGRA_USB_MODEM_POWER_H */

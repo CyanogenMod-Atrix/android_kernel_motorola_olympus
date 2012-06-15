@@ -20,12 +20,9 @@
 #include "board.h"
 #include "board-whistler-baseband.h"
 
-static struct wake_lock mdm_wake_lock;
-
 static struct gpio modem_gpios[] = {
 	{MODEM_PWR_ON, GPIOF_OUT_INIT_LOW, "MODEM PWR ON"},
 	{MODEM_RESET, GPIOF_IN, "MODEM RESET"},
-	{BB_RST_OUT, GPIOF_IN, "BB RST OUT"},
 	{AP2MDM_ACK2, GPIOF_OUT_INIT_HIGH, "AP2MDM ACK2"},
 	{AP2MDM_ACK, GPIOF_OUT_INIT_LOW, "AP2MDM ACK"},
 };
@@ -61,7 +58,7 @@ static struct tegra_usb_platform_data tegra_ehci2_ulpi_null_pdata = {
 		.vbus_reg = NULL,
 		.hot_plug = false,
 		.remote_wakeup_supported = false,
-		.power_off_on_suspend = false,
+		.power_off_on_suspend = true,
 	},
 	.u_cfg.ulpi = {
 		.shadow_clk_delay = 10,
@@ -74,26 +71,6 @@ static struct tegra_usb_platform_data tegra_ehci2_ulpi_null_pdata = {
 	},
 	.ops = &ulpi_null_plat_ops,
 };
-
-static int __init tegra_null_ulpi_init(void)
-{
-	tegra_ehci2_device.dev.platform_data = &tegra_ehci2_ulpi_null_pdata;
-	platform_device_register(&tegra_ehci2_device);
-	return 0;
-}
-
-static irqreturn_t mdm_start_thread(int irq, void *data)
-{
-	if (gpio_get_value(BB_RST_OUT)) {
-		pr_info("BB_RST_OUT high\n");
-	} else {
-		pr_info("BB_RST_OUT low\n");
-		/* hold wait lock to complete the enumeration */
-		wake_lock_timeout(&mdm_wake_lock, HZ * 10);
-	}
-
-	return IRQ_HANDLED;
-}
 
 static void baseband_post_phy_on(void)
 {
@@ -128,7 +105,6 @@ static void baseband_reset(void)
 
 static int baseband_init(void)
 {
-	int irq;
 	int ret;
 
 	ret = gpio_request_array(modem_gpios, ARRAY_SIZE(modem_gpios));
@@ -142,29 +118,6 @@ static int baseband_init(void)
 	/* export GPIO for user space access through sysfs */
 	gpio_export(MODEM_PWR_ON, false);
 
-	/* phy init */
-	tegra_null_ulpi_init();
-
-	wake_lock_init(&mdm_wake_lock, WAKE_LOCK_SUSPEND, "mdm_lock");
-
-	/* enable IRQ for BB_RST_OUT */
-	irq = gpio_to_irq(BB_RST_OUT);
-
-	ret = request_threaded_irq(irq, NULL, mdm_start_thread,
-				   IRQF_TRIGGER_FALLING | IRQF_TRIGGER_RISING,
-				   "mdm_start", NULL);
-	if (ret < 0) {
-		pr_err("%s: request_threaded_irq error\n", __func__);
-		return ret;
-	}
-
-	ret = enable_irq_wake(irq);
-	if (ret) {
-		pr_err("%s: enable_irq_wake error\n", __func__);
-		free_irq(irq, NULL);
-		return ret;
-	}
-
 	return 0;
 }
 
@@ -177,7 +130,13 @@ static const struct tegra_modem_operations baseband_operations = {
 static struct tegra_usb_modem_power_platform_data baseband_pdata = {
 	.ops = &baseband_operations,
 	.wake_gpio = MDM2AP_ACK2,
-	.flags = IRQF_TRIGGER_FALLING,
+	.wake_irq_flags = IRQF_TRIGGER_FALLING,
+	.boot_gpio = BB_RST_OUT,
+	.boot_irq_flags = IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
+	.autosuspend_delay = 2000,
+	.short_autosuspend_delay = 50,
+	.tegra_ehci_device = &tegra_ehci2_device,
+	.tegra_ehci_pdata = &tegra_ehci2_ulpi_null_pdata,
 };
 
 static struct platform_device icera_baseband_device = {
