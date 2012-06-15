@@ -31,7 +31,11 @@
 #include <linux/suspend.h>
 #include <linux/slab.h>
 #include <linux/wakelock.h>
+#include <linux/pm_qos_params.h>
 #include <mach/tegra_usb_modem_power.h>
+
+#define BOOST_CPU_FREQ_MIN	1200000
+#define BOOST_CPU_FREQ_TIMEOUT	5000
 
 #define WAKELOCK_TIMEOUT_FOR_USB_ENUM		(HZ * 10)
 #define WAKELOCK_TIMEOUT_FOR_REMOTE_WAKE	(HZ)
@@ -50,6 +54,9 @@ struct tegra_usb_modem {
 	struct usb_interface *intf;	/* first modem usb interface */
 	struct workqueue_struct *wq;	/* modem workqueue */
 	struct delayed_work recovery_work;	/* modem recovery work */
+	struct pm_qos_request_list cpu_boost_req; /* min CPU freq request */
+	struct work_struct cpu_boost_work;	/* CPU freq boost work */
+	struct delayed_work cpu_unboost_work;	/* CPU freq unboost work */
 	const struct tegra_modem_operations *ops;	/* modem operations */
 	unsigned int capability;	/* modem capability */
 	int system_suspend;	/* system suspend flag */
@@ -77,6 +84,25 @@ static const struct usb_device_id modem_list[] = {
 	 },
 	{}
 };
+
+static void cpu_freq_unboost(struct work_struct *ws)
+{
+	struct tegra_usb_modem *modem = container_of(ws, struct tegra_usb_modem,
+						     cpu_unboost_work.work);
+
+	pm_qos_update_request(&modem->cpu_boost_req, PM_QOS_DEFAULT_VALUE);
+}
+
+static void cpu_freq_boost(struct work_struct *ws)
+{
+	struct tegra_usb_modem *modem = container_of(ws, struct tegra_usb_modem,
+						     cpu_boost_work);
+
+	cancel_delayed_work_sync(&modem->cpu_unboost_work);
+	pm_qos_update_request(&modem->cpu_boost_req, BOOST_CPU_FREQ_MIN);
+	queue_delayed_work(modem->wq, &modem->cpu_unboost_work,
+			      msecs_to_jiffies(BOOST_CPU_FREQ_TIMEOUT));
+}
 
 static irqreturn_t tegra_usb_modem_wake_thread(int irq, void *data)
 {
@@ -120,6 +146,10 @@ static irqreturn_t tegra_usb_modem_boot_thread(int irq, void *data)
 
 	/* hold wait lock to complete the enumeration */
 	wake_lock_timeout(&modem->wake_lock, WAKELOCK_TIMEOUT_FOR_USB_ENUM);
+
+	/* boost CPU freq */
+	if (!work_pending(&modem->cpu_boost_work))
+		queue_work(modem->wq, &modem->cpu_boost_work);
 
 	/* USB disconnect maybe on going... */
 	mutex_lock(&modem->lock);
@@ -413,7 +443,13 @@ static int mdm_init(struct tegra_usb_modem *modem, struct platform_device *pdev)
 
 	/* create work queue platform_driver_registe */
 	modem->wq = create_workqueue("tegra_usb_mdm_queue");
-	INIT_DELAYED_WORK(&(modem->recovery_work), tegra_usb_modem_recovery);
+	INIT_DELAYED_WORK(&modem->recovery_work, tegra_usb_modem_recovery);
+
+	INIT_WORK(&modem->cpu_boost_work, cpu_freq_boost);
+	INIT_DELAYED_WORK(&modem->cpu_unboost_work, cpu_freq_unboost);
+
+	pm_qos_add_request(&modem->cpu_boost_req, PM_QOS_CPU_FREQ_MIN,
+			   PM_QOS_DEFAULT_VALUE);
 
 	/* request remote wakeup irq from platform data */
 	ret = mdm_request_wakeable_irq(modem,
@@ -509,6 +545,12 @@ static int __exit tegra_usb_modem_remove(struct platform_device *pdev)
 
 	if (modem->sysfs_file_created)
 		device_remove_file(&pdev->dev, &dev_attr_load_host);
+
+	cancel_work_sync(&modem->cpu_boost_work);
+	cancel_delayed_work_sync(&modem->cpu_unboost_work);
+	destroy_workqueue(modem->wq);
+
+	pm_qos_remove_request(&modem->cpu_boost_req);
 
 	kfree(modem);
 	return 0;
