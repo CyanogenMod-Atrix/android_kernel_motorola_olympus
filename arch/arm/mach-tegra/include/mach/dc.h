@@ -128,6 +128,13 @@ struct dsi_phy_timing_ns {
 	u16		t_tago_ns;
 };
 
+/* Aggressiveness level of DSI suspend. The higher, the more aggressive. */
+#define DSI_NO_SUSPEND			0
+#define DSI_HOST_SUSPEND_LV0		1
+#define DSI_HOST_SUSPEND_LV1		2
+#define DSI_HOST_SUSPEND_LV2		3
+#define DSI_SUSPEND_FULL		4
+
 struct tegra_dsi_out {
 	u8		n_data_lanes;			/* required */
 	u8		pixel_format;			/* required */
@@ -156,6 +163,8 @@ struct tegra_dsi_out {
 	u8		video_data_type;		/* required */
 	u8		video_clock_mode;
 	u8		video_burst_mode;
+
+	u8		suspend_aggr;
 
 	u16		panel_buffer_size_byte;
 	u16		panel_reset_timeout_msec;
@@ -559,7 +568,7 @@ int tegra_dsi_send_panel_short_cmd(struct tegra_dc *dc, u8 *pdata, u8 data_len);
 void tegra_dc_host_suspend(struct tegra_dc *dc);
 void tegra_dc_host_resume(struct tegra_dc *dc);
 int tegra_dsi_host_suspend(struct tegra_dc *dc);
-void tegra_dsi_host_resume(struct tegra_dc *dc);
+int tegra_dsi_host_resume(struct tegra_dc *dc);
 
 int tegra_dc_update_csc(struct tegra_dc *dc, int win_index);
 
