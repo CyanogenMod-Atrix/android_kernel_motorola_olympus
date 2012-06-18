@@ -281,7 +281,8 @@ static int tegra_mc_client_parse(const char *buf, size_t count,
 	};
 	int ret = 0, i, token, index = 0;
 	bool aggregate = false;
-	int period, *client_ids, mode;
+	int period, *client_ids;
+	int mode = FILTER_NONE;
 	u64 address_low = 0;
 	u64 address_length = 1ull << 32;
 
