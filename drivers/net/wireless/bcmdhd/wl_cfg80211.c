@@ -4426,7 +4426,7 @@ static s32 wl_setup_wiphy(struct wireless_dev *wdev, struct device *sdiofunc_dev
 		| BIT(NL80211_IFTYPE_AP) | BIT(NL80211_IFTYPE_MONITOR);
 
 	wdev->wiphy->bands[IEEE80211_BAND_2GHZ] = &__wl_band_2ghz;
-	/* wdev->wiphy->bands[IEEE80211_BAND_5GHZ] = &__wl_band_5ghz_a; - set in runtime */
+	wdev->wiphy->bands[IEEE80211_BAND_5GHZ] = &__wl_band_5ghz_a;
 	wdev->wiphy->signal_type = CFG80211_SIGNAL_TYPE_MBM;
 	wdev->wiphy->cipher_suites = __wl_cipher_suites;
 	wdev->wiphy->n_cipher_suites = ARRAY_SIZE(__wl_cipher_suites);
