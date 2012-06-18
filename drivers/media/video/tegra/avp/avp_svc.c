@@ -464,7 +464,7 @@ static void do_svc_module_clock_set(struct avp_svc_info *avp_svc,
 	struct svc_clock_ctrl *msg = (struct svc_clock_ctrl *)_msg;
 	struct svc_clock_ctrl_response resp;
 	struct avp_module *mod;
-	struct avp_clk *aclk;
+	struct avp_clk *aclk = NULL;
 	int ret = 0;
 
 	mod = find_avp_module(avp_svc, msg->module_id);
