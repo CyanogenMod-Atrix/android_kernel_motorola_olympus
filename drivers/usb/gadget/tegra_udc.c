@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 NVIDIA Corporation
+ * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
  *
  * Description:
  * High-speed USB device controller driver.
@@ -37,6 +37,7 @@
 #include <linux/workqueue.h>
 #include <linux/err.h>
 #include <linux/io.h>
+#include <linux/pm_qos_params.h>
 
 #include <asm/byteorder.h>
 #include <asm/io.h>
