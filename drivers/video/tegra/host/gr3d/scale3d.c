@@ -3,7 +3,7 @@
  *
  * Tegra Graphics Host 3D clock scaling
  *
- * Copyright (c) 2010-2012, NVIDIA Corporation.
+ * Copyright (c) 2010-2012, NVIDIA Corporation.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -41,11 +41,21 @@
 #include <mach/hardware.h>
 #include "scale3d.h"
 #include "dev.h"
+#include <media/tegra_camera.h>
 
 static int scale3d_is_enabled(void);
 static void scale3d_enable(int enable);
 
 #define POW2(x) ((x) * (x))
+
+/*
+ * 3D clock scaling should be treated differently when camera is on in AP37.
+ * 3D in AP37 requires 1.3V and combining it with MPE reaches to EDP limit.
+ * 3D clock really needs to be set to lower frequency which requires 1.0V.
+ * The same thing applies to 3D EMC clock.
+ */
+#define CAMERA_3D_CLK 300000000
+#define CAMERA_3D_EMC_CLK 437000000
 
 /*
  * debugfs parameters to control 3d clock scaling test
@@ -169,12 +179,26 @@ void nvhost_scale3d_suspend(struct nvhost_device *dev)
 static void reset_3d_clocks(void)
 {
 	if (clk_get_rate(scale3d.clk_3d) != scale3d.max_rate_3d) {
-		clk_set_rate(scale3d.clk_3d, scale3d.max_rate_3d);
-		if (tegra_get_chipid() == TEGRA_CHIPID_TEGRA3)
-			clk_set_rate(scale3d.clk_3d2, scale3d.max_rate_3d);
-		if (scale3d.p_scale_emc)
-			clk_set_rate(scale3d.clk_3d_emc,
-				clk_round_rate(scale3d.clk_3d_emc, UINT_MAX));
+		if (is_tegra_camera_on())
+			clk_set_rate(scale3d.clk_3d, CAMERA_3D_CLK);
+		else
+			clk_set_rate(scale3d.clk_3d, scale3d.max_rate_3d);
+		if (tegra_get_chipid() == TEGRA_CHIPID_TEGRA3) {
+			if (is_tegra_camera_on())
+				clk_set_rate(scale3d.clk_3d2, CAMERA_3D_CLK);
+			else
+				clk_set_rate(scale3d.clk_3d2,
+							scale3d.max_rate_3d);
+		}
+		if (scale3d.p_scale_emc) {
+			if (is_tegra_camera_on())
+				clk_set_rate(scale3d.clk_3d_emc,
+					CAMERA_3D_EMC_CLK);
+			else
+				clk_set_rate(scale3d.clk_3d_emc,
+					clk_round_rate(scale3d.clk_3d_emc,
+								UINT_MAX));
+		}
 	}
 }
 
