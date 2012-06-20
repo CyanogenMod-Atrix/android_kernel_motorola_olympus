@@ -115,7 +115,7 @@ int usb_phy_reg_status_wait(void __iomem *reg, u32 mask,
 	return -1;
 }
 
-int tegra_usb_phy_init_ops(struct tegra_usb_phy *phy)
+static int tegra_usb_phy_init_ops(struct tegra_usb_phy *phy)
 {
 	int err = 0;
 

@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/include/mach/tegra_usb_phy.h
  *
- * Copyright (C) 2011 NVIDIA Corporation.
+ * Copyright (c) 2011-2012, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -93,6 +93,7 @@ struct tegra_usb_phy {
 	bool phy_power_on;
 	bool remote_wakeup;
 	bool hw_accessible;
+	bool ulpi_clk_padout_ena;
 };
 
 int usb_phy_reg_status_wait(void __iomem *reg, u32 mask,

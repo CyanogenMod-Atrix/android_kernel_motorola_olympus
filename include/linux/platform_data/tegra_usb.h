@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2010 Google, Inc.
- * Copyright (C) 2010-2011 NVIDIA Corporation
+ * Copyright (c) 2010-2012, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -61,6 +61,7 @@ struct tegra_ulpi_config {
 	u8 stpdirnxt_trimmer;
 	u8 dir_trimmer;
 	const char *clk;
+	int phy_restore_gpio;
 };
 
 /**
