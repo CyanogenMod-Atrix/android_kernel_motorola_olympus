@@ -466,8 +466,12 @@ int gcov_iter_write(struct gcov_iterator *iter, struct seq_file *seq)
 		rc = seq_write_gcov_u32(seq, GCOV_TAG_FUNCTION);
 		break;
 	case RECORD_FUNCTON_TAG_LEN:
+#ifdef GCOV_FN_INFO_HAS_NAME_FIELD
 		rc = seq_write_gcov_u32(seq, GCOV_TAG_FUNCTION_LENGTH +
 			(sizeof_str(get_func(iter)->name)));
+#else
+		rc = seq_write_gcov_u32(seq, GCOV_TAG_FUNCTION_LENGTH);
+#endif
 		break;
 	case RECORD_FUNCTION_IDENT:
 		rc = seq_write_gcov_u32(seq, get_func(iter)->ident);
@@ -479,11 +483,19 @@ int gcov_iter_write(struct gcov_iterator *iter, struct seq_file *seq)
 		rc = seq_write_gcov_u32(seq, get_func(iter)->cfg_checksum);
 		break;
 	case RECORD_FUNCTION_NAME_LEN:
+#ifdef GCOV_FN_INFO_HAS_NAME_FIELD
 		rc = seq_write_gcov_u32(seq,
 			(sizeof_str(get_func(iter)->name) - 1));
+#else
+		rc = 0;
+#endif
 		break;
 	case RECORD_FUNCTION_NAME:
+#ifdef GCOV_FN_INFO_HAS_NAME_FIELD
 		rc = seq_write_gcov_str(seq, get_func(iter)->name);
+#else
+		rc = 0;
+#endif
 		break;
 	case RECORD_COUNT_TAG:
 		rc = seq_write_gcov_u32(seq,
