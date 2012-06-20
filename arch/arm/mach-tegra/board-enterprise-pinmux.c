@@ -265,6 +265,9 @@ static __initdata struct tegra_pingroup_config enterprise_pinmux_common[] = {
 	DEFAULT_PINMUX(GMI_AD8,         PWM0,            NORMAL,    NORMAL,     OUTPUT),
 	DEFAULT_PINMUX(GMI_AD9,         NAND,            NORMAL,    NORMAL,     OUTPUT),
 	DEFAULT_PINMUX(GMI_AD10,        NAND,            NORMAL,    NORMAL,     OUTPUT),
+#if IS_EXTERNAL_PWM
+	DEFAULT_PINMUX(GMI_AD11,        PWM3,            NORMAL,    NORMAL,	OUTPUT),
+#endif
 	DEFAULT_PINMUX(GMI_A16,         UARTD,           NORMAL,    NORMAL,     OUTPUT),
 	DEFAULT_PINMUX(GMI_A17,         UARTD,           NORMAL,    NORMAL,     INPUT),
 	DEFAULT_PINMUX(GMI_A18,         UARTD,           NORMAL,    NORMAL,     INPUT),
@@ -379,7 +382,9 @@ static __initdata struct tegra_pingroup_config enterprise_unused_pinmux_common[]
 	DEFAULT_PINMUX(GMI_AD5,         GMI,             NORMAL,       TRISTATE,  OUTPUT),
 	DEFAULT_PINMUX(GMI_AD6,         GMI,             NORMAL,       TRISTATE,  OUTPUT),
 	DEFAULT_PINMUX(GMI_AD7,         GMI,             NORMAL,       TRISTATE,  OUTPUT),
+#if !(IS_EXTERNAL_PWM)
 	DEFAULT_PINMUX(GMI_AD11,        GMI,             PULL_DOWN,    TRISTATE,  OUTPUT),
+#endif
 	DEFAULT_PINMUX(GMI_CS0_N,       GMI,             PULL_DOWN,    TRISTATE,  OUTPUT),
 	DEFAULT_PINMUX(GMI_CS2_N,       GMI,             PULL_DOWN,    TRISTATE,  OUTPUT),
 	DEFAULT_PINMUX(GMI_CS3_N,       GMI,             PULL_DOWN,    TRISTATE,  OUTPUT),
@@ -460,7 +465,9 @@ static __initdata struct pin_info_low_power_mode enterprise_unused_gpio_pins_com
 	PIN_GPIO_LPM("GMI_AD5",      TEGRA_GPIO_PG5,  0, 0),
 	PIN_GPIO_LPM("GMI_AD6",      TEGRA_GPIO_PG6,  0, 0),
 	PIN_GPIO_LPM("GMI_AD7",      TEGRA_GPIO_PG7,  0, 0),
+#if !(IS_EXTERNAL_PWM)
 	PIN_GPIO_LPM("GMI_AD11",     TEGRA_GPIO_PH3,  0, 0),
+#endif
 	PIN_GPIO_LPM("GMI_CS0_N",    TEGRA_GPIO_PJ0,  0, 0),
 	PIN_GPIO_LPM("GMI_CS2_N",    TEGRA_GPIO_PK3,  0, 0),
 	PIN_GPIO_LPM("GMI_CS3_N",    TEGRA_GPIO_PK4,  0, 0),

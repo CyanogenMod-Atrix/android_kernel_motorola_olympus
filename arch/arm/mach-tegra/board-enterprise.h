@@ -158,4 +158,7 @@ enum tegra_bb_type {
 	TEGRA_BB_M7400,
 };
 
+/* Indicate the pwm of backlight, DC pwm or external pwm3. */
+#define IS_EXTERNAL_PWM		0
+
 #endif /*_MACH_TEGRA_BOARD_ENTERPRISE_H */

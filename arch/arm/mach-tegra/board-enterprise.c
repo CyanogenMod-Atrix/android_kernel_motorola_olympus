@@ -136,7 +136,7 @@ static __initdata struct tegra_clk_init_table enterprise_clk_init_table[] = {
 	{ "pll_m",	NULL,		0,		false},
 	{ "hda",	"pll_p",	108000000,	false},
 	{ "hda2codec_2x","pll_p",	48000000,	false},
-	{ "pwm",	"clk_32k",	32768,		false},
+	{ "pwm",	"pll_p",	3187500,	false},
 	{ "blink",	"clk_32k",	32768,		true},
 	{ "i2s0",	"pll_a_out0",	0,		false},
 	{ "i2s1",	"pll_a_out0",	0,		false},
