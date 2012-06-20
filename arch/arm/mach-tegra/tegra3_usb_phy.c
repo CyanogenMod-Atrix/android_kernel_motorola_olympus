@@ -2106,16 +2106,15 @@ static int uhsic_phy_power_on(struct tegra_usb_phy *phy)
 	}
 
 	val = readl(base + UHSIC_PADS_CFG1);
-	val &= ~(UHSIC_PD_BG | UHSIC_PD_TX | UHSIC_PD_TRK | UHSIC_PD_RX |
+	val &= ~(UHSIC_PD_BG | UHSIC_PD_TRK | UHSIC_PD_RX |
 			UHSIC_PD_ZI | UHSIC_RPD_DATA | UHSIC_RPD_STROBE);
-	val |= UHSIC_RX_SEL;
+	val |= (UHSIC_RX_SEL | UHSIC_PD_TX);
 	writel(val, base + UHSIC_PADS_CFG1);
-	udelay(2);
 
 	val = readl(base + USB_SUSP_CTRL);
 	val |= UHSIC_RESET;
 	writel(val, base + USB_SUSP_CTRL);
-	udelay(30);
+	udelay(1);
 
 	val = readl(base + USB_SUSP_CTRL);
 	val |= UHSIC_PHY_ENABLE;
@@ -2154,7 +2153,11 @@ static int uhsic_phy_power_on(struct tegra_usb_phy *phy)
 	val = readl(base + USB_SUSP_CTRL);
 	val &= ~(UHSIC_RESET);
 	writel(val, base + USB_SUSP_CTRL);
-	udelay(2);
+	udelay(1);
+
+	val = readl(base + UHSIC_PADS_CFG1);
+	val &= ~(UHSIC_PD_TX);
+	writel(val, base + UHSIC_PADS_CFG1);
 
 	val = readl(base + USB_USBMODE);
 	val |= USB_USBMODE_HOST;
