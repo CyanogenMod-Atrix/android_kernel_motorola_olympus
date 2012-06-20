@@ -1648,6 +1648,28 @@ struct platform_device tegra_nvmap_device = {
 	.id	= -1,
 };
 
+#ifndef CONFIG_ARCH_TEGRA_2x_SOC
+static struct resource tegra_cec_resources[] = {
+	[0] = {
+		.start = TEGRA_CEC_BASE,
+		.end = TEGRA_CEC_BASE + TEGRA_CEC_SIZE - 1,
+		.flags = IORESOURCE_MEM,
+	},
+	[1] = {
+		.start = INT_CEC,
+		.end = INT_CEC,
+		.flags = IORESOURCE_IRQ,
+	},
+};
+
+struct platform_device tegra_cec_device = {
+	.name = "tegra_cec",
+	.id   = -1,
+	.resource = tegra_cec_resources,
+	.num_resources = ARRAY_SIZE(tegra_cec_resources),
+};
+#endif
+
 void __init tegra_init_debug_uart_rate(void)
 {
 	unsigned int uartclk;

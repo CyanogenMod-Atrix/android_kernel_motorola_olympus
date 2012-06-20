@@ -126,6 +126,9 @@ extern struct platform_device debug_uarte_device;
 
 extern struct nvhost_device tegra_disp1_device;
 extern struct platform_device tegra_nvmap_device;
+#ifndef CONFIG_ARCH_TEGRA_2x_SOC
+extern struct platform_device tegra_cec_device;
+#endif
 
 void __init tegra_init_debug_uart_rate(void);
 
