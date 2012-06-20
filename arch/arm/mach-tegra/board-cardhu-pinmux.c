@@ -136,6 +136,17 @@ static __initdata struct tegra_drive_pingroup_config cardhu_drive_pinmux[] = {
 		.od		= TEGRA_PIN_OD_DEFAULT,		\
 		.ioreset	= TEGRA_PIN_IO_RESET_##_ioreset	\
 	}
+#define CEC_PINMUX(_pingroup, _mux, _pupd, _tri, _io, _lock, _od) \
+	{                                                       \
+		.pingroup       = TEGRA_PINGROUP_##_pingroup,   \
+			.func           = TEGRA_MUX_##_mux,             \
+			.pupd           = TEGRA_PUPD_##_pupd,           \
+			.tristate       = TEGRA_TRI_##_tri,             \
+			.io             = TEGRA_PIN_##_io,              \
+			.lock           = TEGRA_PIN_LOCK_##_lock,       \
+			.od             = TEGRA_PIN_OD_##_od,           \
+			.ioreset        = TEGRA_PIN_IO_RESET_DEFAULT,   \
+	}
 
 static __initdata struct tegra_pingroup_config cardhu_pinmux_common[] = {
 	/* SDMMC1 pinmux */
@@ -188,6 +199,9 @@ static __initdata struct tegra_pingroup_config cardhu_pinmux_common[] = {
 	/* Power I2C pinmux */
 	I2C_PINMUX(PWR_I2C_SCL,		I2CPWR,		NORMAL,	NORMAL,	INPUT,	DISABLE,	ENABLE),
 	I2C_PINMUX(PWR_I2C_SDA,		I2CPWR,		NORMAL,	NORMAL,	INPUT,	DISABLE,	ENABLE),
+
+	/* HDMI-CEC  pinmux */
+	CEC_PINMUX(HDMI_CEC,    CEC,    NORMAL,        NORMAL, INPUT,  DISABLE,        ENABLE),
 
 	DEFAULT_PINMUX(ULPI_DATA0,      UARTA,           NORMAL,    NORMAL,     OUTPUT),
 	DEFAULT_PINMUX(ULPI_DATA1,      UARTA,           NORMAL,    NORMAL,     INPUT),

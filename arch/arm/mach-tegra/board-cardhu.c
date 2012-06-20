@@ -786,6 +786,7 @@ static struct platform_device *cardhu_devices[] __initdata = {
 	&cardhu_audio_max98095_device,
 	&cardhu_audio_aic326x_device,
 	&tegra_hda_device,
+	&tegra_cec_device,
 #if defined(CONFIG_CRYPTO_DEV_TEGRA_AES)
 	&tegra_aes_device,
 #endif
