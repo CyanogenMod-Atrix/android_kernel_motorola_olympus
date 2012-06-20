@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/tegra3_emc.h
  *
- * Copyright (C) 2011 NVIDIA Corporation
+ * Copyright (C) 2012 NVIDIA Corporation
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -61,7 +61,6 @@ void tegra_emc_dram_type_init(struct clk *c);
 int tegra_emc_get_dram_type(void);
 int tegra_emc_get_dram_temperature(void);
 int tegra_emc_set_over_temp_state(unsigned long state);
-int tegra_emc_set_eack_state(unsigned long state);
 
 #ifdef CONFIG_PM_SLEEP
 void tegra_mc_timing_restore(void);
