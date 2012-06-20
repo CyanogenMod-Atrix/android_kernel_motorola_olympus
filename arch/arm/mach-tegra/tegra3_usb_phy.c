@@ -1631,10 +1631,18 @@ static void utmi_phy_restore_start(struct tegra_usb_phy *phy)
 
 	DBG("%s(%d) inst:[%d]\n", __func__, __LINE__, phy->inst);
 	val = readl(pmc_base + UTMIP_UHSIC_STATUS);
-	/* check whether we wake up from the remote resume */
+	/* Check whether we wake up from the remote resume.
+	   For lp1 case, pmc is not responsible for waking the
+	   system, it's the flow controller and hence
+	   UTMIP_WALK_PTR_VAL(inst) will return 0.
+	   Also, for lp1 case phy->remote_wakeup will already be set
+	   to true by utmi_phy_irq() when the remote wakeup happens.
+	   Hence change the logic in the else part to enter only
+	   if phy->remote_wakeup is not set to true by the
+	   utmi_phy_irq(). */
 	if (UTMIP_WALK_PTR_VAL(inst) & val) {
 		phy->remote_wakeup = true;
-	} else {
+	} else if(!phy->remote_wakeup) {
 		if (!((UTMIP_USBON_VAL(phy->inst) |
 			UTMIP_USBOP_VAL(phy->inst)) & val)) {
 				utmip_phy_disable_pmc_bus_ctrl(phy);
