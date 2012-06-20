@@ -761,7 +761,9 @@ static struct platform_device *cardhu_devices[] __initdata = {
 #if defined(CONFIG_TEGRA_IOVMM_SMMU) ||  defined(CONFIG_TEGRA_IOMMU_SMMU)
 	&tegra_smmu_device,
 #endif
-	&tegra_wdt_device,
+	&tegra_wdt0_device,
+	&tegra_wdt1_device,
+	&tegra_wdt2_device,
 #if defined(CONFIG_TEGRA_AVP)
 	&tegra_avp_device,
 #endif
