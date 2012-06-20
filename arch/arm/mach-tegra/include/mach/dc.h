@@ -147,6 +147,7 @@ struct tegra_dsi_out {
 	u8		chip_rev;
 
 	bool		panel_has_frame_buffer;	/* required*/
+	bool		panel_send_dc_frames;
 
 	struct tegra_dsi_cmd	*dsi_init_cmd;		/* required */
 	u16		n_init_cmd;			/* required */
