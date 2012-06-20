@@ -591,15 +591,18 @@ static int spi_tegra_start_dma_based_transfer(
 		udelay(1);
 		wmb();
 	}
+
 #ifdef CONFIG_MACH_OLYMPUS
 	/*
 	DMA cache fix:- Calling the write buffer barriers after enqueue into the write
 	dma buffer and before starting the transmit dma to make sure that all written
 	data is available in physical memory before dma start
 	*/
-	dmb();
-	outer_sync();
+//	dmb();
+//	outer_sync();
 #endif
+	tspi->dma_control_reg = val;
+
 	val |= SLINK_DMA_EN;
 	spi_tegra_writel(tspi, val, SLINK_DMA_CTL);
 	return ret;
@@ -636,6 +639,7 @@ static int spi_tegra_start_cpu_based_transfer(
 		udelay(1);
 		wmb();
 	}
+	tspi->dma_control_reg = val;
 	val |= SLINK_DMA_EN;
 	spi_tegra_writel(tspi, val, SLINK_DMA_CTL);
 	return 0;
@@ -1071,6 +1075,9 @@ static void handle_cpu_based_xfer(void *context_data)
 				(tspi->status_reg & SLINK_BSY)) {
 		dev_err(&tspi->pdev->dev, "%s ERROR bit set 0x%x\n",
 					 __func__, tspi->status_reg);
+		dev_err(&tspi->pdev->dev, "%s 0x%08x:0x%08x:0x%08x\n",
+				__func__, tspi->command_reg, tspi->command2_reg,
+				tspi->dma_control_reg);
 		tegra_periph_reset_assert(tspi->clk);
 		udelay(2);
 		tegra_periph_reset_deassert(tspi->clk);
@@ -1159,6 +1166,9 @@ static irqreturn_t spi_tegra_isr_thread(int irq, void *context_data)
 	if (err) {
 		dev_err(&tspi->pdev->dev, "%s ERROR bit set 0x%x\n",
 					 __func__, tspi->status_reg);
+		dev_err(&tspi->pdev->dev, "%s 0x%08x:0x%08x:0x%08x\n",
+				__func__, tspi->command_reg, tspi->command2_reg,
+				tspi->dma_control_reg);
 		tegra_periph_reset_assert(tspi->clk);
 		udelay(2);
 		tegra_periph_reset_deassert(tspi->clk);
