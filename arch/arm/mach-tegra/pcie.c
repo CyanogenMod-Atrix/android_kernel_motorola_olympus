@@ -352,14 +352,8 @@ static struct resource pcie_prefetch_mem_space;
 /* disable read write while noirq operation
  * is performed since pcie is powered off */
 static bool is_pcie_noirq_op = false;
-/* used to backup config space registers of all pcie devices */
-static u32 *pbackup_config_space = NULL;
-static u16 *pbackup_pcie_cap_space = NULL;
-static u16 *pbackup_pcix_cap_space = NULL;
-/* use same save state and position variables to store pcie */
-/* and pcix capability offsets at even & odd index respectively */
-static struct pci_cap_saved_state **pcie_save_state;
-static int *pos;
+/* enable and init msi once during boot or resume */
+static bool msi_enable;
 
 void __iomem *tegra_pcie_io_base;
 EXPORT_SYMBOL(tegra_pcie_io_base);
@@ -956,6 +950,8 @@ static int tegra_pcie_power_on(void)
 	err = tegra_unpowergate_partition_with_clk_on(TEGRA_POWERGATE_PCIE);
 	if (err)
 		goto err_exit;
+
+	tegra_periph_reset_assert(tegra_pcie.pcie_xclk);
 	if (tegra_pcie.pll_e)
 		clk_enable(tegra_pcie.pll_e);
 
@@ -1180,7 +1176,6 @@ static void tegra_pcie_add_port(int index, u32 offset, u32 reset_reg)
 	tegra_enable_clock_clamp(index);
 	tegra_pcie.num_ports++;
 	pp->index = index;
-	pp->root_bus_nr = -1;
 	memset(pp->res, 0, sizeof(pp->res));
 }
 
@@ -1248,47 +1243,9 @@ err_irq:
 	return err;
 }
 
-static int tegra_pcie_allocate_config_states(int ndev, int size)
-{
-	/* backup config space registers of all devices since it gets reset in
-	save state call from suspend noirq due to disabling of read in it */
-	pbackup_config_space = kzalloc(ndev*size*sizeof(u32), GFP_KERNEL);
-	if (!pbackup_config_space)
-		return -ENODEV;
-	pbackup_pcie_cap_space = kzalloc(ndev*PCIE_CTRL_REGS*sizeof(u16), GFP_KERNEL);
-	if (!pbackup_pcie_cap_space)
-		return -ENODEV;
-	pbackup_pcix_cap_space = kzalloc(ndev*sizeof(u16), GFP_KERNEL);
-	if (!pbackup_pcix_cap_space)
-		return -ENODEV;
-	pcie_save_state = kzalloc(COMBINE_PCIE_PCIX_SPACE*ndev*
-					sizeof(struct pci_cap_saved_state*), GFP_KERNEL);
-	if (!pbackup_pcix_cap_space)
-		return -ENODEV;
-	pos = kzalloc(COMBINE_PCIE_PCIX_SPACE*ndev*sizeof(int), GFP_KERNEL);
-	if (!pos)
-		return -ENODEV;
-
-	return 0;
-}
-
-static void tegra_pcie_deallocate_config_states(void)
-{
-	if (pbackup_config_space)
-		kzfree(pbackup_config_space);
-	if (pbackup_pcie_cap_space)
-		kzfree(pbackup_pcie_cap_space);
-	if (pbackup_pcix_cap_space)
-		kzfree(pbackup_pcix_cap_space);
-	if (pcie_save_state)
-		kzfree(pcie_save_state);
-	if (pos)
-		kzfree(pos);
-}
-
 static int tegra_pci_probe(struct platform_device *pdev)
 {
-	int ret, size = 0, ndev = 0;
+	int ret;
 	struct pci_dev *dev = NULL;
 
 	tegra_pcie.plat_data = pdev->dev.platform_data;
@@ -1302,93 +1259,24 @@ static int tegra_pci_probe(struct platform_device *pdev)
 
 	/* disable async PM of pci devices to ensure right order */
 	/* suspend/resume calls of tegra and bus driver */
-	for_each_pci_dev(dev){
+	for_each_pci_dev(dev)
 		device_disable_async_suspend(&dev->dev);
-		size = sizeof(dev->saved_config_space) / sizeof(u32);
-		ndev++;
-	}
-	tegra_pcie_allocate_config_states(ndev, size);
 
 	return ret;
 }
 
 #ifdef CONFIG_PM
-static int tegra_pcie_save_state(struct pci_dev *pdev, int ndev)
-{
-	int size;
-
-	/*save pcie control registers */
-	pos[ndev] = pci_pcie_cap(pdev);
-	if (pos[ndev]){
-		pcie_save_state[ndev] = pci_find_saved_cap(pdev, PCI_CAP_ID_EXP);
-		if (!pcie_save_state[ndev]) {
-			dev_err(&pdev->dev, "buffer not found in %s\n", __func__);
-			return -ENOMEM;
-		}
-		memcpy(&pbackup_pcie_cap_space[PCIE_CTRL_REGS*(ndev/2)],
-			pcie_save_state[ndev]->cap.data, PCIE_CTRL_REGS*sizeof(u16));
-	}
-	/* save pcix state */
-	pos[ndev+1] = pci_find_capability(pdev, PCI_CAP_ID_PCIX);
-	if (pos[ndev+1] > 0){
-		pcie_save_state[ndev+1] = pci_find_saved_cap(pdev, PCI_CAP_ID_PCIX);
-		if (!pcie_save_state[ndev+1]) {
-			dev_err(&pdev->dev, "buffer not found in %s\n", __func__);
-			return -ENOMEM;
-		}
-		memcpy(&pbackup_pcix_cap_space[ndev/2],
-			pcie_save_state[ndev+1]->cap.data, sizeof(u16));
-	}
-	/* save config space registers */
-	size = sizeof(pdev->saved_config_space) / sizeof(u32);
-	memcpy(&pbackup_config_space[size*ndev/2],
-		pdev->saved_config_space, size*sizeof(u32));
-
-	return 0;
-}
-
-static void tegra_pcie_restore_state(struct pci_dev *pdev, int ndev)
-{
-	int size;
-
-	/* restore pcie control registers */
-	if (pcie_save_state[ndev] && (pos[ndev] > 0))
-		memcpy(pcie_save_state[ndev]->cap.data,
-			&pbackup_pcie_cap_space[PCIE_CTRL_REGS*(ndev/2)],
-						PCIE_CTRL_REGS*sizeof(u16));
-
-	/* restore pcix state */
-	if (pcie_save_state[ndev+1] && (pos[ndev+1] > 0))
-		memcpy(pcie_save_state[ndev+1]->cap.data,
-			&pbackup_pcix_cap_space[ndev/2], sizeof(u16));
-
-	/* restore config space registers */
-	size = sizeof(pdev->saved_config_space) / sizeof(u32);
-	memcpy(pdev->saved_config_space,
-		&pbackup_config_space[size*ndev/2], size*sizeof(u32));
-}
-
 static int tegra_pci_suspend(struct device *dev)
 {
-	int ret = 0, ndev = 0;
+	int ret = 0;
 	struct pci_dev *pdev = NULL;
 
 	if (!tegra_pcie.num_ports)
 		return ret;
 
 	for_each_pci_dev(pdev) {
-		/* save state of pcie devices before powering off regulators */
-		pci_save_state(pdev);
-		if (!pdev->subordinate)
-			pci_prepare_to_sleep(pdev);
-	}
-
-	for_each_pci_dev(pdev) {
-		/* save control and config space registers*/
-		ret = tegra_pcie_save_state(pdev, ndev*2);
-		if (ret < 0)
-			return ret;
-		ndev++;
+		pci_remove_bus_device(pdev);
+		break;
 	}
 
 	/* disable read/write registers before powering off */
@@ -1397,41 +1285,40 @@ static int tegra_pci_suspend(struct device *dev)
 	return tegra_pcie_power_off();
 }
 
-static int tegra_pci_resume_noirq(struct device *dev)
-{
-	struct pci_dev *pdev = NULL;
-
-	/* set this flag to avoid restore state in resume noirq */
-	for_each_pci_dev(pdev)
-		pdev->state_saved = 0;
-
-	return 0;
-}
-
 static int tegra_pci_resume(struct device *dev)
 {
-	int ret = 0, ndev = 0;
+	int ret = 0;
+	struct pci_bus *b = NULL;
 	struct pci_dev *pdev = NULL;
-	int port;
+	int port, rp_offset = 0;
+	int ctrl_offset = AFI_PEX0_CTRL;
 
 	if (!tegra_pcie.num_ports)
 		return ret;
+
 	ret = tegra_pcie_power_on();
 	/* enable read/write registers after powering on */
 	is_pcie_noirq_op = false;
 	tegra_pcie_enable_controller();
 	tegra_pcie_setup_translations();
+	msi_enable = false;
 
-	for (port = 0; port < MAX_PCIE_SUPPORTED_PORTS; port++)
+	/* reset number of ports before adding port */
+	tegra_pcie.num_ports = 0;
+	for (port = 0; port < MAX_PCIE_SUPPORTED_PORTS; port++) {
+		ctrl_offset += (port * 8);
+		rp_offset = (rp_offset + 0x1000) * port;
 		if (tegra_pcie.plat_data->port_status[port])
-			tegra_enable_clock_clamp(port);
+			tegra_pcie_add_port(port, rp_offset, ctrl_offset);
+	}
 
+	while ((b = pci_find_next_bus(b)) != NULL)
+		pci_rescan_bus(b);
+
+	/* Update irq line register since it is not done while scan */
 	for_each_pci_dev(pdev) {
-		/* restore control and config space registers*/
-		tegra_pcie_restore_state(pdev, ndev*2);
-		/* set this flag to force restore state in resume */
-		pdev->state_saved = 1;
-		ndev++;
+		pdev->irq = tegra_pcie_map_irq(pdev,0,0);
+		pci_write_config_byte(pdev, PCI_INTERRUPT_LINE, pdev->irq);
 	}
 
 	return ret;
@@ -1440,14 +1327,12 @@ static int tegra_pci_resume(struct device *dev)
 
 static int tegra_pci_remove(struct platform_device *pdev)
 {
-	tegra_pcie_deallocate_config_states();
 	return 0;
 }
 #ifdef CONFIG_PM
 static const struct dev_pm_ops tegra_pci_pm_ops = {
 	.suspend = tegra_pci_suspend,
 	.resume = tegra_pci_resume,
-	.resume_noirq = tegra_pci_resume_noirq,
 	};
 #endif
 
@@ -1573,18 +1458,16 @@ static irqreturn_t pci_tegra_msi_isr(int irq, void *arg)
 static bool pci_tegra_enable_msi(void)
 {
 	bool retval = false;
-	static bool already_done;
 	u32 reg;
 	u32 msi_base = 0;
 	u32 msi_aligned = 0;
 
 	/* enables MSI interrupts.  */
 	/* this only happens once. */
-	if (already_done) {
+	if (msi_enable) {
 		retval = true;
 		goto exit;
 	}
-
 	msi_map_init();
 
 	if (request_irq(INT_PCIE_MSI, pci_tegra_msi_isr,
@@ -1629,7 +1512,7 @@ static bool pci_tegra_enable_msi(void)
 
 	set_irq_flags(INT_PCIE_MSI, IRQF_VALID);
 
-	already_done = true;
+	msi_enable = true;
 	retval = true;
 exit:
 	if (!retval) {
