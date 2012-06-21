@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-kai.c
  *
- * Copyright (c) 2012, NVIDIA Corporation.
+ * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -304,11 +304,17 @@ static struct regulator_consumer_supply smb349_vbus_supply[] = {
 	REGULATOR_SUPPLY("usb_bat_chg", NULL),
 };
 
+static struct regulator_consumer_supply smb349_otg_vbus_supply[] = {
+	REGULATOR_SUPPLY("usb_vbus_otg", NULL),
+};
+
 static struct smb349_charger_platform_data smb349_charger_pdata = {
 	.max_charge_current_mA = 1000,
 	.charging_term_current_mA = 100,
 	.consumer_supplies = smb349_vbus_supply,
 	.num_consumer_supplies = ARRAY_SIZE(smb349_vbus_supply),
+	.otg_consumer_supplies = smb349_otg_vbus_supply,
+	.num_otg_consumer_supplies = ARRAY_SIZE(smb349_otg_vbus_supply),
 };
 
 static struct i2c_board_info kai_i2c4_smb349_board_info[] = {
@@ -735,7 +741,7 @@ static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
 	.op_mode = TEGRA_USB_OPMODE_HOST,
 	.u_data.host = {
 		.vbus_gpio = -1,
-		.vbus_reg = NULL,
+		.vbus_reg = "usb_vbus_otg",
 		.hot_plug = true,
 		.remote_wakeup_supported = true,
 		.power_off_on_suspend = true,
