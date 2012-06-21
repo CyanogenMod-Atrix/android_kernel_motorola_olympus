@@ -31,6 +31,7 @@
 #include <mach/gpio.h>
 #include <mach/iomap.h>
 #include <mach/irqs.h>
+#include <mach/io_dpd.h>
 
 #include <asm/cpu_pm.h>
 #include <asm/hardware/gic.h>
@@ -453,6 +454,7 @@ struct tegra_io_dpd tegra_list_io_dpd[] = {
 /* Empty DPD list - sd dpd entries removed */
 };
 
+#ifdef CONFIG_PM_SLEEP
 struct tegra_io_dpd *tegra_io_dpd_get(struct device *dev)
 {
 	int i;
@@ -470,7 +472,6 @@ struct tegra_io_dpd *tegra_io_dpd_get(struct device *dev)
 		((name) ? name : "NULL"));
 	return NULL;
 }
-EXPORT_SYMBOL(tegra_io_dpd_get);
 
 static void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
 static DEFINE_SPINLOCK(tegra_io_dpd_lock);
@@ -502,7 +503,6 @@ void tegra_io_dpd_enable(struct tegra_io_dpd *hnd)
 	spin_unlock(&tegra_io_dpd_lock);
 	return;
 }
-EXPORT_SYMBOL(tegra_io_dpd_enable);
 
 void tegra_io_dpd_disable(struct tegra_io_dpd *hnd)
 {
@@ -526,4 +526,52 @@ void tegra_io_dpd_disable(struct tegra_io_dpd *hnd)
 	spin_unlock(&tegra_io_dpd_lock);
 	return;
 }
+
+static void tegra_io_dpd_delayed_disable(struct work_struct *work)
+{
+	struct tegra_io_dpd *hnd = container_of(
+		to_delayed_work(work), struct tegra_io_dpd, delay_dpd);
+	tegra_io_dpd_disable(hnd);
+	hnd->need_delay_dpd = 0;
+}
+
+int tegra_io_dpd_init(void)
+{
+	int i;
+	for (i = 0;
+		i < (sizeof(tegra_list_io_dpd) / sizeof(struct tegra_io_dpd));
+		i++) {
+			INIT_DELAYED_WORK(&(tegra_list_io_dpd[i].delay_dpd),
+				tegra_io_dpd_delayed_disable);
+			mutex_init(&(tegra_list_io_dpd[i].delay_lock));
+			tegra_list_io_dpd[i].need_delay_dpd = 0;
+	}
+	return 0;
+}
+
+#else
+
+int tegra_io_dpd_init(void)
+{
+	return 0;
+}
+
+void tegra_io_dpd_enable(struct tegra_io_dpd *hnd)
+{
+}
+
+void tegra_io_dpd_disable(struct tegra_io_dpd *hnd)
+{
+}
+
+struct tegra_io_dpd *tegra_io_dpd_get(struct device *dev)
+{
+	return NULL;
+}
+
+#endif
+
+EXPORT_SYMBOL(tegra_io_dpd_get);
+EXPORT_SYMBOL(tegra_io_dpd_enable);
 EXPORT_SYMBOL(tegra_io_dpd_disable);
+EXPORT_SYMBOL(tegra_io_dpd_init);

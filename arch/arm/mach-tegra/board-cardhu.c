@@ -51,6 +51,7 @@
 #include <mach/irqs.h>
 #include <mach/pinmux.h>
 #include <mach/iomap.h>
+#include <mach/io_dpd.h>
 #include <mach/io.h>
 #include <mach/i2s.h>
 #include <mach/tegra_asoc_pdata.h>
@@ -1405,6 +1406,7 @@ static void __init tegra_cardhu_init(void)
 	tegra_camera_init();
 	platform_add_devices(cardhu_devices, ARRAY_SIZE(cardhu_devices));
 	tegra_ram_console_debug_init();
+	tegra_io_dpd_init();
 	cardhu_sdhci_init();
 	cardhu_regulator_init();
 	cardhu_dtv_init();
