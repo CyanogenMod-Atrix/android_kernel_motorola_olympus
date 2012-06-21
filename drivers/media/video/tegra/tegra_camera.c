@@ -96,17 +96,18 @@ static int tegra_camera_disable_clk(struct tegra_camera_dev *dev)
 
 static int tegra_camera_enable_emc(struct tegra_camera_dev *dev)
 {
+	int ret = tegra_emc_disable_eack();
 	clk_enable(dev->emc_clk);
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 	clk_set_rate(dev->emc_clk, 300000000);
 #endif
-	return 0;
+	return ret;
 }
 
 static int tegra_camera_disable_emc(struct tegra_camera_dev *dev)
 {
 	clk_disable(dev->emc_clk);
-	return 0;
+	return tegra_emc_enable_eack();
 }
 
 static int tegra_camera_clk_set_rate(struct tegra_camera_dev *dev)
