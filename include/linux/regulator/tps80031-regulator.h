@@ -74,6 +74,9 @@ enum {
  * @flags: Configuration flag to configure the rails. It should be ORed of
  *	 above enums.
  * @delay_us: Delay in microsecond after setting the desired voltage.
+ * @tolerance_uv: Tolerance micorvolts in minimum side. The voltage min
+ *	will be adjusted to this tolerance like
+ *		actual_vmin = vmin - tolerance_uv
  */
 
 struct tps80031_regulator_platform_data {
@@ -84,6 +87,7 @@ struct tps80031_regulator_platform_data {
 	unsigned int ext_ctrl_flag;
 	unsigned int flags;
 	int delay_us;
+	unsigned int tolerance_uv;
 };
 
 #endif	/* __REGULATOR_TPS80031_H */
