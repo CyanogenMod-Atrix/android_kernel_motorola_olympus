@@ -354,6 +354,9 @@ static struct resource pcie_prefetch_mem_space;
 static bool is_pcie_noirq_op = false;
 /* enable and init msi once during boot or resume */
 static bool msi_enable;
+/* this flag is used for enumeration by hotplug */
+/* when dock is not connected while system boot */
+static bool is_dock_conn_at_boot = true;
 
 void __iomem *tegra_pcie_io_base;
 EXPORT_SYMBOL(tegra_pcie_io_base);
@@ -616,6 +619,60 @@ static struct hw_pci tegra_pcie_hw = {
 	.map_irq	= tegra_pcie_map_irq,
 };
 
+#ifdef CONFIG_PM
+static int tegra_pci_suspend(struct device *dev);
+static int tegra_pci_resume(struct device *dev);
+
+/* It enumerates the devices when dock is connected after system boot */
+/* this is similar to pcibios_init_hw in bios32.c */
+static void tegra_pcie_hotplug_init(void)
+{
+	struct pci_sys_data *sys = NULL;
+	int ret, nr;
+
+	if (is_dock_conn_at_boot)
+		return;
+
+	tegra_pcie_preinit();
+	for (nr = 0; nr < tegra_pcie_hw.nr_controllers; nr++) {
+		sys = kzalloc(sizeof(struct pci_sys_data), GFP_KERNEL);
+		if (!sys)
+			panic("PCI: unable to allocate sys data!");
+
+#ifdef CONFIG_PCI_DOMAINS
+		sys->domain  = tegra_pcie_hw.domain;
+#endif
+		sys->hw      = &tegra_pcie_hw;
+		sys->busnr   = nr;
+		sys->swizzle = tegra_pcie_hw.swizzle;
+		sys->map_irq = tegra_pcie_hw.map_irq;
+		sys->resource[0] = &ioport_resource;
+		sys->resource[1] = &iomem_resource;
+		ret = tegra_pcie_setup(nr, sys);
+		if (ret > 0)
+			pci_create_bus(NULL, nr, &tegra_pcie_ops, sys);
+	}
+	is_dock_conn_at_boot = true;
+}
+#endif
+
+static void tegra_pcie_attach(void)
+{
+	/* this hardcode is just to bypass the check in resume */
+	if (!is_dock_conn_at_boot)
+		tegra_pcie.num_ports = 1;
+#ifdef CONFIG_PM
+	tegra_pci_resume(NULL);
+#endif
+}
+
+static void tegra_pcie_detach(void)
+{
+#ifdef CONFIG_PM
+	tegra_pci_suspend(NULL);
+#endif
+}
+
 static void work_hotplug_handler(struct work_struct *work)
 {
 	struct tegra_pcie_info *pcie_driver =
@@ -626,13 +683,11 @@ static void work_hotplug_handler(struct work_struct *work)
 		return;
 	val = gpio_get_value(pcie_driver->plat_data->gpio);
 	if (val == 0) {
-		pr_info("Pcie Dock Connected but hotplug functionality not supported yet\n");
+		pr_info("Pcie Dock Connected\n");
+		tegra_pcie_attach();
 	} else {
-		struct pci_dev *dev = NULL;
-
 		pr_info("Pcie Dock DisConnected\n");
-		for_each_pci_dev(dev)
-			pci_stop_bus_device(dev);
+		tegra_pcie_detach();
 	}
 }
 
@@ -1235,8 +1290,11 @@ static int tegra_pcie_init(void)
 
 	if (tegra_pcie.num_ports)
 		pci_common_init(&tegra_pcie_hw);
-	else
+	else {
+		/* no dock is connected, hotplug will occur after boot */
 		err = tegra_pcie_power_off();
+		is_dock_conn_at_boot = false;
+	}
 
 err_irq:
 
@@ -1312,6 +1370,7 @@ static int tegra_pci_resume(struct device *dev)
 			tegra_pcie_add_port(port, rp_offset, ctrl_offset);
 	}
 
+	tegra_pcie_hotplug_init();
 	while ((b = pci_find_next_bus(b)) != NULL)
 		pci_rescan_bus(b);
 
