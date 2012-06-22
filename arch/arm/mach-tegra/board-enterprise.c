@@ -902,6 +902,16 @@ static void enterprise_baseband_init(void)
 #endif
 	}
 }
+static void enterprise_nfc_init(void)
+{
+	struct board_info bi;
+
+	/* Enable firmware GPIO PX7 for board E1205 */
+	tegra_get_board_info(&bi);
+	if (bi.board_id == BOARD_E1205 && bi.fab >= BOARD_FAB_A03) {
+		nfc_pdata.firm_gpio = TEGRA_GPIO_PX7;
+	}
+}
 
 static void __init tegra_enterprise_init(void)
 {
@@ -919,6 +929,7 @@ static void __init tegra_enterprise_init(void)
 	enterprise_edp_init();
 #endif
 	enterprise_kbc_init();
+	enterprise_nfc_init();
 	enterprise_touch_init();
 	enterprise_audio_init();
 	enterprise_baseband_init();
