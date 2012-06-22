@@ -1380,6 +1380,14 @@ static int tegra_pci_resume(struct device *dev)
 		pci_write_config_byte(pdev, PCI_INTERRUPT_LINE, pdev->irq);
 	}
 
+	/* probe the devices again after having correct value of irq as above */
+	pdev = NULL;
+	for_each_pci_dev(pdev)
+		pci_stop_bus_device(pdev);
+	b = NULL;
+	while ((b = pci_find_next_bus(b)) != NULL)
+		pci_bus_add_devices(b);
+
 	return ret;
 }
 #endif
