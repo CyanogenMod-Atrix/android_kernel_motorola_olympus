@@ -2,6 +2,7 @@
  * drivers/cpufreq/cpufreq_interactive.c
  *
  * Copyright (C) 2010 Google, Inc.
+ * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -91,6 +92,13 @@ static unsigned long min_sample_time;
 #define DEFAULT_TIMER_RATE 20000;
 static unsigned long timer_rate;
 
+/* Defines to control mid-range frequencies */
+#define DEFAULT_MID_RANGE_GO_MAXSPEED_LOAD 95
+
+static unsigned long midrange_freq;
+static unsigned long midrange_go_maxspeed_load;
+static unsigned long midrange_max_boost;
+
 static int cpufreq_governor_interactive(struct cpufreq_policy *policy,
 		unsigned int event);
 
@@ -108,6 +116,8 @@ static unsigned int cpufreq_interactive_get_target(
 	int cpu_load, int load_since_change, struct cpufreq_policy *policy)
 {
 	unsigned int target_freq;
+	unsigned int maxspeed_load = go_maxspeed_load;
+	unsigned int mboost = max_boost;
 
 	/*
 	 * Choose greater of short-term load (since last idle timer
@@ -117,14 +127,19 @@ static unsigned int cpufreq_interactive_get_target(
 	if (load_since_change > cpu_load)
 		cpu_load = load_since_change;
 
-	if (cpu_load >= go_maxspeed_load) {
+	if (midrange_freq && policy->cur > midrange_freq) {
+		maxspeed_load = midrange_go_maxspeed_load;
+		mboost = midrange_max_boost;
+	}
+
+	if (cpu_load >= maxspeed_load) {
 		if (!boost_factor)
 			return policy->max;
 
 		target_freq = policy->cur * boost_factor;
 
-		if (max_boost && target_freq > policy->cur + max_boost)
-			target_freq = policy->cur + max_boost;
+		if (mboost && target_freq > policy->cur + mboost)
+			target_freq = policy->cur + mboost;
 	}
 	else {
 		if (!sustain_load)
@@ -527,6 +542,50 @@ static ssize_t store_go_maxspeed_load(struct kobject *kobj,
 static struct global_attr go_maxspeed_load_attr = __ATTR(go_maxspeed_load, 0644,
 		show_go_maxspeed_load, store_go_maxspeed_load);
 
+static ssize_t show_midrange_freq(struct kobject *kobj,
+				     struct attribute *attr, char *buf)
+{
+	return sprintf(buf, "%lu\n", midrange_freq);
+}
+
+static ssize_t store_midrange_freq(struct kobject *kobj,
+			struct attribute *attr, const char *buf, size_t count)
+{
+	int ret;
+	unsigned long val;
+
+	ret = strict_strtoul(buf, 0, &val);
+	if (ret < 0)
+		return ret;
+	midrange_freq = val;
+	return count;
+}
+
+static struct global_attr midrange_freq_attr = __ATTR(midrange_freq, 0644,
+		show_midrange_freq, store_midrange_freq);
+
+static ssize_t show_midrange_go_maxspeed_load(struct kobject *kobj,
+				     struct attribute *attr, char *buf)
+{
+	return sprintf(buf, "%lu\n", midrange_go_maxspeed_load);
+}
+
+static ssize_t store_midrange_go_maxspeed_load(struct kobject *kobj,
+			struct attribute *attr, const char *buf, size_t count)
+{
+	int ret;
+	unsigned long val;
+
+	ret = strict_strtoul(buf, 0, &val);
+	if (ret < 0)
+		return ret;
+	midrange_go_maxspeed_load = val;
+	return count;
+}
+
+static struct global_attr midrange_go_maxspeed_load_attr = __ATTR(midrange_go_maxspeed_load, 0644,
+		show_midrange_go_maxspeed_load, store_midrange_go_maxspeed_load);
+
 static ssize_t show_boost_factor(struct kobject *kobj,
 				     struct attribute *attr, char *buf)
 {
@@ -588,6 +647,27 @@ static ssize_t store_max_boost(struct kobject *kobj,
 static struct global_attr max_boost_attr = __ATTR(max_boost, 0644,
 		show_max_boost, store_max_boost);
 
+static ssize_t show_midrange_max_boost(struct kobject *kobj,
+				     struct attribute *attr, char *buf)
+{
+	return sprintf(buf, "%lu\n", midrange_max_boost);
+}
+
+static ssize_t store_midrange_max_boost(struct kobject *kobj,
+			struct attribute *attr, const char *buf, size_t count)
+{
+	int ret;
+	unsigned long val;
+
+	ret = strict_strtoul(buf, 0, &val);
+	if (ret < 0)
+		return ret;
+	midrange_max_boost = val;
+	return count;
+}
+
+static struct global_attr midrange_max_boost_attr = __ATTR(midrange_max_boost, 0644,
+		show_midrange_max_boost, store_midrange_max_boost);
 
 static ssize_t show_sustain_load(struct kobject *kobj,
 				     struct attribute *attr, char *buf)
@@ -657,8 +737,11 @@ static struct global_attr timer_rate_attr = __ATTR(timer_rate, 0644,
 
 static struct attribute *interactive_attributes[] = {
 	&go_maxspeed_load_attr.attr,
+	&midrange_freq_attr.attr,
+	&midrange_go_maxspeed_load_attr.attr,
 	&boost_factor_attr.attr,
 	&max_boost_attr.attr,
+	&midrange_max_boost_attr.attr,
 	&io_is_busy_attr.attr,
 	&sustain_load_attr.attr,
 	&min_sample_time_attr.attr,
@@ -787,6 +870,7 @@ static int __init cpufreq_interactive_init(void)
 	struct sched_param param = { .sched_priority = MAX_RT_PRIO-1 };
 
 	go_maxspeed_load = DEFAULT_GO_MAXSPEED_LOAD;
+	midrange_go_maxspeed_load = DEFAULT_MID_RANGE_GO_MAXSPEED_LOAD;
 	min_sample_time = DEFAULT_MIN_SAMPLE_TIME;
 	timer_rate = DEFAULT_TIMER_RATE;
 
