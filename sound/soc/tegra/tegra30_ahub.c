@@ -3,6 +3,7 @@
  *
  * Author: Stephen Warren <swarren@nvidia.com>
  * Copyright (C) 2011 - NVIDIA, Inc.
+ * Copyright (c) 2012, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -297,6 +298,42 @@ int tegra30_ahub_tx_fifo_is_enabled(int i2s_id)
 
 	val = tegra30_apbif_read(TEGRA30_AHUB_I2S_LIVE_STATUS);
 	mask = (TEGRA30_AHUB_I2S_LIVE_STATUS_I2S0_TX_FIFO_ENABLED << (i2s_id*2));
+	val &= mask;
+
+	return val;
+}
+
+int tegra30_ahub_dam_ch0_is_enabled(int dam_id)
+{
+	int val, mask;
+
+	val = tegra30_apbif_read((TEGRA30_AHUB_DAM_LIVE_STATUS) +
+			(dam_id * TEGRA30_AHUB_DAM_LIVE_STATUS_STRIDE));
+	mask = TEGRA30_AHUB_DAM_LIVE_STATUS_RX0_ENABLED;
+	val &= mask;
+
+	return val;
+}
+
+int tegra30_ahub_dam_ch1_is_enabled(int dam_id)
+{
+	int val, mask;
+
+	val = tegra30_apbif_read((TEGRA30_AHUB_DAM_LIVE_STATUS) +
+			(dam_id * TEGRA30_AHUB_DAM_LIVE_STATUS_STRIDE));
+	mask = TEGRA30_AHUB_DAM_LIVE_STATUS_RX1_ENABLED;
+	val &= mask;
+
+	return val;
+}
+
+int tegra30_ahub_dam_tx_is_enabled(int dam_id)
+{
+	int val, mask;
+
+	val = tegra30_apbif_read((TEGRA30_AHUB_DAM_LIVE_STATUS) +
+			(dam_id * TEGRA30_AHUB_DAM_LIVE_STATUS_STRIDE));
+	mask = TEGRA30_AHUB_DAM_LIVE_STATUS_TX_ENABLED;
 	val &= mask;
 
 	return val;
