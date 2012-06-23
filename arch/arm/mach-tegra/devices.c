@@ -1373,25 +1373,14 @@ static struct resource tegra_wdt_resources[] = {
 		.flags	= IORESOURCE_IRQ,
 	},
 };
-#else
-static struct resource tegra_wdt_resources[] = {
-	[0] = {
-		.start	= TEGRA_WDT0_BASE,
-		.end	= TEGRA_WDT0_BASE + TEGRA_WDT0_SIZE - 1,
-		.flags	= IORESOURCE_MEM,
-	},
-	[1] = {
-		.start	= TEGRA_TMR10_BASE,
-		.end	= TEGRA_TMR10_BASE + TEGRA_TMR10_SIZE - 1,
-		.flags	= IORESOURCE_MEM,
-	},
-	[2] = {
-		.start	= INT_WDT_CPU,
-		.end	= INT_WDT_CPU,
-		.flags	= IORESOURCE_IRQ,
-	},
-};
 
+struct platform_device tegra_wdt_device = {
+	.name		= "tegra_wdt",
+	.id		= -1,
+	.num_resources	= ARRAY_SIZE(tegra_wdt_resources),
+	.resource	= tegra_wdt_resources,
+};
+#else
 static struct resource tegra_wdt0_resources[] = {
 	[0] = {
 		.start	= TEGRA_WDT0_BASE,
@@ -1465,13 +1454,6 @@ struct platform_device tegra_wdt2_device = {
 	.resource	= tegra_wdt2_resources,
 };
 #endif
-
-struct platform_device tegra_wdt_device = {
-	.name		= "tegra_wdt",
-	.id		= -1,
-	.num_resources	= ARRAY_SIZE(tegra_wdt_resources),
-	.resource	= tegra_wdt_resources,
-};
 
 static struct resource tegra_pwfm0_resource = {
 	.start	= TEGRA_PWFM0_BASE,

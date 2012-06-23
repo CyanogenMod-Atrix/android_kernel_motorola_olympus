@@ -97,8 +97,9 @@ extern struct platform_device tegra_gart_device;
 #else
 extern struct platform_device tegra_smmu_device;
 #endif
+#if defined(CONFIG_ARCH_TEGRA_2x_SOC)
 extern struct platform_device tegra_wdt_device;
-#if !defined(CONFIG_ARCH_TEGRA_2x_SOC)
+#else
 extern struct platform_device tegra_wdt0_device;
 extern struct platform_device tegra_wdt1_device;
 extern struct platform_device tegra_wdt2_device;
