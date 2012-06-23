@@ -35,6 +35,9 @@
 #include <linux/spinlock.h>
 #include <linux/uaccess.h>
 #include <linux/watchdog.h>
+#ifdef CONFIG_TEGRA_FIQ_DEBUGGER
+#include <mach/irqs.h>
+#endif
 
 /* minimum and maximum watchdog trigger periods, in seconds */
 #define MIN_WDT_PERIOD	5
@@ -53,9 +56,11 @@ struct tegra_wdt {
 	struct notifier_block	notifier;
 	struct resource		*res_src;
 	struct resource		*res_wdt;
+	struct resource		*res_int_base;
 	unsigned long		users;
 	void __iomem		*wdt_source;
 	void __iomem		*wdt_timer;
+	void __iomem		*int_base;
 	int			irq;
 	int			tmrsrc;
 	int			timeout;
@@ -122,6 +127,7 @@ static irqreturn_t tegra_wdt_interrupt(int irq, void *dev_id)
 #define WDT_CFG				(0)
  #define WDT_CFG_PERIOD			(1 << 4)
  #define WDT_CFG_INT_EN			(1 << 12)
+ #define WDT_CFG_FIQ_INT_EN		(1 << 13)
  #define WDT_CFG_SYS_RST_EN		(1 << 14)
  #define WDT_CFG_PMC2CAR_RST_EN		(1 << 15)
 #define WDT_STATUS			(4)
@@ -131,6 +137,7 @@ static irqreturn_t tegra_wdt_interrupt(int irq, void *dev_id)
  #define WDT_CMD_DISABLE_COUNTER	(1 << 1)
 #define WDT_UNLOCK			(0xC)
  #define WDT_UNLOCK_PATTERN		(0xC45A << 0)
+#define ICTLR_IEP_CLASS			0x2C
 #define MAX_NR_CPU_WDT			0x4
 
 struct tegra_wdt *tegra_wdt[MAX_NR_CPU_WDT];
@@ -139,6 +146,19 @@ static inline void tegra_wdt_ping(struct tegra_wdt *wdt)
 {
 	writel(WDT_CMD_START_COUNTER, wdt->wdt_source + WDT_CMD);
 }
+
+#ifdef CONFIG_TEGRA_FIQ_DEBUGGER
+static void tegra_wdt_int_priority(struct tegra_wdt *wdt)
+{
+	unsigned val = 0;
+
+	if (!wdt->int_base)
+		return;
+	val = readl(wdt->int_base + ICTLR_IEP_CLASS);
+	val &= ~(1 << (INT_WDT_CPU & 31));
+	writel(val, wdt->int_base + ICTLR_IEP_CLASS);
+}
+#endif
 
 static void tegra_wdt_enable(struct tegra_wdt *wdt)
 {
@@ -157,6 +177,9 @@ static void tegra_wdt_enable(struct tegra_wdt *wdt)
 	 */
 	val = wdt->tmrsrc | WDT_CFG_PERIOD | /*WDT_CFG_INT_EN |*/
 		/*WDT_CFG_SYS_RST_EN |*/ WDT_CFG_PMC2CAR_RST_EN;
+#ifdef CONFIG_TEGRA_FIQ_DEBUGGER
+	val |= WDT_CFG_FIQ_INT_EN;
+#endif
 	writel(val, wdt->wdt_source + WDT_CFG);
 	writel(WDT_CMD_START_COUNTER, wdt->wdt_source + WDT_CMD);
 }
@@ -307,7 +330,7 @@ static const struct file_operations tegra_wdt_fops = {
 
 static int tegra_wdt_probe(struct platform_device *pdev)
 {
-	struct resource *res_src, *res_wdt, *res_irq;
+	struct resource *res_src, *res_wdt, *res_irq, *res_int_base;
 	struct tegra_wdt *wdt;
 	u32 src;
 	int ret = 0;
@@ -326,6 +349,14 @@ static int tegra_wdt_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "incorrect resources\n");
 		return -ENOENT;
 	}
+
+#ifdef CONFIG_TEGRA_FIQ_DEBUGGER
+	res_int_base = platform_get_resource(pdev, IORESOURCE_MEM, 2);
+	if (!pdev->id && !res_int_base) {
+		dev_err(&pdev->dev, "FIQ_DBG: INT base not defined\n");
+		return -ENOENT;
+	}
+#endif
 
 	if (pdev->id == -1 && !res_irq) {
 		dev_err(&pdev->dev, "incorrect irq\n");
@@ -387,6 +418,24 @@ static int tegra_wdt_probe(struct platform_device *pdev)
 	writel(TIMER_PCR_INTR, wdt->wdt_timer + TIMER_PCR);
 
 	if (res_irq != NULL) {
+#ifdef CONFIG_TEGRA_FIQ_DEBUGGER
+		/* FIQ debugger enables FIQ priority for INT_WDT_CPU.
+		 * But that will disable IRQ on WDT expiration.
+		 * Reset the priority back to IRQ on INT_WDT_CPU so
+		 * that tegra_wdt_interrupt gets its chance to restart the
+		 * counter before expiration.
+		 */
+		res_int_base = request_mem_region(res_int_base->start,
+						  resource_size(res_int_base),
+						  pdev->name);
+		if (!res_int_base)
+			goto fail;
+		wdt->int_base = ioremap(res_int_base->start,
+					resource_size(res_int_base));
+		if (!wdt->int_base)
+			goto fail;
+		tegra_wdt_int_priority(wdt);
+#endif
 		ret = request_irq(res_irq->start, tegra_wdt_interrupt,
 				  IRQF_DISABLED, dev_name(&pdev->dev), wdt);
 		if (ret) {
@@ -398,6 +447,7 @@ static int tegra_wdt_probe(struct platform_device *pdev)
 
 	wdt->res_src = res_src;
 	wdt->res_wdt = res_wdt;
+	wdt->res_int_base = res_int_base;
 	wdt->status = WDT_DISABLED;
 
 	ret = register_reboot_notifier(&wdt->notifier);
@@ -439,10 +489,15 @@ fail:
 		iounmap(wdt->wdt_source);
 	if (wdt->wdt_timer)
 		iounmap(wdt->wdt_timer);
+	if (wdt->int_base)
+		iounmap(wdt->int_base);
 	if (res_src)
 		release_mem_region(res_src->start, resource_size(res_src));
 	if (res_wdt)
 		release_mem_region(res_wdt->start, resource_size(res_wdt));
+	if (res_int_base)
+		release_mem_region(res_int_base->start,
+					resource_size(res_int_base));
 	kfree(wdt);
 	return ret;
 }
@@ -459,8 +514,13 @@ static int tegra_wdt_remove(struct platform_device *pdev)
 		free_irq(wdt->irq, wdt);
 	iounmap(wdt->wdt_source);
 	iounmap(wdt->wdt_timer);
+	if (wdt->int_base)
+		iounmap(wdt->int_base);
 	release_mem_region(wdt->res_src->start, resource_size(wdt->res_src));
 	release_mem_region(wdt->res_wdt->start, resource_size(wdt->res_wdt));
+	if (wdt->res_int_base)
+		release_mem_region(wdt->res_int_base->start,
+					resource_size(wdt->res_int_base));
 	kfree(wdt);
 	platform_set_drvdata(pdev, NULL);
 	return 0;
