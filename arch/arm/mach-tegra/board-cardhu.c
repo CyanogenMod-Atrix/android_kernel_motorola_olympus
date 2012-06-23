@@ -59,6 +59,7 @@
 #include <mach/usb_phy.h>
 #include <mach/thermal.h>
 #include <mach/pci.h>
+#include <mach/tegra_fiq_debugger.h>
 
 #include "board.h"
 #include "clock.h"
@@ -1406,6 +1407,7 @@ static void __init tegra_cardhu_init(void)
 #ifdef CONFIG_TEGRA_WDT_RECOVERY
 	tegra_wdt_recovery_init();
 #endif
+	tegra_serial_debug_init(TEGRA_UARTD_BASE, INT_WDT_CPU, NULL, -1, -1);
 }
 
 static void __init tegra_cardhu_reserve(void)
