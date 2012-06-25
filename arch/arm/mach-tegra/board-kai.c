@@ -113,6 +113,12 @@ static noinline void __init kai_bt_st(void)
 
 static struct resource kai_bluesleep_resources[] = {
 	[0] = {
+		.name = "gpio_host_wake",
+			.start  = TEGRA_GPIO_PU6,
+			.end    = TEGRA_GPIO_PU6,
+			.flags  = IORESOURCE_IO,
+	},
+	[1] = {
 		.name = "host_wake",
 			.start	= TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PU6),
 			.end	= TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PU6),
@@ -121,7 +127,7 @@ static struct resource kai_bluesleep_resources[] = {
 };
 
 static struct platform_device kai_bluesleep_device = {
-	.name		= "tibluesleep",
+	.name		= "bluesleep",
 	.id		= 0,
 	.num_resources	= ARRAY_SIZE(kai_bluesleep_resources),
 	.resource	= kai_bluesleep_resources,
@@ -129,14 +135,6 @@ static struct platform_device kai_bluesleep_device = {
 
 static noinline void __init kai_tegra_setup_tibluesleep(void)
 {
-	int ret;
-
-	ret = gpio_request(TEGRA_GPIO_PU6, "host_wake");
-	if (ret)
-		pr_err("gpio_request failed for gpio: %d\n", TEGRA_GPIO_PU6);
-	else
-		gpio_direction_input(TEGRA_GPIO_PU6);
-
 	platform_device_register(&kai_bluesleep_device);
 }
 
@@ -827,8 +825,8 @@ static void __init tegra_kai_init(void)
 	kai_touch_init();
 	kai_keys_init();
 	kai_panel_init();
-	kai_bt_st();
 	kai_tegra_setup_tibluesleep();
+	kai_bt_st();
 	kai_sensors_init();
 	kai_pins_state_init();
 	kai_emc_init();
