@@ -469,6 +469,15 @@ static const struct driver_info wwan_info = {
 	.manage_power =	cdc_manage_power,
 };
 
+static const struct driver_info rmnet_info = {
+	.description =	"Mobile Broadband Network Device",
+	.flags =	FLAG_RMNET,
+	.bind =		usbnet_cdc_bind,
+	.unbind =	usbnet_cdc_unbind,
+	.status =	usbnet_cdc_status,
+	.manage_power =	cdc_manage_power,
+};
+
 /*-------------------------------------------------------------------------*/
 
 #define HUAWEI_VENDOR_ID	0x12D1
@@ -575,17 +584,17 @@ static const struct usb_device_id	products [] = {
 	.match_flags = USB_DEVICE_ID_MATCH_INT_INFO
 		| USB_DEVICE_ID_MATCH_DEVICE,
 	USB_DEVICE(0x1983, 0x0310),
-	.driver_info = (unsigned long)&wwan_info,
+	.driver_info = (unsigned long)&rmnet_info,
 }, {
 	.match_flags = USB_DEVICE_ID_MATCH_INT_INFO
 		| USB_DEVICE_ID_MATCH_DEVICE,
 	USB_DEVICE(0x1983, 0x0321),
-	.driver_info = (unsigned long)&wwan_info,
+	.driver_info = (unsigned long)&rmnet_info,
 }, {
 	.match_flags = USB_DEVICE_ID_MATCH_INT_INFO
 		| USB_DEVICE_ID_MATCH_DEVICE,
 	USB_DEVICE(0x1983, 0x0327),	/* 5AE */
-	.driver_info = (unsigned long)&wwan_info,
+	.driver_info = (unsigned long)&rmnet_info,
 },
 
 /* Tango module */
@@ -593,7 +602,7 @@ static const struct usb_device_id	products [] = {
 	.match_flags = USB_DEVICE_ID_MATCH_INT_INFO
 		 | USB_DEVICE_ID_MATCH_DEVICE,
 	USB_DEVICE(0x0489,0xE03A),
-	.driver_info = (unsigned long)&wwan_info,
+	.driver_info = (unsigned long)&rmnet_info,
 },
 /*
  * WHITELIST!!!
