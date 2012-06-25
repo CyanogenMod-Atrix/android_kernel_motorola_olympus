@@ -801,11 +801,11 @@ static int tps80031_power_req_config(struct device *parent,
 		struct tps80031_regulator *ri,
 		struct tps80031_regulator_platform_data *tps80031_pdata)
 {
-	int ret;
+	int ret = 0;
 	uint8_t reg_val;
 
 	if (ri->preq_bit < 0)
-		return 0;
+		goto skip_pwr_req_config;
 
 	ret = tps80031_ext_power_req_config(parent, ri->ext_ctrl_flag,
 			ri->preq_bit, ri->state_reg, ri->trans_reg);
@@ -821,6 +821,7 @@ static int tps80031_power_req_config(struct device *parent,
 		return ret;
 	}
 
+skip_pwr_req_config:
 	if (tps80031_pdata->ext_ctrl_flag &
 			(PWR_OFF_ON_SLEEP | PWR_ON_ON_SLEEP)) {
 		reg_val = (ri->trans_reg_cache & ~0xC);
