@@ -213,6 +213,9 @@
 #define PCIE2_RP_PRIV_MISC_CTLR_CLK_CLAMP_ENABLE		1 << 23
 #define PCIE2_RP_PRIV_MISC_TMS_CLK_CLAMP_ENABLE		1 << 31
 
+#define NV_PCIE2_RP_VEND_XP1					0x00000F04
+#define NV_PCIE2_RP_VEND_XP1_LINK_PVT_CTL_L1_ASPM_SUPPORT_ENABLE	1 << 21
+
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
 /*
  * Tegra2 defines 1GB in the AXI address map for PCIe.
@@ -1201,7 +1204,7 @@ retry:
 	return false;
 }
 
-static void tegra_enable_clock_clamp(int index)
+static void tegra_pcie_enable_clock_clamp(int index)
 {
 	unsigned int data;
 
@@ -1211,6 +1214,16 @@ static void tegra_enable_clock_clamp(int index)
 	data |= (PCIE2_RP_PRIV_MISC_CTLR_CLK_CLAMP_ENABLE) |
 		(PCIE2_RP_PRIV_MISC_TMS_CLK_CLAMP_ENABLE);
 	rp_writel(data, NV_PCIE2_RP_PRIV_MISC, index);
+}
+
+static void tegra_pcie_enable_aspm_l1_support(int index)
+{
+	unsigned int data;
+
+	/* Enable ASPM - L1 state support by default */
+	data = rp_readl(NV_PCIE2_RP_VEND_XP1, index);
+	data |= (NV_PCIE2_RP_VEND_XP1_LINK_PVT_CTL_L1_ASPM_SUPPORT_ENABLE);
+	rp_writel(data, NV_PCIE2_RP_VEND_XP1, index);
 }
 
 static void tegra_pcie_add_port(int index, u32 offset, u32 reset_reg)
@@ -1228,7 +1241,8 @@ static void tegra_pcie_add_port(int index, u32 offset, u32 reset_reg)
 		printk(KERN_INFO "PCIE: port %d: link down, ignoring\n", index);
 		return;
 	}
-	tegra_enable_clock_clamp(index);
+	tegra_pcie_enable_clock_clamp(index);
+	tegra_pcie_enable_aspm_l1_support(index);
 	tegra_pcie.num_ports++;
 	pp->index = index;
 	memset(pp->res, 0, sizeof(pp->res));
