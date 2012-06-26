@@ -59,7 +59,6 @@ static struct platform_tegra_pwm_backlight_data whistler_disp1_backlight_data = 
 	.max_brightness	= 256,
 	.dft_brightness	= 77,
 	.gpio_conf_to_sfio	= TEGRA_GPIO_PW1,
-	.switch_to_sfio		= &tegra_gpio_disable,
 	.period	= 0x1F,
 	.clk_div = 3,
 	.clk_select = 2,
