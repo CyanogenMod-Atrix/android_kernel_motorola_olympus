@@ -499,6 +499,10 @@ static int aes_set_key(struct tegra_aes_engine *eng, int slot_num)
 		memset(dd->bsev.ivkey_base, 0, AES_HW_KEY_TABLE_LENGTH_BYTES);
 		memcpy(dd->bsev.ivkey_base, eng->ctx->key, eng->ctx->keylen);
 
+		/* sync the buffer for device */
+		dma_sync_single_for_device(dd->dev, dd->bsev.ivkey_phys_base,
+				eng->ctx->keylen, DMA_TO_DEVICE);
+
 		/* copy the key table from sdram to vram */
 		cmdq[0] = 0;
 		cmdq[0] = UCQOPCODE_MEMDMAVD << ICQBITSHIFT_OPCODE |
@@ -622,12 +626,20 @@ static int tegra_aes_handle_req(struct tegra_aes_engine *eng)
 		*/
 		memcpy(eng->buf_in, (u8 *)req->info, AES_BLOCK_SIZE);
 
+		/* sync the buffer for device  */
+		dma_sync_single_for_device(dd->dev, eng->dma_buf_in,
+				AES_HW_DMA_BUFFER_SIZE_BYTES, DMA_TO_DEVICE);
+
 		ret = aes_start_crypt(eng, (u32)eng->dma_buf_in,
 			(u32)eng->dma_buf_out, 1, FLAGS_CBC, false);
 		if (ret < 0) {
 			dev_err(dd->dev, "aes_start_crypt fail(%d)\n", ret);
 			goto out;
 		}
+
+		/* sync the buffer for cpu  */
+		dma_sync_single_for_cpu(dd->dev, eng->dma_buf_out,
+				AES_HW_DMA_BUFFER_SIZE_BYTES, DMA_FROM_DEVICE);
 	}
 
 	while (total) {
@@ -960,6 +972,10 @@ static int tegra_aes_get_random(struct crypto_rng *tfm, u8 *rdata,
 	memset(eng->buf_in, 0, AES_BLOCK_SIZE);
 	memcpy(eng->buf_in, dt, DEFAULT_RNG_BLK_SZ);
 
+	/* sync the buffer for device */
+	dma_sync_single_for_device(dd->dev, eng->dma_buf_in,
+			AES_HW_DMA_BUFFER_SIZE_BYTES, DMA_TO_DEVICE);
+
 	ret = aes_start_crypt(eng, (u32)eng->dma_buf_in, (u32)eng->dma_buf_out,
 		1, FLAGS_ENCRYPT | FLAGS_RNG, true);
 	if (ret < 0) {
@@ -967,6 +983,10 @@ static int tegra_aes_get_random(struct crypto_rng *tfm, u8 *rdata,
 		dlen = ret;
 		goto out;
 	}
+	/* sync the buffer for cpu */
+	dma_sync_single_for_cpu(dd->dev, eng->dma_buf_out,
+			AES_HW_DMA_BUFFER_SIZE_BYTES, DMA_FROM_DEVICE);
+
 	memcpy(dest, eng->buf_out, dlen);
 
 	/* update the DT */
@@ -1054,12 +1074,20 @@ static int tegra_aes_rng_reset(struct crypto_rng *tfm, u8 *seed,
 	/* set seed to the aes hw slot */
 	memset(eng->buf_in, 0, AES_BLOCK_SIZE);
 	memcpy(eng->buf_in, seed, DEFAULT_RNG_BLK_SZ);
+
+	/* sync the buffer for device */
+	dma_sync_single_for_device(dd->dev, eng->dma_buf_in,
+			AES_HW_DMA_BUFFER_SIZE_BYTES, DMA_TO_DEVICE);
+
 	ret = aes_start_crypt(eng, (u32)eng->dma_buf_in,
 	  (u32)eng->dma_buf_out, 1, FLAGS_CBC, false);
 	if (ret < 0) {
 		dev_err(dd->dev, "aes_start_crypt fail(%d)\n", ret);
 		goto out;
 	}
+	/* sync the buffer for cpu */
+	dma_sync_single_for_cpu(dd->dev, eng->dma_buf_out,
+			AES_HW_DMA_BUFFER_SIZE_BYTES, DMA_FROM_DEVICE);
 
 	if (slen >= (2 * DEFAULT_RNG_BLK_SZ + AES_KEYSIZE_128)) {
 		dt = seed + DEFAULT_RNG_BLK_SZ + AES_KEYSIZE_128;
