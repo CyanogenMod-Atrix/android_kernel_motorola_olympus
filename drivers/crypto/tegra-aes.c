@@ -1280,14 +1280,14 @@ static int tegra_aes_probe(struct platform_device *pdev)
 	 * - key schedule
 	 */
 	dd->bsea.ivkey_base = NULL;
-	dd->bsev.ivkey_base = dma_alloc_coherent(dev, AES_MAX_KEY_SIZE,
+	dd->bsev.ivkey_base = dma_alloc_coherent(dev, SZ_512,
 		&dd->bsev.ivkey_phys_base, GFP_KERNEL);
 	if (!dd->bsev.ivkey_base) {
 		dev_err(dev, "can not allocate iv/key buffer for BSEV\n");
 		err = -ENOMEM;
 		goto out;
 	}
-	memset(dd->bsev.ivkey_base, 0, AES_MAX_KEY_SIZE);
+	memset(dd->bsev.ivkey_base, 0, SZ_512);
 
 	dd->bsev.buf_in = dma_alloc_coherent(dev, AES_HW_DMA_BUFFER_SIZE_BYTES,
 		&dd->bsev.dma_buf_in, GFP_KERNEL);
