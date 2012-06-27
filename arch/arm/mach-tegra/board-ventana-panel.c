@@ -282,7 +282,7 @@ static struct tegra_dc_platform_data ventana_disp1_pdata = {
 };
 
 static struct tegra_dc_platform_data ventana_disp2_pdata = {
-	.flags		= 0,
+	.flags		= TEGRA_DC_FLAG_ENABLED,
 	.default_out	= &ventana_disp2_out,
 	.fb		= &ventana_hdmi_fb_data,
 };
