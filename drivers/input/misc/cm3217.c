@@ -384,20 +384,8 @@ static int lightsensor_enable(struct cm3217_info *lpi)
 	if (ret < 0)
 		pr_err("[LS][CM3217 error]%s: set auto light sensor fail\n",
 		       __func__);
-	else {
-		msleep(50);	/* wait for 50 ms for the first report adc */
 
-		/* report an invalid value first to ensure we
-		 * trigger an event when adc_level is zero.
-		 */
-		input_report_abs(lpi->ls_input_dev, ABS_MISC, -1);
-		input_sync(lpi->ls_input_dev);
-		/* resume, IOCTL and DEVICE_ATTR */
-		report_lsensor_input_event(lpi, 1);
-		lpi->als_enable = 1;
-	}
-
-	queue_delayed_work(lpi->lp_wq, &report_work, lpi->polling_delay);
+	queue_work(lpi->lp_wq, &report_work);
 	lpi->als_enable = 1;
 
 	mutex_unlock(&als_enable_mutex);
