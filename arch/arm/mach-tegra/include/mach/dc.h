@@ -25,6 +25,7 @@
 #include <linux/pm.h>
 #include <linux/types.h>
 #include <drm/drm_fixed.h>
+#include <linux/notifier.h>
 
 #define TEGRA_MAX_DC		2
 #define DC_N_WINDOWS		3
@@ -583,5 +584,9 @@ struct tegra_dc_edid {
 };
 struct tegra_dc_edid *tegra_dc_get_edid(struct tegra_dc *dc);
 void tegra_dc_put_edid(struct tegra_dc_edid *edid);
+
+int tegra_dc_register_flip_notifier(struct notifier_block *nb);
+int tegra_dc_unregister_flip_notifier(struct notifier_block *nb);
+int tegra_dc_get_panel_sync_rate(void);
 
 #endif
