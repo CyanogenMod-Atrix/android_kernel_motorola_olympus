@@ -517,11 +517,18 @@ static struct spi_clk_parent spi_parent_clk[] = {
 #endif
 };
 
-static struct tegra_spi_platform_data kai_spi_pdata = {
+static struct tegra_spi_platform_data kai_spi4_pdata = {
 	.is_dma_based		= true,
 	.max_dma_buffer		= (16 * 1024),
 	.is_clkon_always	= false,
 	.max_rate		= 100000000,
+};
+
+static struct tegra_spi_platform_data kai_spi1_pdata = {
+		.is_dma_based           = true,
+		.max_dma_buffer         = (128),
+		.is_clkon_always        = false,
+		.max_rate               = 100000000,
 };
 
 static void __init kai_spi_init(void)
@@ -539,9 +546,13 @@ static void __init kai_spi_init(void)
 		spi_parent_clk[i].parent_clk = c;
 		spi_parent_clk[i].fixed_clk_rate = clk_get_rate(c);
 	}
-	kai_spi_pdata.parent_clk_list = spi_parent_clk;
-	kai_spi_pdata.parent_clk_count = ARRAY_SIZE(spi_parent_clk);
-	tegra_spi_device4.dev.platform_data = &kai_spi_pdata;
+	kai_spi4_pdata.parent_clk_list = spi_parent_clk;
+	kai_spi4_pdata.parent_clk_count = ARRAY_SIZE(spi_parent_clk);
+	tegra_spi_device4.dev.platform_data = &kai_spi4_pdata;
+
+	kai_spi1_pdata.parent_clk_list = spi_parent_clk;
+	kai_spi1_pdata.parent_clk_count = ARRAY_SIZE(spi_parent_clk);
+	tegra_spi_device1.dev.platform_data = &kai_spi1_pdata;
 	platform_add_devices(kai_spi_devices,
 				ARRAY_SIZE(kai_spi_devices));
 
