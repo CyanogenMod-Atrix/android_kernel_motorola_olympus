@@ -57,6 +57,8 @@ struct max98088_priv {
        unsigned int extmic_mode;
        int irq;
        struct snd_soc_jack *headset_jack;
+       unsigned int jk_sns;
+       int jack_report;
 };
 
 static const u8 max98088_reg[M98088_REG_CNT] = {
@@ -1968,19 +1970,28 @@ static void max98088_handle_pdata(struct snd_soc_codec *codec)
 int max98088_report_jack(struct snd_soc_codec *codec)
 {
        struct max98088_priv *max98088 = snd_soc_codec_get_drvdata(codec);
-       unsigned int value;
-       int jack_report = 0;
+       unsigned int jk_sns_curr;
+       int jack_report_curr = 0;
 
        /* Read the Jack Status Register*/
-       value = snd_soc_read(codec, M98088_REG_02_JACK_STAUS);
+       jk_sns_curr = (snd_soc_read(codec, M98088_REG_02_JACK_STAUS))
+                                & (M98088_JKSNS_7 | M98088_JKSNS_6);
 
-       if ((value & M98088_JKSNS_7) == 0)
-               jack_report |= SND_JACK_HEADPHONE;
-       if (value & M98088_JKSNS_6)
-               jack_report |= SND_JACK_MICROPHONE;
+       if (max98088->jk_sns == M98088_NONE && jk_sns_curr == M98088_HP)
+              jack_report_curr = SND_JACK_HEADPHONE;
+       else if (max98088->jk_sns == M98088_NONE && jk_sns_curr == M98088_HS)
+              jack_report_curr = SND_JACK_HEADSET;
+       else if ((max98088->jk_sns == M98088_HP || max98088->jk_sns == M98088_HS)
+              && jk_sns_curr == M98088_NONE)
+              jack_report_curr = 0;
+       else
+              jack_report_curr = max98088->jack_report;
+
+       max98088->jack_report = jack_report_curr;
+       max98088->jk_sns = jk_sns_curr;
 
        snd_soc_jack_report(max98088->headset_jack,
-               jack_report, SND_JACK_HEADSET);
+               jack_report_curr, SND_JACK_HEADSET);
 
        return 0;
 }
@@ -2001,6 +2012,8 @@ int max98088_headset_detect(struct snd_soc_codec *codec,
 {
        struct max98088_priv *max98088 = snd_soc_codec_get_drvdata(codec);
        max98088->headset_jack = jack;
+       max98088->jk_sns = M98088_NONE;
+       max98088->jack_report = 0;
 
        if (max98088->irq) {
                if (type & SND_JACK_HEADSET) {

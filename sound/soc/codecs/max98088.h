@@ -222,6 +222,11 @@
 #define M98088_BYTE1(w) ((w >> 8) & 0xff)
 #define M98088_BYTE0(w) (w & 0xff)
 
+/* HeadPhone and HeadSet detection Bitmasks */
+#define M98088_HP         0
+#define M98088_HS         M98088_JKSNS_6
+#define M98088_NONE   (M98088_JKSNS_7 | M98088_JKSNS_6)
+
 int max98088_headset_detect(struct snd_soc_codec *codec,
         struct snd_soc_jack *jack, enum snd_jack_types type);
 
