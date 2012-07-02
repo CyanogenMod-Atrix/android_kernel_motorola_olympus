@@ -885,7 +885,7 @@ static ssize_t fuse_show(struct kobject *kobj, struct kobj_attribute *attr, char
 {
 	enum fuse_io_param param = fuse_name_to_param(attr->attr.name);
 	u32 data[8];
-	char str[8];
+	char str[9]; /* extra byte for null character */
 	int ret, i;
 
 	if ((param == -1) || (param == -ENODATA)) {
