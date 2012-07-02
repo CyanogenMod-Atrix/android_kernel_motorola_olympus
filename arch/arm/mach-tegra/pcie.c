@@ -1333,11 +1333,28 @@ static int tegra_pcie_suspend(struct device *dev)
 	return tegra_pcie_power_off();
 }
 
+static void tegra_pcie_set_irq(struct pci_bus *bus)
+{
+	struct pci_bus *b;
+	struct pci_dev *pdev;
+
+	list_for_each_entry(pdev, &bus->devices, bus_list) {
+		b = pdev->subordinate;
+		if (!b) {
+			pdev->irq = tegra_pcie_map_irq(pdev,0,0);
+			pci_write_config_byte(pdev, PCI_INTERRUPT_LINE, pdev->irq);
+			continue;
+		}
+		tegra_pcie_set_irq(b);
+		pdev->irq = tegra_pcie_map_irq(pdev,0,0);
+		pci_write_config_byte(pdev, PCI_INTERRUPT_LINE, pdev->irq);
+	}
+}
+
 static int tegra_pcie_resume(struct device *dev)
 {
 	int ret = 0;
-	struct pci_bus *b = NULL;
-	struct pci_dev *pdev = NULL;
+	struct pci_bus *bus = NULL;
 	int port, rp_offset = 0;
 	int ctrl_offset = AFI_PEX0_CTRL;
 
@@ -1361,22 +1378,23 @@ static int tegra_pcie_resume(struct device *dev)
 	}
 
 	tegra_pcie_hotplug_init();
-	while ((b = pci_find_next_bus(b)) != NULL)
-		pci_rescan_bus(b);
+	while ((bus = pci_find_next_bus(bus)) != NULL) {
+		struct pci_dev *dev;
 
-	/* Update irq line register since it is not done while scan */
-	for_each_pci_dev(pdev) {
-		pdev->irq = tegra_pcie_map_irq(pdev,0,0);
-		pci_write_config_byte(pdev, PCI_INTERRUPT_LINE, pdev->irq);
+		pci_scan_child_bus(bus);
+
+		list_for_each_entry(dev, &bus->devices, bus_list)
+		if (dev->hdr_type == PCI_HEADER_TYPE_BRIDGE ||
+			dev->hdr_type == PCI_HEADER_TYPE_CARDBUS)
+			if (dev->subordinate)
+				pci_bus_size_bridges(dev->subordinate);
+
+		/* set irq for all devices */
+		tegra_pcie_set_irq(bus);
+		pci_bus_assign_resources(bus);
+		pci_enable_bridges(bus);
+		pci_bus_add_devices(bus);
 	}
-
-	/* probe the devices again after having correct value of irq as above */
-	pdev = NULL;
-	for_each_pci_dev(pdev)
-		pci_stop_bus_device(pdev);
-	b = NULL;
-	while ((b = pci_find_next_bus(b)) != NULL)
-		pci_bus_add_devices(b);
 
 	return ret;
 }
