@@ -3,7 +3,7 @@
  *
  * Battery charger driver for smb349 from summit microelectronics
  *
- * Copyright (c) 2012, NVIDIA Corporation.
+ * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -350,39 +350,53 @@ int smb349_battery_online(void)
 		return 1;
 }
 
-static void smb349_otg_status(enum usb_otg_state to, enum usb_otg_state from, void *data)
+static int smb349_enable_otg(struct regulator_dev *otg_rdev)
 {
 	struct i2c_client *client = charger->client;
 	int ret;
 
-	if ((from == OTG_STATE_A_SUSPEND) && (to == OTG_STATE_A_HOST)) {
+	/* configure charger */
+	ret = smb349_configure_charger(client, 0);
+	if (ret < 0)
+		goto error;
+	/* ENABLE OTG */
+	ret = smb349_configure_otg(client, 1);
+	if (ret < 0)
+		goto error;
 
-		/* configure charger */
-		ret = smb349_configure_charger(client, 0);
-		if (ret < 0)
-			dev_err(&client->dev, "%s() error in configuring"
-				"otg..\n", __func__);
+	charger->is_otg_enabled = 1;
+	return 0;
+error:
+	dev_err(&client->dev, "%s() error in enabling"
+			"otg..\n", __func__);
+	return ret;
+}
 
-		/* ENABLE OTG */
-		ret = smb349_configure_otg(client, 1);
-		if (ret < 0)
-			dev_err(&client->dev, "%s() error in configuring"
-				"otg..\n", __func__);
+static int smb349_disable_otg(struct regulator_dev *otg_rdev)
+{
+	struct i2c_client *client = charger->client;
+	int ret;
 
-	} else if ((from == OTG_STATE_A_HOST) && (to == OTG_STATE_A_SUSPEND)) {
+	/* Disable OTG */
+	ret = smb349_configure_otg(client, 0);
+	if (ret < 0)
+		goto error;
+	/* configure charger */
+	ret = smb349_configure_charger(client, 1);
+	if (ret < 0)
+		goto error;
 
-		/* Disable OTG */
-		ret = smb349_configure_otg(client, 0);
-		if (ret < 0)
-			dev_err(&client->dev, "%s() error in configuring"
-				"otg..\n", __func__);
+	charger->is_otg_enabled = 0;
+	return 0;
+error:
+	dev_err(&client->dev, "%s() error in disabling"
+			"otg..\n", __func__);
+	return ret;
+}
 
-		/* configure charger */
-		ret = smb349_configure_charger(client, 1);
-		if (ret < 0)
-			dev_err(&client->dev, "%s() error in configuring"
-				"otg..\n", __func__);
-	}
+static int smb349_is_otg_enabled(struct regulator_dev *otg_rdev)
+{
+	return charger->is_otg_enabled;
 }
 
 static int smb349_enable_charging(struct regulator_dev *rdev,
@@ -392,24 +406,8 @@ static int smb349_enable_charging(struct regulator_dev *rdev,
 	int ret;
 
 	if (!max_uA) {
-		/* Wait for SMB349 to reload OTP*/
-		msleep(50);
-		ret =  smb349_read(client, SMB349_STS_REG_D);
-		if (ret < 0) {
-			dev_err(&client->dev, "%s(): Failed in reading register"
-				"0x%02x\n", __func__, SMB349_STS_REG_D);
-		} else if (ret == 0) {
-
-			charger->state = stopped;
-			/* Disable charger */
-			ret = smb349_configure_charger(client, 0);
-			if (ret < 0) {
-				dev_err(&client->dev, "%s() error in configuring"
-					"charger..\n", __func__);
-				return ret;
-			}
-			charger->chrg_type = NONE;
-		}
+		charger->state = stopped;
+		charger->chrg_type = NONE;
 	} else {
 		/* Wait for SMB349 to reload OTP setting and detect type*/
 		msleep(500);
@@ -443,6 +441,12 @@ static int smb349_enable_charging(struct regulator_dev *rdev,
 
 static struct regulator_ops smb349_tegra_regulator_ops = {
 	.set_current_limit = smb349_enable_charging,
+};
+
+static struct regulator_ops smb349_tegra_otg_regulator_ops = {
+	.enable = smb349_enable_otg,
+	.disable = smb349_disable_otg,
+	.is_enabled = smb349_is_otg_enabled,
 };
 
 #if defined(CONFIG_DEBUG_FS)
@@ -561,6 +565,8 @@ static int __devinit smb349_probe(struct i2c_client *client,
 		goto regulator_error;
 	}
 
+	charger->is_otg_enabled = 0;
+
 	charger->reg_desc.name  = "vbus_charger";
 	charger->reg_desc.ops   = &smb349_tegra_regulator_ops;
 	charger->reg_desc.type  = REGULATOR_CURRENT;
@@ -600,6 +606,41 @@ static int __devinit smb349_probe(struct i2c_client *client,
 		goto regulator_error;
 	}
 
+	charger->otg_reg_desc.name  = "vbus_otg";
+	charger->otg_reg_desc.ops   = &smb349_tegra_otg_regulator_ops;
+	charger->otg_reg_desc.type  = REGULATOR_CURRENT;
+	charger->otg_reg_desc.id    = pdata->otg_regulator_id;
+	charger->otg_reg_desc.type  = REGULATOR_CURRENT;
+	charger->otg_reg_desc.owner = THIS_MODULE;
+
+	charger->otg_reg_init_data.supply_regulator         = NULL;
+	charger->otg_reg_init_data.num_consumer_supplies    =
+				       pdata->num_otg_consumer_supplies;
+	charger->otg_reg_init_data.regulator_init           = NULL;
+	charger->otg_reg_init_data.consumer_supplies        =
+				       pdata->otg_consumer_supplies;
+	charger->otg_reg_init_data.driver_data              = charger;
+	charger->otg_reg_init_data.constraints.name         = "vbus_otg";
+	charger->otg_reg_init_data.constraints.min_uA       = 0;
+	charger->otg_reg_init_data.constraints.max_uA       = 500000;
+
+	charger->otg_reg_init_data.constraints.valid_modes_mask =
+					REGULATOR_MODE_NORMAL |
+					REGULATOR_MODE_STANDBY;
+
+	charger->otg_reg_init_data.constraints.valid_ops_mask =
+					REGULATOR_CHANGE_MODE |
+					REGULATOR_CHANGE_STATUS |
+					REGULATOR_CHANGE_CURRENT;
+
+	charger->otg_rdev = regulator_register(&charger->otg_reg_desc, charger->dev,
+					&charger->otg_reg_init_data, charger);
+	if (IS_ERR(charger->otg_rdev)) {
+		dev_err(&client->dev, "failed to register %s\n",
+				charger->otg_reg_desc.name);
+		ret = PTR_ERR(charger->otg_rdev);
+		goto otg_regulator_error;
+	}
 
 	/* disable OTG */
 	ret = smb349_configure_otg(client, 0);
@@ -632,13 +673,11 @@ static int __devinit smb349_probe(struct i2c_client *client,
 		}
 	}
 
-	ret = register_otg_callback(smb349_otg_status, charger);
-	if (ret < 0)
-		goto error;
-
 	return 0;
 error:
 	smb349_debugfs_exit(client);
+	regulator_unregister(charger->otg_rdev);
+otg_regulator_error:
 	regulator_unregister(charger->rdev);
 regulator_error:
 	kfree(charger);
@@ -652,6 +691,7 @@ static int __devexit smb349_remove(struct i2c_client *client)
 
 	smb349_debugfs_exit(client);
 	regulator_unregister(charger->rdev);
+	regulator_unregister(charger->otg_rdev);
 	kfree(charger);
 
 	return 0;

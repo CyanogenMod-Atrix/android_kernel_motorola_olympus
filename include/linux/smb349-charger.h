@@ -3,7 +3,7 @@
  *
  * Battery charger driver interface for Summit SMB349
  *
- * Copyright (C) 2012 NVIDIA Corporation
+ * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -35,6 +35,9 @@ struct smb349_charger_platform_data {
 	int charging_term_current_mA;
 	int num_consumer_supplies;
 	struct regulator_consumer_supply *consumer_supplies;
+	int otg_regulator_id;
+	int num_otg_consumer_supplies;
+	struct regulator_consumer_supply *otg_consumer_supplies;
 };
 
 enum charging_states {
@@ -61,20 +64,21 @@ struct smb349_charger {
 	enum charger_type chrg_type;
 	charging_callback_t	charger_cb;
 
+	int is_otg_enabled;
 	struct regulator_dev    *rdev;
 	struct regulator_desc   reg_desc;
 	struct regulator_init_data      reg_init_data;
+	struct regulator_dev    *otg_rdev;
+	struct regulator_desc   otg_reg_desc;
+	struct regulator_init_data      otg_reg_init_data;
 };
 
 int smb349_battery_online(void);
-typedef void (*callback_t)(enum usb_otg_state to,
-		enum usb_otg_state from, void *args);
 /*
  * Register callback function for the client.
  * Used by fuel-gauge driver to get battery charging properties.
  */
 extern int register_callback(charging_callback_t cb, void *args);
-extern int register_otg_callback(callback_t cb, void *args);
 extern int update_charger_status(void);
 
 #endif /*__LINUX_SMB349_CHARGER_H */
