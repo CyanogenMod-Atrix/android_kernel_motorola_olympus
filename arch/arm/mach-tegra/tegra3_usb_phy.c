@@ -643,12 +643,6 @@ static void utmip_setup_pmc_wake_detect(struct tegra_usb_phy *phy)
 	val |= UTMIP_LINEVAL_WALK_EN(inst);
 	writel(val, pmc_base + PMC_SLEEPWALK_CFG);
 
-	/* Clear the walk pointers and wake alarm */
-	val = readl(pmc_base + PMC_TRIGGERS);
-	val |= UTMIP_CLR_WAKE_ALARM(inst) | UTMIP_CLR_WALK_PTR(inst);
-	writel(val, pmc_base + PMC_TRIGGERS);
-
-
 	/* Capture FS/LS pad configurations */
 	pmc_pad_cfg_val = readl(pmc_base + PMC_PAD_CFG);
 	val = readl(pmc_base + PMC_TRIGGERS);
