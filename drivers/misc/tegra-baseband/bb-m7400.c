@@ -108,27 +108,26 @@ static void m7400_apdown_handshake(void)
 	gpio_set_value(gpio_awr, 0);
 }
 
-static int m7400_l2_suspend(void)
+static void m7400_l2_suspend(void)
 {
 	/* Gets called for two cases :
 		a) Port suspend.
 		b) Bus suspend. */
 	if (modem_status == BBSTATE_L2)
-		return 0;
+		return;
 
 	/* Post bus suspend: Drive ARR low. */
 	gpio_set_value(gpio_arr, 0);
 	modem_status = BBSTATE_L2;
-	return 0;
 }
 
-static int m7400_l2_resume(void)
+static void m7400_l2_resume(void)
 {
 	/* Gets called for two cases :
 		a) L2 resume.
 		b) bus resume phase of L3 resume. */
 	if (modem_status == BBSTATE_L0)
-		return 0;
+		return;
 
 	/* Pre bus resume: Drive ARR high. */
 	gpio_set_value(gpio_arr, 1);
@@ -138,10 +137,9 @@ static int m7400_l2_resume(void)
 	if (gpio_wait_timeout(gpio_cwr, 1, 10) != 0) {
 		pr_info("%s: Error: timeout waiting for modem ack.\n",
 						__func__);
-		return -1;
+		return;
 	}
 	modem_status = BBSTATE_L0;
-	return 0;
 }
 
 static void m7400_l3_suspend(void)
@@ -197,7 +195,7 @@ static void m7400_ehci_customize(struct platform_device *pdev)
 {
 	struct tegra_usb_platform_data *ehci_pdata;
 
-	ehci_pdata = (struct usb_platform_data *)
+	ehci_pdata = (struct tegra_usb_platform_data *)
 			pdev->dev.platform_data;
 
 	/* Register PHY callbacks */
