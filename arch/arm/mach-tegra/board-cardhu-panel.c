@@ -43,7 +43,8 @@
 #include "gpio-names.h"
 #include "tegra3_host1x_devices.h"
 
-#define DC_CTRL_MODE	TEGRA_DC_OUT_ONE_SHOT_MODE
+#define DC_CTRL_MODE	(TEGRA_DC_OUT_ONE_SHOT_MODE | \
+			 TEGRA_DC_OUT_ONE_SHOT_LP_MODE)
 
 #define AVDD_LCD PMU_TCA6416_GPIO_PORT17
 #define DSI_PANEL_RESET 1
