@@ -448,7 +448,8 @@ static int lightsensor_release(struct inode *inode, struct file *file)
 static long lightsensor_ioctl(struct file *file, unsigned int cmd,
 			      unsigned long arg)
 {
-	int rc, val;
+	int rc = 0;
+	int val;
 	struct cm3217_info *lpi = lp_info;
 	unsigned long delay;
 
