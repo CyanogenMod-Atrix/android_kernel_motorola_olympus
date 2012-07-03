@@ -341,7 +341,6 @@ int __init whistler_panel_init(void)
 	int err;
 	struct resource __maybe_unused *res;
 
-	tegra_gpio_enable(whistler_hdmi_hpd);
 	gpio_request(whistler_hdmi_hpd, "hdmi_hpd");
 	gpio_direction_input(whistler_hdmi_hpd);
 

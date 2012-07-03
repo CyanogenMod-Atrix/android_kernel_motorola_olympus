@@ -244,10 +244,6 @@ static int __init whistler_wifi_init(void)
 	gpio_request(WHISTLER_WLAN_RST, "wlan_rst");
 	gpio_request(WHISTLER_WLAN_WOW, "bcmsdh_sdmmc");
 
-	tegra_gpio_enable(WHISTLER_WLAN_PWR);
-	tegra_gpio_enable(WHISTLER_WLAN_RST);
-	tegra_gpio_enable(WHISTLER_WLAN_WOW);
-
 	gpio_direction_output(WHISTLER_WLAN_PWR, 0);
 	gpio_direction_output(WHISTLER_WLAN_RST, 0);
 	gpio_direction_input(WHISTLER_WLAN_WOW);
@@ -257,8 +253,6 @@ static int __init whistler_wifi_init(void)
 }
 int __init whistler_sdhci_init(void)
 {
-	tegra_gpio_enable(WHISTLER_EXT_SDCARD_DETECT);
-
 	platform_device_register(&tegra_sdhci_device3);
 	platform_device_register(&tegra_sdhci_device2);
 	platform_device_register(&tegra_sdhci_device1);
