@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/include/mach/tegra_usb_phy.h
  *
- * Copyright (c) 2011-2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -89,7 +89,8 @@ struct tegra_usb_phy {
 	void __iomem *regs;
 	int inst;
 	bool phy_clk_on;
-	bool ctrl_clk_on; /* used only for pmu irq */
+	bool ctrl_clk_on;
+	bool vdd_reg_on;
 	bool phy_power_on;
 	bool remote_wakeup;
 	bool hw_accessible;
