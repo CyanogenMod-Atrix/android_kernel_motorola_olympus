@@ -427,6 +427,17 @@ config USB_HOTPLUG
 	bool "Enabling the USB hotplug"
 	default n
 
+config TEGRA_GADGET_BOOST_CPU_FREQ
+	int "Boost cpu frequency for tegra usb gadget (0-1300 mhz)"
+	range 0 1300
+	default 0
+	help
+	  Devices need to boost frequency of CPU when they are connected
+	  to host pc through usb cable for better performance. This value
+	  is the amount of the frequency (in mhz) to be boosted. If it is
+	  zero boosting frequency will not be enabled. This value will be
+	  used only by usb gadget driver.
+
 config TEGRA_DYNAMIC_PWRDET
 	bool "Enable dynamic activation of IO level auto-detection"
 	depends on TEGRA_SILICON_PLATFORM
