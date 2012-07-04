@@ -104,7 +104,7 @@ static int tegra_thermal_zone_bind(struct thermal_zone_device *thz,
 
 #ifdef CONFIG_TEGRA_SKIN_THROTTLE
 	if ((bthrot->id == BALANCED_THROTTLE_ID_SKIN) &&
-		(device->id == therm->throttle_edp_device_id))
+		(device->id == therm->skin_device_id))
 		return thermal_zone_bind_cooling_device(thz, 0, cdevice);
 #endif
 
@@ -288,15 +288,25 @@ static void tegra_thermal_alert_unlocked(void *data)
 #endif
 }
 
+#ifdef CONFIG_TEGRA_THERMAL_THROTTLE
 /* Make sure this function remains stateless */
-void tegra_thermal_alert(void *data)
+static void tegra_thermal_alert(void *data)
 {
 	mutex_lock(&tegra_therm_mutex);
 	tegra_thermal_alert_unlocked(data);
 	mutex_unlock(&tegra_therm_mutex);
 }
+#endif
 
 #ifdef CONFIG_TEGRA_SKIN_THROTTLE
+static void tegra_skin_thermal_alert(void *data)
+{
+	struct tegra_thermal_device *dev = data;
+
+	if (!dev->thz->passive)
+		thermal_zone_device_update(dev->thz);
+}
+
 static int tegra_skin_device_register(struct tegra_thermal_device *device)
 {
 	int i;
@@ -410,8 +420,8 @@ int tegra_thermal_device_register(struct tegra_thermal_device *device)
 	if (device->id == therm->skin_device_id) {
 		if (create_thz)
 			device->set_alert(device->data,
-				(void (*)(void *))thermal_zone_device_update,
-				thz);
+				tegra_skin_thermal_alert,
+				device);
 		device->set_limits(device->data, 0, therm->temp_throttle_skin);
 	}
 #endif
