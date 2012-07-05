@@ -839,6 +839,7 @@ FIXED_REG_OD(17, en_vddio_vid_oc,	en_vddio_vid_oc,	FIXED_SUPPLY(en_5v0), 		0,   
 	ADD_FIXED_REG(en_3v3_pex_hvdd_pm269),	\
 	ADD_FIXED_REG(en_1v8_cam),		\
 	ADD_FIXED_REG(dis_5v_switch_e118x),	\
+	ADD_FIXED_REG(en_vbrtr),		\
 	ADD_FIXED_REG(en_usb1_vbus_oc_e118x),	\
 	ADD_FIXED_REG(en_usb3_vbus_oc_e118x),	\
 	ADD_FIXED_REG(en_vddio_vid_oc_pm269),
