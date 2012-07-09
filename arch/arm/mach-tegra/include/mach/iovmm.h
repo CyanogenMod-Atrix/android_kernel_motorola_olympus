@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/include/mach/iovmm.h
  *
- * Copyright (c) 2010-2011, NVIDIA Corporation.
+ * Copyright (c) 2010-2012, NVIDIA Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -140,8 +140,15 @@ struct tegra_iovmm_area_ops {
  * called by clients to allocate an I/O VMM client mapping context which
  * will be shared by all clients in the same share_group
  */
-struct tegra_iovmm_client *tegra_iovmm_alloc_client(const char *name,
+struct tegra_iovmm_client *__tegra_iovmm_alloc_client(const char *name,
 	const char *share_group, struct miscdevice *misc_dev);
+
+static inline struct tegra_iovmm_client *tegra_iovmm_alloc_client(
+	struct device *dev, const char *share_group,
+	struct miscdevice *misc_dev)
+{
+	return __tegra_iovmm_alloc_client(dev_name(dev), share_group, misc_dev);
+}
 
 size_t tegra_iovmm_get_vm_size(struct tegra_iovmm_client *client);
 
