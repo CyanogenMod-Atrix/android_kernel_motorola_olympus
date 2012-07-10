@@ -2274,13 +2274,11 @@ static int tegra_udc_start(struct usb_gadget_driver *driver,
 
 
 	/* Enable DR IRQ reg and Set usbcmd reg  Run bit */
-	if (!udc->transceiver) {
-		dr_controller_run(udc);
-		udc->usb_state = USB_STATE_ATTACHED;
-		udc->ep0_state = WAIT_FOR_SETUP;
-		udc->ep0_dir = 0;
-		udc->vbus_active = vbus_enabled(udc);
-	}
+	dr_controller_run(udc);
+	udc->usb_state = USB_STATE_ATTACHED;
+	udc->ep0_state = WAIT_FOR_SETUP;
+	udc->ep0_dir = 0;
+	udc->vbus_active = vbus_enabled(udc);
 
 	printk(KERN_INFO "%s: bind to driver %s\n",
 			udc->gadget.name, driver->driver.name);
