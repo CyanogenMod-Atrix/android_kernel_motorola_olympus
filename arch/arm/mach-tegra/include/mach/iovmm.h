@@ -68,6 +68,8 @@ struct tegra_iovmm_domain {
 
 struct iovmm_share_group;
 
+#if !defined(CONFIG_IOMMU_API)
+
 struct tegra_iovmm_client {
 	const char			*name;
 	unsigned long			flags;
@@ -89,6 +91,25 @@ struct tegra_iovmm_area {
 	pgprot_t			pgprot;
 	struct tegra_iovmm_area_ops	*ops;
 };
+
+#else	/* CONFIG_IOMMU_API */
+
+/*
+ * To replace IOVMM with IOMMU backend
+ */
+
+struct tegra_iovmm_client {
+	struct device *dev;
+};
+
+struct tegra_iovmm_area {
+	dma_addr_t		iovm_start;
+	size_t			iovm_length;
+	pgprot_t		pgprot;
+	struct device		*dev;
+};
+
+#endif /* CONFIG_IOMMU_API */
 
 struct tegra_iovmm_device_ops {
 	/* maps a VMA using the page residency functions provided by the VMA */
@@ -326,5 +347,37 @@ static inline void tegra_iovmm_resume(void)
 {
 }
 
+#ifdef CONFIG_IOMMU_API
+/*
+ * Replace tegra_iovmm_*() with tegra_iommu_*() helpers
+ */
+#include <linux/dma-mapping.h>
+#include <linux/dma-direction.h>
+
+#include <asm/dma-iommu.h>
+
+#define tegra_iovmm_alloc_client(d, s, m)	tegra_iommu_alloc_client(d)
+#define tegra_iovmm_free_client(c)		tegra_iommu_free_client(c)
+
+#define tegra_iovmm_create_vm(c, o, s, a, p, i)		\
+	tegra_iommu_create_vm((c)->dev, i, s, p)
+#define tegra_iovmm_free_vm(v)	tegra_iommu_free_vm(v)
+
+#define tegra_iovmm_get_vm_size(c)	arm_iommu_iova_avail((c)->dev)
+#define tegra_iovmm_get_max_free(c)	arm_iommu_iova_max_free((c)->dev)
+
+#define tegra_iovmm_vm_insert_pfn(a, v, n)				\
+	dma_map_page_at((a)->dev, pfn_to_page(n), v, 0, PAGE_SIZE, DMA_NONE);
+
+struct tegra_iovmm_area *tegra_iommu_create_vm(struct device *dev,
+		       dma_addr_t req, size_t size, pgprot_t prot);
+
+void tegra_iommu_free_vm(struct tegra_iovmm_area *area);
+
+struct tegra_iovmm_client *tegra_iommu_alloc_client(struct device *dev);
+
+void tegra_iommu_free_client(struct tegra_iovmm_client *client);
+
+#endif /* CONFIG_IOMMU_API */
 #endif /* CONFIG_TEGRA_IOVMM */
 #endif /* _MACH_TEGRA_IOVMM_H_*/
