@@ -32,7 +32,7 @@
 #include <linux/platform_data/tegra_usb.h>
 #include "tegra_usb_phy.h"
 #include <mach/iomap.h>
-#include <fuse.h>
+#include "fuse.h"
 
 #define ERR(stuff...)		pr_err("usb_phy: " stuff)
 #define WARNING(stuff...)	pr_warning("usb_phy: " stuff)
