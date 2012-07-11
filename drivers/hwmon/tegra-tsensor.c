@@ -1056,7 +1056,7 @@ static void get_quadratic_roots(struct tegra_tsensor_data *data,
 	int v_e_minus6_b2, v_e_minus6_4ac;
 	int v_e_minus6_b2_minus4ac;
 	int v_e_minus6_sqrt_b2_minus4ac;
-	int v_e_minus6_2mA;
+	s64 v_e_minus12_2mA;
 	int root1, root2;
 	int temp_rem;
 	bool is_neg;
@@ -1086,10 +1086,9 @@ static void get_quadratic_roots(struct tegra_tsensor_data *data,
 		is_neg = true;
 	}
 	temp_rem = do_div(temp_64, 1000000);
-	temp_rem = do_div(temp_64, 1000000);/* divide by 10^6 again */
 	if (is_neg)
 		temp_64 *= -1;
-	v_e_minus6_2mA = (s32)temp_64;
+	v_e_minus12_2mA = temp_64;
 	/* computed 2mA */
 
 	/* m * B^2 calculation */
@@ -1144,18 +1143,16 @@ static void get_quadratic_roots(struct tegra_tsensor_data *data,
 		"temp=%d\n", data->A_e_minus12, data->B_e_minus6,
 		data->m_e_minus6,
 		data->n_e_minus6, data->p_e_minus2, (int)temp);
-	dev_dbg(data->hwmon_dev, "2mB_n=%d, 2mA=%d, mB2_nB_p_minusTemp=%d,"
+	dev_dbg(data->hwmon_dev, "2mB_n=%d, 2mA=%lld, mB2_nB_p_minusTemp=%d,"
 		"b2_minus4ac=%d\n", v_e_minus6_2mB_n,
-		v_e_minus6_2mA, v_e_minus4_mB2_nB_p_minusTemp,
+		v_e_minus12_2mA, v_e_minus4_mB2_nB_p_minusTemp,
 		v_e_minus6_b2_minus4ac);
 
-	root1 = DIV_ROUND_CLOSEST((
-		-v_e_minus6_2mB_n - v_e_minus6_sqrt_b2_minus4ac),
-		v_e_minus6_2mA);
+	temp_64=(s64)(-v_e_minus6_2mB_n - v_e_minus6_sqrt_b2_minus4ac) * 1000000;
+	root1=(s32)div64_s64(temp_64, v_e_minus12_2mA);
 
-	root2 = DIV_ROUND_CLOSEST((
-		-v_e_minus6_2mB_n + v_e_minus6_sqrt_b2_minus4ac),
-		v_e_minus6_2mA);
+	temp_64=(s64)(-v_e_minus6_2mB_n + v_e_minus6_sqrt_b2_minus4ac) * 1000000;
+	root2=(s32)div64_s64(temp_64, v_e_minus12_2mA);
 
 	dev_dbg(data->hwmon_dev, "new expr: temp=%d, root1=%d, root2=%d\n",
 		temp, root1, root2);
