@@ -296,7 +296,7 @@ config TEGRA_CORE_DVFS
 
 config TEGRA_IOVMM_GART
 	bool "Enable I/O virtual memory manager for GART"
-	depends on ARCH_TEGRA_2x_SOC
+	depends on ARCH_TEGRA_2x_SOC && !TEGRA_IOMMU_GART
 	default y
 	select TEGRA_IOVMM
 	help
@@ -307,7 +307,7 @@ config TEGRA_IOVMM_GART
 
 config TEGRA_IOVMM_SMMU
 	bool "Enable I/O virtual memory manager for SMMU"
-	depends on ARCH_TEGRA_3x_SOC
+	depends on ARCH_TEGRA_3x_SOC && !TEGRA_IOMMU_SMMU
 	default y
 	select TEGRA_IOVMM
 	help
@@ -324,6 +324,7 @@ config TEGRA_IOVMM_SMMU_SYSFS
 	  Enables SMMU register access through /sys/devices/smmu/* files.
 
 config TEGRA_IOVMM
+	depends on TEGRA_IOVMM_GART || TEGRA_IOVMM_SMMU
 	bool
 
 config TEGRA_AVP_KERNEL_ON_MMU
@@ -335,7 +336,7 @@ config TEGRA_AVP_KERNEL_ON_MMU
 
 config TEGRA_AVP_KERNEL_ON_SMMU
 	bool "Use SMMU to relocate AVP kernel"
-	depends on TEGRA_IOVMM_SMMU
+	depends on TEGRA_IOVMM_SMMU || TEGRA_IOMMU_SMMU
 	default y
 	help
 	  Use SMMU to relocate AVP kernel (nvrm_avp.bin).
