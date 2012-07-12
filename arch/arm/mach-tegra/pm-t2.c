@@ -384,3 +384,9 @@ int tegra_io_dpd_init(void)
 	return 0;
 }
 EXPORT_SYMBOL(tegra_io_dpd_init);
+
+void tegra_bl_io_dpd_cleanup()
+{
+}
+EXPORT_SYMBOL(tegra_bl_io_dpd_cleanup);
+

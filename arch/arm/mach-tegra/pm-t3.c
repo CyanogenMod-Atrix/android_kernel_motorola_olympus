@@ -454,14 +454,16 @@ struct tegra_io_dpd tegra_list_io_dpd[] = {
 /* Empty DPD list - sd dpd entries removed */
 };
 
+/* we want to cleanup bootloader io dpd setting in kernel */
+static void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
+
 #ifdef CONFIG_PM_SLEEP
 struct tegra_io_dpd *tegra_io_dpd_get(struct device *dev)
 {
 	int i;
 	const char *name = dev ? dev_name(dev) : NULL;
 	if (name) {
-		for (i = 0; i < (sizeof(tegra_list_io_dpd) /
-			sizeof(struct tegra_io_dpd)); i++) {
+		for (i = 0; i < ARRAY_SIZE(tegra_list_io_dpd); i++) {
 			if (!(strncmp(tegra_list_io_dpd[i].name, name,
 				strlen(name)))) {
 				return &tegra_list_io_dpd[i];
@@ -473,7 +475,6 @@ struct tegra_io_dpd *tegra_io_dpd_get(struct device *dev)
 	return NULL;
 }
 
-static void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
 static DEFINE_SPINLOCK(tegra_io_dpd_lock);
 
 void tegra_io_dpd_enable(struct tegra_io_dpd *hnd)
@@ -575,3 +576,39 @@ EXPORT_SYMBOL(tegra_io_dpd_get);
 EXPORT_SYMBOL(tegra_io_dpd_enable);
 EXPORT_SYMBOL(tegra_io_dpd_disable);
 EXPORT_SYMBOL(tegra_io_dpd_init);
+
+struct io_dpd_reg_info {
+	u32 req_reg_off;
+	u8 dpd_code_lsb;
+};
+
+static struct io_dpd_reg_info t3_io_dpd_req_regs[] = {
+	{0x1b8, 30},
+	{0x1c0, 5},
+};
+
+/* io dpd off request code */
+#define IO_DPD_CODE_OFF		1
+
+/* cleans io dpd settings from bootloader during kernel init */
+void tegra_bl_io_dpd_cleanup()
+{
+	int i;
+	unsigned int dpd_mask;
+	unsigned int dpd_status;
+
+	pr_info("Clear bootloader IO dpd settings\n");
+	/* clear all dpd requests from bootloader */
+	for (i = 0; i < ARRAY_SIZE(t3_io_dpd_req_regs); i++) {
+		dpd_mask = ((1 << t3_io_dpd_req_regs[i].dpd_code_lsb) - 1);
+		dpd_mask |= (IO_DPD_CODE_OFF <<
+			t3_io_dpd_req_regs[i].dpd_code_lsb);
+		writel(dpd_mask, pmc + t3_io_dpd_req_regs[i].req_reg_off);
+		/* dpd status register is next to req reg in tegra3 */
+		dpd_status = readl(pmc +
+			(t3_io_dpd_req_regs[i].req_reg_off + 4));
+	}
+	return;
+}
+EXPORT_SYMBOL(tegra_bl_io_dpd_cleanup);
+
