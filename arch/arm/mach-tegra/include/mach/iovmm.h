@@ -248,7 +248,8 @@ int tegra_iovmm_unregister(struct tegra_iovmm_device *dev);
 #else /* CONFIG_TEGRA_IOVMM */
 
 static inline struct tegra_iovmm_client *tegra_iovmm_alloc_client(
-	const char *name, const char *share_group, struct miscdevice *misc_dev)
+	struct device *dev, const char *share_group,
+	struct miscdevice *misc_dev)
 {
 	return NULL;
 }
