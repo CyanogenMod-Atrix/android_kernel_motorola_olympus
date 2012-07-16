@@ -25,6 +25,7 @@
 #include <linux/init.h>
 #include <linux/spinlock.h>
 #include <linux/throughput_ioctl.h>
+#include <linux/nvhost.h>
 #include <mach/dc.h>
 
 #define DEFAULT_SYNC_RATE 60000 /* 60 Hz */
@@ -60,6 +61,7 @@ static int throughput_flip_notifier(struct notifier_block *nb,
 				((int) target_frame_time * 100)/last_frame_time;
 
 			/* notify throughput hint clients here */
+			nvhost_scale3d_set_throughput_hint(throughput_hint);
 		}
 		last_flip = now;
 	}
