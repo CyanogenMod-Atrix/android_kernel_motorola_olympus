@@ -613,6 +613,8 @@ static int utmi_phy_irq(struct tegra_usb_phy *phy)
 			val &= ~(USB_PORTSC_WKCN | USB_PORTSC_RWC_BITS);
 			writel(val , (base + USB_PORTSC));
 		}
+	} else if (!phy->phy_clk_on) {
+			return IRQ_NONE;
 	}
 
 	return IRQ_HANDLED;
