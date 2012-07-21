@@ -5185,9 +5185,17 @@ static struct syscore_ops tegra_clk_syscore_ops = {
 #define CLK_RSTENB_DEV_V_0_DAM1_BIT	(1 << 13)
 #define CLK_RSTENB_DEV_V_0_DAM0_BIT	(1 << 12)
 #define CLK_RSTENB_DEV_V_0_AUDIO_BIT	(1 << 10)
+#define CLK_RSTENB_DEV_V_0_3D2_BIT	(1 << 2)
 
 #define CLK_RSTENB_DEV_L_0_HOST1X_BIT	(1 << 28)
 #define CLK_RSTENB_DEV_L_0_DISP1_BIT	(1 << 27)
+#define CLK_RSTENB_DEV_L_0_3D_BIT	(1 << 24)
+#define CLK_RSTENB_DEV_L_0_2D_BIT	(1 << 21)
+#define CLK_RSTENB_DEV_L_0_VI_BIT	(1 << 20)
+#define CLK_RSTENB_DEV_L_0_EPP_BIT	(1 << 19)
+
+#define CLK_RSTENB_DEV_H_0_VDE_BIT	(1 << 29)
+#define CLK_RSTENB_DEV_H_0_MPE_BIT	(1 << 28)
 
 #define DISP1_CLK_REG_OFFSET		0x138
 #define DISP1_CLK_SRC_SHIFT		29
@@ -5234,6 +5242,31 @@ static struct syscore_ops tegra_clk_syscore_ops = {
 #define AUDIO_CLK_DIV_DEFAULT (\
 		(0 << AUDIO_CLK_DIV_SHIFT))
 
+#define VCLK_SRC_SHIFT  		30
+#define VCLK_SRC_MASK			(0x3 << VCLK_SRC_SHIFT)
+#define VCLK_SRC_PLLM_OUT0		0
+#define VCLK_SRC_PLLC_OUT0		1
+#define VCLK_SRC_PLLP_OUT0		2
+#define VCLK_SRC_PLLA_OUT0		3
+#define VCLK_SRC_DEFAULT		(VCLK_SRC_PLLM_OUT0 << VCLK_SRC_SHIFT)
+#define VCLK_IDLE_DIV_SHIFT		8
+#define VCLK_IDLE_DIV_MASK		(0xff << VCLK_IDLE_DIV_SHIFT)
+#define VCLK_IDLE_DIV_DEFAULT		(0 << VCLK_IDLE_DIV_SHIFT)
+#define VCLK_DIV_SHIFT  		0
+#define VCLK_DIV_MASK			(0xff << VCLK_DIV_SHIFT)
+#define VCLK_DIV_DEFAULT		(0xa << VCLK_DIV_SHIFT)
+
+#define VI_CLK_REG_OFFSET		0x148
+#define  VI_CLK_SEL_VI_SENSOR_CLK	(1 << 25)
+#define  VI_CLK_SEL_EXTERNAL_CLK	(1 << 24)
+#define  VI_SENSOR_CLK_REG_OFFSET	0x1a8
+#define G3D_CLK_REG_OFFSET		0x158
+#define G2D_CLK_REG_OFFSET		0x15c
+#define EPP_CLK_REG_OFFSET		0x16c
+#define MPE_CLK_REG_OFFSET		0x170
+#define VDE_CLK_REG_OFFSET		0x170
+#define G3D2_CLK_REG_OFFSET		0x3b0
+
 static void __init clk_setbit(u32 reg, u32 bit)
 {
 	u32 val = clk_readl(reg);
@@ -5266,6 +5299,43 @@ static void __init clk_setbits(u32 reg, u32 bits, u32 mask)
 	val |= bits;
 	clk_writel(val, reg);
 	udelay(2);
+}
+
+static void __init vclk_init(int tag, u32 src, u32 rebit)
+{
+	u32 rst, enb;
+
+	switch (tag) {
+	case 'L':
+		rst = RST_DEVICES_L;
+		enb = CLK_OUT_ENB_L;
+		break;
+	case 'H':
+		rst = RST_DEVICES_H;
+		enb = CLK_OUT_ENB_H;
+		break;
+	case 'U':
+		rst = RST_DEVICES_U;
+		enb = CLK_OUT_ENB_U;
+		break;
+	case 'V':
+		rst = RST_DEVICES_V;
+		enb = CLK_OUT_ENB_V;
+		break;
+	case 'W':
+		rst = RST_DEVICES_W;
+		enb = CLK_OUT_ENB_W;
+		break;
+	default:
+		/* Quietly ignore. */
+		return;
+	}
+
+	clk_setbit(rst, rebit);
+	clk_clrbit(enb, rebit);
+	clk_setbits(src, VCLK_SRC_DEFAULT, VCLK_SRC_MASK);
+	clk_setbits(src, VCLK_DIV_DEFAULT, VCLK_DIV_MASK);
+	clk_clrbit(rst, rebit);
 }
 
 static int __init tegra_soc_preinit_clocks(void)
@@ -5342,6 +5412,15 @@ static int __init tegra_soc_preinit_clocks(void)
 	clk_setbits(AUDIO_CLK_REG_OFFSET,
 		    AUDIO_CLK_SRC_DEFAULT, AUDIO_CLK_SRC_MASK);
 	clk_clrbit(RST_DEVICES_V, CLK_RSTENB_DEV_V_0_AUDIO_BIT);
+
+	/* Pre-initialize Video clocks. */
+	vclk_init('L', G3D_CLK_REG_OFFSET, CLK_RSTENB_DEV_L_0_3D_BIT);
+	vclk_init('L', G2D_CLK_REG_OFFSET, CLK_RSTENB_DEV_L_0_2D_BIT);
+	vclk_init('L', VI_CLK_REG_OFFSET, CLK_RSTENB_DEV_L_0_VI_BIT);
+	vclk_init('L', EPP_CLK_REG_OFFSET, CLK_RSTENB_DEV_L_0_EPP_BIT);
+	vclk_init('H', VDE_CLK_REG_OFFSET, CLK_RSTENB_DEV_H_0_VDE_BIT);
+	vclk_init('H', MPE_CLK_REG_OFFSET, CLK_RSTENB_DEV_H_0_MPE_BIT);
+	vclk_init('V', G3D2_CLK_REG_OFFSET, CLK_RSTENB_DEV_V_0_3D2_BIT);
 
 	return 0;
 }
