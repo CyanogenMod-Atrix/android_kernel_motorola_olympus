@@ -417,7 +417,7 @@ static unsigned int spi_tegra_read_rx_fifo_to_client_rxbuf(
 	u8 *rx_buf = (u8 *)t->rx_buf + tspi->cur_rx_pos;
 	unsigned i, count;
 	unsigned long x;
-	unsigned int read_words;
+	unsigned int read_words = 0;
 	unsigned len;
 
 	fifo_status = spi_tegra_readl(tspi, SLINK_STATUS2);
