@@ -135,6 +135,15 @@ config NVMAP_VPR
 	  Say Y here to enable Video Protection Region(VPR) heap.
 	  if unsure, say N.
 
+config NVMAP_FORCE_ZEROED_USER_PAGES
+	bool "Only alloc zeroed pages for user space"
+	depends on TEGRA_NVMAP
+	help
+	  Say Y here to force zeroing of pages allocated for user space. This
+	  avoids leaking kernel secure data to user space. This can add
+	  significant overhead to allocation operations depending on the
+	  allocation size requested.
+
 config TEGRA_DSI
 	bool "Enable DSI panel."
 	default n
