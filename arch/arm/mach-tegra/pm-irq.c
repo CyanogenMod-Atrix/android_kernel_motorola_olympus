@@ -290,10 +290,15 @@ static int tegra_pm_irq_syscore_suspend(void)
 		wake_enb = 0xffffffff;
 	}
 
-	/* Clear PMC Wake Status register while going to suspend */
+	/* Clear PMC Wake Status registers while going to suspend */
 	temp = readl(pmc + PMC_WAKE_STATUS);
 	if (temp)
 		pmc_32kwritel(temp, PMC_WAKE_STATUS);
+#ifndef CONFIG_ARCH_TEGRA_2x_SOC
+	temp = readl(pmc + PMC_WAKE2_STATUS);
+	if (temp)
+		pmc_32kwritel(temp, PMC_WAKE2_STATUS);
+#endif
 
 	write_pmc_wake_level(wake_level);
 
