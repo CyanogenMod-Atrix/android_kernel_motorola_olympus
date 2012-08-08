@@ -460,6 +460,7 @@ static int tegra_fb_activate_mode(struct tegra_fb_info *fb_info,
 	int err;
 	struct fb_info *info = fb_info->info;
 
+	var->activate |= FB_ACTIVATE_FORCE;
 	console_lock();
 	info->flags |= FBINFO_MISC_USEREVENT;
 	err = fb_set_var(info, var);
