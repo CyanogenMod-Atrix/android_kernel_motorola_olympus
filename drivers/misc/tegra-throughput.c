@@ -19,7 +19,6 @@
 
 #include <linux/kthread.h>
 #include <linux/ktime.h>
-#include <linux/notifier.h>
 #include <linux/miscdevice.h>
 #include <linux/fs.h>
 #include <linux/init.h>
@@ -37,12 +36,10 @@ static unsigned int multiple_app_disable;
 
 static spinlock_t lock;
 
-static int throughput_flip_notifier(struct notifier_block *nb,
-					     unsigned long val,
-					     void *data)
+static int throughput_flip_callback(void)
 {
-	/* only register flips when a single display is active */
-	if (val != 1 || multiple_app_disable)
+	/* only register flips when a single app is active */
+	if (multiple_app_disable)
 		return NOTIFY_DONE;
 	else {
 		long timediff;
@@ -57,6 +54,12 @@ static int throughput_flip_notifier(struct notifier_block *nb,
 			else
 				last_frame_time = (unsigned short) timediff;
 
+			if (last_frame_time == 0) {
+				pr_warn("%s: flips %lld nsec apart\n",
+					__func__, now.tv64 - last_flip.tv64);
+				return NOTIFY_DONE;
+			}
+
 			throughput_hint =
 				((int) target_frame_time * 100)/last_frame_time;
 
@@ -68,10 +71,6 @@ static int throughput_flip_notifier(struct notifier_block *nb,
 
 	return NOTIFY_OK;
 }
-
-static struct notifier_block throughput_flip_nb = {
-	.notifier_call = throughput_flip_notifier,
-};
 
 static int sync_rate;
 static int throughput_active_app_count;
@@ -91,13 +90,21 @@ static void reset_target_frame_time(void)
 		__func__, sync_rate, target_frame_time);
 }
 
-static int notifier_initialized;
+static int callback_initialized;
 
 static int throughput_open(struct inode *inode, struct file *file)
 {
+<<<<<<< HEAD
 	if (!notifier_initialized) {
 		tegra_dc_register_flip_notifier(&throughput_flip_nb);
 		notifier_initialized = 1;
+=======
+	spin_lock(&lock);
+
+	if (!callback_initialized) {
+		callback_initialized = 1;
+		tegra_dc_set_flip_callback(throughput_flip_callback);
+>>>>>>> e3050ba... video: tegra: dc: disuse notifier
 	}
 
 	spin_lock(&lock);
@@ -108,6 +115,10 @@ static int throughput_open(struct inode *inode, struct file *file)
 
 	spin_unlock(&lock);
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> e3050ba... video: tegra: dc: disuse notifier
 	pr_debug("throughput_open node %p file %p\n", inode, file);
 
 	return 0;
@@ -122,10 +133,18 @@ static int throughput_release(struct inode *inode, struct file *file)
 	if (throughput_active_app_count == 0) {
 		reset_target_frame_time();
 		multiple_app_disable = 0;
+<<<<<<< HEAD
 		tegra_dc_unregister_flip_notifier(&throughput_flip_nb);
 		notifier_initialized = 0;
 	}
 
+=======
+		callback_initialized = 0;
+		tegra_dc_unset_flip_callback();
+	}
+
+	spin_unlock(&lock);
+>>>>>>> e3050ba... video: tegra: dc: disuse notifier
 
 	pr_debug("throughput_release node %p file %p\n", inode, file);
 
