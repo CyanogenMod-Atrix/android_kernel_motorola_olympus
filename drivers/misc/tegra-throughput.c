@@ -94,17 +94,14 @@ static int callback_initialized;
 
 static int throughput_open(struct inode *inode, struct file *file)
 {
-<<<<<<< HEAD
 	if (!notifier_initialized) {
 		tegra_dc_register_flip_notifier(&throughput_flip_nb);
 		notifier_initialized = 1;
-=======
 	spin_lock(&lock);
 
 	if (!callback_initialized) {
 		callback_initialized = 1;
 		tegra_dc_set_flip_callback(throughput_flip_callback);
->>>>>>> e3050ba... video: tegra: dc: disuse notifier
 	}
 
 	spin_lock(&lock);
@@ -115,10 +112,6 @@ static int throughput_open(struct inode *inode, struct file *file)
 
 	spin_unlock(&lock);
 
-<<<<<<< HEAD
-=======
-
->>>>>>> e3050ba... video: tegra: dc: disuse notifier
 	pr_debug("throughput_open node %p file %p\n", inode, file);
 
 	return 0;
@@ -133,18 +126,9 @@ static int throughput_release(struct inode *inode, struct file *file)
 	if (throughput_active_app_count == 0) {
 		reset_target_frame_time();
 		multiple_app_disable = 0;
-<<<<<<< HEAD
-		tegra_dc_unregister_flip_notifier(&throughput_flip_nb);
-		notifier_initialized = 0;
-	}
-
-=======
 		callback_initialized = 0;
 		tegra_dc_unset_flip_callback();
 	}
-
-	spin_unlock(&lock);
->>>>>>> e3050ba... video: tegra: dc: disuse notifier
 
 	pr_debug("throughput_release node %p file %p\n", inode, file);
 
