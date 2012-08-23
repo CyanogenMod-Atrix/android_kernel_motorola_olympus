@@ -32,16 +32,11 @@ static bool tegra_dc_windows_are_clean(struct tegra_dc_win *windows[],
 					     int n)
 {
 	int i;
-	struct tegra_dc *dc = windows[0]->dc;
 
-	mutex_lock(&dc->lock);
 	for (i = 0; i < n; i++) {
-		if (windows[i]->dirty) {
-			mutex_unlock(&dc->lock);
+		if (windows[i]->dirty)
 			return false;
-		}
 	}
-	mutex_unlock(&dc->lock);
 
 	return true;
 }
@@ -117,7 +112,6 @@ static void tegra_dc_set_blending(struct tegra_dc *dc,
 {
 	unsigned long mask = BIT(DC_N_WINDOWS) - 1;
 
-	tegra_dc_io_start(dc);
 	while (mask) {
 		int idx = get_topmost_window(blend->z, &mask);
 
@@ -134,7 +128,6 @@ static void tegra_dc_set_blending(struct tegra_dc *dc,
 		tegra_dc_writel(dc, blend_3win(idx, mask, blend->flags),
 				DC_WIN_BLEND_3WIN_XY);
 	}
-	tegra_dc_io_end(dc);
 }
 
 /* does not support syncing windows on multiple dcs in one call */
@@ -160,8 +153,6 @@ int tegra_dc_sync_windows(struct tegra_dc_win *windows[], int n)
 	trace_printk("%s:After wait_event_interruptible_timeout\n",
 		windows[0]->dc->ndev->name);
 #endif
-	/* tegra_dc_io_start() done in update_windows */
-	tegra_dc_io_end(windows[0]->dc);
 	return ret;
 }
 EXPORT_SYMBOL(tegra_dc_sync_windows);
@@ -213,8 +204,7 @@ static inline u32 compute_initial_dda(fixed20_12 in)
 	return dfixed_frac(in);
 }
 
-/* Does not support updating windows on multiple dcs in one call.
- * Requires a matching sync_windows to avoid leaking ref-count on clocks. */
+/* does not support updating windows on multiple dcs in one call */
 int tegra_dc_update_windows(struct tegra_dc_win *windows[], int n)
 {
 	struct tegra_dc *dc;
@@ -241,7 +231,6 @@ int tegra_dc_update_windows(struct tegra_dc_win *windows[], int n)
 		return -EFAULT;
 	}
 
-	tegra_dc_io_start(dc);
 	tegra_dc_hold_dc_out(dc);
 
 	if (no_vsync)
@@ -448,7 +437,6 @@ int tegra_dc_update_windows(struct tegra_dc_win *windows[], int n)
 	trace_printk("%s:update_mask=%#lx\n", dc->ndev->name, update_mask);
 
 	tegra_dc_release_dc_out(dc);
-	/* tegra_dc_io_end() is called in tegra_dc_sync_windows() */
 	mutex_unlock(&dc->lock);
 	if (dc->out->flags & TEGRA_DC_OUT_ONE_SHOT_MODE)
 		mutex_unlock(&dc->one_shot_lock);

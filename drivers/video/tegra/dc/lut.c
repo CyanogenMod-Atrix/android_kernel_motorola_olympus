@@ -109,7 +109,6 @@ static int tegra_dc_update_winlut(struct tegra_dc *dc, int win_idx, int fbovr)
 	mutex_unlock(&dc->lock);
 
 	tegra_dc_update_windows(&win, 1);
-	tegra_dc_sync_windows(&win, 1);
 
 	return 0;
 }
