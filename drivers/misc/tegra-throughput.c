@@ -38,36 +38,34 @@ static spinlock_t lock;
 
 static int throughput_flip_callback(void)
 {
+	long timediff;
+	ktime_t now;
+
 	/* only register flips when a single app is active */
 	if (multiple_app_disable)
 		return NOTIFY_DONE;
-	else {
-		long timediff;
-		ktime_t now;
-		int throughput_hint;
 
-		now = ktime_get();
-		if (last_flip.tv64 != 0) {
-			timediff = (long) ktime_us_delta(now, last_flip);
-			if (timediff > (long) USHRT_MAX)
-				last_frame_time = USHRT_MAX;
-			else
-				last_frame_time = (unsigned short) timediff;
+	now = ktime_get();
+	if (last_flip.tv64 != 0) {
+		timediff = (long) ktime_us_delta(now, last_flip);
+		if (timediff > (long) USHRT_MAX)
+			last_frame_time = USHRT_MAX;
+		else
+			last_frame_time = (unsigned short) timediff;
 
-			if (last_frame_time == 0) {
-				pr_warn("%s: flips %lld nsec apart\n",
-					__func__, now.tv64 - last_flip.tv64);
-				return NOTIFY_DONE;
-			}
-
-			throughput_hint =
-				((int) target_frame_time * 100)/last_frame_time;
-
-			/* notify throughput hint clients here */
-			nvhost_scale3d_set_throughput_hint(throughput_hint);
+		if (last_frame_time == 0) {
+			pr_warn("%s: flips %lld nsec apart\n",
+				__func__, now.tv64 - last_flip.tv64);
+			return NOTIFY_DONE;
 		}
-		last_flip = now;
+
+		throughput_hint =
+			((int) target_frame_time * 1000) / last_frame_time;
+
+		if (!work_pending(&work))
+			schedule_work(&work);
 	}
+	last_flip = now;
 
 	return NOTIFY_OK;
 }
