@@ -106,6 +106,12 @@ config MACH_PAZ00
        help
          Support for the Toshiba AC100/Dynabook AZ netbook
 
+config MACH_OLYMPUS
+       bool "Olympus board"
+       select TEGRA_DEBUG_UARTB
+       help
+	 Support for Olympus development platform
+
 config MACH_SEABOARD
        bool "Seaboard board"
        depends on ARCH_TEGRA_2x_SOC

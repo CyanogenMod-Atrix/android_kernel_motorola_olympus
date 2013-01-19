@@ -104,7 +104,7 @@ obj-$(CONFIG_TPS65911_COMPARATOR)	+= tps65911-comparator.o
 obj-$(CONFIG_MFD_AAT2870_CORE)	+= aat2870-core.o
 obj-$(CONFIG_MFD_TPS6591X)	+= tps6591x.o
 obj-$(CONFIG_MFD_TPS65090)	+= tps65090.o
-obj-$(CONFIG_MFD_TPS80031)	+= tps80031.o
+obj-$(CONFIG_MFD_TPS80031)	+= tps80031.o+
 obj-$(CONFIG_GPADC_TPS80031)	+= tps8003x-gpadc.o
 obj-$(CONFIG_MFD_MAX8907C)	+= max8907c.o
 obj-$(CONFIG_MFD_MAX8907C)	+= max8907c-irq.o
@@ -113,3 +113,14 @@ obj-$(CONFIG_MFD_RICOH583)	+= ricoh583.o
 obj-$(CONFIG_MFD_RC5T583)	+= rc5t583.o rc5t583-irq.o
 obj-$(CONFIG_MFD_PALMAS)	+= palmas.o
 obj-$(CONFIG_MFD_LM3533)	+= lm3533-core.o lm3533-ctrlbank.o
+
+cpcap-objs			:= cpcap-core.o \
+				   cpcap-irq.o \
+				   cpcap-regacc.o \
+				   cpcap-key.o \
+				   cpcap-usb-det.o \
+				   cpcap-adc.o \
+				   cpcap-uc.o \
+				   cpcap-3mm5.o
+
+obj-$(CONFIG_MFD_CPCAP)		+= cpcap.o

@@ -36,7 +36,7 @@
 #include <mach/clk.h>
 #include <mach/io.h>
 
-static int wdt_heartbeat = 30;
+/*static int wdt_heartbeat = 30;*/
 
 #if defined(CONFIG_ARCH_TEGRA_3x_SOC)
 #define TIMER_PTV			0

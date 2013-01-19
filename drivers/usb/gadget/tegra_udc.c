@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (C) 2012 NVIDIA Corporation
  *
  * Description:
  * High-speed USB device controller driver.
@@ -2274,11 +2274,13 @@ static int tegra_udc_start(struct usb_gadget_driver *driver,
 
 
 	/* Enable DR IRQ reg and Set usbcmd reg  Run bit */
-	dr_controller_run(udc);
-	udc->usb_state = USB_STATE_ATTACHED;
-	udc->ep0_state = WAIT_FOR_SETUP;
-	udc->ep0_dir = 0;
-	udc->vbus_active = vbus_enabled(udc);
+	if (!udc->transceiver) {
+		dr_controller_run(udc);
+		udc->usb_state = USB_STATE_ATTACHED;
+		udc->ep0_state = WAIT_FOR_SETUP;
+		udc->ep0_dir = 0;
+		udc->vbus_active = vbus_enabled(udc);
+	}
 
 	printk(KERN_INFO "%s: bind to driver %s\n",
 			udc->gadget.name, driver->driver.name);
@@ -2515,20 +2517,11 @@ static int __init tegra_udc_probe(struct platform_device *pdev)
 		goto err_iounmap;
 	}
 
-	err = request_irq(udc->irq, tegra_udc_irq,
-				IRQF_SHARED | IRQF_TRIGGER_HIGH,
+	err = request_irq(udc->irq, tegra_udc_irq, IRQF_SHARED,
 				driver_name, udc);
 	if (err) {
 		ERR("cannot request irq %d err %d\n", udc->irq, err);
 		goto err_iounmap;
-	}
-
-	err = enable_irq_wake(udc->irq);
-	if (err < 0) {
-		dev_warn(&pdev->dev,
-			"Couldn't enable USB udc mode wakeup, irq=%d, error=%d\n",
-			udc->irq, err);
-		err = 0;
 	}
 
 	udc->phy = tegra_usb_phy_open(pdev);

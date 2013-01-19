@@ -261,6 +261,18 @@ config CHARGER_TWL4030
 	help
 	  Say Y here to enable support for TWL4030 Battery Charge Interface.
 
+config BATTERY_CPCAP
+	tristate "CPCAP Battery Driver"
+	depends on MFD_CPCAP
+	help
+	 Say Y to include support for CPCAP Main Battery.
+
+config CHARGER_CPCAP
+	tristate "CPCAP Charger Driver"
+	depends on MFD_CPCAP && BATTERY_CPCAP
+	help
+	 Say Y to include support for CPCAP Main Battery Charger.
+
 config CHARGER_GPIO
 	tristate "GPIO charger"
 	depends on GPIOLIB

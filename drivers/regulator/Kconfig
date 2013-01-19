@@ -421,5 +421,11 @@ config REGULATOR_FAN53555
 	help
 	  This driver supports FAN53555 DC-DC CPU power supply.
 
+config REGULATOR_CPCAP
+	tristate "CPCAP regulator driver"
+	depends on MFD_CPCAP
+	help
+	  Say Y here to support the voltage regulators on CPCAP
+
 endif
 

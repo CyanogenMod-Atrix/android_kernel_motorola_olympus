@@ -102,6 +102,19 @@ config AT91SAM9X_WATCHDOG
 	  Watchdog timer embedded into AT91SAM9X and AT91CAP9 chips. This will
 	  reboot your system when the timeout is reached.
 
+config CPCAP_WATCHDOG
+	tristate "CPCAP watchdog"
+	depends on MFD_CPCAP
+	help
+	  Watchdog timer implemented on CPCAP PMIC. This will reboot your
+	  system when the timeout is reached.
+
+config CPCAP_WATCHDOG_KERNEL_SPACE
+	boolean "CPCAP watchdog kernel service"
+	depends on CPCAP_WATCHDOG
+	help
+	  Starts, services and stops CPCAP watchdog timer from kernel space
+
 config 21285_WATCHDOG
 	tristate "DC21285 watchdog"
 	depends on FOOTBRIDGE

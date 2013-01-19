@@ -599,6 +599,12 @@ config EZX_PCAP
 	  This enables the PCAP ASIC present on EZX Phones. This is
 	  needed for MMC, TouchScreen, Sound, USB, etc..
 
+config MFD_CPCAP
+	tristate "Support for CPCAP"
+	depends on SPI && FIRMWARE_IN_KERNEL
+	help
+	 Say yes here if you want to include drivers for the CPCAP chip.
+
 config AB8500_CORE
 	bool "ST-Ericsson AB8500 Mixed Signal Power Management chip"
 	depends on GENERIC_HARDIRQS && ABX500_CORE

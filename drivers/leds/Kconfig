@@ -24,6 +24,30 @@ config LEDS_CLASS
 
 comment "LED drivers"
 
+config LEDS_LM3532
+	tristate "Support for LM3532 display backlight driver"
+	depends on LEDS_CLASS
+	help
+	  This option enables support for LM3532 display backlight driver
+
+config LEDS_LM3530
+	tristate "Support for LM3530 display backlight driver"
+	depends on LEDS_CLASS
+	help
+	  This option enables support for LM3530 display backlight driver
+
+config LEDS_CPCAP_BUTTON
+	tristate "LED Support for Button LEDS connected to CPCAP"
+	depends on LEDS_CLASS && MFD_CPCAP
+	help
+	  This option enables support for button LEDs connected to CPCAP
+
+config LEDS_CPCAP_RGB
+	tristate "LED Support for RGB LEDS connected to CPCAP"
+	depends on LEDS_CLASS && MFD_CPCAP
+	help
+	  This option enables support for RGB LEDs connected to CPCAP
+
 config LEDS_88PM860X
 	tristate "LED Support for Marvell 88PM860x PMIC"
 	depends on LEDS_CLASS

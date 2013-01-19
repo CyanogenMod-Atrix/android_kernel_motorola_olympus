@@ -44,3 +44,8 @@ obj-$(CONFIG_CHARGER_MAX8997)	+= max8997_charger.o
 obj-$(CONFIG_CHARGER_MAX8998)	+= max8998_charger.o
 obj-$(CONFIG_MAX8907C_CHARGER)	+= max8907c-charger.o
 obj-$(CONFIG_TEGRA_BPC_MGMT)	+= tegra_bpc_mgmt.o
+
+obj-$(CONFIG_CHARGER_CPCAP)	+= cpcap-charger.o
+obj-$(CONFIG_CHARGER_CPCAP)	+= cpcap-usb-charger.o
+obj-$(CONFIG_CHARGER_CPCAP)	+= cpcap-factory.o
+obj-$(CONFIG_BATTERY_CPCAP)	+= cpcap-battery.o
