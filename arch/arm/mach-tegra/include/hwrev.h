@@ -25,11 +25,10 @@
 
 #define HWREV_TYPE_S     0x1000
 #define HWREV_TYPE_M     0x2000
-/* SWITCHED HWREV_TYPE_P 0x8000 and HWREV_TYPE_DEBUG 0x9000 */
-#define HWREV_TYPE_P     0x9000
+#define HWREV_TYPE_P     0x8000
 
 /* portable with debugging enabled */
-#define HWREV_TYPE_DEBUG 0x8000
+#define HWREV_TYPE_DEBUG 0x9000
 
 /* Final hardware can't depend on revision bytes */
 #define HWREV_TYPE_FINAL 0xA000

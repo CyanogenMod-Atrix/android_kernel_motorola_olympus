@@ -1,0 +1,12 @@
+#
+# TTY over spi slave configuration
+#
+
+menu "TTY driver over Tegra SPI slave"
+
+config TTY_SPI_SLAVE_MDM6600
+	bool "tty over spi slave driver"
+	depends on SPI_SLAVE_TEGRA
+	default n
+
+endmenu

@@ -194,16 +194,17 @@ static void schedule_clockgating_locked(struct nvhost_device *dev)
 void nvhost_module_busy(struct nvhost_device *dev)
 {
 	struct nvhost_driver *drv = to_nvhost_driver(dev->dev.driver);
-
+	printk("%s:step 1\n", __func__);
 	if (drv->busy)
 		drv->busy(dev);
-
+	printk("%s:step 2\n", __func__);
 	mutex_lock(&dev->lock);
 	cancel_delayed_work(&dev->powerstate_down);
-
+	printk("%s:step 3\n", __func__);
 	dev->refcount++;
 	if (dev->refcount > 0 && !nvhost_module_powered(dev))
 		to_state_running_locked(dev);
+	printk("%s:step 4\n", __func__);
 	mutex_unlock(&dev->lock);
 }
 

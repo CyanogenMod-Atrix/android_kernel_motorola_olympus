@@ -104,9 +104,11 @@ static int cpcap_wdt_set_timeout(struct cpcap_wdt *wdt, unsigned short int timeo
 
 	if ((timeout < 0) || (timeout > CPCAP_WDT_MAX_TIMER))
 		return -EINVAL;
-
+	//printk(KERN_INFO "pICS_%s: step 1\n", __func__);
 	for(i=0; i<CPCAP_WDT_RAMWRITE_RETRIES; i++){
+	//	printk(KERN_INFO "pICS_%s: step 2 (%d) \n", __func__, i);
 		cpcap_uc_set_wdt_timeout(wdt->cpcap, timeout);
+	//	//printk(KERN_INFO "pICS_%s: step 3 (%d) \n", __func__, i);
 		cpcap_uc_get_wdt_timeout(wdt->cpcap, &readval);
 		if (readval == timeout){
 			retval=0;
@@ -115,10 +117,10 @@ static int cpcap_wdt_set_timeout(struct cpcap_wdt *wdt, unsigned short int timeo
 		dev_err(wdt->dev, "Failure to set timeout; retrying\n");
 		msleep(1);
 	}
-
+	//printk(KERN_INFO "pICS_%s: step 4 \n", __func__);
 	/* Ping needed for change to take effect */
 	cpcap_wdt_ping(wdt);
-
+	//printk(KERN_INFO "pICS_%s: step 5 \n", __func__);
 	return retval;
 }
 
@@ -158,9 +160,13 @@ static int cpcap_wdt_start(struct cpcap_wdt *wdt)
 	if (!wdt)
 		return -EINVAL;
 
+	//printk(KERN_INFO "pICS_%s: step 0.5\n", __func__);
+
 	/* only 1 client allowed */
 	if (test_and_set_bit(0, &wdt->is_active))
 		return -EBUSY;
+
+	//printk(KERN_INFO "pICS_%s: step 1\n", __func__);
 
 	if (first_run)
 	{
@@ -169,7 +175,7 @@ static int cpcap_wdt_start(struct cpcap_wdt *wdt)
 			return retval;
 		first_run=false;
 	}
-
+	//printk(KERN_INFO "pICS_%s: step 2\n", __func__);
 #ifdef CONFIG_CPCAP_WATCHDOG_KERNEL_SPACE
 	if (timer_pending(&wdt->kick_timer))
 		del_timer(&wdt->kick_timer);
@@ -177,13 +183,15 @@ static int cpcap_wdt_start(struct cpcap_wdt *wdt)
 	(wdt->kick_timer).expires = jiffies + wdt->kick_interval;
 	add_timer(&wdt->kick_timer);
 #endif
+	//printk(KERN_INFO "pICS_%s: step 3\n", __func__);
 	/* Pinging wdog before it's started is safe and ensures
 	   that the timeout value is reset to full value */
 	cpcap_wdt_ping(wdt);
-
+	//printk(KERN_INFO "pICS_%s: step 4\n", __func__);
 	/* primary macro14 is the main watchdog process */
 	retval = cpcap_uc_start(wdt->cpcap, CPCAP_BANK_PRIMARY, CPCAP_MACRO_14);
 	dev_notice(wdt->dev, "%s(): %d\n", __func__, retval);
+	//printk(KERN_INFO "pICS_%s: step 5\n", __func__);
 	return (retval);
 }
 

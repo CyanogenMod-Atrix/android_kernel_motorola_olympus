@@ -574,7 +574,7 @@ static int __devinit cpcap_probe(struct spi_device *spi)
 	}
 
 	local_irq_restore(flags);
-
+#if 0
 	pmc_ctrl = readl(IO_ADDRESS(TEGRA_PMC_BASE));	
 	printk(KERN_INFO "pICS_%s: pmc_ctrl = 0x%lX...\n",__func__,pmc_ctrl);
 	
@@ -610,7 +610,7 @@ static int __devinit cpcap_probe(struct spi_device *spi)
 			       __raw_readl(GPIO_INT_LVL(gpio)));
 		}
 	}
-
+#endif
 
 	platform_add_devices(cpcap_devices, ARRAY_SIZE(cpcap_devices));
 

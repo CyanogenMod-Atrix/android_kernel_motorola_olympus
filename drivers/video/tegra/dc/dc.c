@@ -1372,6 +1372,7 @@ static int _tegra_dc_set_default_videomode(struct tegra_dc *dc)
 
 static bool _tegra_dc_enable(struct tegra_dc *dc)
 {
+
 	if (dc->mode.pclk == 0) {
 		switch (dc->out->type) {
 		case TEGRA_DC_OUT_HDMI:
@@ -1397,7 +1398,6 @@ static bool _tegra_dc_enable(struct tegra_dc *dc)
 
 	if (!dc->out)
 		return false;
-
 	tegra_dc_io_start(dc);
 
 	return _tegra_dc_controller_enable(dc);

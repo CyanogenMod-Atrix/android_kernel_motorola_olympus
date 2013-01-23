@@ -96,7 +96,7 @@ static char oly_unused_pins_p3[] = {
         TEGRA_GPIO_PL5,
         TEGRA_GPIO_PL6,
         TEGRA_GPIO_PL7,
-        TEGRA_GPIO_PT2,
+	/* TEGRA_GPIO_PT2, ICS uses it */
         TEGRA_GPIO_PD6,
         TEGRA_GPIO_PD7,
         TEGRA_GPIO_PR3,
@@ -168,7 +168,7 @@ static char oly_unused_pins_p2[] = {
         TEGRA_GPIO_PL5,
         TEGRA_GPIO_PL6,
         TEGRA_GPIO_PL7,
-        TEGRA_GPIO_PT2,
+        /*TEGRA_GPIO_PT2, ICS uses it */
         TEGRA_GPIO_PD6,
         TEGRA_GPIO_PD7,
         TEGRA_GPIO_PR3,
@@ -238,7 +238,7 @@ static char oly_unused_pins_p1[] = {
         TEGRA_GPIO_PL5,
         TEGRA_GPIO_PL6,
         TEGRA_GPIO_PL7,
-        TEGRA_GPIO_PT2,
+	/* TEGRA_GPIO_PT2, ICS uses it */
         TEGRA_GPIO_PD6,
         TEGRA_GPIO_PD7,
         TEGRA_GPIO_PR3,
@@ -285,6 +285,21 @@ static char oly_unused_pins_p1[] = {
 
 static __initdata struct tegra_clk_init_table olympus_clk_init_table[] = {
 	/* name		parent		rate		enabled */  
+	{ "pll_p_out4",	"pll_p",	24000000,	true},	
+	{ "i2s1",	"pll_a_out0",	0,		false},
+	{ "i2s2",	"pll_a_out0",	0,		false},
+	{ "spdif_out",	"pll_a_out0",	0,		false},
+	{ "sdmmc4",	"pll_p",	48000000,	true },
+	{ "pwm",	"clk_m",	48000000,	false},
+	{ "pll_u",	NULL,		480000000,	true },
+	{ "blink",	"clk_32k",	32768,		true},
+	{ "disp1",	"pll_d_out0",	229500000,	true},
+	{ "vi",		"pll_c",	300000000,	false},
+	{ "2d",		"pll_c",	300000000,	true},
+	{ "3d",		"pll_c",	300000000,	true},
+	{ "pll_p",	"clk_m",	216000000,	true},
+	{ "host1x",	"pll_p",	108000000,	true},
+	{ "uartb",	"pll_p",	216000000,	true},
 	{ "usb3",	"clk_m",	26000000,	false},
 	{ "usbd",	"clk_m",	26000000,	true},
 	{ "dvc",	"clk_m",	2888888,	true},
@@ -298,13 +313,8 @@ static __initdata struct tegra_clk_init_table olympus_clk_init_table[] = {
 	{ "pll_u",	"clk_m",	480000000,	true},
 	{ "pll_d",	"clk_m",	459000000,	true},
 	{ "pll_d_out0",	"pll_d",	229500000,	true},
-	{ "disp1",	"pll_d_out0",	229500000,	true},
-	{ "pll_p",	"clk_m",	216000000,	true},
-	{ "host1x",	"pll_p",	108000000,	true},
-	{ "uartb",	"pll_p",	216000000,	true},
 	{ "uartd",	"pll_p",	216000000,	true},
 	{ "csite",	"pll_p",	144000000,	true},
-	{ "sdmmc4",	"pll_p",	48000000,	true},
 	{ "sdmmc3",	"pll_p",	48000000,	false},
 	{ "sdmmc2",	"pll_p",	24000000,	false},
 	{ "sdmmc1",	"pll_p",	48000000,	false},
@@ -312,25 +322,18 @@ static __initdata struct tegra_clk_init_table olympus_clk_init_table[] = {
 	{ "pll_p_out1",	"pll_p",	28800000,	true},
 	{ "pll_a",	"pll_p_out1",	56448000,	false},
 	{ "pll_a_out0",	"pll_a",	11289600,	false},
-	{ "spdif_out",	"pll_a_out0",	11289600,	false},
 	{ "pll_c",	"clk_m",	600000000,	true},
 	{ "mpe",	"pll_c",	300000000,	true},
 	{ "epp",	"pll_c",	300000000,	true},
-	{ "vi",		"pll_c",	100000000,	true},  
-	{ "2d",		"pll_c",	300000000,	true},
-	{ "3d",		"pll_c",	300000000,	true},
 	{ "sbc2",	"pll_c",	31578947,	true},
 	{ "pll_c_out1",	"pll_c",	80000000,	true},
 	{ "sclk",	"pll_c_out1",	80000000,	true},
 	{ "cop",	"sclk",		80000000,	true},
 	{ "hclk",	"pll_c_out1",	80000000,	true},
-	{ "i2s1",	"pll_a_out0",	2822400,	false},
 	{ "pll_m",	"clk_m",	600000000,	true},
 	{ "emc",	"pll_m",	600000000,	true},
 	{ "uartc",	"pll_m",	600000000,	true},
 	{ "sbc1",	"pll_m",	100000000,	true},
-	{ "pwm",	"clk_32k",	32768,		false},
-	{ "rtc",	"clk_32k",	32768,		true},
 	{ NULL,		NULL,		0,		0},
 };
 
@@ -438,7 +441,30 @@ static int config_unused_pins(char *pins, int num)
 #define GPIO_INT_LVL_EDGE_BOTH		0x010100
 #define GPIO_INT_LVL_LEVEL_HIGH		0x000001
 #define GPIO_INT_LVL_LEVEL_LOW		0x000000
+#if 0
+struct tegra_gpio_bank {
+	int bank;
+	int irq;
+	spinlock_t lvl_lock[4];
+#ifdef CONFIG_PM
+	u32 cnf[4];
+	u32 out[4];
+	u32 oe[4];
+	u32 int_enb[4];
+	u32 int_lvl[4];
+#endif
+};
 
+static struct tegra_gpio_bank tegra_gpio_banks[] = {
+	{.bank = 0, .irq = INT_GPIO1, .cnf = {0x01,0x08,0x82,0xfe}, .oe = {0x01,0x08,0x82,0xfc}, .out = {0x00,0x08,0x82,0xc8}},
+	{.bank = 1, .irq = INT_GPIO2, .cnf = {0xe9,0xcb,0xff,0x0f}, .oe = {0xe9,0xcb,0xff,0x0f}, .out = {0xe9,0x81,0xff,0x0f}},
+	{.bank = 2, .irq = INT_GPIO3, .cnf = {0xb1,0x0d,0x5c,0xe9}, .oe = {0x91,0x0d,0x5c,0xe9}, .out = {0x91,0x0d,0x5c,0xe9}},
+	{.bank = 3, .irq = INT_GPIO4, .cnf = {0xc7,0x60,0xff,0x00}, .oe = {0xc4,0x60,0xff,0x00}, .out = {0xc0,0x60,0xff,0x00}},
+	{.bank = 4, .irq = INT_GPIO5, .cnf = {0x38,0xf8,0x07,0x7d}, .oe = {0x38,0xf8,0x07,0x7c}, .out = {0x38,0xf8,0x07,0x74}},
+	{.bank = 5, .irq = INT_GPIO6, .cnf = {0x00,0xc5,0x22,0x00}, .oe = {0x00,0xc1,0x22,0x00}, .out = {0x00,0x80,0x22,0x00}},
+	{.bank = 6, .irq = INT_GPIO7, .cnf = {0x0f,0x20,0x00,0x03}, .oe = {0x0f,0x20,0x00,0x0f}, .out = {0x0f,0x20,0x00,0x0f}},
+};
+#endif
 static int tegra_gpio_compose(int bank, int port, int bit)
 {
 	return (bank << 5) | ((port & 0x3) << 3) | (bit & 0x7);
@@ -462,48 +488,48 @@ static void read_gpio(void)
 		}
 	}
 }
+#if 0
+static void write_gpio(void)
+{
+	int i,j;
+	for (i = 0; i < 7; i++) {
+		for (j = 0; j < 4; j++) {
+			int gpio = tegra_gpio_compose(i, j, 0);
+			printk(KERN_INFO "pICS_%s: %d:%d %02x %02x %02x %02x %02x %02x %06x\n",__func__,
+			       i, j,
+			       __raw_readl(GPIO_CNF(gpio)),
+			       __raw_readl(GPIO_OE(gpio)),
+			       __raw_readl(GPIO_OUT(gpio)),
+			       __raw_readl(GPIO_IN(gpio)),
+			       __raw_readl(GPIO_INT_STA(gpio)),
+			       __raw_readl(GPIO_INT_ENB(gpio)),
+			       __raw_readl(GPIO_INT_LVL(gpio)));
+		}
+	}
+}
+#endif
 
 static void __init tegra_mot_init(void)
 {
 /*	struct clk *clk;*/
-//	read_gpio();
 	
 	tegra_clk_init_from_table(olympus_clk_init_table);
 
-//	read_gpio();
+	tegra_ram_console_debug_init();
 
 	olympus_emc_init();
 
-//	read_gpio();
-
 	olympus_pinmux_init();
-
-//	read_gpio();
 
 	olympus_devices_init();
 
-//	read_gpio();
-
 	olympus_keypad_init();
-
-//	read_gpio();
-
-	olympus_i2c_init();
-
-	tegra_ram_console_debug_init();
-
-/*	mot_setup_lights(&tegra_i2c_bus0_board_info[BACKLIGHT_DEV]);
-	mot_setup_touch(&tegra_i2c_bus0_board_info[TOUCHSCREEN_DEV]);*/
-
-//	read_gpio();
-
-	olympus_panel_init();
-
-//	read_gpio();
 
 	olympus_power_init();
 
-//	olympus_usb_gadget_init();
+	olympus_i2c_init();
+
+//	olympus_panel_init();
 
 	if( (bi_powerup_reason() & PWRUP_FACTORY_CABLE) &&
 	    (bi_powerup_reason() != PWRUP_INVALID) ){
@@ -518,7 +544,7 @@ static void __init tegra_mot_init(void)
 	mot_sensors_init();*/
 
 	pm_power_off = mot_system_power_off;
-	if (0==1) tegra_setup_bluesleep();
+	tegra_setup_bluesleep();
 
 	/* Configure SPDIF_OUT as GPIO by default, it can be later controlled
 	   as needed. When SPDIF_OUT is enabled and if HDMI is connected, it
@@ -530,7 +556,6 @@ static void __init tegra_mot_init(void)
 	gpio_direction_output(TEGRA_GPIO_PD4, 0);
 	gpio_export(TEGRA_GPIO_PD4, false);
 
-	if (1==0) 
 	if ((HWREV_TYPE_IS_PORTABLE(system_rev) || HWREV_TYPE_IS_FINAL(system_rev)))
 	{
 		if (HWREV_REV(system_rev) >= HWREV_REV_1 && HWREV_REV(system_rev) < HWREV_REV_2)
@@ -549,7 +574,7 @@ static void __init tegra_mot_init(void)
 			config_unused_pins(oly_unused_pins_p3, ARRAY_SIZE(oly_unused_pins_p3));
 		}
 	}
-
+	tegra_release_bootloader_fb();
 	read_gpio();
 }
 
@@ -621,7 +646,7 @@ void __init tegra_olympus_reserve(void)
 	if (memblock_reserve(0x0, 4096) < 0)
 		pr_warn("Cannot reserve first 4K of memory for safety\n");
 
-	tegra_reserve(SZ_128M, SZ_8M, SZ_16M);
+	tegra_reserve(SZ_128M+SZ_64M, SZ_8M, SZ_16M);
 	tegra_ram_console_debug_reserve(SZ_1M);
 
 }

@@ -96,13 +96,13 @@ void mot_system_power_off(void)
 
 static int is_olympus_ge_p0(struct cpcap_device *cpcap)
 {
-	printk(KERN_INFO "pICS_%s: testing...\n",__func__);
+//	printk(KERN_INFO "pICS_%s: testing...\n",__func__);
 	return 1;
 }
 
 static int is_olympus_ge_p3(struct cpcap_device *cpcap)
 {
-	printk(KERN_INFO "pICS_%s: testing...\n",__func__);
+//	printk(KERN_INFO "pICS_%s: testing...\n",__func__);
 	if (HWREV_TYPE_IS_FINAL(system_rev) ||
 		(HWREV_TYPE_IS_PORTABLE(system_rev) &&
 		 (HWREV_REV(system_rev) >= HWREV_REV_3))) {
@@ -115,7 +115,7 @@ enum cpcap_revision cpcap_get_revision(struct cpcap_device *cpcap)
 {
 	unsigned short value;
 
-	printk(KERN_INFO "pICS_%s: testing...\n",__func__);
+//	printk(KERN_INFO "pICS_%s: testing...\n",__func__);
 
 	/* Code taken from drivers/mfd/cpcap_core.c, since the revision value
 	   is not initialized until after the registers are initialized, which
@@ -127,7 +127,7 @@ enum cpcap_revision cpcap_get_revision(struct cpcap_device *cpcap)
 
 int is_cpcap_eq_3_1(struct cpcap_device *cpcap)
 {
-	printk(KERN_INFO "pICS_%s: testing...\n",__func__);
+//	printk(KERN_INFO "pICS_%s: testing...\n",__func__);
 	return cpcap_get_revision(cpcap) == CPCAP_REVISION_3_1;
 }
 
@@ -445,7 +445,7 @@ struct regulator_consumer_supply cpcap_sw5_consumers[] = {
 };
 
 struct regulator_consumer_supply cpcap_vcam_consumers[] = {
-	REGULATOR_CONSUMER("vcam", NULL /* cpcap_cam_device */),
+	REGULATOR_CONSUMER("vcc", NULL /* cpcap_cam_device */),
 };
 
 struct regulator_consumer_supply cpcap_vhvio_consumers[] = {
@@ -485,9 +485,10 @@ struct regulator_consumer_supply cpcap_vwlan2_consumers[] = {
 	REGULATOR_CONSUMER("vwlan2", NULL),
 	/* Powers the tegra usb block, cannot be named vusb, since
 	   this name already exists in regulator-cpcap.c. */
+	REGULATOR_CONSUMER("avdd_usb", NULL),
 	REGULATOR_CONSUMER("vusb_modem_flash", NULL),
 	REGULATOR_CONSUMER("vusb_modem_ipc", NULL),
-	REGULATOR_CONSUMER("vhdmi", NULL),
+	REGULATOR_CONSUMER("avdd_hdmi", NULL),
 };
 
 struct regulator_consumer_supply cpcap_vsimcard_consumers[] = {
@@ -495,7 +496,7 @@ struct regulator_consumer_supply cpcap_vsimcard_consumers[] = {
 };
 
 struct regulator_consumer_supply cpcap_vvib_consumers[] = {
-	REGULATOR_CONSUMER("vvib", NULL /* vibrator */),
+	REGULATOR_CONSUMER("vdd_vbrtr", NULL /* vibrator */),
 };
 
 struct regulator_consumer_supply cpcap_vaudio_consumers[] = {
@@ -735,9 +736,6 @@ struct cpcap_platform_data tegra_cpcap_data =
 	.regulator_off_mode_values = cpcap_regulator_off_mode_values,
 	.regulator_init = cpcap_regulator,
 	.adc_ato = &cpcap_adc_ato,
-	.ac_changed = NULL,
-	.batt_changed = NULL,
-	.usb_changed = NULL,
 	.wdt_disable = 0,
 	.hwcfg = {
 		(CPCAP_HWCFG0_SEC_STBY_SW3 |
@@ -794,66 +792,46 @@ struct spi_board_info tegra_spi_devices[] __initdata = {
         .mode = SPI_MODE_0,
         .max_speed_hz = 8000000,
         .controller_data = &tegra_cpcap_data,
-        .irq = 118,
+        .irq = INT_EXTERNAL_PMU,
     },
+
 };
 
 static int cpcap_usb_connected_probe(struct platform_device *pdev)
 {
 	struct cpcap_accy_platform_data *pdata = pdev->dev.platform_data;
 
-	int nr_gpio;
-//	int ret;
-
-	nr_gpio = 174;
-
-	tegra_gpio_enable(nr_gpio);
-	gpio_direction_output(nr_gpio, 0);	
-	gpio_set_value(nr_gpio, 1);
+	pr_info("cpcap_usb_connected_probe\n");
 
 	platform_set_drvdata(pdev, pdata);
 
 	/* when the phone is the host do not start the gadget driver */
 	if((pdata->accy == CPCAP_ACCY_USB) || (pdata->accy == CPCAP_ACCY_FACTORY)) {
-#ifdef CONFIG_USB_TEGRA_OTG
-	/*ICS	tegra_otg_set_mode(0);*/
-#endif
-	/*ICS	android_usb_set_connected(1, pdata->accy);*/
+	//	tegra_otg_set_mode(0);
+/*		android_usb_set_connected(1, pdata->accy);*/
 	}
 	if(pdata->accy == CPCAP_ACCY_USB_DEVICE) {
-#ifdef CONFIG_USB_TEGRA_OTG
-		/*ICS tegra_otg_set_mode(1);*/
-#endif
-	}
-	//mdm_ctrl_set_usb_ipc(true);
 
+	//	tegra_otg_set_mode(1);
+
+	}
+	mdm_ctrl_set_usb_ipc(true);
+	
 	return 0;
 }
 
 static int cpcap_usb_connected_remove(struct platform_device *pdev)
 {
-	struct cpcap_usb_connected_data *data = platform_get_drvdata(pdev);
-//	struct cpcap_accy_platform_data *pdata = pdev->dev.platform_data;
+	struct cpcap_accy_platform_data *pdata = pdev->dev.platform_data;
 
-	int nr_gpio;
+	pr_info("cpcap_usb_connected_remove\n");
 
-//	mdm_ctrl_set_usb_ipc(false);
+	mdm_ctrl_set_usb_ipc(false);
 	
-	nr_gpio = 174;
-	gpio_set_value(nr_gpio, 0);
+	if((pdata->accy == CPCAP_ACCY_USB) || (pdata->accy == CPCAP_ACCY_FACTORY)) {}
+/*		android_usb_set_connected(0, pdata->accy);*/
 
-	gpio_free(nr_gpio);
-
-	tegra_gpio_disable(nr_gpio);
-
-/*	if((pdata->accy == CPCAP_ACCY_USB) || (pdata->accy == CPCAP_ACCY_FACTORY))
-		android_usb_set_connected(0, pdata->accy);*/
-
-#ifdef CONFIG_USB_TEGRA_OTG
-	/*tegra_otg_set_mode(2);*/
-#endif
-
-	kfree(data);
+//	tegra_otg_set_mode(2);
 
         return 0;
 }
@@ -920,52 +898,6 @@ static struct tegra_suspend_platform_data olympus_suspend_data = {
 
 void __init olympus_suspend_init(void)
 {
-
-	printk(KERN_INFO "pICS_%s: wake PL1 (irq nr %d)...\n",__func__, TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PL1));
-//			enable_irq(TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PL1));
-			printk(KERN_INFO "pICS_%s: enabled PL1 irq...\n",__func__);
-			enable_irq_wake(TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PL1));
-			printk(KERN_INFO "pICS_%s: enabled PL1 wake...\n",__func__);
-
-	printk(KERN_INFO "pICS_%s: wake PA0 (irq nr %d)...\n",__func__, TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PA0));
-//			enable_irq(TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PA0));
-			printk(KERN_INFO "pICS_%s: enabled PA0 irq...\n",__func__);
-			enable_irq_wake(TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PA0));
-			printk(KERN_INFO "pICS_%s: enabled PA0 wake...\n",__func__);
-
-	printk(KERN_INFO "pICS_%s: wake PU5 (irq nr %d)...\n",__func__, TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PU5));
-//			enable_irq(TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PU5));
-			printk(KERN_INFO "pICS_%s: enabled PU5 irq...\n",__func__);
-			enable_irq_wake(TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PU5));
-			printk(KERN_INFO "pICS_%s: enabled PU5 wake...\n",__func__);
-
-	printk(KERN_INFO "pICS_%s: step PU6 (irq nr %d)...\n",__func__, TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PU6));
-//			enable_irq(TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PU6));
-			printk(KERN_INFO "pICS_%s: enabled PU6 irq...\n",__func__);
-			enable_irq_wake(TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PU6));
-			printk(KERN_INFO "pICS_%s: enabled PU6 wake...\n",__func__);
-
-	printk(KERN_INFO "pICS_%s: step KBC (irq nr %d)...\n",__func__, INT_KBC);
-//			enable_irq(INT_KBC);
-			printk(KERN_INFO "pICS_%s: enabled KBC irq...\n",__func__);
-			enable_irq_wake(INT_KBC);
-			printk(KERN_INFO "pICS_%s: enabled KBC wake...\n",__func__);
-
-printk(KERN_INFO "pICS_%s: step PWR (irq nr %d)...\n",__func__, INT_EXTERNAL_PMU);
-printk(KERN_INFO "pICS_%s: step PWR (GPIO nr %d)...\n",__func__, TEGRA_IRQ_TO_GPIO(INT_EXTERNAL_PMU));
-//			tegra_gpio_irq_set_type
-//			tegra_gpio_wake_enable(INT_EXTERNAL_PMU, 1);
-//			enable_irq(INT_EXTERNAL_PMU);
-			printk(KERN_INFO "pICS_%s: enabled PWR irq...\n",__func__);
-			enable_irq_wake(INT_EXTERNAL_PMU);
-			printk(KERN_INFO "pICS_%s: enabled PWR wake...\n",__func__);
-
-	printk(KERN_INFO "pICS_%s: step PV2 (irq nr %d)...\n",__func__, TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PV2));
-//			enable_irq(TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PV2));
-			printk(KERN_INFO "pICS_%s: enabled PV2 irq...\n",__func__);
-			enable_irq_wake(TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PV2));
-			printk(KERN_INFO "pICS_%s: enabled PV2 wake...\n",__func__);
-
 	tegra_init_suspend(&olympus_suspend_data);
 }
 
@@ -973,32 +905,15 @@ void __init olympus_power_init(void)
 {
 	unsigned int i;
 	int error;
+	void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
+	u32 pmc_ctrl;
 
-//	unsigned long pmc_ctrl;
-//	unsigned long minor;
-
-//	void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
-//	void __iomem *chip_id = IO_ADDRESS(TEGRA_APB_MISC_BASE) + 0x804;
-#if 0
-	minor = (readl(chip_id) >> 16) & 0xf;
-	/* A03 (but not A03p) chips do not support LP0 */
-	if (minor == 3 && !(tegra_spare_fuse(18) || tegra_spare_fuse(19)))
-		olympus_suspend_data.suspend_mode = TEGRA_SUSPEND_LP1;
+	printk(KERN_INFO "pICS_%s: step in...\n",__func__);
 
 	/* configure the power management controller to trigger PMU
 	 * interrupts when low */
-
 	pmc_ctrl = readl(pmc + PMC_CTRL);
 	writel(pmc_ctrl | PMC_CTRL_INTR_LOW, pmc + PMC_CTRL);
-
-	/* Enable CORE_PWR_REQ signal from T20. The signal must be enabled
-	 * before the CPCAP uC firmware is started. */
-	pmc_ctrl = readl(IO_ADDRESS(TEGRA_PMC_BASE));
-	pmc_ctrl |= 0x00000200;
-	writel(pmc_ctrl, IO_ADDRESS(TEGRA_PMC_BASE));
-
-#endif
-	printk(KERN_INFO "pICS_%s: step in...\n",__func__);
 	
 	/* CPCAP standby lines connected to CPCAP GPIOs on Etna P1B & Olympus P2 */
 	if ( HWREV_TYPE_IS_FINAL(system_rev) ||
@@ -1036,10 +951,10 @@ void __init olympus_power_init(void)
 	    HWREV_TYPE_IS_MORTABLE(system_rev) ){
 		tegra_cpcap_data.wdt_disable = 1;
 	}
-/*
-	tegra_gpio_enable(TEGRA_GPIO_PT2);
-	gpio_request(TEGRA_GPIO_PT2, "usb_host_pwr_en");
-	gpio_direction_output(TEGRA_GPIO_PT2, 0);*/
+
+	tegra_gpio_enable(154);
+	gpio_request(154, "usb_host_pwr_en");
+	gpio_direction_output(TEGRA_GPIO_PT2, 0);
 
 	printk(KERN_INFO "pICS_%s: step in 2...\n",__func__);
 
@@ -1057,6 +972,7 @@ void __init olympus_power_init(void)
 	(void) platform_device_register(&cpcap_reg_virt_vcsi_2);
 	(void) platform_device_register(&cpcap_reg_virt_sw5);
 #endif
+	regulator_has_full_constraints();
 	olympus_suspend_init();
 }
 

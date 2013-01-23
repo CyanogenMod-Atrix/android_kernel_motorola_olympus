@@ -25,7 +25,6 @@
  */
 
 #define SDHCI_DMA_ADDRESS	0x00
-#define SDHCI_ARGUMENT2		SDHCI_DMA_ADDRESS
 
 #define SDHCI_BLOCK_SIZE	0x04
 #define  SDHCI_MAKE_BLKSZ(dma, blksz) (((dma & 0x7) << 12) | (blksz & 0xFFF))
@@ -37,8 +36,7 @@
 #define SDHCI_TRANSFER_MODE	0x0C
 #define  SDHCI_TRNS_DMA		0x01
 #define  SDHCI_TRNS_BLK_CNT_EN	0x02
-#define  SDHCI_TRNS_AUTO_CMD12	0x04
-#define  SDHCI_TRNS_AUTO_CMD23	0x08
+#define  SDHCI_TRNS_ACMD12	0x04
 #define  SDHCI_TRNS_READ	0x10
 #define  SDHCI_TRNS_MULTI	0x20
 
@@ -103,7 +101,6 @@
 #define  SDHCI_DIV_MASK	0xFF
 #define  SDHCI_DIV_MASK_LEN	8
 #define  SDHCI_DIV_HI_MASK	0x300
-#define  SDHCI_PROG_CLOCK_MODE	0x0020
 #define  SDHCI_CLOCK_CARD_EN	0x0004
 #define  SDHCI_CLOCK_INT_STABLE	0x0002
 #define  SDHCI_CLOCK_INT_EN	0x0001
@@ -187,21 +184,15 @@
 #define  SDHCI_CAN_VDD_180	0x04000000
 #define  SDHCI_CAN_64BIT	0x10000000
 
+#define SDHCI_CAPABILITIES_1	0x44
+
 #define  SDHCI_SUPPORT_SDR50	0x00000001
 #define  SDHCI_SUPPORT_SDR104	0x00000002
 #define  SDHCI_SUPPORT_DDR50	0x00000004
 #define  SDHCI_DRIVER_TYPE_A	0x00000010
 #define  SDHCI_DRIVER_TYPE_C	0x00000020
 #define  SDHCI_DRIVER_TYPE_D	0x00000040
-#define  SDHCI_RETUNING_TIMER_COUNT_MASK	0x00000F00
-#define  SDHCI_RETUNING_TIMER_COUNT_SHIFT	8
-#define  SDHCI_USE_SDR50_TUNING			0x00002000
-#define  SDHCI_RETUNING_MODE_MASK		0x0000C000
-#define  SDHCI_RETUNING_MODE_SHIFT		14
-#define  SDHCI_CLOCK_MUL_MASK	0x00FF0000
-#define  SDHCI_CLOCK_MUL_SHIFT	16
-
-#define SDHCI_CAPABILITIES_1	0x44
+#define  SDHCI_USE_SDR50_TUNING	0x00002000
 
 #define SDHCI_MAX_CURRENT		0x48
 #define  SDHCI_MAX_CURRENT_330_MASK	0x0000FF
@@ -243,12 +234,6 @@
 #define SDHCI_MAX_DIV_SPEC_200	256
 #define SDHCI_MAX_DIV_SPEC_300	2046
 
-/*
- * Host SDMA buffer boundary. Valid values from 4K to 512K in powers of 2.
- */
-#define SDHCI_DEFAULT_BOUNDARY_SIZE  (512 * 1024)
-#define SDHCI_DEFAULT_BOUNDARY_ARG   (ilog2(SDHCI_DEFAULT_BOUNDARY_SIZE) - 12)
-
 struct sdhci_ops {
 #ifdef CONFIG_MMC_SDHCI_IO_ACCESSORS
 	u32		(*read_l)(struct sdhci_host *host, int reg);
@@ -260,7 +245,6 @@ struct sdhci_ops {
 #endif
 
 	void	(*set_clock)(struct sdhci_host *host, unsigned int clock);
-	void	(*set_card_clock)(struct sdhci_host *host, unsigned int clock);
 
 	int		(*enable_dma)(struct sdhci_host *host);
 	unsigned int	(*get_max_clock)(struct sdhci_host *host);
@@ -272,13 +256,20 @@ struct sdhci_ops {
 					     u8 power_mode);
 	unsigned int    (*get_ro)(struct sdhci_host *host);
 	unsigned int    (*get_cd)(struct sdhci_host *host);
+
+	int		(*suspend)(struct sdhci_host *host, pm_message_t state);
+	int		(*resume)(struct sdhci_host *host);
+
 	void	(*platform_reset_enter)(struct sdhci_host *host, u8 mask);
 	void	(*platform_reset_exit)(struct sdhci_host *host, u8 mask);
 	int	(*set_uhs_signaling)(struct sdhci_host *host, unsigned int uhs);
-	int	(*suspend)(struct sdhci_host *host, pm_message_t state);
-	int	(*resume)(struct sdhci_host *host);
 	int	(*switch_signal_voltage)(struct sdhci_host *host,
 				unsigned int signal_voltage);
+	// LGE_CHANGE [dojip.kim@lge.com] 2010-12-31, [LGE_AP20] from Star
+#ifdef CONFIG_EMBEDDED_MMC_START_OFFSET
+	unsigned int	(*get_startoffset)(struct sdhci_host *host);
+#endif
+
 	int	(*execute_freq_tuning)(struct sdhci_host *sdhci);
 };
 

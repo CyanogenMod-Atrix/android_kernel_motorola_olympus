@@ -154,7 +154,6 @@ static int max_cpu_current;
  */
 static __initdata struct tegra_clk_init_table common_clk_init_table[] = {
 	/* name		parent		rate		enabled */
-#if 0
 	{ "clk_m",	NULL,		0,		true },
 	{ "emc",	NULL,		0,		true },
 	{ "cpu",	NULL,		0,		true },
@@ -222,27 +221,6 @@ static __initdata struct tegra_clk_init_table common_clk_init_table[] = {
 	{ "pll_c_out1",	"pll_c",	208000000,	false },
 	{ "mselect",	"pll_p",	102000000,	true },
 #endif
-	{ NULL,		NULL,		0,		0},
-#endif
-	{ "clk_m",	NULL,		0,		true },
-	{ "pll_p",	"clk_m",	216000000,	true },
-	{ "pll_p_out1",	"pll_p",	28800000,	true },
-	{ "pll_p_out2",	"pll_p",	48000000,	true },
-	{ "pll_p_out3",	"pll_p",	72000000,	true },
-	{ "pll_p_out4",	"pll_p",	108000000,	true },
-	{ "pll_m_out1",	"pll_m",	120000000,	true },
-	{ "sclk",	"pll_m_out1",	120000000,	true },
-	{ "hclk",	"sclk",		120000000,	true },
-	{ "pclk",	"hclk",		60000000,	true },
-	{ "csite",	NULL,		0,		true },
-	{ "emc",	NULL,		0,		true },
-	{ "cpu",	NULL,		0,		true },
-	{ "kfuse",	NULL,		0,		true },
-	{ "pll_u",	"clk_m",	480000000,	false },
-	{ "sdmmc1",	"pll_p",	48000000,	false},
-	{ "sdmmc2",	"pll_p",	48000000,	false},
-	{ "sdmmc3",	"pll_p",	48000000,	false},
-	{ "sdmmc4",	"pll_p",	48000000,	false},	
 	{ NULL,		NULL,		0,		0},
 };
 

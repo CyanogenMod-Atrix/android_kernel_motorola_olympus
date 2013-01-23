@@ -387,7 +387,7 @@ static int ram_write(struct cpcap_uc_data *uc_data, unsigned short address,
 		retval = cpcap_irq_unmask(uc_data->cpcap, CPCAP_IRQ_UC_PRIRAMW);
 		if (retval)
 			goto err;
-		mdelay(100);
+		mdelay(25);
 	//	wait_for_completion(&uc_data->completion);
 		retval = uc_data->cb_status;
 	}
@@ -424,7 +424,7 @@ static int ram_read(struct cpcap_uc_data *uc_data, unsigned short address,
 		uc_data->req.num_words = num_words;
 		uc_data->state = READ_STATE_1;
 		uc_data->state_cntr = 0;
-		INIT_COMPLETION(uc_data->completion);
+//		INIT_COMPLETION(uc_data->completion);
 
 		retval = cpcap_regacc_write(uc_data->cpcap, CPCAP_REG_MI2,
 					    CPCAP_BIT_PRIRAMR,
@@ -438,8 +438,8 @@ static int ram_read(struct cpcap_uc_data *uc_data, unsigned short address,
 		retval = cpcap_irq_unmask(uc_data->cpcap, CPCAP_IRQ_UC_PRIRAMR);
 		if (retval)
 			goto err;
-
-		wait_for_completion(&uc_data->completion);
+		mdelay(100);
+//		wait_for_completion(&uc_data->completion);
 		retval = uc_data->cb_status;
 	}
 
@@ -776,7 +776,7 @@ static int fw_load(struct cpcap_uc_data *uc_data, struct device *dev)
 		}
 
 		num_words = num_bytes >> 1;
-		dev_dbg(dev, "Loading %d word(s) at 0x%04x\n",
+		dev_info(dev, "Loading %d word(s) at 0x%04x\n",
 			 num_words, be32_to_cpu(rec->addr));
 
 		buf = kzalloc(num_bytes, GFP_KERNEL);

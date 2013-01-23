@@ -19,6 +19,7 @@
 #include <linux/delay.h>
 #include <linux/gpio.h>
 #include <linux/i2c.h>
+#include <linux/i2c-tegra.h>
 #include <asm/mach-types.h>
 #include <mach/irqs.h>
 #include <mach/iomap.h>
@@ -26,15 +27,99 @@
 #include <linux/qtouch_obp_ts.h>
 #include <linux/interrupt.h>
 #include <linux/input.h>
+#include <linux/leds-lm3530.h>
+#include <linux/leds-lm3532.h>
 
 #include "board-olympus.h"
 #include "gpio-names.h"
+#include "devices.h"
+#include "board.h"
+#include "hwrev.h"
 
-#define XMEGAT_BL_I2C_ADDR		0x24
-#define OLYMPUS_TOUCH_IRQ_GPIO TEGRA_GPIO_PF5
-#define OLYMPUS_TOUCH_RESET_GPIO TEGRA_GPIO_PF4
+
+//#define XMEGAT_BL_I2C_ADDR		0x24
+#define XMEGAT_BL_I2C_ADDR		0x4A
+#define OLYMPUS_TOUCH_IRQ_GPIO 		45
+#define OLYMPUS_TOUCH_RESET_GPIO 	44
 #define OLYMPUS_COMPASS_IRQ_GPIO TEGRA_GPIO_PE2
 
+#define TEGRA_BACKLIGHT_EN_GPIO 	32 /* TEGRA_GPIO_PE0 */
+#define TEGRA_KEY_BACKLIGHT_EN_GPIO 	47 /* TEGRA_GPIO_PE0 */
+
+static int disp_backlight_init(void)
+{
+    int ret;
+    if ((ret = gpio_request(TEGRA_BACKLIGHT_EN_GPIO, "backlight_en"))) {
+        pr_err("%s: gpio_request(%d, backlight_en) failed: %d\n",
+            __func__, TEGRA_BACKLIGHT_EN_GPIO, ret);
+        return ret;
+    } else {
+        pr_info("%s: gpio_request(%d, backlight_en) success!\n",
+            __func__, TEGRA_BACKLIGHT_EN_GPIO);
+    }
+    if ((ret = gpio_direction_output(TEGRA_BACKLIGHT_EN_GPIO, 1))) {
+        pr_err("%s: gpio_direction_output(backlight_en) failed: %d\n",
+            __func__, ret);
+        return ret;
+    }
+	if ((ret = gpio_request(TEGRA_KEY_BACKLIGHT_EN_GPIO,
+			"key_backlight_en"))) {
+		pr_err("%s: gpio_request(%d, key_backlight_en) failed: %d\n",
+			__func__, TEGRA_KEY_BACKLIGHT_EN_GPIO, ret);
+		return ret;
+	} else {
+		pr_info("%s: gpio_request(%d, key_backlight_en) success!\n",
+			__func__, TEGRA_KEY_BACKLIGHT_EN_GPIO);
+	}
+	if ((ret = gpio_direction_output(TEGRA_KEY_BACKLIGHT_EN_GPIO, 1))) {
+		pr_err("%s: gpio_direction_output(key_backlight_en) failed: %d\n",
+			__func__, ret);
+		return ret;
+	}
+
+    return 0;
+}
+
+static int disp_backlight_power_on(void)
+{
+    pr_info("%s: display backlight is powered on\n", __func__);
+    gpio_set_value(TEGRA_BACKLIGHT_EN_GPIO, 1);
+    return 0;
+}
+
+static int disp_backlight_power_off(void)
+{
+    pr_info("%s: display backlight is powered off\n", __func__);
+    gpio_set_value(TEGRA_BACKLIGHT_EN_GPIO, 0);
+    return 0;
+}
+
+struct lm3530_platform_data lm3530_pdata = {
+    .init = disp_backlight_init,
+    .power_on = disp_backlight_power_on,
+    .power_off = disp_backlight_power_off,
+
+    .ramp_time = 0,   /* Ramp time in milliseconds */
+    .gen_config = 
+        LM3530_26mA_FS_CURRENT | LM3530_LINEAR_MAPPING | LM3530_I2C_ENABLE,
+    .als_config = 0,  /* We don't use ALS from this chip */
+};
+
+struct lm3532_platform_data lm3532_pdata = {
+    .flags = LM3532_CONFIG_BUTTON_BL | LM3532_HAS_WEBTOP,
+    .init = disp_backlight_init,
+    .power_on = disp_backlight_power_on,
+    .power_off = disp_backlight_power_off,
+
+    .ramp_time = 0,   /* Ramp time in milliseconds */
+    .ctrl_a_fs_current = LM3532_26p6mA_FS_CURRENT,
+    .ctrl_b_fs_current = LM3532_8p2mA_FS_CURRENT,
+    .ctrl_a_mapping_mode = LM3532_LINEAR_MAPPING,
+    .ctrl_b_mapping_mode = LM3532_LINEAR_MAPPING,
+	.ctrl_a_pwm = 0x82,
+};
+
+extern int MotorolaBootDispArgGet(unsigned int *arg);
 
 static int olympus_touch_reset(void)
 {
@@ -340,9 +425,15 @@ struct qtouch_ts_platform_data olympus_touch_data = {
 	},
 };
 
+
 static struct i2c_board_info __initdata olympus_i2c_bus1_board_info[] = {
+	{ /* Display backlight */
+		I2C_BOARD_INFO(LM3532_NAME, LM3532_I2C_ADDR),
+		.platform_data = &lm3532_pdata,
+		/*.irq = ..., */
+	},
 	{
-		I2C_BOARD_INFO(QTOUCH_TS_NAME, 0x4a),
+		I2C_BOARD_INFO(QTOUCH_TS_NAME, XMEGAT_BL_I2C_ADDR),
 		.platform_data = &olympus_touch_data,
 		.irq = TEGRA_GPIO_TO_IRQ(OLYMPUS_TOUCH_IRQ_GPIO),
 	},
@@ -355,8 +446,115 @@ static struct i2c_board_info __initdata olympus_i2c_bus4_board_info[] = {
         },
 };
 
-void __init olympus_i2c_init(void)
+static struct tegra_i2c_platform_data olympus_i2c1_platform_data = {
+	.adapter_nr	= 0,
+	.bus_count	= 1,
+	.bus_clk_rate	= { 400000, 0 },
+};
+
+static struct tegra_i2c_platform_data olympus_i2c2_platform_data = {
+	.adapter_nr	= 1,
+	.bus_count	= 1,
+	.bus_clk_rate	= { 400000, 400000 },
+};
+
+static struct tegra_i2c_platform_data olympus_i2c3_platform_data = {
+	.adapter_nr	= 3,
+	.bus_count	= 1,
+	.bus_clk_rate	= { 400000, 0 },
+};
+
+static struct tegra_i2c_platform_data olympus_dvc_platform_data = {
+	.adapter_nr	= 4,
+	.bus_count	= 1,
+	.bus_clk_rate	= { 100000, 0 },
+	.is_dvc		= true,
+};
+
+void olympus_i2c_reg(void)
 {
+	tegra_i2c_device1.dev.platform_data = &olympus_i2c1_platform_data;
+	tegra_i2c_device2.dev.platform_data = &olympus_i2c2_platform_data;
+	tegra_i2c_device3.dev.platform_data = &olympus_i2c3_platform_data;
+	tegra_i2c_device4.dev.platform_data = &olympus_dvc_platform_data;
+
+	platform_device_register(&tegra_i2c_device1);
+	platform_device_register(&tegra_i2c_device2);
+	platform_device_register(&tegra_i2c_device3);
+	platform_device_register(&tegra_i2c_device4);
+}
+
+/* center: x: home: 55, menu: 185, back: 305, search 425, y: 835 */
+static int vkey_size_olympus_p_1_42[4][4] = 
+            { {67,900,134,80},    // KEY_MENU
+              {200,900,134,80},    // KEY_HOME
+              {337,900,134,80},    // KEY_BACK
+              {472,900,134,80}};  // KEY_SEARCH
+
+static int vkey_size_olympus_p_1_43[4][4] = 
+            { {68,1024,76,76},    // KEY_MENU
+              {203,1024,87,76},    // KEY_HOME
+              {337,1024,87,76},    // KEY_BACK
+              {472,1024,76,76}};  // KEY_SEARCH
+
+static ssize_t mot_virtual_keys_show(struct kobject *kobj,
+					struct kobj_attribute *attr, char *buf)
+{
+	/* keys are specified by setting the x,y of the center, the width,
+	 * and the height, as such keycode:center_x:center_y:width:height */
+	if (HWREV_TYPE_IS_PORTABLE(system_rev)  ||
+	    HWREV_TYPE_IS_FINAL(system_rev) )
+	{
+		/* Olympus, P1C+ product */
+		if (HWREV_REV(system_rev) >= HWREV_REV_1C )
+		{
+			return sprintf(buf, __stringify(EV_KEY) ":" __stringify(KEY_MENU) ":%d:%d:%d:%d:" 
+                           __stringify(EV_KEY) ":" __stringify(KEY_HOME) ":%d:%d:%d:%d:"
+	            __stringify(EV_KEY) ":" __stringify(KEY_BACK) ":%d:%d:%d:%d:"
+                           __stringify(EV_KEY) ":" __stringify(KEY_SEARCH) ":%d:%d:%d:%d\n",
+                           vkey_size_olympus_p_1_43[0][0],vkey_size_olympus_p_1_43[0][1],vkey_size_olympus_p_1_43[0][2],vkey_size_olympus_p_1_43[0][3],
+                           vkey_size_olympus_p_1_43[1][0],vkey_size_olympus_p_1_43[1][1],vkey_size_olympus_p_1_43[1][2],vkey_size_olympus_p_1_43[1][3],
+                           vkey_size_olympus_p_1_43[2][0],vkey_size_olympus_p_1_43[2][1],vkey_size_olympus_p_1_43[2][2],vkey_size_olympus_p_1_43[2][3],
+                           vkey_size_olympus_p_1_43[3][0],vkey_size_olympus_p_1_43[3][1], vkey_size_olympus_p_1_43[3][2], vkey_size_olympus_p_1_43[3][3]);
+		}
+		else
+		{
+			return sprintf(buf, __stringify(EV_KEY) ":" __stringify(KEY_MENU) ":%d:%d:%d:%d:" 
+                           __stringify(EV_KEY) ":" __stringify(KEY_HOME) ":%d:%d:%d:%d:"
+	            __stringify(EV_KEY) ":" __stringify(KEY_BACK) ":%d:%d:%d:%d:"
+                           __stringify(EV_KEY) ":" __stringify(KEY_SEARCH) ":%d:%d:%d:%d\n",
+                           vkey_size_olympus_p_1_42[0][0],vkey_size_olympus_p_1_42[0][1],vkey_size_olympus_p_1_42[0][2],vkey_size_olympus_p_1_42[0][3],
+                           vkey_size_olympus_p_1_42[1][0],vkey_size_olympus_p_1_42[1][1],vkey_size_olympus_p_1_42[1][2],vkey_size_olympus_p_1_42[1][3],
+                           vkey_size_olympus_p_1_42[2][0],vkey_size_olympus_p_1_42[2][1],vkey_size_olympus_p_1_42[2][2],vkey_size_olympus_p_1_42[2][3],
+                           vkey_size_olympus_p_1_42[3][0],vkey_size_olympus_p_1_42[3][1], vkey_size_olympus_p_1_42[3][2], vkey_size_olympus_p_1_42[3][3]);
+		}
+	}
+	else
+		return 0;
+};
+
+static struct kobj_attribute mot_virtual_keys_attr = {
+	.attr = {
+		.name = "virtualkeys.qtouch-obp-ts",
+		.mode = S_IRUGO,
+	},
+	.show = &mot_virtual_keys_show,
+};
+
+static struct attribute *mot_properties_attrs[] = {
+	&mot_virtual_keys_attr.attr,
+	NULL,
+};
+
+static struct attribute_group mot_properties_attr_group = {
+	.attrs = mot_properties_attrs,
+};
+
+static void olympus_touch_init(void)
+{
+	int ret = 0;
+	struct kobject *properties_kobj = NULL;
+
 	tegra_gpio_enable(OLYMPUS_TOUCH_IRQ_GPIO);
 	gpio_request(OLYMPUS_TOUCH_IRQ_GPIO, "touch_irq");
 	gpio_direction_input(OLYMPUS_TOUCH_IRQ_GPIO);
@@ -364,8 +562,72 @@ void __init olympus_i2c_init(void)
 	tegra_gpio_enable(OLYMPUS_TOUCH_RESET_GPIO);
 	gpio_request(OLYMPUS_TOUCH_RESET_GPIO, "touch_reset");
 	gpio_direction_output(OLYMPUS_TOUCH_RESET_GPIO, 1);
+	
 
+	printk("\n%s: Updating i2c_bus_board_info with correct setup info for TS\n", __func__);
+	/*
+  	 * This is the information for the driver! Update platform_data field with
+ 	 * the pointer to the correct data based on the machine type and screen 
+ 	 * size
+	 */
+	properties_kobj = kobject_create_and_add("board_properties", NULL);
+	if (properties_kobj)
+		ret = sysfs_create_group(properties_kobj,
+				 &mot_properties_attr_group);
+	if (!properties_kobj || ret)
+		pr_err("failed to create board_properties\n");
 
+	printk("TOUCH: determining size of the screen\n");
+#if 0
+	/* Setup Olympus Mortable as a default */ 
+	olympus_i2c_bus1_board_info->platform_data = 
+		&ts_platform_olympus_m_1;
+	if (HWREV_TYPE_IS_PORTABLE(system_rev)  ||
+	    HWREV_TYPE_IS_FINAL(system_rev) )
+	{
+		/* Olympus product */
+		if (HWREV_REV(system_rev) >= HWREV_REV_1C )
+		{
+			info->platform_data = 
+				&ts_platform_olympus_p_1_43;
+		}
+		else
+		{
+			info->platform_data = 
+				&ts_platform_olympus_p_1_37;
+		}
+	}
+#endif	
+}
+
+static void olympus_lights_init(void)
+{
+	unsigned int disp_type = 0;
+	int ret;
+
+#ifdef CONFIG_LEDS_DISP_BTN_TIED
+	lm3532_pdata.flags |= LM3532_DISP_BTN_TIED;
+#endif
+	if ((ret = MotorolaBootDispArgGet(&disp_type))) {
+		pr_err("\n%s: unable to read display type: %d\n", __func__, ret);
+		return;
+	}
+	if (disp_type & 0x100) {
+		pr_info("\n%s: 0x%x ES2 display; will enable PWM in LM3532\n",
+			__func__, disp_type);
+		lm3532_pdata.ctrl_a_pwm = 0x86;
+	} else {
+		pr_info("\n%s: 0x%x ES1 display; will NOT enable PWM in LM3532\n",
+			__func__, disp_type);
+	}
+}
+
+void __init olympus_i2c_init(void)
+{
+	olympus_i2c_reg();
+	olympus_touch_init();
+	olympus_lights_init();
+	
 	printk("%s: registering i2c devices...\n", __func__);
 	printk("bus 0: %d devices\n", ARRAY_SIZE(olympus_i2c_bus1_board_info));
 	i2c_register_board_info(0, olympus_i2c_bus1_board_info, 
@@ -373,7 +635,6 @@ void __init olympus_i2c_init(void)
 	printk("bus 3: %d devices\n", ARRAY_SIZE(olympus_i2c_bus4_board_info));
 	i2c_register_board_info(3, olympus_i2c_bus4_board_info, 
 				ARRAY_SIZE(olympus_i2c_bus4_board_info));
-
 
 }
 

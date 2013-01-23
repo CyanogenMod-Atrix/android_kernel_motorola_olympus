@@ -93,7 +93,7 @@ struct lm3532_platform_data lm3532_pdata = {
     .ctrl_b_fs_current = LM3532_8p2mA_FS_CURRENT,
     .ctrl_a_mapping_mode = LM3532_LINEAR_MAPPING,
     .ctrl_b_mapping_mode = LM3532_LINEAR_MAPPING,
-	.ctrl_a_pwm = 0x82,
+    .ctrl_a_pwm = 0x82,
 };
 
 extern int MotorolaBootDispArgGet(unsigned int *arg);

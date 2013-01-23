@@ -21,8 +21,8 @@
  *          15 May 2002
  */
 
-#ifndef LINUX_MMC_MMC_H
-#define LINUX_MMC_MMC_H
+#ifndef MMC_MMC_H
+#define MMC_MMC_H
 
 /* Standard MMC commands (4.1)           type  argument     response */
    /* class 1 */
@@ -83,12 +83,6 @@
 #define MMC_APP_CMD              55   /* ac   [31:16] RCA        R1  */
 #define MMC_GEN_CMD              56   /* adtc [0] RD/WR          R1  */
 
-static inline bool mmc_op_multi(u32 opcode)
-{
-	return opcode == MMC_WRITE_MULTIPLE_BLOCK ||
-	       opcode == MMC_READ_MULTIPLE_BLOCK;
-}
-
 /*
  * MMC_SWITCH argument format:
  *
@@ -141,15 +135,10 @@ static inline bool mmc_op_multi(u32 opcode)
 #define R1_URGENT_BKOPS	(1 << 6)	/* sr, a */
 #define R1_APP_CMD		(1 << 5)	/* sr, c */
 
-#define R1_STATE_IDLE	0
-#define R1_STATE_READY	1
-#define R1_STATE_IDENT	2
-#define R1_STATE_STBY	3
-#define R1_STATE_TRAN	4
-#define R1_STATE_DATA	5
-#define R1_STATE_RCV	6
-#define R1_STATE_PRG	7
-#define R1_STATE_DIS	8
+/*
+ * MMC/SD card state
+ */
+#define R1_STATE_PRG		0x7
 
 /*
  * MMC/SD in SPI mode reports R1 status always, and R2 for SEND_STATUS
@@ -276,9 +265,7 @@ struct _mmc_csd {
 #define EXT_CSD_HPI_MGMT		161	/* R/W */
 #define EXT_CSD_BKOPS_EN		163	/* R/W */
 #define EXT_CSD_BKOPS_START		164	/* R/W */
-#define EXT_CSD_WR_REL_PARAM		166	/* RO */
 #define EXT_CSD_ERASE_GROUP_DEF		175	/* R/W */
-#define EXT_CSD_PART_CONFIG		179	/* R/W */
 #define EXT_CSD_ERASED_MEM_CONT		181	/* RO */
 #define EXT_CSD_BUS_WIDTH		183	/* R/W */
 #define EXT_CSD_HS_TIMING		185	/* R/W */
@@ -286,14 +273,12 @@ struct _mmc_csd {
 #define EXT_CSD_STRUCTURE		194	/* RO */
 #define EXT_CSD_CARD_TYPE		196	/* RO */
 #define EXT_CSD_OUT_OF_INTERRUPT_TIME	198	/* RO */
-#define EXT_CSD_PART_SWITCH_TIME        199     /* RO */
 #define EXT_CSD_SEC_CNT			212	/* RO, 4 bytes */
 #define EXT_CSD_S_A_TIMEOUT		217	/* RO */
-#define EXT_CSD_REL_WR_SEC_C		222	/* RO */
 #define EXT_CSD_HC_WP_GRP_SIZE		221	/* RO */
 #define EXT_CSD_ERASE_TIMEOUT_MULT	223	/* RO */
 #define EXT_CSD_HC_ERASE_GRP_SIZE	224	/* RO */
-#define EXT_CSD_BOOT_MULT		226	/* RO */
+#define EXT_CSD_BOOT_SIZE_MULTI     226 
 #define EXT_CSD_SEC_TRIM_MULT		229	/* RO */
 #define EXT_CSD_SEC_ERASE_MULT		230	/* RO */
 #define EXT_CSD_SEC_FEATURE_SUPPORT	231	/* RO */
@@ -305,12 +290,6 @@ struct _mmc_csd {
 /*
  * EXT_CSD field definitions
  */
-
-#define EXT_CSD_WR_REL_PARAM_EN		(1<<2)
-
-#define EXT_CSD_PART_CONFIG_ACC_MASK	(0x7)
-#define EXT_CSD_PART_CONFIG_ACC_BOOT0	(0x1)
-#define EXT_CSD_PART_CONFIG_ACC_BOOT1	(0x2)
 
 #define EXT_CSD_CMD_SET_NORMAL		(1<<0)
 #define EXT_CSD_CMD_SET_SECURE		(1<<1)
@@ -345,4 +324,5 @@ struct _mmc_csd {
 #define MMC_SWITCH_MODE_CLEAR_BITS	0x02	/* Clear bits which are 1 in value */
 #define MMC_SWITCH_MODE_WRITE_BYTE	0x03	/* Set target to value */
 
-#endif /* LINUX_MMC_MMC_H */
+#endif  /* MMC_MMC_PROTOCOL_H */
+

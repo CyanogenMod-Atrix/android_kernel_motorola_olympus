@@ -20,14 +20,21 @@
 #include <linux/usb/composite.h>
 #include <linux/if_ether.h>
 
+#if 0
 struct android_usb_function {
 	struct list_head	list;
 	char			*name;
 	int 			(*bind_config)(struct usb_configuration *c);
 };
+#endif
 
 struct android_usb_product {
-	/* Default product ID. */
+	/* Vendor ID for this set of functions.
+	 * Default vendor_id in platform data will be used if this is zero.
+	 */
+	__u16 vendor_id;
+
+	/* Product ID for this set of functions. */
 	__u16 product_id;
 
 	/* List of function names associated with this product.
@@ -44,6 +51,7 @@ struct android_usb_platform_data {
 
 	/* Default product ID. */
 	__u16 product_id;
+
 	__u16 version;
 
 	char *product_name;
@@ -67,6 +75,48 @@ struct android_usb_platform_data {
 	 */
 	int num_functions;
 	char **functions;
+
+	void (*enable_fast_charge)(bool enable);
+	bool RndisDisableMPDecision;
+
+	/* To indicate the GPIO num for USB id
+	 */
+	int usb_id_pin_gpio;
+
+	/* For QCT diag
+	 */
+	int (*update_pid_and_serial_num)(uint32_t, const char *);
+
+	/* For multiple serial function support
+	 * "Ex: tty:serial[,sdio:modem_mdm][,smd:modem]"
+	 */
+	char *fserial_init_string;
+
+	/* The gadget driver need to initial at beginning
+	 */
+	unsigned char diag_init:1;
+	unsigned char modem_init:1;
+	unsigned char rmnet_init:1;
+	unsigned char reserved:5;
+
+	/* ums initial parameters */
+
+	/* number of LUNS */
+	int nluns;
+	/* bitmap of lun to indicate cdrom disk.
+	 * NOTE: Only support one cdrom disk
+	 * and it must be located in last lun */
+	int cdrom_lun;
+	int cdrom_cttype;
+
+
+	/* Re-match the product ID.
+	 * In some devices, the product id is specified by vendor request.
+	 *
+	 * @param product_id: the common product id
+	 * @param intrsharing: 1 for internet sharing, 0 for internet pass through
+	 */
+	int (*match)(int product_id, int intrsharing);
 };
 
 /* Platform data for "usb_mass_storage" driver. */
@@ -76,10 +126,9 @@ struct usb_mass_storage_platform_data {
 	char *product;
 	int release;
 
+	char can_stall;
 	/* number of LUNS */
 	int nluns;
-
-	size_t bulk_size;
 };
 
 /* Platform data for USB ethernet driver. */
@@ -89,17 +138,15 @@ struct usb_ether_platform_data {
 	const char *vendorDescr;
 };
 
-/* Platform data for ACM driver. */
-struct acm_platform_data {
-	u8	num_inst;
-	u8	use_iads;
-};
+#if defined(CONFIG_MACH_HOLIDAY)
+extern u8 in_usb_tethering;
+#endif
 
-extern void android_usb_set_connected(int on, unsigned int accy);
-
+#if 0
 extern void android_register_function(struct android_usb_function *f);
-
-extern void android_enable_function(struct usb_function *f, int enable);
+extern int android_enable_function(struct usb_function *f, int enable);
+#endif
 
 
 #endif	/* __LINUX_USB_ANDROID_H */
+

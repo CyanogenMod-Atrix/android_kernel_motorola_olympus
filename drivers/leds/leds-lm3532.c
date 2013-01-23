@@ -990,7 +990,7 @@ static int lm3532_probe (struct i2c_client *client,
             LM3532_NAME, driver_data);
 
         if (ret == 0) {
-            ret = set_irq_wake (client->irq, 1);
+            ret = irq_set_irq_wake (client->irq, 1);
         } else {
             printk (KERN_ERR "request_irq %d for lm3532 failed: %d\n",
                 client->irq, ret);

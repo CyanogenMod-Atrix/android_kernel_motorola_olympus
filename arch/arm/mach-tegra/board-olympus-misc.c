@@ -31,7 +31,25 @@
 #include "gpio-names.h"
 #include "board-olympus.h"
 
+static int mot_boot_recovery = 0;
+static int __init mot_bm_recovery_setup(char *options)
+{
+       mot_boot_recovery = 1;
+       return 1;
+}
+__setup("rec", mot_bm_recovery_setup);
 
+#define PRODUCT_TYPE_MAX_LEN 4
+static char product_type[PRODUCT_TYPE_MAX_LEN + 1] = "cw";
+static int __init stingray_product_type_parse(char *s)
+{
+	strncpy(product_type, s, PRODUCT_TYPE_MAX_LEN);
+	product_type[PRODUCT_TYPE_MAX_LEN] = '\0';
+	printk(KERN_INFO "product_type=%s\n", product_type);
+
+	return 1;
+}
+__setup("product_type=", stingray_product_type_parse);
 
 #if defined(CONFIG_MTD_NAND_TEGRA) || defined(CONFIG_EMBEDDED_MMC_START_OFFSET)
 #define MAX_MTD_PARTNR 16
