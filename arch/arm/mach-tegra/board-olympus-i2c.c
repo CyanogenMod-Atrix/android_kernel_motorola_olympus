@@ -29,6 +29,7 @@
 #include <linux/input.h>
 #include <linux/leds-lm3530.h>
 #include <linux/leds-lm3532.h>
+#include <linux/isl29030.h>
 
 #include "board-olympus.h"
 #include "gpio-names.h"
@@ -425,6 +426,9 @@ struct qtouch_ts_platform_data olympus_touch_data = {
 	},
 };
 
+extern struct isl29030_platform_data isl29030_als_ir_data_Olympus;
+extern struct akm8975_platform_data akm8975_data;
+extern struct kxtf9_platform_data kxtf9_data;
 
 static struct i2c_board_info __initdata olympus_i2c_bus1_board_info[] = {
 	{ /* Display backlight */
@@ -437,13 +441,24 @@ static struct i2c_board_info __initdata olympus_i2c_bus1_board_info[] = {
 		.platform_data = &olympus_touch_data,
 		.irq = TEGRA_GPIO_TO_IRQ(OLYMPUS_TOUCH_IRQ_GPIO),
 	},
+	{
+		/*  ISL 29030 (prox/ALS) driver */
+		I2C_BOARD_INFO(LD_ISL29030_NAME, 0x44),
+		.platform_data = &isl29030_als_ir_data_Olympus,
+		.irq = 180,
+	},
 };
 
 static struct i2c_board_info __initdata olympus_i2c_bus4_board_info[] = {
-        {
-                I2C_BOARD_INFO("akm8973", 0x0C),
-                .irq = TEGRA_GPIO_TO_IRQ(OLYMPUS_COMPASS_IRQ_GPIO),
-        },
+	{
+		I2C_BOARD_INFO("akm8975", 0x0C),
+		.platform_data = &akm8975_data,
+		.irq = TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PE2),
+	},
+	{
+		I2C_BOARD_INFO("kxtf9", 0x0F),
+		.platform_data = &kxtf9_data,
+	},
 };
 
 static struct tegra_i2c_platform_data olympus_i2c1_platform_data = {

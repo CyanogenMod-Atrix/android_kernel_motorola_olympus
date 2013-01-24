@@ -38,6 +38,7 @@
 #include <linux/serial_8250.h>
 #include <linux/spi-tegra.h>
 #include <linux/spi/spi.h>
+#include <linux/tegra_uart.h>
 #include <linux/usb/f_accessory.h>
 #include <linux/nvhost.h>
 
@@ -447,16 +448,6 @@ static void olympus_usb_init(void)
  * SPI
  */
 
-static struct spi_board_info tegra_spi_slave_device[] = {
-	{
-		.modalias = "mdm6600_spi",
-		.bus_num = 0,
-		.chip_select = 0,
-		.max_speed_hz = 26000000,
-		.mode = SPI_MODE_0,
-	},
-};
-
 static struct tegra_spi_platform_data olympus_spi_pdata = {
 	.is_dma_based		= true,
 	.max_dma_buffer		= (16 * 1024),
@@ -492,13 +483,13 @@ static void __init olympus_spi_init(void)
 	olympus_spi_pdata.parent_clk_list = spi_parent_clk;
 	olympus_spi_pdata.parent_clk_count = ARRAY_SIZE(spi_parent_clk);	
 
-	spi_register_board_info(tegra_spi_slave_device, ARRAY_SIZE(tegra_spi_slave_device));
-	platform_device_register(&tegra_spi_slave_device1);
+//	tegra_spi_device1.dev.platform_data = &olympus_spi_pdata;
+	platform_device_register(&tegra_spi_device1);
 
-	tegra_spi_device2.dev.platform_data = &olympus_spi_pdata;
+//	tegra_spi_device2.dev.platform_data = &olympus_spi_pdata;
 	platform_device_register(&tegra_spi_device2);
 	
-	tegra_spi_device3.dev.platform_data = &olympus_spi_pdata;
+//	tegra_spi_device3.dev.platform_data = &olympus_spi_pdata;
 	platform_device_register(&tegra_spi_device3);
 
 }
@@ -589,10 +580,11 @@ static struct platform_device *olympus_devices[] __initdata = {
 	&olympus_grhost_device,
 	&tegra_gart_device,
 	&debug_uart,
-	&tegra_uarta_device,
-	&tegra_uartc_device,
 	&tegra_uartd_device,
-	&tegra_uarte_device,
+	&tegra_i2s_device1,
+	&tegra_i2s_device2,
+	&tegra_pcm_device,
+	&tegra_kbc_device,
 	&tegra_w1_device,
 	&tegra_aes_device,
 	&tegra_avp_device,
@@ -627,6 +619,16 @@ static void olympus_reboot_init(void)
 			__func__);
 }
 
+static struct tegra_uart_platform_data ipc_olympus_pdata = 
+{
+	.uart_ipc = 1,
+	.uart_wake_host = TEGRA_GPIO_PA0,
+	.uart_wake_request = TEGRA_GPIO_PF1,
+#ifdef CONFIG_MDM_CTRL
+	.peer_register = mot_mdm_ctrl_peer_register,
+#endif
+};
+
 void __init olympus_devices_init()
 {
 	struct clk *clk;
@@ -647,5 +649,7 @@ void __init olympus_devices_init()
 	pm_power_off = tegra_system_power_off;
 	
 	olympus_reboot_init();
+
+	tegra_uartd_device.dev.platform_data = &ipc_olympus_pdata;
 }
 

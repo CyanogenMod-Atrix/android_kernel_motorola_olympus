@@ -14,14 +14,14 @@ extern struct cpcap_leds tegra_cpcap_leds;
 extern struct platform_driver cpcap_usb_connected_driver;
 extern struct l3g4200d_platform_data tegra_gyro_pdata;*/
 
-void olympus_pinmux_init(void);
-int olympus_panel_init(void);
-void olympus_emc_init(void);
-void olympus_devices_init(void);
-void olympus_power_init(void);
-void olympus_keypad_init(void);
-void olympus_i2c_init(void);
-void olympus_usb_gadget_init(void);
+extern void __init olympus_pinmux_init(void);
+extern int __init olympus_panel_init(void);
+extern void __init olympus_emc_init(void);
+extern void __init olympus_devices_init(void);
+extern void __init olympus_power_init(void);
+extern void __init olympus_keypad_init(void);
+extern void __init olympus_i2c_init(void);
+extern void __init olympus_usb_gadget_init(void);
 extern void mot_setup_lights(struct i2c_board_info *info);
 extern void mot_setup_touch(struct i2c_board_info *info);
 
@@ -29,7 +29,7 @@ extern int mot_mdm_ctrl_shutdown(void);
 extern int mot_mdm_ctrl_peer_register(void (*)(void*),
                                       void (*)(void*),
                                       void*);
-extern int __init mot_wlan_init(void);
+extern int __init olympus_wlan_init(void);
 extern int __init mot_modem_init(void);
 
 extern void __init mot_hdmi_init(void);

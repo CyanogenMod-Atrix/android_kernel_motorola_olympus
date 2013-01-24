@@ -488,7 +488,7 @@ struct regulator_consumer_supply cpcap_vwlan2_consumers[] = {
 	REGULATOR_CONSUMER("avdd_usb", NULL),
 	REGULATOR_CONSUMER("vusb_modem_flash", NULL),
 	REGULATOR_CONSUMER("vusb_modem_ipc", NULL),
-	REGULATOR_CONSUMER("avdd_hdmi", NULL),
+	REGULATOR_CONSUMER("vhdmi", NULL),
 };
 
 struct regulator_consumer_supply cpcap_vsimcard_consumers[] = {
@@ -496,7 +496,7 @@ struct regulator_consumer_supply cpcap_vsimcard_consumers[] = {
 };
 
 struct regulator_consumer_supply cpcap_vvib_consumers[] = {
-	REGULATOR_CONSUMER("vdd_vbrtr", NULL /* vibrator */),
+	REGULATOR_CONSUMER("vvib", NULL /* vibrator */),
 };
 
 struct regulator_consumer_supply cpcap_vaudio_consumers[] = {
@@ -905,16 +905,9 @@ void __init olympus_power_init(void)
 {
 	unsigned int i;
 	int error;
-	void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
-	u32 pmc_ctrl;
 
 	printk(KERN_INFO "pICS_%s: step in...\n",__func__);
 
-	/* configure the power management controller to trigger PMU
-	 * interrupts when low */
-	pmc_ctrl = readl(pmc + PMC_CTRL);
-	writel(pmc_ctrl | PMC_CTRL_INTR_LOW, pmc + PMC_CTRL);
-	
 	/* CPCAP standby lines connected to CPCAP GPIOs on Etna P1B & Olympus P2 */
 	if ( HWREV_TYPE_IS_FINAL(system_rev) ||
 	     (machine_is_etna() &&
@@ -951,10 +944,6 @@ void __init olympus_power_init(void)
 	    HWREV_TYPE_IS_MORTABLE(system_rev) ){
 		tegra_cpcap_data.wdt_disable = 1;
 	}
-
-	tegra_gpio_enable(154);
-	gpio_request(154, "usb_host_pwr_en");
-	gpio_direction_output(TEGRA_GPIO_PT2, 0);
 
 	printk(KERN_INFO "pICS_%s: step in 2...\n",__func__);
 

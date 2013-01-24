@@ -73,9 +73,9 @@ static int olympus_panel_disable(void)
 static int olympus_hdmi_enable(void)
 {
 	if (!olympus_hdmi_reg) {
-		olympus_hdmi_reg = regulator_get(NULL, "avdd_hdmi"); /* LD07 */
+		olympus_hdmi_reg = regulator_get(NULL, "vhdmi"); /* LD07 */
 		if (IS_ERR_OR_NULL(olympus_hdmi_reg)) {
-			pr_err("hdmi: couldn't get regulator avdd_hdmi\n");
+			pr_err("hdmi: couldn't get regulator vhdmi\n");
 			olympus_hdmi_reg = NULL;
 			return PTR_ERR(olympus_hdmi_reg);
 		}
@@ -95,15 +95,7 @@ static int olympus_hdmi_enable(void)
 	regulator_enable(olympus_hdmi_pll);
 	return 0;
 }
-#if 0
-static struct tegra_dsi_cmd dsi_init_cmd[]= {
-	DSI_CMD_SHORT(0x05, 0x11, 0x00),
-	DSI_DLY_MS(120), //[ECID:000000] ZTEBSP DangXiao 20111129 ,20->120
-	DSI_CMD_SHORT(0x05, 0x29, 0x00),
-	DSI_DLY_MS(20), //[ECID:000000] ZTEBSP DangXiao 20120129 ,120->20
 
-};
-#endif
 static int olympus_hdmi_disable(void)
 {
 	regulator_disable(olympus_hdmi_reg);
@@ -208,7 +200,7 @@ static struct tegra_fb_data olympus_hdmi_fb_data = {
 static struct tegra_dsi_out olympus_dsi_out = {
 	.n_data_lanes = 2,
 	.pixel_format = TEGRA_DSI_PIXEL_FORMAT_24BIT_P,
-	.refresh_rate = 50,
+	.refresh_rate = 60,
 	.virtual_channel = TEGRA_DSI_VIRTUAL_CHANNEL_0,
 	.panel_reset = 0,
 //	.power_saving_suspend = true,

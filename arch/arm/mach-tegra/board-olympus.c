@@ -66,6 +66,7 @@
 #define PWRUP_INVALID               0xFFFFFFFF
 #define PWRUP_BAREBOARD             0x00100000 /* Bit 20 */
 
+#define UART_IPC_OLYMPUS	3
 
 static char oly_unused_pins_p3[] = {
         TEGRA_GPIO_PO1,
@@ -285,59 +286,64 @@ static char oly_unused_pins_p1[] = {
 
 static __initdata struct tegra_clk_init_table olympus_clk_init_table[] = {
 	/* name		parent		rate		enabled */  
-	{ "pll_p_out4",	"pll_p",	24000000,	true},	
-	{ "i2s1",	"pll_a_out0",	0,		false},
-	{ "i2s2",	"pll_a_out0",	0,		false},
-	{ "spdif_out",	"pll_a_out0",	0,		false},
-	{ "sdmmc4",	"pll_p",	48000000,	true },
-	{ "pwm",	"clk_m",	48000000,	false},
-	{ "pll_u",	NULL,		480000000,	true },
-	{ "blink",	"clk_32k",	32768,		true},
-	{ "disp1",	"pll_d_out0",	229500000,	true},
-	{ "vi",		"pll_c",	300000000,	false},
-	{ "2d",		"pll_c",	300000000,	true},
-	{ "3d",		"pll_c",	300000000,	true},
-	{ "pll_p",	"clk_m",	216000000,	true},
-	{ "host1x",	"pll_p",	108000000,	true},
-	{ "uartb",	"pll_p",	216000000,	true},
 	{ "usb3",	"clk_m",	26000000,	false},
-	{ "usbd",	"clk_m",	26000000,	true},
-	{ "dvc",	"clk_m",	2888888,	true},
-	{ "i2c3",	"clk_m",	2888888,	true},
-	{ "i2c2",	"clk_m",	787878,		true},
-	{ "i2c1",	"clk_m",	2888888,	true},
-	{ "owr",	"clk_m",	1000000,	false},
-	{ "kfuse",	"clk_m",	26000000,	true},
-	{ "i2s2",	"clk_m",	26000000,	false},
-	{ "timer",	"clk_m",	26000000,	true},
-	{ "pll_u",	"clk_m",	480000000,	true},
-	{ "pll_d",	"clk_m",	459000000,	true},
-	{ "pll_d_out0",	"pll_d",	229500000,	true},
-	{ "uartd",	"pll_p",	216000000,	true},
-	{ "csite",	"pll_p",	144000000,	true},
-	{ "sdmmc3",	"pll_p",	48000000,	false},
-	{ "sdmmc2",	"pll_p",	24000000,	false},
-	{ "sdmmc1",	"pll_p",	48000000,	false},
-	{ "pll_p_out3",	"pll_p",	72000000,	true},
-	{ "pll_p_out1",	"pll_p",	28800000,	true},
-	{ "pll_a",	"pll_p_out1",	56448000,	false},
-	{ "pll_a_out0",	"pll_a",	11289600,	false},
-	{ "pll_c",	"clk_m",	600000000,	true},
-	{ "mpe",	"pll_c",	300000000,	true},
-	{ "epp",	"pll_c",	300000000,	true},
-	{ "sbc2",	"pll_c",	31578947,	true},
+{ "usbd",	"clk_m",	26000000,	true},
+{ "dvc",	"clk_m",	2888888,	true},
+{ "i2c3",	"clk_m",	2888888,	true},
+{ "i2c2",	"clk_m",	787878,		true},
+{ "i2c1",	"clk_m",	2888888,	true},
+{ "owr",	"clk_m",	1000000,	false},
+{ "kfuse",	"clk_m",	26000000,	true},
+{ "i2s2",	"clk_m",	26000000,	false},
+{ "timer",	"clk_m",	26000000,	true},
+{ "pll_u",	"clk_m",	480000000,	true},
+{ "pll_d",	"clk_m",	459000000,	true},
+{ "pll_d_out0",	"pll_d",	229500000,	true},
+{ "disp1",	"pll_d_out0",	229500000,	true},
+{ "pll_p",	"clk_m",	216000000,	true},
+{ "host1x",	"pll_p",	108000000,	true},
+{ "uartb",	"pll_p",	216000000,	true},
+{ "uartd",	"pll_p",	216000000,	true},
+{ "csite",	"pll_p",	144000000,	true},
+{ "sdmmc3",	"pll_p",	48000000,	false},
+{ "sdmmc2",	"pll_p",	24000000,	false},
+{ "sdmmc1",	"pll_p",	48000000,	false},
+{ "pll_p_out3",	"pll_p",	72000000,	true},
+{ "pll_p_out1",	"pll_p",	28800000,	true},
+{ "pll_a",	"pll_p_out1",	56448000,	false},
+{ "pll_a_out0",	"pll_a",	11289600,	false},
+{ "spdif_out",	"pll_a_out0",	11289600,	false},
+{ "pll_c",	"clk_m",	600000000,	true},
+{ "mpe",	"pll_c",	300000000,	true},
+{ "epp",	"pll_c",	300000000,	true},
+{ "vi",		"pll_c",	100000000,	true},
+{ "2d",		"pll_c",	300000000,	true},
+{ "3d",		"pll_c",	300000000,	true},
+{ "sbc2",	"pll_c",	31578947,	true},
+{ "cop",	"sclk",		80000000,	true},
+{ "i2s1",	"pll_a_out0",	2822400,	false},
+{ "pll_m",	"clk_m",	600000000,	true},
+{ "emc",	"pll_m",	600000000,	true},
+{ "uartc",	"pll_m",	600000000,	true},
+{ "sbc1",	"pll_m",	100000000,	true},
+{ "pwm",	"clk_32k",	32768,	false},
+{ "rtc",	"clk_32k",	32768,	true},
+	{ "pll_p_out4",	"pll_p",	108000000,	true},	
+	{ "sdmmc4",	"pll_p",	48000000,	true},
 	{ "pll_c_out1",	"pll_c",	80000000,	true},
 	{ "sclk",	"pll_c_out1",	80000000,	true},
-	{ "cop",	"sclk",		80000000,	true},
-	{ "hclk",	"pll_c_out1",	80000000,	true},
-	{ "pll_m",	"clk_m",	600000000,	true},
-	{ "emc",	"pll_m",	600000000,	true},
-	{ "uartc",	"pll_m",	600000000,	true},
-	{ "sbc1",	"pll_m",	100000000,	true},
+	{ "hclk",	"sclk",		80000000,	true},
+	{ "pclk",	"hclk",		40000000,	true},
+	{ "apbdma",	"pclk",		40000000,	true},
+	{ "blink",	"clk_32k",	32768,		false},
+	{ "pwm",	"clk_32k",	32768,		false},
+	{ "kbc",	"clk_32k",	32768,		true},
+	{ "sdmmc2",	"pll_p",	25000000,	false},
+	{ "i2s2",	"pll_a_out0",	0,		false},
+	{ "spi",	"clk_m",	26000000,	true},
 	{ NULL,		NULL,		0,		0},
 };
 
-#if 1
 static noinline void __init tegra_setup_bluesleep(void)
 {
        struct platform_device *pDev = NULL;
@@ -384,9 +390,7 @@ fail:
        if (pDev)
                return;
 }
-#else
-static inline void tegra_setup_bluesleep(void) { }
-#endif
+
 
 static int config_unused_pins(char *pins, int num)
 {
@@ -538,10 +542,10 @@ static void __init tegra_mot_init(void)
 #endif
 	}
 
-/*	mot_modem_init();*/
+	mot_modem_init();
 
-/*	mot_wlan_init();
-	mot_sensors_init();*/
+	olympus_wlan_init();
+	mot_sensors_init();
 
 	pm_power_off = mot_system_power_off;
 	tegra_setup_bluesleep();
@@ -555,7 +559,7 @@ static void __init tegra_mot_init(void)
 	gpio_request(TEGRA_GPIO_PD4, "spdif_enable");
 	gpio_direction_output(TEGRA_GPIO_PD4, 0);
 	gpio_export(TEGRA_GPIO_PD4, false);
-
+	if (0==1) {
 	if ((HWREV_TYPE_IS_PORTABLE(system_rev) || HWREV_TYPE_IS_FINAL(system_rev)))
 	{
 		if (HWREV_REV(system_rev) >= HWREV_REV_1 && HWREV_REV(system_rev) < HWREV_REV_2)
@@ -573,6 +577,7 @@ static void __init tegra_mot_init(void)
 			// Olympus P3 and newer
 			config_unused_pins(oly_unused_pins_p3, ARRAY_SIZE(oly_unused_pins_p3));
 		}
+	}
 	}
 	tegra_release_bootloader_fb();
 	read_gpio();

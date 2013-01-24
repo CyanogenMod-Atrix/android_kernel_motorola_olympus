@@ -151,6 +151,29 @@ static int olympus_wifi_set_carddetect(int val)
 	return 0;
 }
 
+static DEFINE_SPINLOCK(brcm_4329_enable_lock);
+static int brcm_4329_enable_count;
+
+void change_power_brcm_4329(bool enable) {
+	unsigned long flags;
+
+	spin_lock_irqsave(&brcm_4329_enable_lock, flags);
+	if (enable) {
+		gpio_set_value(TEGRA_GPIO_PU4, enable);
+		brcm_4329_enable_count++;
+		// The following shouldn't happen but protect
+		// if the user doesn't cleanup.
+		if (brcm_4329_enable_count > 2)
+			brcm_4329_enable_count = 2;
+	} else {
+		if (brcm_4329_enable_count > 0)
+			brcm_4329_enable_count--;
+		if (!brcm_4329_enable_count)
+			gpio_set_value(TEGRA_GPIO_PU4, enable);
+	}
+	spin_unlock_irqrestore(&brcm_4329_enable_lock, flags);
+}
+
 static int olympus_wifi_power_state;
 
 static int olympus_wifi_power(int on)
