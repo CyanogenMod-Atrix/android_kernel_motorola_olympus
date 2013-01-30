@@ -38,6 +38,7 @@
 #include <linux/serial_8250.h>
 #include <linux/spi-tegra.h>
 #include <linux/spi/spi.h>
+#include <linux/spi/cpcap.h>
 #include <linux/tegra_uart.h>
 #include <linux/usb/f_accessory.h>
 #include <linux/nvhost.h>
@@ -92,12 +93,13 @@ static struct plat_serial8250_port debug_uart_platform_data[] = {
 		.membase	= IO_ADDRESS(TEGRA_UARTB_BASE),
 		.mapbase	= TEGRA_UARTB_BASE,
 		.irq		= INT_UARTB,
-		.flags		= UPF_BOOT_AUTOCONF,
+		.flags		= UPF_BOOT_AUTOCONF | UPF_FIXED_TYPE,
+		.type           = PORT_TEGRA,
 		.iotype		= UPIO_MEM,
 		.regshift	= 2,
-		.uartclk	= 0, /* filled in by init */
+		.uartclk	= 216000000,
 	}, {
-		.flags		= 0
+		.flags		= 0,
 	}
 };
 
@@ -108,6 +110,82 @@ static struct platform_device debug_uart = {
 		.platform_data = debug_uart_platform_data,
 	},
 };
+
+static struct platform_device *olympus_uart_devices[] __initdata = {
+	&tegra_uarta_device,
+	&tegra_uartb_device,
+	&tegra_uartc_device,
+        &tegra_uartd_device,
+	&tegra_uarte_device,
+};
+
+struct uart_clk_parent uart_parent_clk[] = {
+	[0] = {.name = "pll_p"},
+	[1] = {.name = "pll_m"},
+	[2] = {.name = "clk_m"},
+};
+
+static struct tegra_uart_platform_data olympus_uart_pdata;
+
+static void __init uart_debug_init(void)
+{
+	unsigned long rate;
+	struct clk *c;
+
+	pr_info("Selecting UARTB as the debug console\n");
+	olympus_uart_devices[1] = &debug_uart;
+	debug_uart_clk = clk_get_sys("serial8250.0", "uartb");
+	debug_uart_port_base = ((struct plat_serial8250_port *)(
+							debug_uartb_device.dev.platform_data))->mapbase;
+
+		/* Clock enable for the debug channel */
+		if (!IS_ERR_OR_NULL(debug_uart_clk)) {
+		rate = debug_uart_platform_data[0].uartclk;
+			pr_info("The debug console clock name is %s\n",
+						debug_uart_clk->name);
+			c = tegra_get_clock_by_name("pll_p");
+			if (IS_ERR_OR_NULL(c))
+				pr_err("Not getting the parent clock pll_p\n");
+			else
+				clk_set_parent(debug_uart_clk, c);
+
+			clk_enable(debug_uart_clk);
+			clk_set_rate(debug_uart_clk, rate);
+		} else {
+			pr_err("Not getting the clock %s for debug console\n",
+						debug_uart_clk->name);
+	}
+}
+
+static void __init olympus_uart_init(void)
+{
+	int i;
+	struct clk *c;
+
+	for (i = 0; i < ARRAY_SIZE(uart_parent_clk); ++i) {
+		c = tegra_get_clock_by_name(uart_parent_clk[i].name);
+		if (IS_ERR_OR_NULL(c)) {
+			pr_err("Not able to get the clock for %s\n",
+						uart_parent_clk[i].name);
+			continue;
+		}
+		uart_parent_clk[i].parent_clk = c;
+		uart_parent_clk[i].fixed_clk_rate = clk_get_rate(c);
+	}
+	olympus_uart_pdata.parent_clk_list = uart_parent_clk;
+	olympus_uart_pdata.parent_clk_count = ARRAY_SIZE(uart_parent_clk);
+
+	tegra_uarta_device.dev.platform_data = &olympus_uart_pdata;
+	tegra_uartb_device.dev.platform_data = &olympus_uart_pdata;
+	tegra_uartc_device.dev.platform_data = &olympus_uart_pdata;
+        tegra_uartd_device.dev.platform_data = &olympus_uart_pdata;
+
+	if (!is_tegra_debug_uartport_hs())
+		uart_debug_init();
+
+	platform_add_devices(olympus_uart_devices,
+				ARRAY_SIZE(olympus_uart_devices));
+}
 
 /* 
  * SDHCI init
@@ -260,7 +338,7 @@ static struct platform_device tegra_usb_fsg_device = {
 		.platform_data = &tegra_usb_fsg_platform,
 	},
 };
-#if 0
+
 static struct usb_ether_platform_data rndis_pdata = {
 	/* ethaddr is filled by board_serialno_setup */
 	.vendorID	= 0x22b8,
@@ -275,24 +353,6 @@ static struct platform_device rndis_device = {
 	},
 };
 
-
-/* OTG gadget device */
-static struct tegra_utmi_config udc_phy_config = {
-	.hssync_start_delay = 9,
-	.idle_wait_delay = 17,
-	.elastic_limit = 16,
-	.term_range_adj = 6,
-	.xcvr_setup = 15,
-	.xcvr_lsfslew = 1,
-	.xcvr_lsrslew = 1,
-};
-
-static struct fsl_usb2_platform_data tegra_udc_pdata = {
-	.operating_mode	= FSL_USB2_DR_DEVICE,
-	.phy_mode	= FSL_USB2_PHY_UTMI,
-	.phy_config	= &udc_phy_config,
-};
-#endif
 /* OTG transceiver */
 static struct resource cpcap_otg_resources[] = {
 	[0] = {
@@ -318,7 +378,7 @@ static struct tegra_usb_platform_data tegra_udc_pdata = {
 	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
 	.op_mode = TEGRA_USB_OPMODE_DEVICE,
 	.u_data.dev = {
-		.vbus_pmu_irq = INT_EXTERNAL_PMU,
+		.vbus_pmu_irq = -1,
 		.vbus_gpio = -1,
 		.charging_supported = false,
 		.remote_wakeup_supported = false,
@@ -340,8 +400,7 @@ static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
 	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
 	.op_mode = TEGRA_USB_OPMODE_HOST,
 	.u_data.host = {
-		.vbus_gpio = 154,
-//		.vbus_gpio = -1,
+		.vbus_gpio = -1,
 		.vbus_reg = NULL,
 //		.vbus_reg = "vusb",
 		.hot_plug = true,
@@ -406,7 +465,8 @@ static void olympus_usb_init(void)
 
 	/* OTG should be the first to be registered */
 	cpcap_otg_device.dev.platform_data = &cpcap_otg_pdata;
-	platform_device_register(&cpcap_otg_device);
+	cpcap_device_register(&cpcap_otg_device);
+//	platform_device_register(&cpcap_otg_device);
 
 	snprintf(serial, sizeof(serial), "037c7148423ff097");
 
@@ -431,18 +491,14 @@ static void olympus_usb_init(void)
 		acm_pdata.use_iads = 1;*/
 	}
 
-/*	android_usb_pdata.serial_number = "0000";
-	android_usb_pdata.products[0].product_id =
-	android_usb_pdata.product_id;
-*/
-
 	tegra_ehci3_device.dev.platform_data = &tegra_ehci3_utmi_pdata;
 	platform_device_register(&tegra_ehci3_device);
 	
 	platform_device_register(&tegra_usb_fsg_device);
-//	platform_device_register(&rndis_device);
+	platform_device_register(&rndis_device);
 	platform_device_register(&android_usb_device);
 }
+
 
 /*
  * SPI
@@ -484,103 +540,21 @@ static void __init olympus_spi_init(void)
 	olympus_spi_pdata.parent_clk_count = ARRAY_SIZE(spi_parent_clk);	
 
 //	tegra_spi_device1.dev.platform_data = &olympus_spi_pdata;
-	platform_device_register(&tegra_spi_device1);
+//	platform_device_register(&tegra_spi_device1);
 
 //	tegra_spi_device2.dev.platform_data = &olympus_spi_pdata;
 	platform_device_register(&tegra_spi_device2);
 	
 //	tegra_spi_device3.dev.platform_data = &olympus_spi_pdata;
-	platform_device_register(&tegra_spi_device3);
+//	platform_device_register(&tegra_spi_device3);
 
 }
-
-static struct nvmap_platform_carveout olympus_carveouts[] = {
-	[0] = NVMAP_HEAP_CARVEOUT_IRAM_INIT,
-	[1] = {
-		.name		= "generic-0",
-		.usage_mask	= NVMAP_HEAP_CARVEOUT_GENERIC,
-		.size 		= SZ_128M + SZ_64M,
-		.buddy_size	= SZ_32K,
-	},
-};
-
-static struct nvmap_platform_data olympus_nvmap_data = {
-	.carveouts	= olympus_carveouts,
-	.nr_carveouts	= ARRAY_SIZE(olympus_carveouts),
-};
-
-static struct platform_device olympus_nvmap_device = {
-	.name	= "tegra-nvmap",
-	.id	= -1,
-	.dev	= {
-		.platform_data = &olympus_nvmap_data,
-	},
-};
-
-static struct resource tegra_grhost_resources[] = {
-	[0] = {
-		.name = "host1x",
-		.start = TEGRA_HOST1X_BASE,
-		.end = TEGRA_HOST1X_BASE + TEGRA_HOST1X_SIZE - 1,
-		.flags = IORESOURCE_MEM,
-	},
-	[1] = {
-		.name = "display",
-		.start = TEGRA_DISPLAY_BASE,
-		.end = TEGRA_DISPLAY_BASE + TEGRA_DISPLAY_SIZE - 1,
-		.flags = IORESOURCE_MEM,
-	},
-	[2] = {
-		.name = "display2",
-		.start = TEGRA_DISPLAY2_BASE,
-		.end = TEGRA_DISPLAY2_BASE + TEGRA_DISPLAY2_SIZE - 1,
-		.flags = IORESOURCE_MEM,
-	},
-	[3] = {
-		.name = "vi",
-		.start = TEGRA_VI_BASE,
-		.end = TEGRA_VI_BASE + TEGRA_VI_SIZE - 1,
-		.flags = IORESOURCE_MEM,
-	},
-	[4] = {
-		.name = "isp",
-		.start = TEGRA_ISP_BASE,
-		.end = TEGRA_ISP_BASE + TEGRA_ISP_SIZE - 1,
-		.flags = IORESOURCE_MEM,
-	},
-	[5] = {
-		.name = "mpe",
-		.start = TEGRA_MPE_BASE,
-		.end = TEGRA_MPE_BASE + TEGRA_MPE_SIZE - 1,
-		.flags = IORESOURCE_MEM,
-	},
-	[6] = {
-		.name = "syncpt_thresh",
-		.start = INT_SYNCPT_THRESH_BASE,
-		.end = INT_SYNCPT_THRESH_BASE + INT_SYNCPT_THRESH_NR - 1,
-		.flags = IORESOURCE_IRQ,
-	},
-	[7] = {
-		.name = "host1x_mpcore_general",
-		.start = INT_HOST1X_MPCORE_GENERAL,
-		.end = INT_HOST1X_MPCORE_GENERAL,
-		.flags = IORESOURCE_IRQ,
-	},
-};
-
-static struct platform_device olympus_grhost_device = {
-	.name = "tegra_grhost",
-	.id = -1,
-	.resource = tegra_grhost_resources,
-	.num_resources = ARRAY_SIZE(tegra_grhost_resources),
-};
-
 static struct platform_device *olympus_devices[] __initdata = {
-	&olympus_nvmap_device,
-	&olympus_grhost_device,
 	&tegra_gart_device,
-	&debug_uart,
-	&tegra_uartd_device,
+//	&debug_uart,
+//	&tegra_otg_device,
+//	&tegra_udc_device,
+	&tegra_pmu_device,
 	&tegra_i2s_device1,
 	&tegra_i2s_device2,
 	&tegra_pcm_device,
@@ -588,6 +562,7 @@ static struct platform_device *olympus_devices[] __initdata = {
 	&tegra_w1_device,
 	&tegra_aes_device,
 	&tegra_avp_device,
+	&tegra_wdt_device,
 };
 
 static int tegra_reboot_notify(struct notifier_block *nb,
@@ -631,14 +606,10 @@ static struct tegra_uart_platform_data ipc_olympus_pdata =
 
 void __init olympus_devices_init()
 {
-	struct clk *clk;
+//	struct clk *clk;
 
-	clk = tegra_get_clock_by_name("uartb");
-	debug_uart_platform_data[0].uartclk = clk_get_rate(clk);
+	olympus_uart_init();
 	olympus_spi_init();
-
-	olympus_carveouts[1].base = tegra_carveout_start;
-	olympus_carveouts[1].size = tegra_carveout_size;
 
 	platform_add_devices(olympus_devices, ARRAY_SIZE(olympus_devices));
 

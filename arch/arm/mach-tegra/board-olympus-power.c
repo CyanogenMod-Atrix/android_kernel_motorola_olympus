@@ -418,6 +418,46 @@ struct cpcap_mode_value *cpcap_regulator_off_mode_values[] = {
 	},
 };
 
+/* list of regulators */
+#if 0
+  /*-- CPCAP Regulators --*/
+    RegulatorCpcapSupply_SW1,         // cpu            (default = 0.9V)
+    RegulatorCpcapSupply_SW2,         // core           (default = 1.2V)
+    RegulatorCpcapSupply_SW4,         // rtc            (default = 1.2V)
+    RegulatorCpcapSupply_SW5,         // Boost          (default = 5.0V)
+    RegulatorCpcapSupply_SW3,         // VIO            (default = 1.8V)
+    RegulatorCpcapSupply_WLAN2,       // WLAN2          (default = 3.3V)
+    RegulatorCpcapSupply_WLAN1,       // WLAN1          (default = 1.8V)
+    RegulatorCpcapSupply_VAUDIO,      // Audio          (default = 2.775V)
+    RegulatorCpcapSupply_VSIMCARD,    // Sim-Card       (default 2.9V)
+    RegulatorCpcapSupply_VPLL,        // Enable PLL LDO (default = 1.8V)
+    RegulatorCpcapSupply_VHVIO,       // HVIO           (default = 2.775V)
+    RegulatorCpcapSupply_VCAM,        // CAM            (default = 2.9V)
+    RegulatorCpcapSupply_VSDIO,       // SDIO           (default = 2.9V)
+    /*-- LPM8028 Regulator --*/
+    RegulatorPm8028Supply_S1,         // MSMC           (default = 1.1V)
+    RegulatorPm8028Supply_S2,         // RF1            (default = 1.3V)
+    RegulatorPm8028Supply_S3,         // MSME           (default = 1.8V)
+    RegulatorPm8028Supply_S4,         // RF2            (default = 2.2V)
+    RegulatorPm8028Supply_L1,         // GP             (default = 2.05V)
+    RegulatorPm8028Supply_L3,         // GP             (default = 1.2V)
+    RegulatorPm8028Supply_L4,         // QFUSE          (default = 2.6V)
+    RegulatorPm8028Supply_L5,         //                (default = 1.5V)
+    RegulatorPm8028Supply_L6,         // SDCC1          (default = 2.85V)
+    RegulatorPm8028Supply_L7,         // MPLL           (default = 1.1V)
+    RegulatorPm8028Supply_L8,         // USIM           (default = 1.8V)
+    RegulatorPm8028Supply_L9,         // RF_SW          (default = 2.85V)
+    RegulatorPm8028Supply_L10,        // USB            (default = 3.075V)
+    RegulatorPm8028Supply_L11,        // GP             (default = 1.8V)
+    RegulatorPm8028Supply_L13,        // RFA            (default = 2.2V)
+    RegulatorPm8028Supply_L18,        // USB            (default = 1.8V)
+
+    /*-- Misc. Regulators --*/
+    RegulatorMiscSupply_Min,
+    RegulatorMiscSupply_VHDMI = RegulatorMiscSupply_Min, // HDMI  (default = 5.0V)
+    RegulatorMiscSupply_Max   = RegulatorMiscSupply_VHDMI,
+#endif
+
 #define REGULATOR_CONSUMER(name, device) { .supply = name, .dev = device, }
 #define REGULATOR_CONSUMER_BY_DEVICE(name, device) \
 	{ .supply = name, .dev = device, }
@@ -797,54 +837,156 @@ struct spi_board_info tegra_spi_devices[] __initdata = {
 
 };
 
-static int cpcap_usb_connected_probe(struct platform_device *pdev)
+static struct cpcap_device *cpcap_di;
+
+static int cpcap_validity_reboot(struct notifier_block *this,
+				 unsigned long code, void *cmd)
 {
-	struct cpcap_accy_platform_data *pdata = pdev->dev.platform_data;
+	int ret = -1;
+	int result = NOTIFY_DONE;
+	char *mode = cmd;
 
-	pr_info("cpcap_usb_connected_probe\n");
+	dev_info(&(cpcap_di->spi->dev), "Saving power down reason.\n");
 
-	platform_set_drvdata(pdev, pdata);
+	if (code == SYS_RESTART) {
+		if (mode != NULL && !strncmp("outofcharge", mode, 12)) {
+			/* Set the outofcharge bit in the cpcap */
+			ret = cpcap_regacc_write(cpcap_di, CPCAP_REG_VAL1,
+						 CPCAP_BIT_OUT_CHARGE_ONLY,
+						 CPCAP_BIT_OUT_CHARGE_ONLY);
+			if (ret) {
+				dev_err(&(cpcap_di->spi->dev),
+					"outofcharge cpcap set failure.\n");
+				result = NOTIFY_BAD;
+			}
+			/* Set the soft reset bit in the cpcap */
+			cpcap_regacc_write(cpcap_di, CPCAP_REG_VAL1,
+					   CPCAP_BIT_SOFT_RESET,
+					   CPCAP_BIT_SOFT_RESET);
+			if (ret) {
+				dev_err(&(cpcap_di->spi->dev),
+					"reset cpcap set failure.\n");
+				result = NOTIFY_BAD;
+			}
+		}
 
-	/* when the phone is the host do not start the gadget driver */
-	if((pdata->accy == CPCAP_ACCY_USB) || (pdata->accy == CPCAP_ACCY_FACTORY)) {
-	//	tegra_otg_set_mode(0);
-/*		android_usb_set_connected(1, pdata->accy);*/
+		/* Check if we are starting recovery mode */
+		if (mode != NULL && !strncmp("recovery", mode, 9)) {
+			/* Set the fota (recovery mode) bit in the cpcap */
+			ret = cpcap_regacc_write(cpcap_di, CPCAP_REG_VAL1,
+				CPCAP_BIT_FOTA_MODE, CPCAP_BIT_FOTA_MODE);
+			if (ret) {
+				dev_err(&(cpcap_di->spi->dev),
+					"Recovery cpcap set failure.\n");
+				result = NOTIFY_BAD;
+			}
+		} else {
+			/* Set the fota (recovery mode) bit in the cpcap */
+			ret = cpcap_regacc_write(cpcap_di, CPCAP_REG_VAL1, 0,
+						 CPCAP_BIT_FOTA_MODE);
+			if (ret) {
+				dev_err(&(cpcap_di->spi->dev),
+					"Recovery cpcap clear failure.\n");
+				result = NOTIFY_BAD;
+			}
+		}
+		/* Check if we are going into fast boot mode */
+		if (mode != NULL && !strncmp("bootloader", mode, 11)) {
+			/* Set the bootmode bit in the cpcap */
+			ret = cpcap_regacc_write(cpcap_di, CPCAP_REG_VAL1,
+				CPCAP_BIT_BOOT_MODE, CPCAP_BIT_BOOT_MODE);
+			if (ret) {
+				dev_err(&(cpcap_di->spi->dev),
+					"Boot mode cpcap set failure.\n");
+				result = NOTIFY_BAD;
+			}
+		}
+	} else {
+		ret = cpcap_regacc_write(cpcap_di, CPCAP_REG_VAL1,
+					 0,
+					 CPCAP_BIT_OUT_CHARGE_ONLY);
+		if (ret) {
+			dev_err(&(cpcap_di->spi->dev),
+				"outofcharge cpcap set failure.\n");
+			result = NOTIFY_BAD;
+		}
+
+		/* Clear the soft reset bit in the cpcap */
+		ret = cpcap_regacc_write(cpcap_di, CPCAP_REG_VAL1, 0,
+					 CPCAP_BIT_SOFT_RESET);
+		if (ret) {
+			dev_err(&(cpcap_di->spi->dev),
+				"SW Reset cpcap set failure.\n");
+			result = NOTIFY_BAD;
+		}
+		/* Clear the fota (recovery mode) bit in the cpcap */
+		ret = cpcap_regacc_write(cpcap_di, CPCAP_REG_VAL1, 0,
+					 CPCAP_BIT_FOTA_MODE);
+		if (ret) {
+			dev_err(&(cpcap_di->spi->dev),
+				"Recovery cpcap clear failure.\n");
+			result = NOTIFY_BAD;
+		}
 	}
-	if(pdata->accy == CPCAP_ACCY_USB_DEVICE) {
 
-	//	tegra_otg_set_mode(1);
-
+	/* Always clear the kpanic bit */
+	ret = cpcap_regacc_write(cpcap_di, CPCAP_REG_VAL1,
+				 0, CPCAP_BIT_AP_KERNEL_PANIC);
+	if (ret) {
+		dev_err(&(cpcap_di->spi->dev),
+			"Clear kernel panic bit failure.\n");
+		result = NOTIFY_BAD;
 	}
-	mdm_ctrl_set_usb_ipc(true);
-	
+
+	return result;
+}
+static struct notifier_block validity_reboot_notifier = {
+	.notifier_call = cpcap_validity_reboot,
+};
+
+static int cpcap_validity_probe(struct platform_device *pdev)
+{
+//	int err;
+
+	if (pdev->dev.platform_data == NULL) {
+		dev_err(&pdev->dev, "no platform_data\n");
+		return -EINVAL;
+	}
+
+	cpcap_di = pdev->dev.platform_data;
+
+	cpcap_regacc_write(cpcap_di, CPCAP_REG_VAL1,
+			   (CPCAP_BIT_AP_KERNEL_PANIC | CPCAP_BIT_SOFT_RESET),
+			   (CPCAP_BIT_AP_KERNEL_PANIC | CPCAP_BIT_SOFT_RESET));
+
+	register_reboot_notifier(&validity_reboot_notifier);
+
 	return 0;
 }
 
-static int cpcap_usb_connected_remove(struct platform_device *pdev)
+static int cpcap_validity_remove(struct platform_device *pdev)
 {
-	struct cpcap_accy_platform_data *pdata = pdev->dev.platform_data;
+	unregister_reboot_notifier(&validity_reboot_notifier);
+	cpcap_di = NULL;
 
-	pr_info("cpcap_usb_connected_remove\n");
-
-	mdm_ctrl_set_usb_ipc(false);
-	
-	if((pdata->accy == CPCAP_ACCY_USB) || (pdata->accy == CPCAP_ACCY_FACTORY)) {}
-/*		android_usb_set_connected(0, pdata->accy);*/
-
-//	tegra_otg_set_mode(2);
-
-        return 0;
+	return 0;
 }
 
+static struct platform_driver cpcap_validity_driver = {
+	.probe = cpcap_validity_probe,
+	.remove = cpcap_validity_remove,
+	.driver = {
+		.name = "cpcap_validity",
+		.owner  = THIS_MODULE,
+	},
+};
 
-
-struct platform_driver cpcap_usb_connected_driver = {
-        .probe          = cpcap_usb_connected_probe,
-        .remove         = cpcap_usb_connected_remove,
-        .driver         = {
-                .name   = "cpcap_usb_connected",
-                .owner  = THIS_MODULE,
-    },
+static struct platform_device cpcap_validity_device = {
+	.name   = "cpcap_validity",
+	.id     = -1,
+	.dev    = {
+		.platform_data  = NULL,
+	},
 };
 
 #ifdef CONFIG_REGULATOR_VIRTUAL_CONSUMER
@@ -908,6 +1050,9 @@ void __init olympus_power_init(void)
 
 	printk(KERN_INFO "pICS_%s: step in...\n",__func__);
 
+	gpio_request(154, "usb_host_pwr_en");
+	gpio_direction_output(154,0);
+
 	/* CPCAP standby lines connected to CPCAP GPIOs on Etna P1B & Olympus P2 */
 	if ( HWREV_TYPE_IS_FINAL(system_rev) ||
 	     (machine_is_etna() &&
@@ -934,8 +1079,12 @@ void __init olympus_power_init(void)
 	} else {
 		/* Currently only Olympus P3 or greater can handle turning off the
 		   external SD card. */
-		fixed_sdio_config.enabled_at_boot = 1;
+//		fixed_sdio_config.enabled_at_boot = 1;
+		gpio_request(43, "sdio_en");
+		gpio_direction_output(43,1);
 	}
+
+
 	/* Indicate the macro controls SW5. */
 	tegra_cpcap_leds.rgb_led.regulator_macro_controlled = true;
 
@@ -953,8 +1102,8 @@ void __init olympus_power_init(void)
 		error = platform_device_register(&fixed_regulator_devices[i]);
 		pr_info("Registered reg-fixed-voltage: %d result: %d\n", i, error);
 	}
-	(void) platform_driver_register(&cpcap_usb_connected_driver);
-
+	cpcap_device_register(&cpcap_validity_device);
+	(void) platform_driver_register(&cpcap_validity_driver);
 #ifdef CONFIG_REGULATOR_VIRTUAL_CONSUMER
 	(void) platform_device_register(&cpcap_reg_virt_vcam);
 	(void) platform_device_register(&cpcap_reg_virt_vcsi);

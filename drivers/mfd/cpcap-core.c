@@ -98,6 +98,11 @@ static struct tegra_gpio_bank tegra_gpio_banks[] = {
 	{.bank = 6, .irq = INT_GPIO7, .cnf = {0x0f,0x20,0x00,0x03}, .oe = {0x0f,0x20,0x00,0x0f}, .out = {0x0f,0x20,0x00,0x0f}},
 };
 
+struct cpcap_driver_info {
+	struct list_head list;
+	struct platform_device *pdev;
+};
+
 static long ioctl(struct file *file, unsigned int cmd, unsigned long arg);
 static int __devinit cpcap_probe(struct spi_device *spi);
 static int __devexit cpcap_remove(struct spi_device *spi);
@@ -473,6 +478,87 @@ static void cpcap_vendor_read(struct cpcap_device *cpcap)
 	cpcap->vendor = (enum cpcap_vendor)((value >> 6) & 0x0007);
 	cpcap->revision = (enum cpcap_revision)(((value >> 3) & 0x0007) |
 						((value << 3) & 0x0038));
+}
+
+static LIST_HEAD(cpcap_device_list);
+static DEFINE_MUTEX(cpcap_driver_lock);
+
+int cpcap_device_unregister(struct platform_device *pdev)
+{
+	struct cpcap_driver_info *info;
+	struct cpcap_driver_info *tmp;
+	int found;
+
+
+	found = 0;
+	mutex_lock(&cpcap_driver_lock);
+
+	list_for_each_entry_safe(info, tmp, &cpcap_device_list, list) {
+		if (info->pdev == pdev) {
+			list_del(&info->list);
+
+			/*
+			 * misc_cpcap != NULL suggests pdev
+			 * already registered
+			 */
+			if (misc_cpcap) {
+				printk(KERN_INFO "CPCAP: unregister %s\n",
+					pdev->name);
+				platform_device_unregister(pdev);
+			}
+			info->pdev = NULL;
+			kfree(info);
+			found = 1;
+		}
+	}
+
+	mutex_unlock(&cpcap_driver_lock);
+
+	BUG_ON(!found);
+	return 0;
+}
+
+int cpcap_device_register(struct platform_device *pdev)
+{
+	int retval;
+	struct cpcap_driver_info *info;
+
+	retval = 0;
+
+	info = kzalloc(sizeof(*info), GFP_KERNEL);
+	if (!info) {
+		printk(KERN_ERR	"Cannot save device %s\n", pdev->name);
+		return -ENOMEM;
+	}
+
+	mutex_lock(&cpcap_driver_lock);
+
+	info->pdev = pdev;
+	list_add_tail(&info->list, &cpcap_device_list);
+
+	/* If misc_cpcap is valid, the CPCAP driver has already been probed.
+	 * Therefore, call platform_device_register() to probe the device.
+	 */
+	if (misc_cpcap) {
+		dev_info(&(misc_cpcap->spi->dev),
+			 "Probing CPCAP device %s\n", pdev->name);
+
+		/*
+		 * platform_data is non-empty indicates
+		 * CPCAP client devices need to pass their own data
+		 * In that case we put cpcap data in driver_data
+		 */
+		if (pdev->dev.platform_data != NULL)
+			platform_set_drvdata(pdev, misc_cpcap);
+		else
+			pdev->dev.platform_data = misc_cpcap;
+		retval = platform_device_register(pdev);
+	} else
+		printk(KERN_INFO "CPCAP: delaying %s probe\n",
+				pdev->name);
+	mutex_unlock(&cpcap_driver_lock);
+
+	return retval;
 }
 
 static int tegra_gpio_compose(int bank, int port, int bit)

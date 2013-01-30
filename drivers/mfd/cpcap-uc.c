@@ -373,7 +373,7 @@ static int ram_write(struct cpcap_uc_data *uc_data, unsigned short address,
 		uc_data->req.num_words = num_words;
 		uc_data->state = WRITE_STATE_1;
 		uc_data->state_cntr = 0;
-	//	INIT_COMPLETION(uc_data->completion);
+//		INIT_COMPLETION(uc_data->completion);
 
 		retval = cpcap_regacc_write(uc_data->cpcap, CPCAP_REG_MI2,
 					CPCAP_BIT_PRIRAMW,
@@ -388,7 +388,7 @@ static int ram_write(struct cpcap_uc_data *uc_data, unsigned short address,
 		if (retval)
 			goto err;
 		mdelay(25);
-	//	wait_for_completion(&uc_data->completion);
+//		wait_for_completion(&uc_data->completion);
 		retval = uc_data->cb_status;
 	}
 

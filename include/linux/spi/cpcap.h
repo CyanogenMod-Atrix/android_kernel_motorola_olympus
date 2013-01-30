@@ -888,6 +888,12 @@ int cpcap_set_wdigate(short value);
 
 int cpcap_disable_powercut(void);
 
+#define  cpcap_driver_register platform_driver_register
+#define  cpcap_driver_unregister platform_driver_unregister
+
+int cpcap_device_register(struct platform_device *pdev);
+int cpcap_device_unregister(struct platform_device *pdev);
+
 #if defined(CONFIG_LEDS_FLASH_RESET)
 int cpcap_direct_misc_write(unsigned short reg, unsigned short value,\
 			    unsigned short mask);

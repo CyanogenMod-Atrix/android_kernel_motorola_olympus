@@ -441,14 +441,16 @@ static struct i2c_board_info __initdata olympus_i2c_bus1_board_info[] = {
 		.platform_data = &olympus_touch_data,
 		.irq = TEGRA_GPIO_TO_IRQ(OLYMPUS_TOUCH_IRQ_GPIO),
 	},
+#if 0
 	{
 		/*  ISL 29030 (prox/ALS) driver */
 		I2C_BOARD_INFO(LD_ISL29030_NAME, 0x44),
 		.platform_data = &isl29030_als_ir_data_Olympus,
 		.irq = 180,
 	},
+#endif
 };
-
+#if 0
 static struct i2c_board_info __initdata olympus_i2c_bus4_board_info[] = {
 	{
 		I2C_BOARD_INFO("akm8975", 0x0C),
@@ -460,7 +462,7 @@ static struct i2c_board_info __initdata olympus_i2c_bus4_board_info[] = {
 		.platform_data = &kxtf9_data,
 	},
 };
-
+#endif
 static struct tegra_i2c_platform_data olympus_i2c1_platform_data = {
 	.adapter_nr	= 0,
 	.bus_count	= 1,
@@ -647,9 +649,11 @@ void __init olympus_i2c_init(void)
 	printk("bus 0: %d devices\n", ARRAY_SIZE(olympus_i2c_bus1_board_info));
 	i2c_register_board_info(0, olympus_i2c_bus1_board_info, 
 				ARRAY_SIZE(olympus_i2c_bus1_board_info));
+#if 0
 	printk("bus 3: %d devices\n", ARRAY_SIZE(olympus_i2c_bus4_board_info));
 	i2c_register_board_info(3, olympus_i2c_bus4_board_info, 
 				ARRAY_SIZE(olympus_i2c_bus4_board_info));
+#endif
 
 }
 

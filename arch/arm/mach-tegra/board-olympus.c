@@ -286,6 +286,7 @@ static char oly_unused_pins_p1[] = {
 
 static __initdata struct tegra_clk_init_table olympus_clk_init_table[] = {
 	/* name		parent		rate		enabled */  
+#if 0
 	{ "usb3",	"clk_m",	26000000,	false},
 { "usbd",	"clk_m",	26000000,	true},
 { "dvc",	"clk_m",	2888888,	true},
@@ -341,6 +342,14 @@ static __initdata struct tegra_clk_init_table olympus_clk_init_table[] = {
 	{ "sdmmc2",	"pll_p",	25000000,	false},
 	{ "i2s2",	"pll_a_out0",	0,		false},
 	{ "spi",	"clk_m",	26000000,	true},
+#endif
+	{"sbc1",	"pll_c",	60000000,	true},
+	{"sbc2",	"pll_c",	60000000,	true},
+	{"pwm",		"clk_32k",	32768,		false},
+	{"kbc",		"clk_32k",	32768,		true},
+	{"sdmmc2",	"pll_p",	25000000,	false},
+	{"i2s1",	"pll_a_out0",	0,		false},
+	{"spdif_out",	"pll_a_out0",	0,		false},
 	{ NULL,		NULL,		0,		0},
 };
 
@@ -527,14 +536,14 @@ static void __init tegra_mot_init(void)
 
 	olympus_devices_init();
 
-	olympus_keypad_init();
-
 	olympus_power_init();
+
+	olympus_keypad_init();
 
 	olympus_i2c_init();
 
-//	olympus_panel_init();
-
+	olympus_panel_init();
+	if (1==0) {
 	if( (bi_powerup_reason() & PWRUP_FACTORY_CABLE) &&
 	    (bi_powerup_reason() != PWRUP_INVALID) ){
 #ifdef NEED_FACT_BUSY_HINT
@@ -543,10 +552,9 @@ static void __init tegra_mot_init(void)
 	}
 
 	mot_modem_init();
-
 	olympus_wlan_init();
 	mot_sensors_init();
-
+	}/* end of if (1==0) */
 	pm_power_off = mot_system_power_off;
 	tegra_setup_bluesleep();
 
@@ -578,9 +586,9 @@ static void __init tegra_mot_init(void)
 			config_unused_pins(oly_unused_pins_p3, ARRAY_SIZE(oly_unused_pins_p3));
 		}
 	}
-	}
+	}/* end of if (1==0) */
 	tegra_release_bootloader_fb();
-	read_gpio();
+	read_gpio();	
 }
 
 static void __init mot_fixup(struct machine_desc *desc, struct tag *tags,
