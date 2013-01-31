@@ -848,7 +848,7 @@ static ssize_t enable_store(struct device *pdev, struct device_attribute *attr,
 	if (enabled && !dev->enabled) {
 		/* update values in composite driver's copy of device descriptor */
 		printk(KERN_INFO "pICS_%s: level 1; UGLY HACK, PLEEASE FIX IT!\n",__func__);
-/*		cdev->desc.idVendor = device_desc.idVendor;
+		cdev->desc.idVendor = device_desc.idVendor;
 		printk(KERN_INFO "pICS_%s: level 1a;\n",__func__);
 		cdev->desc.idProduct = device_desc.idProduct;
 		printk(KERN_INFO "pICS_%s: level 1b;\n",__func__);
@@ -865,7 +865,7 @@ static ssize_t enable_store(struct device *pdev, struct device_attribute *attr,
 		printk(KERN_INFO "pICS_%s: level 3;\n",__func__);
 		usb_gadget_connect(cdev->gadget);
 		printk(KERN_INFO "pICS_%s: level 4;\n",__func__);
-		dev->enabled = true;*/
+		dev->enabled = true;
 	} else if (!enabled && dev->enabled) {
 		printk(KERN_INFO "pICS_%s: level alt 1;\n",__func__);
 		usb_gadget_disconnect(cdev->gadget);

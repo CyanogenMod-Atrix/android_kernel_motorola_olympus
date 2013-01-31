@@ -530,9 +530,9 @@ static void __init tegra_mot_init(void)
 
 	tegra_ram_console_debug_init();
 
-	olympus_emc_init();
-
 	olympus_pinmux_init();
+
+	olympus_emc_init();
 
 	olympus_devices_init();
 
@@ -543,18 +543,19 @@ static void __init tegra_mot_init(void)
 	olympus_i2c_init();
 
 	olympus_panel_init();
-	if (1==0) {
+	
 	if( (bi_powerup_reason() & PWRUP_FACTORY_CABLE) &&
 	    (bi_powerup_reason() != PWRUP_INVALID) ){
 #ifdef NEED_FACT_BUSY_HINT
 		FactoryBusyHint(); //factory workaround no longer needed
 #endif
 	}
-
+	if (1==0) {
 	mot_modem_init();
 	olympus_wlan_init();
 	mot_sensors_init();
-	}/* end of if (1==0) */
+	}
+
 	pm_power_off = mot_system_power_off;
 	tegra_setup_bluesleep();
 
@@ -567,7 +568,7 @@ static void __init tegra_mot_init(void)
 	gpio_request(TEGRA_GPIO_PD4, "spdif_enable");
 	gpio_direction_output(TEGRA_GPIO_PD4, 0);
 	gpio_export(TEGRA_GPIO_PD4, false);
-	if (0==1) {
+	if (1==0) {
 	if ((HWREV_TYPE_IS_PORTABLE(system_rev) || HWREV_TYPE_IS_FINAL(system_rev)))
 	{
 		if (HWREV_REV(system_rev) >= HWREV_REV_1 && HWREV_REV(system_rev) < HWREV_REV_2)
@@ -586,7 +587,8 @@ static void __init tegra_mot_init(void)
 			config_unused_pins(oly_unused_pins_p3, ARRAY_SIZE(oly_unused_pins_p3));
 		}
 	}
-	}/* end of if (1==0) */
+	}	
+
 	tegra_release_bootloader_fb();
 	read_gpio();	
 }

@@ -120,7 +120,6 @@ static struct resource olympus_disp2_resources[] = {
 static struct tegra_dc_mode olympus_panel_modes[] = {
 	{
 		.pclk = 27000000,
-		//.pclk = 38333333,
 		.h_ref_to_sync = 4,
 		.v_ref_to_sync = 1,
 		.h_sync_width = 16,
@@ -263,8 +262,8 @@ static struct tegra_dc_out olympus_disp1_out = {
 
 static struct tegra_fb_data olympus_fb_data = {
 	.win		= 0,
-	.xres		= 960,
-	.yres		= 540,
+	.xres		= 540,
+	.yres		= 940,
 	.bits_per_pixel	= -1,
 	.flags		= TEGRA_FB_FLIP_ON_PROBE,
 };
@@ -288,12 +287,15 @@ static struct nvhost_device olympus_disp1_device = {
 
 static int mot_panel_setup_dc(void)
 {
+	tegra_gpio_enable(47);	
 	gpio_request(47, "disp_5v_en");
 	gpio_direction_output(47, 0);
 
+	tegra_gpio_enable(35);
 	gpio_request(35, "disp_reset_n");
 	gpio_direction_output(47, 0);
 
+	tegra_gpio_enable(35);
 	gpio_request(46, "hdmi_5v_en");
 	gpio_direction_output(47, 1);
 
@@ -447,5 +449,6 @@ int __init olympus_panel_init(void)
 	return err;
 
 }
+
 
 

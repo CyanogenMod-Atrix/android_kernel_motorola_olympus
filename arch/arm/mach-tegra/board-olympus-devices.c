@@ -40,8 +40,12 @@
 #include <linux/spi/spi.h>
 #include <linux/spi/cpcap.h>
 #include <linux/tegra_uart.h>
-#include <linux/usb/f_accessory.h>
 #include <linux/nvhost.h>
+
+#include <linux/usb/composite.h>
+#include <linux/usb/gadget.h>
+#include <linux/usb/f_accessory.h>
+#include <linux/fsl_devices.h>
 
 #include <asm/mach/time.h>
 #include <asm/mach-types.h>
@@ -58,7 +62,7 @@
 #include <mach/sdhci.h>
 #include <mach/w1.h>
 #include <mach/usb_phy.h>
-#include <mach/olympus_usb.h>
+//#include <mach/olympus_usb.h>
 #include <mach/nvmap.h>
 
 #include "clock.h"
@@ -281,7 +285,7 @@ static void tegra_system_power_off(void)
 		__asm__ ("wfi");
 	}
 }
-
+#if 0
 #define USB_MANUFACTURER_NAME	"Motorola"
 #define USB_PRODUCT_NAME	"Atrix 4G"
 #define BLUE_PID		0x0CD9
@@ -498,7 +502,94 @@ static void olympus_usb_init(void)
 	platform_device_register(&rndis_device);
 	platform_device_register(&android_usb_device);
 }
+#endif
 
+static struct tegra_usb_platform_data tegra_udc_pdata = {
+        .port_otg = true,
+        .has_hostpc = false,
+        .phy_intf = TEGRA_USB_PHY_INTF_UTMI,
+        .op_mode = TEGRA_USB_OPMODE_DEVICE,
+        .u_data.dev = {
+                .vbus_pmu_irq = -1,
+                .vbus_gpio = -1,
+                .charging_supported = false,
+                .remote_wakeup_supported = false,
+        },
+        .u_cfg.utmi = {
+                .hssync_start_delay = 0,
+                .elastic_limit = 16,
+                .idle_wait_delay = 17,
+                .term_range_adj = 6,
+                .xcvr_setup = 9,
+                .xcvr_lsfslew = 2,
+                .xcvr_lsrslew = 2,
+                .xcvr_setup_offset = 0,
+                .xcvr_use_fuses = 1,
+        },
+};
+
+static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
+        .port_otg = true,
+        .has_hostpc = false,
+        .phy_intf = TEGRA_USB_PHY_INTF_UTMI,
+        .op_mode = TEGRA_USB_OPMODE_HOST,
+        .u_data.host = {
+                .vbus_gpio = -1,
+                .vbus_reg = NULL,
+                .hot_plug = true,
+                .remote_wakeup_supported = false,
+                .power_off_on_suspend = false,
+        },
+        .u_cfg.utmi = {
+                .hssync_start_delay = 9,
+                .elastic_limit = 16,
+                .idle_wait_delay = 17,
+                .term_range_adj = 6,
+                .xcvr_setup = 9,
+                .xcvr_lsfslew = 2,
+                .xcvr_lsrslew = 2,
+        },
+};
+
+static struct tegra_usb_platform_data tegra_ehci3_utmi_pdata = {
+        .port_otg = false,
+        .has_hostpc = false,
+        .phy_intf = TEGRA_USB_PHY_INTF_UTMI,
+        .op_mode        = TEGRA_USB_OPMODE_HOST,
+        .u_data.host = {
+                .vbus_gpio = -1,
+                .vbus_reg = NULL,
+                .hot_plug = true,
+                .remote_wakeup_supported = false,
+                .power_off_on_suspend = false,
+        },
+        .u_cfg.utmi = {
+                .hssync_start_delay = 9,
+                .elastic_limit = 16,
+                .idle_wait_delay = 17,
+                .term_range_adj = 6,
+                .xcvr_setup = 9,
+                .xcvr_lsfslew = 2,
+                .xcvr_lsrslew = 2,
+        },
+};
+
+static struct tegra_usb_otg_data tegra_otg_pdata = {
+	.ehci_device = &tegra_ehci1_device,
+	.ehci_pdata = &tegra_ehci1_utmi_pdata,
+}; 
+
+static void olympus_usb_init(void)
+	{
+	tegra_otg_device.dev.platform_data = &tegra_otg_pdata;
+	platform_device_register(&tegra_otg_device);
+
+	tegra_udc_device.dev.platform_data = &tegra_udc_pdata;
+	platform_device_register(&tegra_udc_device);
+
+	tegra_ehci3_device.dev.platform_data = &tegra_ehci3_utmi_pdata;
+	platform_device_register(&tegra_ehci3_device);
+};
 
 /*
  * SPI
@@ -539,14 +630,14 @@ static void __init olympus_spi_init(void)
 	olympus_spi_pdata.parent_clk_list = spi_parent_clk;
 	olympus_spi_pdata.parent_clk_count = ARRAY_SIZE(spi_parent_clk);	
 
-//	tegra_spi_device1.dev.platform_data = &olympus_spi_pdata;
-//	platform_device_register(&tegra_spi_device1);
+	tegra_spi_device1.dev.platform_data = &olympus_spi_pdata;
+	platform_device_register(&tegra_spi_device1);
 
-//	tegra_spi_device2.dev.platform_data = &olympus_spi_pdata;
+	tegra_spi_device2.dev.platform_data = &olympus_spi_pdata;
 	platform_device_register(&tegra_spi_device2);
 	
-//	tegra_spi_device3.dev.platform_data = &olympus_spi_pdata;
-//	platform_device_register(&tegra_spi_device3);
+	tegra_spi_device3.dev.platform_data = &olympus_spi_pdata;
+	platform_device_register(&tegra_spi_device3);
 
 }
 static struct platform_device *olympus_devices[] __initdata = {
@@ -615,12 +706,12 @@ void __init olympus_devices_init()
 
 	printk(KERN_INFO "pICS_%s: olympus_sdhci_init();\n",__func__);
 	olympus_sdhci_init();
-	olympus_usb_init();
+//	olympus_usb_init();
 
 	pm_power_off = tegra_system_power_off;
 	
 	olympus_reboot_init();
 
-	tegra_uartd_device.dev.platform_data = &ipc_olympus_pdata;
+	if (1==0) tegra_uartd_device.dev.platform_data = &ipc_olympus_pdata;
 }
 

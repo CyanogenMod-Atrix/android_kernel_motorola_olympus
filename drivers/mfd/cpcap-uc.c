@@ -355,7 +355,7 @@ static int ram_write(struct cpcap_uc_data *uc_data, unsigned short address,
 		     unsigned short num_words, unsigned short *data)
 {
 	int retval = -EFAULT;
-
+	printk(KERN_INFO "pICS_%s: Starting...",__func__);
 	mutex_lock(&uc_data->lock);
 
 	if ((uc_data->cpcap->vendor == CPCAP_VENDOR_ST) &&
@@ -400,6 +400,7 @@ err:
 	}
 
 	mutex_unlock(&uc_data->lock);
+	printk(KERN_INFO "pICS_%s: Ending...",__func__);
 	return retval;
 }
 
@@ -407,7 +408,7 @@ static int ram_read(struct cpcap_uc_data *uc_data, unsigned short address,
 		    unsigned short num_words, unsigned short *data)
 {
 	int retval = -EFAULT;
-
+	printk(KERN_INFO "pICS_%s: Starting...",__func__);
 	mutex_lock(&uc_data->lock);
 
 	if ((uc_data->cpcap->vendor == CPCAP_VENDOR_ST) &&
@@ -438,7 +439,7 @@ static int ram_read(struct cpcap_uc_data *uc_data, unsigned short address,
 		retval = cpcap_irq_unmask(uc_data->cpcap, CPCAP_IRQ_UC_PRIRAMR);
 		if (retval)
 			goto err;
-		mdelay(100);
+		mdelay(25);
 //		wait_for_completion(&uc_data->completion);
 		retval = uc_data->cb_status;
 	}
@@ -451,6 +452,7 @@ err:
 	}
 
 	mutex_unlock(&uc_data->lock);
+	printk(KERN_INFO "pICS_%s: Ending...",__func__);
 	return retval;
 }
 
