@@ -1031,7 +1031,7 @@ static struct platform_device cpcap_reg_virt_sw5 =
 static struct tegra_suspend_platform_data olympus_suspend_data = {
 	.cpu_timer 	= 800,
 	.cpu_off_timer	= 600,
-	.suspend_mode	= TEGRA_SUSPEND_LP1,
+	.suspend_mode	= TEGRA_SUSPEND_LP0,
 	.core_timer	= 1842,
 	.core_off_timer = 31,
 	.corereq_high	= true,
@@ -1080,7 +1080,7 @@ void __init olympus_power_init(void)
 	} else {
 		/* Currently only Olympus P3 or greater can handle turning off the
 		   external SD card. */
-//		fixed_sdio_config.enabled_at_boot = 1;
+		fixed_sdio_config.enabled_at_boot = 1;
 		tegra_gpio_enable(43);		
 		gpio_request(43, "sdio_en");
 		gpio_direction_output(43,1);

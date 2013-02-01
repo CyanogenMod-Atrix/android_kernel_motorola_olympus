@@ -590,7 +590,7 @@ static void __init tegra_mot_init(void)
 	}	
 
 	tegra_release_bootloader_fb();
-	read_gpio();	
+	if (1==0) read_gpio();	
 }
 
 static void __init mot_fixup(struct machine_desc *desc, struct tag *tags,
