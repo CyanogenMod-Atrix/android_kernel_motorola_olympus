@@ -62,7 +62,7 @@
 #include <mach/sdhci.h>
 #include <mach/w1.h>
 #include <mach/usb_phy.h>
-//#include <mach/olympus_usb.h>
+#include <mach/olympus_usb.h>
 #include <mach/nvmap.h>
 
 #include "clock.h"
@@ -119,8 +119,8 @@ static struct platform_device *olympus_uart_devices[] __initdata = {
 	&tegra_uarta_device,
 	&tegra_uartb_device,
 	&tegra_uartc_device,
-        &tegra_uartd_device,
-	&tegra_uarte_device,
+//        &tegra_uartd_device,
+//	&tegra_uarte_device,
 };
 
 struct uart_clk_parent uart_parent_clk[] = {
@@ -285,7 +285,7 @@ static void tegra_system_power_off(void)
 		__asm__ ("wfi");
 	}
 }
-#if 0
+
 #define USB_MANUFACTURER_NAME	"Motorola"
 #define USB_PRODUCT_NAME	"Atrix 4G"
 #define BLUE_PID		0x0CD9
@@ -502,99 +502,11 @@ static void olympus_usb_init(void)
 	platform_device_register(&rndis_device);
 	platform_device_register(&android_usb_device);
 }
-#endif
-
-static struct tegra_usb_platform_data tegra_udc_pdata = {
-        .port_otg = true,
-        .has_hostpc = false,
-        .phy_intf = TEGRA_USB_PHY_INTF_UTMI,
-        .op_mode = TEGRA_USB_OPMODE_DEVICE,
-        .u_data.dev = {
-                .vbus_pmu_irq = -1,
-                .vbus_gpio = -1,
-                .charging_supported = false,
-                .remote_wakeup_supported = false,
-        },
-        .u_cfg.utmi = {
-                .hssync_start_delay = 0,
-                .elastic_limit = 16,
-                .idle_wait_delay = 17,
-                .term_range_adj = 6,
-                .xcvr_setup = 9,
-                .xcvr_lsfslew = 2,
-                .xcvr_lsrslew = 2,
-                .xcvr_setup_offset = 0,
-                .xcvr_use_fuses = 1,
-        },
-};
-
-static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
-        .port_otg = true,
-        .has_hostpc = false,
-        .phy_intf = TEGRA_USB_PHY_INTF_UTMI,
-        .op_mode = TEGRA_USB_OPMODE_HOST,
-        .u_data.host = {
-                .vbus_gpio = -1,
-                .vbus_reg = NULL,
-                .hot_plug = true,
-                .remote_wakeup_supported = false,
-                .power_off_on_suspend = false,
-        },
-        .u_cfg.utmi = {
-                .hssync_start_delay = 9,
-                .elastic_limit = 16,
-                .idle_wait_delay = 17,
-                .term_range_adj = 6,
-                .xcvr_setup = 9,
-                .xcvr_lsfslew = 2,
-                .xcvr_lsrslew = 2,
-        },
-};
-
-static struct tegra_usb_platform_data tegra_ehci3_utmi_pdata = {
-        .port_otg = false,
-        .has_hostpc = false,
-        .phy_intf = TEGRA_USB_PHY_INTF_UTMI,
-        .op_mode        = TEGRA_USB_OPMODE_HOST,
-        .u_data.host = {
-                .vbus_gpio = -1,
-                .vbus_reg = NULL,
-                .hot_plug = true,
-                .remote_wakeup_supported = false,
-                .power_off_on_suspend = false,
-        },
-        .u_cfg.utmi = {
-                .hssync_start_delay = 9,
-                .elastic_limit = 16,
-                .idle_wait_delay = 17,
-                .term_range_adj = 6,
-                .xcvr_setup = 9,
-                .xcvr_lsfslew = 2,
-                .xcvr_lsrslew = 2,
-        },
-};
-
-static struct tegra_usb_otg_data tegra_otg_pdata = {
-	.ehci_device = &tegra_ehci1_device,
-	.ehci_pdata = &tegra_ehci1_utmi_pdata,
-}; 
-
-static void olympus_usb_init(void)
-	{
-	tegra_otg_device.dev.platform_data = &tegra_otg_pdata;
-	platform_device_register(&tegra_otg_device);
-
-	tegra_udc_device.dev.platform_data = &tegra_udc_pdata;
-	platform_device_register(&tegra_udc_device);
-
-	tegra_ehci3_device.dev.platform_data = &tegra_ehci3_utmi_pdata;
-	platform_device_register(&tegra_ehci3_device);
-};
 
 /*
  * SPI
  */
-
+#if 0
 static struct tegra_spi_platform_data olympus_spi_pdata = {
 	.is_dma_based		= true,
 	.max_dma_buffer		= (16 * 1024),
@@ -640,20 +552,30 @@ static void __init olympus_spi_init(void)
 	platform_device_register(&tegra_spi_device3);
 
 }
+#endif
+
+static struct platform_device tegra_camera = {
+	.name = "tegra_camera",
+	.id = -1,
+};
+
 static struct platform_device *olympus_devices[] __initdata = {
-	&tegra_gart_device,
-//	&debug_uart,
-//	&tegra_otg_device,
-//	&tegra_udc_device,
 	&tegra_pmu_device,
+//	&tegra_udc_device,
+	&tegra_gart_device,
+	&tegra_wdt_device,
+	&tegra_spi_device2,
+	&tegra_spi_device3,
+	&tegra_spi_device4,
+	&tegra_pwfm1_device,
+	&tegra_avp_device,
+	&tegra_camera,
 	&tegra_i2s_device1,
 	&tegra_i2s_device2,
+	&tegra_das_device,
 	&tegra_pcm_device,
-	&tegra_kbc_device,
-	&tegra_w1_device,
-	&tegra_aes_device,
-	&tegra_avp_device,
-	&tegra_wdt_device,
+	&tegra_spdif_device,
+	&spdif_dit_device,
 };
 
 static int tegra_reboot_notify(struct notifier_block *nb,
@@ -700,7 +622,7 @@ void __init olympus_devices_init()
 //	struct clk *clk;
 
 	olympus_uart_init();
-	olympus_spi_init();
+//	olympus_spi_init();
 
 	platform_add_devices(olympus_devices, ARRAY_SIZE(olympus_devices));
 

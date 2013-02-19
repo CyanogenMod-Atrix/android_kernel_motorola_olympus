@@ -22,7 +22,6 @@
 #include <linux/delay.h>
 
 #include <linux/io.h>
-#include <linux/gpio.h>
 #include <linux/regulator/consumer.h>
 
 #include <mach/iomap.h>
@@ -40,63 +39,10 @@
 #include <linux/reboot.h>
 #include <linux/notifier.h>
 #include <linux/delay.h>
+#include <linux/pm.h>
 #ifdef CONFIG_BOOTINFO
 #include <asm/bootinfo.h>
 #endif
-
-#define GPIO_BANK(x)		((x) >> 5)
-#define GPIO_PORT(x)		(((x) >> 3) & 0x3)
-#define GPIO_BIT(x)		((x) & 0x7)
-
-#define GPIO_REG(x)		(IO_TO_VIRT(TEGRA_GPIO_BASE) +	\
-				 GPIO_BANK(x) * 0x80 +		\
-				 GPIO_PORT(x) * 4)
-
-#define GPIO_CNF(x)		(GPIO_REG(x) + 0x00)
-#define GPIO_OE(x)		(GPIO_REG(x) + 0x10)
-#define GPIO_OUT(x)		(GPIO_REG(x) + 0X20)
-#define GPIO_IN(x)		(GPIO_REG(x) + 0x30)
-#define GPIO_INT_STA(x)		(GPIO_REG(x) + 0x40)
-#define GPIO_INT_ENB(x)		(GPIO_REG(x) + 0x50)
-#define GPIO_INT_LVL(x)		(GPIO_REG(x) + 0x60)
-#define GPIO_INT_CLR(x)		(GPIO_REG(x) + 0x70)
-
-#define GPIO_MSK_CNF(x)		(GPIO_REG(x) + 0x800)
-#define GPIO_MSK_OE(x)		(GPIO_REG(x) + 0x810)
-#define GPIO_MSK_OUT(x)		(GPIO_REG(x) + 0X820)
-#define GPIO_MSK_INT_STA(x)	(GPIO_REG(x) + 0x840)
-#define GPIO_MSK_INT_ENB(x)	(GPIO_REG(x) + 0x850)
-#define GPIO_MSK_INT_LVL(x)	(GPIO_REG(x) + 0x860)
-
-#define GPIO_INT_LVL_MASK		0x010101
-#define GPIO_INT_LVL_EDGE_RISING	0x000101
-#define GPIO_INT_LVL_EDGE_FALLING	0x000100
-#define GPIO_INT_LVL_EDGE_BOTH		0x010100
-#define GPIO_INT_LVL_LEVEL_HIGH		0x000001
-#define GPIO_INT_LVL_LEVEL_LOW		0x000000
-
-struct tegra_gpio_bank {
-	int bank;
-	int irq;
-	spinlock_t lvl_lock[4];
-#ifdef CONFIG_PM
-	u32 cnf[4];
-	u32 out[4];
-	u32 oe[4];
-	u32 int_enb[4];
-	u32 int_lvl[4];
-#endif
-};
-
-static struct tegra_gpio_bank tegra_gpio_banks[] = {
-	{.bank = 0, .irq = INT_GPIO1, .cnf = {0x01,0x08,0x82,0xfe}, .oe = {0x01,0x08,0x82,0xfc}, .out = {0x00,0x08,0x82,0xc8}},
-	{.bank = 1, .irq = INT_GPIO2, .cnf = {0xe9,0xcb,0xff,0x0f}, .oe = {0xe9,0xcb,0xff,0x0f}, .out = {0xe9,0x81,0xff,0x0f}},
-	{.bank = 2, .irq = INT_GPIO3, .cnf = {0xb1,0x0d,0x5c,0xe9}, .oe = {0x91,0x0d,0x5c,0xe9}, .out = {0x91,0x0d,0x5c,0xe9}},
-	{.bank = 3, .irq = INT_GPIO4, .cnf = {0xc7,0x60,0xff,0x00}, .oe = {0xc4,0x60,0xff,0x00}, .out = {0xc0,0x60,0xff,0x00}},
-	{.bank = 4, .irq = INT_GPIO5, .cnf = {0x38,0xf8,0x07,0x7d}, .oe = {0x38,0xf8,0x07,0x7c}, .out = {0x38,0xf8,0x07,0x74}},
-	{.bank = 5, .irq = INT_GPIO6, .cnf = {0x00,0xc5,0x22,0x00}, .oe = {0x00,0xc1,0x22,0x00}, .out = {0x00,0x80,0x22,0x00}},
-	{.bank = 6, .irq = INT_GPIO7, .cnf = {0x0f,0x20,0x00,0x03}, .oe = {0x0f,0x20,0x00,0x0f}, .out = {0x0f,0x20,0x00,0x0f}},
-};
 
 struct cpcap_driver_info {
 	struct list_head list;
@@ -144,13 +90,24 @@ static struct platform_device cpcap_adc_device = {
 	.dev.platform_data = NULL,
 };
 
-
 static struct platform_device cpcap_key_device = {
 	.name           = "cpcap_key",
 	.id             = -1,
 	.dev.platform_data = NULL,
 };
 
+static struct platform_device cpcap_uc_device = {
+	.name           = "cpcap_uc",
+	.id             = -1,
+	.dev.platform_data = NULL,
+};
+
+static struct platform_device cpcap_rtc_device = {
+	.name           = "cpcap_rtc",
+	.id             = -1,
+	.dev.platform_data = NULL,
+};
+#if 0
 static struct platform_device cpcap_batt_device = {
 	.name           = "cpcap_battery",
 	.id             = -1,
@@ -195,20 +152,8 @@ static struct platform_device cpcap_audio_device = {
 };
 #endif
 
-static struct platform_device cpcap_uc_device = {
-	.name           = "cpcap_uc",
-	.id             = -1,
-	.dev.platform_data = NULL,
-};
-
 static struct platform_device cpcap_3mm5_device = {
 	.name           = "cpcap_3mm5",
-	.id             = -1,
-	.dev.platform_data = NULL,
-};
-
-static struct platform_device cpcap_rtc_device = {
-	.name           = "cpcap_rtc",
 	.id             = -1,
 	.dev.platform_data = NULL,
 };
@@ -238,11 +183,14 @@ struct platform_device cpcap_af_led = {
 	},
 };
 #endif
+#endif
 
 static struct platform_device *cpcap_devices[] = {
 	&cpcap_uc_device,
 	&cpcap_adc_device,
 	&cpcap_key_device,
+	&cpcap_rtc_device,
+#if 0
 	&cpcap_batt_device,
 	&cpcap_rgb_led,
 	&cpcap_disp_button_led,
@@ -254,7 +202,6 @@ static struct platform_device *cpcap_devices[] = {
 	&cpcap_audio_device,
 #endif
 	&cpcap_3mm5_device,
-	&cpcap_rtc_device,
 #ifdef CONFIG_CPCAP_WATCHDOG
 	&cpcap_wdt_device,
 #endif
@@ -263,6 +210,7 @@ static struct platform_device *cpcap_devices[] = {
 #endif
 #ifdef CONFIG_LEDS_AF_LED
 	&cpcap_af_led,
+#endif
 #endif
 };
 
@@ -478,6 +426,8 @@ static void cpcap_vendor_read(struct cpcap_device *cpcap)
 	cpcap->vendor = (enum cpcap_vendor)((value >> 6) & 0x0007);
 	cpcap->revision = (enum cpcap_revision)(((value >> 3) & 0x0007) |
 						((value << 3) & 0x0038));
+	printk("CPCAP : cpcap_vendor_read value 0x%x", value);
+	printk("CPCAP : cpcap_vendor_read vendor 0x%x rev 0x%x", cpcap->vendor, cpcap->revision);
 }
 
 static LIST_HEAD(cpcap_device_list);
@@ -561,19 +511,13 @@ int cpcap_device_register(struct platform_device *pdev)
 	return retval;
 }
 
-static int tegra_gpio_compose(int bank, int port, int bit)
-{
-	return (bank << 5) | ((port & 0x3) << 3) | (bit & 0x7);
-}
-
 static int __devinit cpcap_probe(struct spi_device *spi)
 {
 	int retval = -EINVAL;
-	unsigned long flags;
-	unsigned long pmc_ctrl;
 	struct cpcap_device *cpcap;
 	struct cpcap_platform_data *data;
-	int i,j;
+	int i;
+	struct cpcap_driver_info *info;
 
 	cpcap = kzalloc(sizeof(*cpcap), GFP_KERNEL);
 	if (cpcap == NULL)
@@ -581,9 +525,10 @@ static int __devinit cpcap_probe(struct spi_device *spi)
 
 	cpcap->spi = spi;
 	data = spi->controller_data;
+	dev_set_drvdata(&spi->dev, cpcap);
 
 	misc_cpcap = cpcap;  /* kept for misc device */
-	spi_set_drvdata(spi, cpcap);
+//	spi_set_drvdata(spi, cpcap);
 
 	cpcap->spdif_gpio = data->spdif_gpio;
 
@@ -594,7 +539,7 @@ static int __devinit cpcap_probe(struct spi_device *spi)
 	retval = cpcap_irq_init(cpcap);
 	if (retval < 0)
 		goto free_cpcap_irq;
-
+#if 0
 #ifdef CONFIG_BOOTINFO
 	if (bi_powerup_reason() != PU_REASON_CHARGER) {
 		/* Set Kpanic bit, which will be cleared at normal reboot */
@@ -602,7 +547,7 @@ static int __devinit cpcap_probe(struct spi_device *spi)
 			CPCAP_BIT_AP_KERNEL_PANIC, CPCAP_BIT_AP_KERNEL_PANIC);
 	}
 #endif
-
+#endif
 	cpcap_vendor_read(cpcap);
 
 	for (i = 0; i < ARRAY_SIZE(cpcap_devices); i++)
@@ -646,59 +591,21 @@ static int __devinit cpcap_probe(struct spi_device *spi)
 		platform_device_add(cpcap->regulator_pdev[i]);
 	}	
 
-	local_irq_save(flags);
-
-	for (i = 0; i < ARRAY_SIZE(tegra_gpio_banks); i++) {
-		struct tegra_gpio_bank *bank = &tegra_gpio_banks[i];
-
-		for (j = 0; j < ARRAY_SIZE(bank->oe); j++) {
-			unsigned int gpio = (i<<5) | (j<<3);
-			__raw_writel(bank->cnf[j], GPIO_CNF(gpio));
-			__raw_writel(bank->out[j], GPIO_OUT(gpio));
-			__raw_writel(bank->oe[j], GPIO_OE(gpio));
-		}
-	}
-
-	local_irq_restore(flags);
-#if 0
-	pmc_ctrl = readl(IO_ADDRESS(TEGRA_PMC_BASE));	
-	printk(KERN_INFO "pICS_%s: pmc_ctrl = 0x%lX...\n",__func__,pmc_ctrl);
-	
-	for (i = 0; i < 7; i++) {
-		for (j = 0; j < 4; j++) {
-			int gpio = tegra_gpio_compose(i, j, 0);
-			printk(KERN_INFO "pICS_%s: %d:%d %02x %02x %02x %02x %02x %02x %06x\n",__func__,
-			       i, j,
-			       __raw_readl(GPIO_CNF(gpio)),
-			       __raw_readl(GPIO_OE(gpio)),
-			       __raw_readl(GPIO_OUT(gpio)),
-			       __raw_readl(GPIO_IN(gpio)),
-			       __raw_readl(GPIO_INT_STA(gpio)),
-			       __raw_readl(GPIO_INT_ENB(gpio)),
-			       __raw_readl(GPIO_INT_LVL(gpio)));
-		}
-	}
-
-	pmc_ctrl = readl(IO_ADDRESS(TEGRA_PMC_BASE));	
-	printk(KERN_INFO "pICS_%s: after PmuInit, pmc_ctrl = 0x%lX...\n",__func__,pmc_ctrl);
-
-	for (i = 0; i < 7; i++) {
-		for (j = 0; j < 4; j++) {
-			int gpio = tegra_gpio_compose(i, j, 0);
-			printk(KERN_INFO "pICS_%s: %d:%d %02x %02x %02x %02x %02x %02x %06x\n",__func__,
-			       i, j,
-			       __raw_readl(GPIO_CNF(gpio)),
-			       __raw_readl(GPIO_OE(gpio)),
-			       __raw_readl(GPIO_OUT(gpio)),
-			       __raw_readl(GPIO_IN(gpio)),
-			       __raw_readl(GPIO_INT_STA(gpio)),
-			       __raw_readl(GPIO_INT_ENB(gpio)),
-			       __raw_readl(GPIO_INT_LVL(gpio)));
-		}
-	}
-#endif
-
 	platform_add_devices(cpcap_devices, ARRAY_SIZE(cpcap_devices));
+
+	mutex_lock(&cpcap_driver_lock);
+	misc_cpcap = cpcap;  /* kept for misc device */
+
+	list_for_each_entry(info, &cpcap_device_list, list) {
+		dev_info(&(spi->dev), "Probing CPCAP device %s\n",
+			 info->pdev->name);
+		if (info->pdev->dev.platform_data != NULL)
+			platform_set_drvdata(info->pdev, cpcap);
+		else
+			info->pdev->dev.platform_data = cpcap;
+		platform_device_register(info->pdev);
+	}
+	mutex_unlock(&cpcap_driver_lock);
 
 	register_reboot_notifier(&cpcap_reboot_notifier);
 

@@ -14,6 +14,7 @@
 #include <linux/fsl_devices.h>
 #include <linux/mtd/partitions.h>
 #include <linux/slab.h>
+#include <linux/tcmd_driver.h>
 
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
@@ -430,7 +431,7 @@ void mot_sec_init(void)
 }
 
 #endif
-#if 0
+
 /*
  * TCMD
  */
@@ -457,7 +458,7 @@ void mot_tcmd_init(void)
 
 	platform_device_register(&mot_tcmd_platform_device);
 }
-#endif
+
 /*
  * Some global queries for the framebuffer, display, and backlight drivers.
  */

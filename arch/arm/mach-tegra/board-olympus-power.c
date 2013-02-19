@@ -34,6 +34,7 @@
 #include "board.h"
 #include "hwrev.h"
 #include "pm.h"
+#include "pm-irq.h"
 #include "fuse.h"
 #include "wakeups-t2.h"
 
@@ -1038,8 +1039,46 @@ static struct tegra_suspend_platform_data olympus_suspend_data = {
 	.sysclkreq_high	= true,
 };
 
+#define WAKE_ANY 0x03
+#define WAKE_LOW 0x02
+#define WAKE_HI 0x01
+
 void __init olympus_suspend_init(void)
 {
+	tegra_pm_irq_set_wake_type(tegra_wake_to_irq(TEGRA_WAKE_GPIO_PL1), WAKE_LOW);
+//	tegra_pm_irq_set_wake(tegra_wake_to_irq(TEGRA_WAKE_GPIO_PL1), 1);
+
+	tegra_pm_irq_set_wake_type(tegra_wake_to_irq(TEGRA_WAKE_GPIO_PA0), WAKE_HI);
+//	tegra_pm_irq_set_wake(tegra_wake_to_irq(TEGRA_WAKE_GPIO_PA0), 1);
+	tegra_pm_irq_set_wake_type(tegra_wake_to_irq(TEGRA_WAKE_KBC_EVENT), WAKE_HI);
+//	tegra_pm_irq_set_wake(tegra_wake_to_irq(TEGRA_WAKE_KBC_EVENT), 1);
+	tegra_pm_irq_set_wake_type(tegra_wake_to_irq(TEGRA_WAKE_PWR_INT), WAKE_HI);
+//	tegra_pm_irq_set_wake(tegra_wake_to_irq(TEGRA_WAKE_PWR_INT), 1);
+
+	tegra_pm_irq_set_wake_type(tegra_wake_to_irq(TEGRA_WAKE_GPIO_PU5), WAKE_ANY);
+//	tegra_pm_irq_set_wake(tegra_wake_to_irq(TEGRA_WAKE_GPIO_PU5), 1);
+	tegra_pm_irq_set_wake_type(tegra_wake_to_irq(TEGRA_WAKE_GPIO_PU6), WAKE_ANY);
+//	tegra_pm_irq_set_wake(tegra_wake_to_irq(TEGRA_WAKE_GPIO_PU6), 1);
+	tegra_pm_irq_set_wake_type(tegra_wake_to_irq(TEGRA_WAKE_GPIO_PV2), WAKE_ANY);
+//	tegra_pm_irq_set_wake(tegra_wake_to_irq(TEGRA_WAKE_GPIO_PV2), 1);
+
+
+/*
+	.wake_enb	= TEGRA_WAKE_GPIO_PL1 \
+				| TEGRA_WAKE_GPIO_PA0 \
+				| TEGRA_WAKE_GPIO_PU5 \
+				| TEGRA_WAKE_GPIO_PU6 \
+				| TEGRA_WAKE_KBC_EVENT \
+				| TEGRA_WAKE_PWR_INT \
+				| TEGRA_WAKE_GPIO_PV2,
+	.wake_high	= TEGRA_WAKE_GPIO_PA0 \
+				| TEGRA_WAKE_KBC_EVENT \
+				| TEGRA_WAKE_PWR_INT,
+
+	.wake_any	= TEGRA_WAKE_GPIO_PU5 \
+				| TEGRA_WAKE_GPIO_PU6 \
+				| TEGRA_WAKE_GPIO_PV2,
+*/	
 	tegra_init_suspend(&olympus_suspend_data);
 }
 

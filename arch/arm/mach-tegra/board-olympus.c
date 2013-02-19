@@ -400,6 +400,10 @@ fail:
                return;
 }
 
+static struct platform_device tegra_w1_device = {
+    .name          = "tegra_w1",
+    .id            = -1,
+};
 
 static int config_unused_pins(char *pins, int num)
 {
@@ -532,28 +536,34 @@ static void __init tegra_mot_init(void)
 
 	olympus_pinmux_init();
 
-	olympus_emc_init();
-
-	olympus_devices_init();
 
 	olympus_power_init();
 
-	olympus_keypad_init();
-
-	olympus_i2c_init();
+	olympus_devices_init();
+	
+	mot_tcmd_init();
 
 	olympus_panel_init();
 	
+	olympus_i2c_init();
+
+	olympus_keypad_init();
+#if 0
 	if( (bi_powerup_reason() & PWRUP_FACTORY_CABLE) &&
 	    (bi_powerup_reason() != PWRUP_INVALID) ){
 #ifdef NEED_FACT_BUSY_HINT
 		FactoryBusyHint(); //factory workaround no longer needed
 #endif
 	}
-	if (1==0) {
-	mot_modem_init();
-	olympus_wlan_init();
-	mot_sensors_init();
+#endif
+	olympus_emc_init();
+
+	platform_device_register(&tegra_w1_device);
+
+if (1==0) {	
+		mot_modem_init();
+		olympus_wlan_init();
+		mot_sensors_init();
 	}
 
 	pm_power_off = mot_system_power_off;
@@ -569,24 +579,24 @@ static void __init tegra_mot_init(void)
 	gpio_direction_output(TEGRA_GPIO_PD4, 0);
 	gpio_export(TEGRA_GPIO_PD4, false);
 	if (1==0) {
-	if ((HWREV_TYPE_IS_PORTABLE(system_rev) || HWREV_TYPE_IS_FINAL(system_rev)))
-	{
-		if (HWREV_REV(system_rev) >= HWREV_REV_1 && HWREV_REV(system_rev) < HWREV_REV_2)
+		if ((HWREV_TYPE_IS_PORTABLE(system_rev) || HWREV_TYPE_IS_FINAL(system_rev)))
 		{
-			// Olympus P1
-			config_unused_pins(oly_unused_pins_p1, ARRAY_SIZE(oly_unused_pins_p1));
-		}
-		else if (HWREV_REV(system_rev) >= HWREV_REV_2 && HWREV_REV(system_rev) < HWREV_REV_3)
-		{
-			// Olympus P2
-			config_unused_pins(oly_unused_pins_p2, ARRAY_SIZE(oly_unused_pins_p2));
-		}
-		else if (HWREV_REV(system_rev) >= HWREV_REV_3 || HWREV_TYPE_IS_FINAL(system_rev))
-		{
+			if (HWREV_REV(system_rev) >= HWREV_REV_1 && HWREV_REV(system_rev) < HWREV_REV_2)
+			{
+				// Olympus P1
+				config_unused_pins(oly_unused_pins_p1, ARRAY_SIZE(oly_unused_pins_p1));
+			}
+			else if (HWREV_REV(system_rev) >= HWREV_REV_2 && HWREV_REV(system_rev) < HWREV_REV_3)
+			{
+				// Olympus P2
+				config_unused_pins(oly_unused_pins_p2, ARRAY_SIZE(oly_unused_pins_p2));
+			}
+			else if (HWREV_REV(system_rev) >= HWREV_REV_3 || HWREV_TYPE_IS_FINAL(system_rev))
+			{
 			// Olympus P3 and newer
-			config_unused_pins(oly_unused_pins_p3, ARRAY_SIZE(oly_unused_pins_p3));
+				config_unused_pins(oly_unused_pins_p3, ARRAY_SIZE(oly_unused_pins_p3));
+			}
 		}
-	}
 	}	
 
 	tegra_release_bootloader_fb();

@@ -150,10 +150,14 @@ static __initdata struct tegra_drive_pingroup_config olympus_drive_pinmux[] = {
 	{TEGRA_DRIVE_PINGROUP_DDC,     TEGRA_HSM_DISABLE, TEGRA_SCHMITT_ENABLE,  TEGRA_DRIVE_DIV_1, TEGRA_PULL_31, TEGRA_PULL_31, TEGRA_SLEW_SLOWEST, TEGRA_SLEW_SLOWEST},
 };
 
+static struct tegra_gpio_table gpio_table[] = {
+};
+
 void __init olympus_pinmux_init(void)
 {
 	tegra_pinmux_config_table(olympus_pinmux, ARRAY_SIZE(olympus_pinmux));
 	tegra_drive_pinmux_config_table(olympus_drive_pinmux,
 		ARRAY_SIZE(olympus_drive_pinmux));
 
+	tegra_gpio_config(gpio_table, ARRAY_SIZE(gpio_table));
 }

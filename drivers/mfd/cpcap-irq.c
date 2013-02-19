@@ -561,6 +561,7 @@ int cpcap_irq_register(struct cpcap_device *cpcap,
 	mutex_lock(&irqdata->lock);
 
 	if (irqdata->event_handler[irq].func == NULL) {
+		printk(KERN_INFO "pICS_%s: inside if...",__func__);
 		irqdata->irq_info[irq].registered = 1;
 		cpcap_irq_unmask(cpcap, irq);
 		irqdata->event_handler[irq].func = cb_func;

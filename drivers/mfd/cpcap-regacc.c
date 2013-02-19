@@ -450,27 +450,17 @@ static int cpcap_config_for_read(struct spi_device *spi, unsigned short reg,
 	u8 *buf = (u8 *) &buf32;
 
 	if (spi != NULL) {
-#ifdef CONFIG_ARCH_TEGRA
-      buf[0] = (reg >> 6) & 0x000000FF;
-      buf[1] = (reg << 2) & 0x000000FF;
-      buf[2] = 0;
-      buf[3] = 0;
-#else
 		buf[3] = (reg >> 6) & 0x000000FF;
 		buf[2] = (reg << 2) & 0x000000FF;
 		buf[1] = 0;
 		buf[0] = 0;
-#endif
+		printk(KERN_INFO "pICS_%s: buf = 0x%x\n",__func__,buf);
+
 		status = cpcap_spi_access(spi, buf, 4);
-
-		if (status == 0)
-
-#ifdef CONFIG_ARCH_TEGRA
-      *data = buf[3] | (buf[2] << 8);
-#else
-		*data = buf[0] | (buf[1] << 8);
-#endif
-
+		if (status == 0) {
+			*data = buf[0] | (buf[1] << 8);
+			printk(KERN_INFO "%s *data: 0x%x \n",__func__, *data);
+		}
  	}
 
 	return status;
@@ -485,18 +475,11 @@ static int cpcap_config_for_write(struct spi_device *spi, unsigned short reg,
 
 	if (spi != NULL) {
 
-#ifdef CONFIG_ARCH_TEGRA
-      buf[0] = ((reg >> 6) & 0x000000FF) | 0x80;
-      buf[1] = (reg << 2) & 0x000000FF;
-      buf[2] = (data >> 8) & 0x000000FF;
-      buf[3] = data & 0x000000FF;
-#else
 		buf[3] = ((reg >> 6) & 0x000000FF) | 0x80;
 		buf[2] = (reg << 2) & 0x000000FF;
 		buf[1] = (data >> 8) & 0x000000FF;
 		buf[0] = data & 0x000000FF;
-#endif
-
+		printk(KERN_INFO "pICS_%s: buf = 0x%x\n",__func__,buf);
 		status = cpcap_spi_access(spi, buf, 4);
 	}
 
