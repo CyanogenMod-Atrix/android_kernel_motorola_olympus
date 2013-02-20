@@ -345,10 +345,11 @@ static __initdata struct tegra_clk_init_table olympus_clk_init_table[] = {
 #endif
 	{"sbc1",	"pll_c",	60000000,	true},
 	{"sbc2",	"pll_c",	60000000,	true},
-	{"pwm",		"clk_32k",	32768,		false},
+	{"pwm",		"clk_32k",	32768,		true}, //was false
 	{"kbc",		"clk_32k",	32768,		true},
 	{"sdmmc2",	"pll_p",	25000000,	false},
-	{"i2s1",	"pll_a_out0",	0,		false},
+	{"i2s1",	"pll_a_out0",	0,		true}, //was false
+	{"pll_a_out0",	"pll_a",	11289600,	true}, //added
 	{"spdif_out",	"pll_a_out0",	0,		false},
 	{ NULL,		NULL,		0,		0},
 };
@@ -536,18 +537,18 @@ static void __init tegra_mot_init(void)
 
 	olympus_pinmux_init();
 
-
 	olympus_power_init();
 
 	olympus_devices_init();
 	
 	mot_tcmd_init();
-
+if (1==0) {
 	olympus_panel_init();
 	
 	olympus_i2c_init();
 
 	olympus_keypad_init();
+}
 #if 0
 	if( (bi_powerup_reason() & PWRUP_FACTORY_CABLE) &&
 	    (bi_powerup_reason() != PWRUP_INVALID) ){
@@ -556,7 +557,7 @@ static void __init tegra_mot_init(void)
 #endif
 	}
 #endif
-	olympus_emc_init();
+if (1==0) olympus_emc_init();
 
 	platform_device_register(&tegra_w1_device);
 
@@ -567,7 +568,7 @@ if (1==0) {
 	}
 
 	pm_power_off = mot_system_power_off;
-	tegra_setup_bluesleep();
+if (1==0) tegra_setup_bluesleep();
 
 	/* Configure SPDIF_OUT as GPIO by default, it can be later controlled
 	   as needed. When SPDIF_OUT is enabled and if HDMI is connected, it

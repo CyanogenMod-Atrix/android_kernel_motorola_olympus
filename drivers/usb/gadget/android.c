@@ -848,6 +848,7 @@ static ssize_t enable_store(struct device *pdev, struct device_attribute *attr,
 	if (enabled && !dev->enabled) {
 		/* update values in composite driver's copy of device descriptor */
 		printk(KERN_INFO "pICS_%s: level 1; UGLY HACK, PLEEASE FIX IT!\n",__func__);
+		printk(KERN_INFO "pICS_%s: device_desc.idVendor = 0x%x;\n",__func__, device_desc.idVendor);		
 		cdev->desc.idVendor = device_desc.idVendor;
 		printk(KERN_INFO "pICS_%s: level 1a;\n",__func__);
 		cdev->desc.idProduct = device_desc.idProduct;

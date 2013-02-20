@@ -3025,10 +3025,18 @@ static int __init regulator_init_complete(void)
 	 * which are not in use or always_on.  This will become the
 	 * default behaviour in the future.
 	 */
+
 	list_for_each_entry(rdev, &regulator_list, list) {
 		ops = rdev->desc->ops;
 		c = rdev->constraints;
-
+		
+		if (c && c->name)
+			printk(KERN_INFO "%s: %s\n", __func__, c->name); 
+		else if (rdev->desc->name)
+			printk(KERN_INFO "%s: %s\n", __func__, rdev->desc->name);
+		else
+			printk(KERN_INFO "%s: regulator\n", __func__);
+		
 		if (!ops->disable || (c && c->always_on))
 			continue;
 
