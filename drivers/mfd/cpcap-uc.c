@@ -225,6 +225,7 @@ static void ram_write_state_machine(enum cpcap_irqs irq, void *data)
 	printk(KERN_INFO "%s: Start",__func__);
 	switch (uc_data->state) {
 	case WRITE_STATE_1:
+		printk(KERN_INFO "%s READ_STATE_1\n", __func__);
 		cpcap_regacc_write(uc_data->cpcap, CPCAP_REG_MT1,
 				   uc_data->req.address, 0xFFFF);
 		cpcap_regacc_write(uc_data->cpcap, CPCAP_REG_MT2,
@@ -236,6 +237,7 @@ static void ram_write_state_machine(enum cpcap_irqs irq, void *data)
 		break;
 
 	case WRITE_STATE_2:
+		printk(KERN_INFO "%s READ_STATE_2\n", __func__);
 		cpcap_regacc_read(uc_data->cpcap, CPCAP_REG_MT1, &error_check);
 
 		if (error_check == ERROR_MACRO_WRITE) {
@@ -254,6 +256,7 @@ static void ram_write_state_machine(enum cpcap_irqs irq, void *data)
 		/* No error has occured, fall through */
 
 	case WRITE_STATE_3:
+		printk(KERN_INFO "%s READ_STATE_3\n", __func__);
 		cpcap_regacc_write(uc_data->cpcap, CPCAP_REG_MT1,
 				   *(uc_data->req.data + uc_data->state_cntr),
 				   0xFFFF);
@@ -288,6 +291,7 @@ static void ram_write_state_machine(enum cpcap_irqs irq, void *data)
 		break;
 
 	case WRITE_STATE_4:
+		printk(KERN_INFO "%s READ_STATE_4\n", __func__);
 		cpcap_regacc_read(uc_data->cpcap, CPCAP_REG_MT1, &error_check);
 
 		if (error_check != ERROR_MACRO_WRITE)

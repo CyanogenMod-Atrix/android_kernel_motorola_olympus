@@ -454,12 +454,12 @@ static int cpcap_config_for_read(struct spi_device *spi, unsigned short reg,
 		buf[2] = (reg << 2) & 0x000000FF;
 		buf[1] = 0;
 		buf[0] = 0;
-		printk(KERN_INFO "pICS_%s: buf = 0x%x\n",__func__,buf);
+	//	printk(KERN_INFO "pICS_%s: buf = 0x%x\n",__func__,buf);
 
 		status = cpcap_spi_access(spi, buf, 4);
 		if (status == 0) {
 			*data = buf[0] | (buf[1] << 8);
-			printk(KERN_INFO "%s *data: 0x%x \n",__func__, *data);
+	//		printk(KERN_INFO "%s *data: 0x%x \n",__func__, *data);
 		}
  	}
 
@@ -474,12 +474,12 @@ static int cpcap_config_for_write(struct spi_device *spi, unsigned short reg,
 	u8 *buf = (u8 *) &buf32;
 
 	if (spi != NULL) {
-
 		buf[3] = ((reg >> 6) & 0x000000FF) | 0x80;
 		buf[2] = (reg << 2) & 0x000000FF;
 		buf[1] = (data >> 8) & 0x000000FF;
 		buf[0] = data & 0x000000FF;
-		printk(KERN_INFO "pICS_%s: buf = 0x%x\n",__func__,buf);
+
+//		printk(KERN_INFO "pICS_%s: buf = 0x%x\n",__func__,buf);
 		status = cpcap_spi_access(spi, buf, 4);
 	}
 
