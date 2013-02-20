@@ -2065,6 +2065,7 @@ int __init usb_devio_init(void)
 		printk(KERN_ERR "Unable to register minors for usb_device\n");
 		goto out;
 	}
+	printk(KERN_INFO "pICS_%s: level 1; \n",__func__);
 	cdev_init(&usb_device_cdev, &usbdev_file_operations);
 	retval = cdev_add(&usb_device_cdev, USB_DEVICE_DEV, USB_DEVICE_MAX);
 	if (retval) {

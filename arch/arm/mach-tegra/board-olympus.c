@@ -542,13 +542,13 @@ static void __init tegra_mot_init(void)
 	olympus_devices_init();
 	
 	mot_tcmd_init();
-if (1==0) {
+
 	olympus_panel_init();
-	
+
 	olympus_i2c_init();
 
 	olympus_keypad_init();
-}
+
 #if 0
 	if( (bi_powerup_reason() & PWRUP_FACTORY_CABLE) &&
 	    (bi_powerup_reason() != PWRUP_INVALID) ){

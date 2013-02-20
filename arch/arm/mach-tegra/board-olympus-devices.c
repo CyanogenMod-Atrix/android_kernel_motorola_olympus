@@ -484,7 +484,6 @@ static void olympus_usb_init(void)
 	else
 		android_usb_pdata.serial_number = kstrdup(serial, GFP_KERNEL);
 
-
 	android_usb_pdata.product_name = olympus_dev;
 	android_usb_bp_pdata.product_name = olympus_dev;
 	tegra_usb_fsg_platform.product = olympus_dev;
@@ -497,16 +496,17 @@ static void olympus_usb_init(void)
 
 	tegra_ehci3_device.dev.platform_data = &tegra_ehci3_utmi_pdata;
 	platform_device_register(&tegra_ehci3_device);
-	
+
+	platform_device_register(&android_usb_device);	
 	platform_device_register(&tegra_usb_fsg_device);
 	platform_device_register(&rndis_device);
-	platform_device_register(&android_usb_device);
-}
 
+}
+#if 0
 /*
  * SPI
  */
-#if 0
+
 static struct tegra_spi_platform_data olympus_spi_pdata = {
 	.is_dma_based		= true,
 	.max_dma_buffer		= (16 * 1024),
@@ -628,7 +628,7 @@ void __init olympus_devices_init()
 
 	printk(KERN_INFO "pICS_%s: olympus_sdhci_init();\n",__func__);
 	olympus_sdhci_init();
-	olympus_usb_init();
+	if (1==0) olympus_usb_init();
 
 	pm_power_off = tegra_system_power_off;
 	
