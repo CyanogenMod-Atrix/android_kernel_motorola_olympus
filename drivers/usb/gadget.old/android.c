@@ -847,21 +847,46 @@ static ssize_t enable_store(struct device *pdev, struct device_attribute *attr,
 	sscanf(buff, "%d", &enabled);
 	if (enabled && !dev->enabled) {
 		/* update values in composite driver's copy of device descriptor */
+		printk(KERN_INFO "pICS_%s: level 1; UGLY HACK, PLEEASE FIX IT!\n",__func__);
+	//  if (cdev) {
+		printk(KERN_INFO "pICS_%s: device_desc.idVendor = 0x%x;\n",__func__, device_desc.idVendor);
+		printk(KERN_INFO "pICS_%s: cdev->desc.idVendor = 0x%x;\n",__func__, cdev->desc.idVendor);
 		cdev->desc.idVendor = device_desc.idVendor;
+		printk(KERN_INFO "pICS_%s: level 1a;\n",__func__);
+		printk(KERN_INFO "pICS_%s: device_desc.idProduct = 0x%x;\n",__func__, device_desc.idProduct);
+		//printk(KERN_INFO "pICS_%s: cdev->desc.idProduct = 0x%x;\n",__func__, cdev->desc.idProduct);
 		cdev->desc.idProduct = device_desc.idProduct;
+		printk(KERN_INFO "pICS_%s: level 1b;\n",__func__);
+		printk(KERN_INFO "pICS_%s: device_desc.bcdDevice = 0x%x;\n",__func__, device_desc.bcdDevice);
 		cdev->desc.bcdDevice = device_desc.bcdDevice;
+		printk(KERN_INFO "pICS_%s: level 1c;\n",__func__);
+		printk(KERN_INFO "pICS_%s: device_desc.bDeviceClass = 0x%x;\n",__func__, device_desc.bDeviceClass);
 		cdev->desc.bDeviceClass = device_desc.bDeviceClass;
+		printk(KERN_INFO "pICS_%s: level 1d;\n",__func__);
+		printk(KERN_INFO "pICS_%s: device_desc.bDeviceSubClass = 0x%x;\n",__func__, device_desc.bDeviceSubClass);
 		cdev->desc.bDeviceSubClass = device_desc.bDeviceSubClass;
+		printk(KERN_INFO "pICS_%s: level 1e;\n",__func__);
+		printk(KERN_INFO "pICS_%s: device_desc.bDeviceProtocol = 0x%x;\n",__func__, device_desc.bDeviceProtocol);
 		cdev->desc.bDeviceProtocol = device_desc.bDeviceProtocol;
+	
+		printk(KERN_INFO "pICS_%s: level 2;\n",__func__);
 		usb_add_config(cdev, &android_config_driver,
 					android_bind_config);
+	   
+		printk(KERN_INFO "pICS_%s: level 3;\n",__func__);
 		usb_gadget_connect(cdev->gadget);
+	//	};
+		printk(KERN_INFO "pICS_%s: level 4;\n",__func__);
 		dev->enabled = true;
 	} else if (!enabled && dev->enabled) {
+		printk(KERN_INFO "pICS_%s: level alt 1;\n",__func__);
 		usb_gadget_disconnect(cdev->gadget);
+		printk(KERN_INFO "pICS_%s: level alt 2;\n",__func__);
 		/* Cancel pending control requests */
 		usb_ep_dequeue(cdev->gadget->ep0, cdev->req);
+		printk(KERN_INFO "pICS_%s: level alt 3;\n",__func__);
 		usb_remove_config(cdev, &android_config_driver);
+		printk(KERN_INFO "pICS_%s: level alt 4;\n",__func__);
 		dev->enabled = false;
 	} else {
 		pr_err("android_usb: already %s\n",

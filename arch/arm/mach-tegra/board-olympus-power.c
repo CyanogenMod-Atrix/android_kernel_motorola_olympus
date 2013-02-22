@@ -998,6 +998,39 @@ static struct platform_device cpcap_validity_device = {
 	},
 };
 
+static struct platform_device cpcap_3mm5_device = {
+	.name   = "cpcap_3mm5",
+	.id     = -1,
+	.dev    = {
+		.platform_data  = NULL,
+	},
+};
+
+static struct platform_device cpcap_batt_device = {
+	.name           = "cpcap_battery",
+	.id             = -1,
+	.dev.platform_data = NULL,
+};
+
+static struct platform_device cpcap_usb_det_device = {
+	.name           = "cpcap_usb_det",
+	.id             = -1,
+	.dev.platform_data = NULL,
+};
+/*
+static struct platform_device cpcap_wdt_device = {
+	.name           = "cpcap_wdt",
+	.id             = -1,
+	.dev.platform_data = NULL,
+};*/
+
+static struct platform_device *cpcap_devices[] = {
+	&cpcap_3mm5_device,
+	&cpcap_usb_det_device,
+	&cpcap_batt_device,
+//	&cpcap_wdt_device,
+};
+
 #ifdef CONFIG_REGULATOR_VIRTUAL_CONSUMER
 static struct platform_device cpcap_reg_virt_vcam =
 {
@@ -1040,7 +1073,7 @@ static struct platform_device cpcap_reg_virt_sw5 =
 static struct tegra_suspend_platform_data olympus_suspend_data = {
 	.cpu_timer 	= 800,
 	.cpu_off_timer	= 600,
-	.suspend_mode	= TEGRA_SUSPEND_LP0,
+	.suspend_mode	= TEGRA_SUSPEND_LP1,
 	.core_timer	= 1842,
 	.core_off_timer = 31,
 	.corereq_high	= true,
@@ -1053,6 +1086,7 @@ static struct tegra_suspend_platform_data olympus_suspend_data = {
 
 void __init olympus_suspend_init(void)
 {
+/*
 	tegra_pm_irq_set_wake_type(tegra_wake_to_irq(TEGRA_WAKE_GPIO_PL1), WAKE_LOW);
 //	tegra_pm_irq_set_wake(tegra_wake_to_irq(TEGRA_WAKE_GPIO_PL1), 1);
 
@@ -1069,7 +1103,7 @@ void __init olympus_suspend_init(void)
 //	tegra_pm_irq_set_wake(tegra_wake_to_irq(TEGRA_WAKE_GPIO_PU6), 1);
 	tegra_pm_irq_set_wake_type(tegra_wake_to_irq(TEGRA_WAKE_GPIO_PV2), WAKE_ANY);
 //	tegra_pm_irq_set_wake(tegra_wake_to_irq(TEGRA_WAKE_GPIO_PV2), 1);
-
+*/
 
 /*
 	.wake_enb	= TEGRA_WAKE_GPIO_PL1 \
@@ -1147,11 +1181,16 @@ void __init olympus_power_init(void)
 
 	spi_register_board_info(tegra_spi_devices, ARRAY_SIZE(tegra_spi_devices));
 
+	for (i = 0; i < ARRAY_SIZE(cpcap_devices); i++)
+		cpcap_device_register(cpcap_devices[i]);
+
+	cpcap_device_register(&cpcap_validity_device);
+
 	for (i = 0; i < sizeof(fixed_regulator_devices)/sizeof(fixed_regulator_devices[0]); i++) {
 		error = platform_device_register(&fixed_regulator_devices[i]);
 		pr_info("Registered reg-fixed-voltage: %d result: %d\n", i, error);
 	}
-	cpcap_device_register(&cpcap_validity_device);
+	
 	(void) platform_driver_register(&cpcap_validity_driver);
 #ifdef CONFIG_REGULATOR_VIRTUAL_CONSUMER
 	(void) platform_device_register(&cpcap_reg_virt_vcam);
