@@ -139,11 +139,17 @@ static void olympus_ehci_init(void)
 {
 	int factorycable = !strncmp(boot_mode, "factorycable",
 			BOOT_MODE_MAX_LEN);
-
+			
+	tegra_otg_device.dev.platform_data = &tegra_ehci_pdata[0];
+	platform_device_register(&tegra_otg_device);
+	
 	tegra_udc_device.dev.platform_data = &tegra_udc_pdata;
+	
 	tegra_ehci2_device.dev.platform_data = &tegra_ehci_pdata[1];
 	tegra_ehci3_device.dev.platform_data = &tegra_ehci_pdata[2];
-
+	
+	platform_device_register(&tegra_otg_device);
+	
 	if (!(factorycable && mot_boot_recovery))
 		platform_device_register(&tegra_udc_device);
 
