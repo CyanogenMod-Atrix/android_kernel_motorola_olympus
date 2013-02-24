@@ -288,7 +288,6 @@ static __initdata struct tegra_clk_init_table olympus_clk_init_table[] = {
 	/* name		parent		rate		enabled */  
 #if 0
 	{ "usb3",	"clk_m",	26000000,	false},
-{ "usbd",	"clk_m",	26000000,	true},
 { "dvc",	"clk_m",	2888888,	true},
 { "i2c3",	"clk_m",	2888888,	true},
 { "i2c2",	"clk_m",	787878,		true},
@@ -313,21 +312,16 @@ static __initdata struct tegra_clk_init_table olympus_clk_init_table[] = {
 { "pll_p_out1",	"pll_p",	28800000,	true},
 { "pll_a",	"pll_p_out1",	56448000,	false},
 { "pll_a_out0",	"pll_a",	11289600,	false},
-{ "spdif_out",	"pll_a_out0",	11289600,	false},
 { "pll_c",	"clk_m",	600000000,	true},
 { "mpe",	"pll_c",	300000000,	true},
 { "epp",	"pll_c",	300000000,	true},
 { "vi",		"pll_c",	100000000,	true},
 { "2d",		"pll_c",	300000000,	true},
 { "3d",		"pll_c",	300000000,	true},
-{ "sbc2",	"pll_c",	31578947,	true},
 { "cop",	"sclk",		80000000,	true},
-{ "i2s1",	"pll_a_out0",	2822400,	false},
 { "pll_m",	"clk_m",	600000000,	true},
 { "emc",	"pll_m",	600000000,	true},
 { "uartc",	"pll_m",	600000000,	true},
-{ "sbc1",	"pll_m",	100000000,	true},
-{ "pwm",	"clk_32k",	32768,	false},
 { "rtc",	"clk_32k",	32768,	true},
 	{ "pll_p_out4",	"pll_p",	108000000,	true},	
 	{ "sdmmc4",	"pll_p",	48000000,	true},
@@ -343,13 +337,16 @@ static __initdata struct tegra_clk_init_table olympus_clk_init_table[] = {
 	{ "i2s2",	"pll_a_out0",	0,		false},
 	{ "spi",	"clk_m",	26000000,	true},
 #endif
+//	{"usbd",	"clk_m",	26000000,	true},
 	{"sbc1",	"pll_c",	60000000,	true},
 	{"sbc2",	"pll_c",	60000000,	true},
-	{"pwm",		"clk_32k",	32768,		true}, //was false
+//	{"pwm",		"clk_32k",	32768,		true},
+	{"pwm",		"clk_32k",	32768,		false},
 	{"kbc",		"clk_32k",	32768,		true},
 	{"sdmmc2",	"pll_p",	25000000,	false},
-	{"i2s1",	"pll_a_out0",	0,		true}, //was false
-	{"pll_a_out0",	"pll_a",	11289600,	true}, //added
+//	{"i2s1",	"pll_a_out0",	0,		true},
+	{"i2s1",	"pll_a_out0",	0,		false},
+//	{"pll_a_out0",	"pll_a",	11289600,	true}, //added
 	{"spdif_out",	"pll_a_out0",	0,		false},
 	{ NULL,		NULL,		0,		0},
 };

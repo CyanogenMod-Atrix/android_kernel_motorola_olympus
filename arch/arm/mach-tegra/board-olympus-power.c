@@ -269,8 +269,8 @@ static struct platform_device cpcap_usb_device = {
 
 static struct cpcap_whisper_pdata usb_det_pdata = {
 	.data_gpio = TEGRA_GPIO_PV6,
-//	.pwr_gpio  = TEGRA_GPIO_PT2,
-	.pwr_gpio  = TEGRA_GPIO_PF3,
+	.pwr_gpio  = TEGRA_GPIO_PT2,
+//	.pwr_gpio  = TEGRA_GPIO_PF3,
 //	.uartmux   = 1,
 };
 

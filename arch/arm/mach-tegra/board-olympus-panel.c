@@ -194,8 +194,9 @@ static struct tegra_dsi_cmd dsi_olympus_init_cmd[]= {
 	DSI_CMD_SHORT(0x05, 0x29, 0x00),
 	DSI_DLY_MS(20),
 };
+
 /*
-static struct tegra_dsi_cmd dsi_init_cmd[]= {
+static struct tegra_dsi_cmd dsi_olympus_init_cmd[]= {
 	DSI_CMD_SHORT(0x05, 0x11, 0x00),
 	DSI_DLY_MS(150), 
 	DSI_CMD_SHORT(0x05, 0x29, 0x00),
