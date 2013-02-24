@@ -472,6 +472,8 @@ static void olympus_usb_init(void)
 	cpcap_device_register(&cpcap_otg_device);
 //	platform_device_register(&cpcap_otg_device);
 
+//	platform_device_register(&tegra_otg_device);
+
 	snprintf(serial, sizeof(serial), "037c7148423ff097");
 
 	tegra_ehci1_device.dev.platform_data = &tegra_ehci1_utmi_pdata;
@@ -628,13 +630,12 @@ void __init olympus_devices_init()
 
 	printk(KERN_INFO "pICS_%s: olympus_sdhci_init();\n",__func__);
 	olympus_sdhci_init();
-	//if (1==0) olympus_usb_init();
-	//I dont think we initialize usb.
 	olympus_usb_init();
+
 	pm_power_off = tegra_system_power_off;
 	
 	olympus_reboot_init();
 
-	if (1==0) tegra_uartd_device.dev.platform_data = &ipc_olympus_pdata;
+	tegra_uartd_device.dev.platform_data = &ipc_olympus_pdata;
 }
 

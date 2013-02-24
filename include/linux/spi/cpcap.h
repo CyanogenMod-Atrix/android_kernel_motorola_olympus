@@ -660,6 +660,12 @@ struct cpcap_platform_data {
 	int spdif_gpio;
 };
 
+struct cpcap_whisper_pdata {
+	unsigned int data_gpio;
+	unsigned int pwr_gpio;
+//	unsigned char uartmux;
+};
+
 struct cpcap_adc_request {
 	enum cpcap_adc_format format;
 	enum cpcap_adc_timing timing;

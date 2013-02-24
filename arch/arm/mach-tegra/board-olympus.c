@@ -564,8 +564,8 @@ if (1==0) olympus_emc_init();
 if (1==0) {	
 		mot_modem_init();
 		olympus_wlan_init();
-		mot_sensors_init();
 	}
+		mot_sensors_init();
 
 	pm_power_off = mot_system_power_off;
 if (1==0) tegra_setup_bluesleep();

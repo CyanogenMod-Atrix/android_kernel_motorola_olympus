@@ -95,6 +95,207 @@ void mot_system_power_off(void)
 	arch_reset(0,"");
 }
 
+static struct cpcap_device *cpcap_di;
+
+static int cpcap_validity_reboot(struct notifier_block *this,
+				 unsigned long code, void *cmd)
+{
+	int ret = -1;
+	int result = NOTIFY_DONE;
+	char *mode = cmd;
+
+	dev_info(&(cpcap_di->spi->dev), "Saving power down reason.\n");
+
+	if (code == SYS_RESTART) {
+		if (mode != NULL && !strncmp("outofcharge", mode, 12)) {
+			/* Set the outofcharge bit in the cpcap */
+			ret = cpcap_regacc_write(cpcap_di, CPCAP_REG_VAL1,
+						 CPCAP_BIT_OUT_CHARGE_ONLY,
+						 CPCAP_BIT_OUT_CHARGE_ONLY);
+			if (ret) {
+				dev_err(&(cpcap_di->spi->dev),
+					"outofcharge cpcap set failure.\n");
+				result = NOTIFY_BAD;
+			}
+			/* Set the soft reset bit in the cpcap */
+			cpcap_regacc_write(cpcap_di, CPCAP_REG_VAL1,
+					   CPCAP_BIT_SOFT_RESET,
+					   CPCAP_BIT_SOFT_RESET);
+			if (ret) {
+				dev_err(&(cpcap_di->spi->dev),
+					"reset cpcap set failure.\n");
+				result = NOTIFY_BAD;
+			}
+		}
+
+		/* Check if we are starting recovery mode */
+		if (mode != NULL && !strncmp("recovery", mode, 9)) {
+			/* Set the fota (recovery mode) bit in the cpcap */
+			ret = cpcap_regacc_write(cpcap_di, CPCAP_REG_VAL1,
+				CPCAP_BIT_FOTA_MODE, CPCAP_BIT_FOTA_MODE);
+			if (ret) {
+				dev_err(&(cpcap_di->spi->dev),
+					"Recovery cpcap set failure.\n");
+				result = NOTIFY_BAD;
+			}
+		} else {
+			/* Set the fota (recovery mode) bit in the cpcap */
+			ret = cpcap_regacc_write(cpcap_di, CPCAP_REG_VAL1, 0,
+						 CPCAP_BIT_FOTA_MODE);
+			if (ret) {
+				dev_err(&(cpcap_di->spi->dev),
+					"Recovery cpcap clear failure.\n");
+				result = NOTIFY_BAD;
+			}
+		}
+		/* Check if we are going into fast boot mode */
+		if (mode != NULL && !strncmp("bootloader", mode, 11)) {
+			/* Set the bootmode bit in the cpcap */
+			ret = cpcap_regacc_write(cpcap_di, CPCAP_REG_VAL1,
+				CPCAP_BIT_BOOT_MODE, CPCAP_BIT_BOOT_MODE);
+			if (ret) {
+				dev_err(&(cpcap_di->spi->dev),
+					"Boot mode cpcap set failure.\n");
+				result = NOTIFY_BAD;
+			}
+		}
+	} else {
+		ret = cpcap_regacc_write(cpcap_di, CPCAP_REG_VAL1,
+					 0,
+					 CPCAP_BIT_OUT_CHARGE_ONLY);
+		if (ret) {
+			dev_err(&(cpcap_di->spi->dev),
+				"outofcharge cpcap set failure.\n");
+			result = NOTIFY_BAD;
+		}
+
+		/* Clear the soft reset bit in the cpcap */
+		ret = cpcap_regacc_write(cpcap_di, CPCAP_REG_VAL1, 0,
+					 CPCAP_BIT_SOFT_RESET);
+		if (ret) {
+			dev_err(&(cpcap_di->spi->dev),
+				"SW Reset cpcap set failure.\n");
+			result = NOTIFY_BAD;
+		}
+		/* Clear the fota (recovery mode) bit in the cpcap */
+		ret = cpcap_regacc_write(cpcap_di, CPCAP_REG_VAL1, 0,
+					 CPCAP_BIT_FOTA_MODE);
+		if (ret) {
+			dev_err(&(cpcap_di->spi->dev),
+				"Recovery cpcap clear failure.\n");
+			result = NOTIFY_BAD;
+		}
+	}
+
+	/* Always clear the kpanic bit */
+	ret = cpcap_regacc_write(cpcap_di, CPCAP_REG_VAL1,
+				 0, CPCAP_BIT_AP_KERNEL_PANIC);
+	if (ret) {
+		dev_err(&(cpcap_di->spi->dev),
+			"Clear kernel panic bit failure.\n");
+		result = NOTIFY_BAD;
+	}
+
+	return result;
+}
+static struct notifier_block validity_reboot_notifier = {
+	.notifier_call = cpcap_validity_reboot,
+};
+
+static int cpcap_validity_probe(struct platform_device *pdev)
+{
+//	int err;
+
+	if (pdev->dev.platform_data == NULL) {
+		dev_err(&pdev->dev, "no platform_data\n");
+		return -EINVAL;
+	}
+
+	cpcap_di = pdev->dev.platform_data;
+
+	cpcap_regacc_write(cpcap_di, CPCAP_REG_VAL1,
+			   (CPCAP_BIT_AP_KERNEL_PANIC | CPCAP_BIT_SOFT_RESET),
+			   (CPCAP_BIT_AP_KERNEL_PANIC | CPCAP_BIT_SOFT_RESET));
+
+	register_reboot_notifier(&validity_reboot_notifier);
+
+	return 0;
+}
+
+static int cpcap_validity_remove(struct platform_device *pdev)
+{
+	unregister_reboot_notifier(&validity_reboot_notifier);
+	cpcap_di = NULL;
+
+	return 0;
+}
+
+static struct platform_driver cpcap_validity_driver = {
+	.probe = cpcap_validity_probe,
+	.remove = cpcap_validity_remove,
+	.driver = {
+		.name = "cpcap_validity",
+		.owner  = THIS_MODULE,
+	},
+};
+
+static struct platform_device cpcap_validity_device = {
+	.name   = "cpcap_validity",
+	.id     = -1,
+	.dev    = {
+		.platform_data  = NULL,
+	},
+};
+
+static struct platform_device cpcap_3mm5_device = {
+	.name   = "cpcap_3mm5",
+	.id     = -1,
+	.dev    = {
+		.platform_data  = NULL,
+	},
+};
+
+static struct platform_device cpcap_batt_device = {
+	.name           = "cpcap_battery",
+	.id             = -1,
+	.dev.platform_data = NULL,
+};
+
+static struct platform_device cpcap_usb_device = {
+	.name           = "cpcap_usb",
+	.id             = -1,
+	.dev.platform_data = NULL,
+};
+
+static struct cpcap_whisper_pdata usb_det_pdata = {
+	.data_gpio = TEGRA_GPIO_PV6,
+//	.pwr_gpio  = TEGRA_GPIO_PT2,
+	.pwr_gpio  = TEGRA_GPIO_PF3,
+//	.uartmux   = 1,
+};
+
+static struct platform_device cpcap_usb_det_device = {
+	.name           = "cpcap_usb_det",
+	.id             = -1,
+	.dev    = {
+		.platform_data  = &usb_det_pdata,
+	},
+};
+
+static struct platform_device cpcap_wdt_device = {
+	.name           = "cpcap_wdt",
+	.id             = -1,
+	.dev.platform_data = NULL,
+};
+
+static struct platform_device *cpcap_devices[] = {
+	&cpcap_3mm5_device,
+	&cpcap_usb_device,
+	&cpcap_usb_det_device,
+	&cpcap_batt_device,
+	&cpcap_wdt_device,
+};
+
 static int is_olympus_ge_p0(struct cpcap_device *cpcap)
 {
 //	printk(KERN_INFO "pICS_%s: testing...\n",__func__);
@@ -136,15 +337,18 @@ struct cpcap_spi_init_data tegra_cpcap_spi_init[] = {
 	/* Set SW1 to AMS/AMS 1.025v. */
 	{CPCAP_REG_S1C1,      0x4822, NULL             },
 	/* Set SW2 to AMS/AMS 1.2v. */
-	{CPCAP_REG_S2C1,      0x4830, NULL             },
+//	{CPCAP_REG_S2C1,      0x4830, NULL             }, 
+	{CPCAP_REG_S2C1,      0x4822, NULL             },//lowering voltages
 	/* Set SW3 to AMS/AMS 1.8V for version 3.1 only. */
 	{CPCAP_REG_S3C,       0x0445, is_cpcap_eq_3_1  },
 	/* Set SW3 to Pulse Skip/PFM. */
 	{CPCAP_REG_S3C,       0x043d, NULL             },
 	/* Set SW4 to AMS/AMS 1.2v for version 3.1 only. */
-	{CPCAP_REG_S4C1,      0x4830, is_cpcap_eq_3_1  },
+//	{CPCAP_REG_S4C1,      0x4830, is_cpcap_eq_3_1  },
+	{CPCAP_REG_S4C1,      0x4822, is_cpcap_eq_3_1  },//lowering voltages
 	/* Set SW4 to PFM/PFM 1.2v. */
-	{CPCAP_REG_S4C1,      0x4930, NULL             },
+//	{CPCAP_REG_S4C1,      0x4930, NULL             },
+	{CPCAP_REG_S4C1,      0x4922, NULL             },//lowering voltages
 	/* Set SW4 down to 0.95v when secondary standby is asserted. */
 	{CPCAP_REG_S4C2,      0x301c, NULL             },
 	/* Set SW5 to On/Off. */
@@ -465,10 +669,12 @@ struct cpcap_mode_value *cpcap_regulator_off_mode_values[] = {
 
 struct regulator_consumer_supply cpcap_sw1_consumers[] = {
 	REGULATOR_CONSUMER("sw1", NULL /* core */),
+//	REGULATOR_CONSUMER("vdd_cpu", NULL),
 };
 
 struct regulator_consumer_supply cpcap_sw2_consumers[] = {
 	REGULATOR_CONSUMER("sw2", NULL /* core */),
+//	REGULATOR_CONSUMER("vdd_core", NULL),
 };
 
 struct regulator_consumer_supply cpcap_sw3_consumers[] = {
@@ -477,6 +683,7 @@ struct regulator_consumer_supply cpcap_sw3_consumers[] = {
 
 struct regulator_consumer_supply cpcap_sw4_consumers[] = {
 	REGULATOR_CONSUMER("sw4", NULL /* core */),
+//	REGULATOR_CONSUMER("vdd_aon", NULL),
 };
 
 struct regulator_consumer_supply cpcap_sw5_consumers[] = {
@@ -526,7 +733,7 @@ struct regulator_consumer_supply cpcap_vwlan2_consumers[] = {
 	REGULATOR_CONSUMER("vwlan2", NULL),
 	/* Powers the tegra usb block, cannot be named vusb, since
 	   this name already exists in regulator-cpcap.c. */
-	REGULATOR_CONSUMER("avdd_usb", NULL),
+	REGULATOR_CONSUMER("avdd_usb", NULL), /* usb */
 	REGULATOR_CONSUMER("vusb_modem_flash", NULL),
 	REGULATOR_CONSUMER("vusb_modem_ipc", NULL),
 	REGULATOR_CONSUMER("vhdmi", NULL),
@@ -538,6 +745,10 @@ struct regulator_consumer_supply cpcap_vsimcard_consumers[] = {
 
 struct regulator_consumer_supply cpcap_vvib_consumers[] = {
 	REGULATOR_CONSUMER("vvib", NULL /* vibrator */),
+};
+
+struct regulator_consumer_supply cpcap_vusb_consumers[] = {
+	REGULATOR_CONSUMER_BY_DEVICE("vusb", &cpcap_usb_det_device.dev),
 };
 
 struct regulator_consumer_supply cpcap_vaudio_consumers[] = {
@@ -745,8 +956,10 @@ static struct regulator_init_data cpcap_regulator[CPCAP_NUM_REGULATORS] = {
 			.max_uV			= 3300000,
 			.valid_ops_mask		= REGULATOR_CHANGE_STATUS,
 			.apply_uV		= 1,
-			.always_on 		= 1,
+			//.always_on 		= 1,
 		},
+		.num_consumer_supplies	= ARRAY_SIZE(cpcap_vusb_consumers),
+		.consumer_supplies	= cpcap_vusb_consumers,
 	},
 	[CPCAP_VAUDIO] = {
 		.constraints = {
@@ -846,191 +1059,6 @@ struct spi_board_info tegra_spi_devices[] __initdata = {
 
 };
 
-static struct cpcap_device *cpcap_di;
-
-static int cpcap_validity_reboot(struct notifier_block *this,
-				 unsigned long code, void *cmd)
-{
-	int ret = -1;
-	int result = NOTIFY_DONE;
-	char *mode = cmd;
-
-	dev_info(&(cpcap_di->spi->dev), "Saving power down reason.\n");
-
-	if (code == SYS_RESTART) {
-		if (mode != NULL && !strncmp("outofcharge", mode, 12)) {
-			/* Set the outofcharge bit in the cpcap */
-			ret = cpcap_regacc_write(cpcap_di, CPCAP_REG_VAL1,
-						 CPCAP_BIT_OUT_CHARGE_ONLY,
-						 CPCAP_BIT_OUT_CHARGE_ONLY);
-			if (ret) {
-				dev_err(&(cpcap_di->spi->dev),
-					"outofcharge cpcap set failure.\n");
-				result = NOTIFY_BAD;
-			}
-			/* Set the soft reset bit in the cpcap */
-			cpcap_regacc_write(cpcap_di, CPCAP_REG_VAL1,
-					   CPCAP_BIT_SOFT_RESET,
-					   CPCAP_BIT_SOFT_RESET);
-			if (ret) {
-				dev_err(&(cpcap_di->spi->dev),
-					"reset cpcap set failure.\n");
-				result = NOTIFY_BAD;
-			}
-		}
-
-		/* Check if we are starting recovery mode */
-		if (mode != NULL && !strncmp("recovery", mode, 9)) {
-			/* Set the fota (recovery mode) bit in the cpcap */
-			ret = cpcap_regacc_write(cpcap_di, CPCAP_REG_VAL1,
-				CPCAP_BIT_FOTA_MODE, CPCAP_BIT_FOTA_MODE);
-			if (ret) {
-				dev_err(&(cpcap_di->spi->dev),
-					"Recovery cpcap set failure.\n");
-				result = NOTIFY_BAD;
-			}
-		} else {
-			/* Set the fota (recovery mode) bit in the cpcap */
-			ret = cpcap_regacc_write(cpcap_di, CPCAP_REG_VAL1, 0,
-						 CPCAP_BIT_FOTA_MODE);
-			if (ret) {
-				dev_err(&(cpcap_di->spi->dev),
-					"Recovery cpcap clear failure.\n");
-				result = NOTIFY_BAD;
-			}
-		}
-		/* Check if we are going into fast boot mode */
-		if (mode != NULL && !strncmp("bootloader", mode, 11)) {
-			/* Set the bootmode bit in the cpcap */
-			ret = cpcap_regacc_write(cpcap_di, CPCAP_REG_VAL1,
-				CPCAP_BIT_BOOT_MODE, CPCAP_BIT_BOOT_MODE);
-			if (ret) {
-				dev_err(&(cpcap_di->spi->dev),
-					"Boot mode cpcap set failure.\n");
-				result = NOTIFY_BAD;
-			}
-		}
-	} else {
-		ret = cpcap_regacc_write(cpcap_di, CPCAP_REG_VAL1,
-					 0,
-					 CPCAP_BIT_OUT_CHARGE_ONLY);
-		if (ret) {
-			dev_err(&(cpcap_di->spi->dev),
-				"outofcharge cpcap set failure.\n");
-			result = NOTIFY_BAD;
-		}
-
-		/* Clear the soft reset bit in the cpcap */
-		ret = cpcap_regacc_write(cpcap_di, CPCAP_REG_VAL1, 0,
-					 CPCAP_BIT_SOFT_RESET);
-		if (ret) {
-			dev_err(&(cpcap_di->spi->dev),
-				"SW Reset cpcap set failure.\n");
-			result = NOTIFY_BAD;
-		}
-		/* Clear the fota (recovery mode) bit in the cpcap */
-		ret = cpcap_regacc_write(cpcap_di, CPCAP_REG_VAL1, 0,
-					 CPCAP_BIT_FOTA_MODE);
-		if (ret) {
-			dev_err(&(cpcap_di->spi->dev),
-				"Recovery cpcap clear failure.\n");
-			result = NOTIFY_BAD;
-		}
-	}
-
-	/* Always clear the kpanic bit */
-	ret = cpcap_regacc_write(cpcap_di, CPCAP_REG_VAL1,
-				 0, CPCAP_BIT_AP_KERNEL_PANIC);
-	if (ret) {
-		dev_err(&(cpcap_di->spi->dev),
-			"Clear kernel panic bit failure.\n");
-		result = NOTIFY_BAD;
-	}
-
-	return result;
-}
-static struct notifier_block validity_reboot_notifier = {
-	.notifier_call = cpcap_validity_reboot,
-};
-
-static int cpcap_validity_probe(struct platform_device *pdev)
-{
-//	int err;
-
-	if (pdev->dev.platform_data == NULL) {
-		dev_err(&pdev->dev, "no platform_data\n");
-		return -EINVAL;
-	}
-
-	cpcap_di = pdev->dev.platform_data;
-
-	cpcap_regacc_write(cpcap_di, CPCAP_REG_VAL1,
-			   (CPCAP_BIT_AP_KERNEL_PANIC | CPCAP_BIT_SOFT_RESET),
-			   (CPCAP_BIT_AP_KERNEL_PANIC | CPCAP_BIT_SOFT_RESET));
-
-	register_reboot_notifier(&validity_reboot_notifier);
-
-	return 0;
-}
-
-static int cpcap_validity_remove(struct platform_device *pdev)
-{
-	unregister_reboot_notifier(&validity_reboot_notifier);
-	cpcap_di = NULL;
-
-	return 0;
-}
-
-static struct platform_driver cpcap_validity_driver = {
-	.probe = cpcap_validity_probe,
-	.remove = cpcap_validity_remove,
-	.driver = {
-		.name = "cpcap_validity",
-		.owner  = THIS_MODULE,
-	},
-};
-
-static struct platform_device cpcap_validity_device = {
-	.name   = "cpcap_validity",
-	.id     = -1,
-	.dev    = {
-		.platform_data  = NULL,
-	},
-};
-
-static struct platform_device cpcap_3mm5_device = {
-	.name   = "cpcap_3mm5",
-	.id     = -1,
-	.dev    = {
-		.platform_data  = NULL,
-	},
-};
-
-static struct platform_device cpcap_batt_device = {
-	.name           = "cpcap_battery",
-	.id             = -1,
-	.dev.platform_data = NULL,
-};
-
-static struct platform_device cpcap_usb_det_device = {
-	.name           = "cpcap_usb_det",
-	.id             = -1,
-	.dev.platform_data = NULL,
-};
-/*
-static struct platform_device cpcap_wdt_device = {
-	.name           = "cpcap_wdt",
-	.id             = -1,
-	.dev.platform_data = NULL,
-};*/
-
-static struct platform_device *cpcap_devices[] = {
-	&cpcap_3mm5_device,
-	&cpcap_usb_det_device,
-	&cpcap_batt_device,
-//	&cpcap_wdt_device,
-};
-
 #ifdef CONFIG_REGULATOR_VIRTUAL_CONSUMER
 static struct platform_device cpcap_reg_virt_vcam =
 {
@@ -1086,7 +1114,7 @@ static struct tegra_suspend_platform_data olympus_suspend_data = {
 
 void __init olympus_suspend_init(void)
 {
-/*
+
 	tegra_pm_irq_set_wake_type(tegra_wake_to_irq(TEGRA_WAKE_GPIO_PL1), WAKE_LOW);
 //	tegra_pm_irq_set_wake(tegra_wake_to_irq(TEGRA_WAKE_GPIO_PL1), 1);
 
@@ -1103,7 +1131,7 @@ void __init olympus_suspend_init(void)
 //	tegra_pm_irq_set_wake(tegra_wake_to_irq(TEGRA_WAKE_GPIO_PU6), 1);
 	tegra_pm_irq_set_wake_type(tegra_wake_to_irq(TEGRA_WAKE_GPIO_PV2), WAKE_ANY);
 //	tegra_pm_irq_set_wake(tegra_wake_to_irq(TEGRA_WAKE_GPIO_PV2), 1);
-*/
+
 
 /*
 	.wake_enb	= TEGRA_WAKE_GPIO_PL1 \
@@ -1129,11 +1157,16 @@ void __init olympus_power_init(void)
 	unsigned int i;
 	int error;
 
-	printk(KERN_INFO "pICS_%s: step in...\n",__func__);
+	//printk(KERN_INFO "pICS_%s: step in...\n",__func__);
 
 	tegra_gpio_enable(154);
 	gpio_request(154, "usb_host_pwr_en");
 	gpio_direction_output(154,0);
+
+	tegra_gpio_enable(174);
+	gpio_request(174, "usb_data_en");
+	gpio_direction_output(174, 0);	
+	gpio_set_value(174, 1);
 
 	/* CPCAP standby lines connected to CPCAP GPIOs on Etna P1B & Olympus P2 */
 	if ( HWREV_TYPE_IS_FINAL(system_rev) ||
@@ -1172,12 +1205,12 @@ void __init olympus_power_init(void)
 	tegra_cpcap_leds.rgb_led.regulator_macro_controlled = true;
 
 	/* For all machine types, disable watchdog when HWREV is debug, brassboard or mortable */
-	if (HWREV_TYPE_IS_DEBUG(system_rev) || HWREV_TYPE_IS_BRASSBOARD(system_rev) ||
-	    HWREV_TYPE_IS_MORTABLE(system_rev) ){
+	//if (HWREV_TYPE_IS_DEBUG(system_rev) || HWREV_TYPE_IS_BRASSBOARD(system_rev) ||
+	   // HWREV_TYPE_IS_MORTABLE(system_rev) ){
 		tegra_cpcap_data.wdt_disable = 1;
-	}
+	//}
 
-	printk(KERN_INFO "pICS_%s: step in 2...\n",__func__);
+	//printk(KERN_INFO "pICS_%s: step in 2...\n",__func__);
 
 	spi_register_board_info(tegra_spi_devices, ARRAY_SIZE(tegra_spi_devices));
 

@@ -124,7 +124,7 @@ static void ram_read_state_machine(enum cpcap_irqs irq, void *data)
 
 	if (irq != CPCAP_IRQ_UC_PRIRAMR)
 		return;
-	printk(KERN_INFO "%s: Start",__func__);
+	//printk(KERN_INFO "%s: Start",__func__);
 	switch (uc_data->state) {
 	case READ_STATE_1:
 		cpcap_regacc_write(uc_data->cpcap, CPCAP_REG_MT1,
@@ -222,10 +222,10 @@ static void ram_write_state_machine(enum cpcap_irqs irq, void *data)
 
 	if (irq != CPCAP_IRQ_UC_PRIRAMW)
 		return;
-	printk(KERN_INFO "%s: Start",__func__);
+	//printk(KERN_INFO "%s: Start",__func__);
 	switch (uc_data->state) {
 	case WRITE_STATE_1:
-		printk(KERN_INFO "%s READ_STATE_1\n", __func__);
+		//printk(KERN_INFO "%s READ_STATE_1\n", __func__);
 		cpcap_regacc_write(uc_data->cpcap, CPCAP_REG_MT1,
 				   uc_data->req.address, 0xFFFF);
 		cpcap_regacc_write(uc_data->cpcap, CPCAP_REG_MT2,
@@ -237,7 +237,7 @@ static void ram_write_state_machine(enum cpcap_irqs irq, void *data)
 		break;
 
 	case WRITE_STATE_2:
-		printk(KERN_INFO "%s READ_STATE_2\n", __func__);
+		//printk(KERN_INFO "%s READ_STATE_2\n", __func__);
 		cpcap_regacc_read(uc_data->cpcap, CPCAP_REG_MT1, &error_check);
 
 		if (error_check == ERROR_MACRO_WRITE) {
@@ -256,7 +256,7 @@ static void ram_write_state_machine(enum cpcap_irqs irq, void *data)
 		/* No error has occured, fall through */
 
 	case WRITE_STATE_3:
-		printk(KERN_INFO "%s READ_STATE_3\n", __func__);
+		//printk(KERN_INFO "%s READ_STATE_3\n", __func__);
 		cpcap_regacc_write(uc_data->cpcap, CPCAP_REG_MT1,
 				   *(uc_data->req.data + uc_data->state_cntr),
 				   0xFFFF);
@@ -291,7 +291,7 @@ static void ram_write_state_machine(enum cpcap_irqs irq, void *data)
 		break;
 
 	case WRITE_STATE_4:
-		printk(KERN_INFO "%s READ_STATE_4\n", __func__);
+		//printk(KERN_INFO "%s READ_STATE_4\n", __func__);
 		cpcap_regacc_read(uc_data->cpcap, CPCAP_REG_MT1, &error_check);
 
 		if (error_check != ERROR_MACRO_WRITE)
@@ -317,7 +317,7 @@ static void reset_handler(enum cpcap_irqs irq, void *data)
 	int i;
 	unsigned short regval;
 	struct cpcap_uc_data *uc_data = data;
-	printk(KERN_INFO "%s: Start",__func__);
+	//printk(KERN_INFO "%s: Start",__func__);
 	if (irq != CPCAP_IRQ_UCRESET)
 		return;
 
@@ -359,7 +359,7 @@ static int ram_write(struct cpcap_uc_data *uc_data, unsigned short address,
 		     unsigned short num_words, unsigned short *data)
 {
 	int retval = -EFAULT;
-	printk(KERN_INFO "%s: Start",__func__);
+	//printk(KERN_INFO "%s: Start",__func__);
 	mutex_lock(&uc_data->lock);
 
 	if ((uc_data->cpcap->vendor == CPCAP_VENDOR_ST) &&
@@ -391,9 +391,6 @@ static int ram_write(struct cpcap_uc_data *uc_data, unsigned short address,
 		retval = cpcap_irq_unmask(uc_data->cpcap, CPCAP_IRQ_UC_PRIRAMW);
 		if (retval)
 			goto err;
-//		mdelay(25);
-//		mdelay(25);
-//		complete(&uc_data->completion);
 		wait_for_completion(&uc_data->completion);
 		retval = uc_data->cb_status;
 	}
@@ -406,7 +403,7 @@ err:
 	}
 
 	mutex_unlock(&uc_data->lock);
-	printk(KERN_INFO "%s: End",__func__);
+	//printk(KERN_INFO "%s: End",__func__);
 	return retval;
 }
 
@@ -414,7 +411,7 @@ static int ram_read(struct cpcap_uc_data *uc_data, unsigned short address,
 		    unsigned short num_words, unsigned short *data)
 {
 	int retval = -EFAULT;
-	printk(KERN_INFO "pICS_%s: Starting...",__func__);
+	//printk(KERN_INFO "pICS_%s: Starting...",__func__);
 	mutex_lock(&uc_data->lock);
 
 	if ((uc_data->cpcap->vendor == CPCAP_VENDOR_ST) &&
@@ -445,8 +442,6 @@ static int ram_read(struct cpcap_uc_data *uc_data, unsigned short address,
 		retval = cpcap_irq_unmask(uc_data->cpcap, CPCAP_IRQ_UC_PRIRAMR);
 		if (retval)
 			goto err;
-//		mdelay(25);
-//		complete(&uc_data->completion);
 		wait_for_completion(&uc_data->completion);
 		retval = uc_data->cb_status;
 	}
@@ -459,7 +454,7 @@ err:
 	}
 
 	mutex_unlock(&uc_data->lock);
-	printk(KERN_INFO "pICS_%s: Ending...",__func__);
+	//printk(KERN_INFO "pICS_%s: Ending...",__func__);
 	return retval;
 }
 
@@ -843,7 +838,7 @@ static int cpcap_uc_probe(struct platform_device *pdev)
 {
 	int retval = 0;
 	struct cpcap_uc_data *data;
-	printk(KERN_INFO "pICS_%s: Starting...",__func__);
+	//printk(KERN_INFO "pICS_%s: Starting...",__func__);
 	if (pdev->dev.platform_data == NULL) {
 		dev_err(&pdev->dev, "no platform_data\n");
 		return -EINVAL;
@@ -869,7 +864,7 @@ static int cpcap_uc_probe(struct platform_device *pdev)
 	if (((data->cpcap->vendor == CPCAP_VENDOR_TI) &&
 	     (data->cpcap->revision >= CPCAP_REVISION_2_0)) ||
 		(data->cpcap->vendor == CPCAP_VENDOR_ST)) {
-		printk(KERN_INFO "pICS_%s: inside if...",__func__);
+		//printk(KERN_INFO "pICS_%s: inside if...",__func__);
 		retval = cpcap_irq_register(data->cpcap, CPCAP_IRQ_PRIMAC,
 					    primac_handler, data);
 		if (retval)
@@ -886,7 +881,7 @@ static int cpcap_uc_probe(struct platform_device *pdev)
 					    ram_read_state_machine, data);
 		if (retval)
 			goto err_ucreset;
-		printk(KERN_INFO "pICS_%s: after PRIRAMR register...",__func__);
+		//printk(KERN_INFO "pICS_%s: after PRIRAMR register...",__func__);
 		retval = cpcap_irq_register(data->cpcap,
 					    CPCAP_IRQ_UC_PRIRAMW,
 					    ram_write_state_machine, data);

@@ -27,6 +27,7 @@
 #include <linux/mutex.h>
 #include <linux/gpio.h>
 #include <linux/regulator/consumer.h>
+#include <linux/usb/otg.h>
 
 #include <linux/spi/cpcap.h>
 #include <linux/spi/cpcap-regbits.h>
@@ -170,6 +171,7 @@ struct cpcap_usb_det_data {
 	struct cpcap_device *cpcap;
 	struct delayed_work work;
 	struct workqueue_struct *wq;
+	struct cpcap_whisper_pdata *pdata;
 	unsigned short sense;
 	unsigned short prev_sense;
 	enum cpcap_det_state state;
@@ -190,6 +192,7 @@ struct cpcap_usb_det_data {
 	short whisper_auth;
 	bool hall_effect_connected;
 	enum cpcap_irqs irq;
+	struct otg_transceiver *otg;
 };
 
 static const char *accy_devices[] = {
@@ -466,6 +469,21 @@ static int configure_hardware(struct cpcap_usb_det_data *data, enum cpcap_accy a
 
 	switch (accy) {
 	case CPCAP_ACCY_USB:
+		retval |= cpcap_regacc_write(data->cpcap, CPCAP_REG_USBC1, 0,
+					     CPCAP_BIT_VBUSPD);
+		gpio_set_value(data->pdata->data_gpio, 1);
+		if (data->otg)
+			raw_notifier_call_chain((void *)&data->otg->notifier.head,
+						     USB_EVENT_VBUS, NULL);
+		break;
+	case CPCAP_ACCY_USB_DEVICE:
+		retval |= cpcap_regacc_write(data->cpcap, CPCAP_REG_USBC1, 0,
+					     CPCAP_BIT_VBUSPD);
+		gpio_set_value(data->pdata->data_gpio, 1);
+		if (data->otg)
+			raw_notifier_call_chain((void *)&data->otg->notifier.head,
+						     USB_EVENT_ID, NULL);
+		break;
 	case CPCAP_ACCY_FACTORY:
 		retval |= cpcap_regacc_write(data->cpcap, CPCAP_REG_USBC1, 0,
 					     CPCAP_BIT_VBUSPD);
@@ -1301,6 +1319,9 @@ static int cpcap_usb_det_probe(struct platform_device *pdev)
 		goto free_irqs;
 	}
 
+#ifdef CONFIG_USB_CPCAP_OTG
+	data->otg = otg_get_transceiver();
+#endif
 	data->cpcap->accydata = data;
 	dev_info(&pdev->dev, "CPCAP USB detection device probed\n");
 
@@ -1363,8 +1384,15 @@ static int __exit cpcap_usb_det_remove(struct platform_device *pdev)
 	switch_dev_unregister(&data->dsdev);
 	switch_dev_unregister(&data->edsdev);
 
+	gpio_set_value(data->pdata->data_gpio, 1);
+
 	vusb_disable(data);
 	regulator_put(data->regulator);
+
+#ifdef CONFIG_USB_CPCAP_OTG
+	if (data->otg)
+		otg_put_transceiver(data->otg);
+#endif
 
 	wake_lock_destroy(&data->wake_lock);
 

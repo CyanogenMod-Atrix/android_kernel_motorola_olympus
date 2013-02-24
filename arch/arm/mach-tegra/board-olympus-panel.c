@@ -212,7 +212,7 @@ static struct tegra_dsi_cmd dsi_suspend_cmd[] = {
 static int olympus_panel_enable(void)
 {
 	int ret;
-	printk(KERN_INFO "pICS_%s: level 1...",__func__);
+	//printk(KERN_INFO "pICS_%s: level 1...",__func__);
 
 	gpio_set_value(47,1);
 	udelay(1000);
@@ -226,16 +226,16 @@ static int olympus_panel_enable(void)
 				return PTR_ERR(olympus_dsi_reg);
 		}
 	}
-	printk(KERN_INFO "pICS_%s: level 2...",__func__);
+	//printk(KERN_INFO "pICS_%s: level 2...",__func__);
 	ret = regulator_enable(olympus_dsi_reg);
 	if (ret < 0) {
 		printk(KERN_ERR
 			"Ninja: DSI regulator vcsi could not be enabled\n");
 		return ret;
 	}
-	printk(KERN_INFO "pICS_%s: level 3...",__func__);
+	//printk(KERN_INFO "pICS_%s: level 3...",__func__);
 
-	printk(KERN_INFO "pICS_%s: level 4...",__func__);
+	//printk(KERN_INFO "pICS_%s: level 4...",__func__);
 	if (!olympus_SW5) {
 		olympus_SW5 = regulator_get(NULL, "sw5"); /* SW5 */
 		if (IS_ERR_OR_NULL(olympus_SW5)) {
@@ -244,14 +244,14 @@ static int olympus_panel_enable(void)
 			return PTR_ERR(olympus_SW5);
 		}
         }
-	printk(KERN_INFO "pICS_%s: level 5...",__func__);
+	//printk(KERN_INFO "pICS_%s: level 5...",__func__);
         ret = regulator_enable(olympus_SW5);
 	if (ret < 0) {
 		printk(KERN_ERR
 			"Ninja: DSI regulator SW5 could not be enabled\n");
 		return ret;
 	}
-	printk(KERN_INFO "pICS_%s: level 6...",__func__);
+	//printk(KERN_INFO "pICS_%s: level 6...",__func__);
 	return ret;
 }
 
@@ -263,7 +263,7 @@ static int olympus_panel_disable(void)
 	gpio_set_value(35, 0);
 	gpio_set_value(47, 0);	
 
-	printk(KERN_INFO "pICS_%s: level 1...",__func__);
+	//printk(KERN_INFO "pICS_%s: level 1...",__func__);
 
         ret = regulator_disable(olympus_SW5);
 	if (ret < 0) {
@@ -463,7 +463,7 @@ int __init olympus_panel_init(void)
 	struct resource *res;
 	int err;
 
-	printk(KERN_INFO "pICS_%s: Starting...",__func__);
+	//printk(KERN_INFO "pICS_%s: Starting...",__func__);
 
 	tegra_gpio_enable(111);
 	gpio_request(111, "hdmi_hpd");
@@ -515,7 +515,7 @@ int __init olympus_panel_init(void)
 		err = nvhost_device_register(&olympus_disp2_device);
 #endif
 
-	printk(KERN_INFO "pICS_%s: Ending...",__func__);
+	//printk(KERN_INFO "pICS_%s: Ending...",__func__);
 
 	return err;
 

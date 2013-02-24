@@ -989,7 +989,7 @@ static int __devinit cpcap_regulator_probe(struct platform_device *pdev)
 
 	int i;
 	
-	printk(KERN_INFO "pICS_%s: Starting...",__func__);
+	//printk(KERN_INFO "pICS_%s: Starting...",__func__);
 
 	/* Already set by core driver */
 	cpcap = platform_get_drvdata(pdev);
@@ -1060,12 +1060,12 @@ static int __devinit cpcap_regulator_probe(struct platform_device *pdev)
 	/* this is ok since the cpcap is still reachable from the rdev */
 	platform_set_drvdata(pdev, rdev);
 
-	if (reg_id == CPCAP_SW5) {
+/*	if (reg_id == CPCAP_SW5) {
 		data->regulator_init =
 			cpcap->regulator_pdev[CPCAP_VUSB]->dev.platform_data;
 		data->regulator_init->supply_regulator = "vusb";
 		platform_device_add(cpcap->regulator_pdev[CPCAP_VUSB]);
-	}
+	}*/
 
 	return 0;
 }

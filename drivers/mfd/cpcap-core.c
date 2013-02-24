@@ -107,7 +107,7 @@ static struct platform_device cpcap_rtc_device = {
 	.id             = -1,
 	.dev.platform_data = NULL,
 };
-#if 0
+
 static struct platform_device cpcap_batt_device = {
 	.name           = "cpcap_battery",
 	.id             = -1,
@@ -129,7 +129,6 @@ struct platform_device cpcap_rgb_led = {
 		.platform_data  = NULL,
 	},
 };
-
 #ifdef CONFIG_CPCAP_USB
 static struct platform_device cpcap_usb_device = {
 	.name           = "cpcap_usb",
@@ -137,10 +136,20 @@ static struct platform_device cpcap_usb_device = {
 	.dev.platform_data = NULL,
 };
 
+static struct cpcap_whisper_pdata usb_det_pdata = {
+	.data_gpio = 174, // TEGRA_GPIO_PV6,
+	.pwr_gpio  = 154, //TEGRA_GPIO_PT2,
+//	.pwr_gpio  = TEGRA_GPIO_PF3,
+//	.uartmux   = 1,
+};
+
 static struct platform_device cpcap_usb_det_device = {
 	.name           = "cpcap_usb_det",
 	.id             = -1,
-	.dev.platform_data = NULL,
+//	.dev.platform_data = NULL,
+	.dev    = {
+		.platform_data  = &usb_det_pdata,
+	},
 };
 #endif
 
@@ -183,27 +192,25 @@ struct platform_device cpcap_af_led = {
 	},
 };
 #endif
-#endif
 
 static struct platform_device *cpcap_devices[] = {
 	&cpcap_uc_device,
 	&cpcap_adc_device,
 	&cpcap_key_device,
 	&cpcap_rtc_device,
-#if 0
-	&cpcap_batt_device,
+//	&cpcap_batt_device,
 	&cpcap_rgb_led,
 	&cpcap_disp_button_led,
-#ifdef CONFIG_CPCAP_USB
-	&cpcap_usb_device,
-	&cpcap_usb_det_device,
-#endif
+//#ifdef CONFIG_CPCAP_USB
+//	&cpcap_usb_device,
+//	&cpcap_usb_det_device,
+//#endif
 #if defined(CONFIG_SOUND_CPCAP_OMAP) ||  defined(CONFIG_SOUND_CPCAP_AP20)
 	&cpcap_audio_device,
 #endif
-	&cpcap_3mm5_device,
+//	&cpcap_3mm5_device,
 #ifdef CONFIG_CPCAP_WATCHDOG
-	&cpcap_wdt_device,
+//	&cpcap_wdt_device,
 #endif
 #ifdef CONFIG_TTA_CHARGER
 	&cpcap_tta_det_device,
@@ -211,7 +218,7 @@ static struct platform_device *cpcap_devices[] = {
 #ifdef CONFIG_LEDS_AF_LED
 	&cpcap_af_led,
 #endif
-#endif
+
 };
 
 static struct cpcap_device *misc_cpcap;
@@ -409,14 +416,14 @@ static int __init cpcap_init(void)
 {
 	return spi_register_driver(&cpcap_driver);
 }
-
+#if 0
 #ifdef CONFIG_CPCAP_USB
 static struct regulator_consumer_supply cpcap_vusb_consumers = {
 	.supply = "vusb",
 	.dev = &cpcap_usb_det_device.dev,
 };
 #endif
-
+#endif
 static void cpcap_vendor_read(struct cpcap_device *cpcap)
 {
 	unsigned short value;
@@ -426,8 +433,8 @@ static void cpcap_vendor_read(struct cpcap_device *cpcap)
 	cpcap->vendor = (enum cpcap_vendor)((value >> 6) & 0x0007);
 	cpcap->revision = (enum cpcap_revision)(((value >> 3) & 0x0007) |
 						((value << 3) & 0x0038));
-	printk("CPCAP : cpcap_vendor_read value 0x%x", value);
-	printk("CPCAP : cpcap_vendor_read vendor 0x%x rev 0x%x", cpcap->vendor, cpcap->revision);
+	//printk("CPCAP : cpcap_vendor_read value 0x%x", value);
+	printk("CPCAP : cpcap_vendor_read vendor 0x%x rev 0x%x\n", cpcap->vendor, cpcap->revision);
 }
 
 static LIST_HEAD(cpcap_device_list);
@@ -522,13 +529,13 @@ static int __devinit cpcap_probe(struct spi_device *spi)
 	cpcap = kzalloc(sizeof(*cpcap), GFP_KERNEL);
 	if (cpcap == NULL)
 		return -ENOMEM;
-
+	printk(KERN_INFO "%s : probing\n", __func__);
 	cpcap->spi = spi;
 	data = spi->controller_data;
-	dev_set_drvdata(&spi->dev, cpcap);
+//	dev_set_drvdata(&spi->dev, cpcap);
 
 	misc_cpcap = cpcap;  /* kept for misc device */
-//	spi_set_drvdata(spi, cpcap);
+	spi_set_drvdata(spi, cpcap);
 
 	cpcap->spdif_gpio = data->spdif_gpio;
 
@@ -539,7 +546,7 @@ static int __devinit cpcap_probe(struct spi_device *spi)
 	retval = cpcap_irq_init(cpcap);
 	if (retval < 0)
 		goto free_cpcap_irq;
-#if 0
+//#if 0
 #ifdef CONFIG_BOOTINFO
 	if (bi_powerup_reason() != PU_REASON_CHARGER) {
 		/* Set Kpanic bit, which will be cleared at normal reboot */
@@ -547,7 +554,7 @@ static int __devinit cpcap_probe(struct spi_device *spi)
 			CPCAP_BIT_AP_KERNEL_PANIC, CPCAP_BIT_AP_KERNEL_PANIC);
 	}
 #endif
-#endif
+//#endif
 	cpcap_vendor_read(cpcap);
 
 	for (i = 0; i < ARRAY_SIZE(cpcap_devices); i++)
@@ -556,7 +563,7 @@ static int __devinit cpcap_probe(struct spi_device *spi)
 	retval = misc_register(&cpcap_dev);
 	if (retval < 0)
 		goto free_cpcap_irq;
-
+#if 0
 #ifdef CONFIG_CPCAP_USB
 	/* the cpcap usb_detection device is a consumer of the
 	 * vusb regulator */
@@ -564,7 +571,7 @@ static int __devinit cpcap_probe(struct spi_device *spi)
 	data->regulator_init[CPCAP_VUSB].consumer_supplies =
 		&cpcap_vusb_consumers;
 #endif
-
+#endif
 	/* loop twice becuase cpcap_regulator_probe may refer to other devices
 	 * in this list to handle dependencies between regulators.  Create them
 	 * all and then add them */
@@ -576,19 +583,22 @@ static int __devinit cpcap_probe(struct spi_device *spi)
 			dev_err(&(spi->dev), "Cannot create regulator\n");
 			continue;
 		}
-
+		
 		pdev->dev.parent = &(spi->dev);
 		pdev->dev.platform_data = &data->regulator_init[i];
 		dev_set_drvdata(&pdev->dev, cpcap);
 		cpcap->regulator_pdev[i] = pdev;
+		printk(KERN_INFO "CPCAP: creating %d (%s) regulator\n", i, 
+				pdev->name);
 	}
 
 	for (i = 0; i < CPCAP_NUM_REGULATORS; i++) {
 		/* vusb has to be added after sw5 so skip it for now,
 		 * it will be added from probe of sw5 */
-		if (i == CPCAP_VUSB)
-			continue;
+		//if (i == CPCAP_VUSB)
+		//	continue;
 		platform_device_add(cpcap->regulator_pdev[i]);
+		printk(KERN_INFO "CPCAP: adding regulator device %d \n", i);
 	}	
 
 	platform_add_devices(cpcap_devices, ARRAY_SIZE(cpcap_devices));
