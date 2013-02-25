@@ -61,7 +61,6 @@ obj-$(CONFIG_TEGRA_CEC_SUPPORT)	+= tegra-cec/
 obj-$(CONFIG_MAX1749_VIBRATOR)	+= max1749.o
 obj-$(CONFIG_THERM_EST)		+= therm_est.o
 obj-$(CONFIG_MOT_FEAT_TS27010MUX)	+= ts27010mux/
-obj-$(CONFIG_SENSORS_KXTF9)	+= kxtf9.o
 obj-$(CONFIG_VIB_GPIO)		+= vib-gpio.o
 obj-$(CONFIG_MDM_CTRL)		+= mdm_ctrl.o
 obj-y                           += radio_ctrl/

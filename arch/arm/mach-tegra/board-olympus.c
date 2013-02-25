@@ -546,26 +546,24 @@ static void __init tegra_mot_init(void)
 
 	olympus_keypad_init();
 
-#if 0
 	if( (bi_powerup_reason() & PWRUP_FACTORY_CABLE) &&
 	    (bi_powerup_reason() != PWRUP_INVALID) ){
 #ifdef NEED_FACT_BUSY_HINT
 		FactoryBusyHint(); //factory workaround no longer needed
 #endif
 	}
-#endif
+
 if (1==0) olympus_emc_init();
 
 	platform_device_register(&tegra_w1_device);
+	
+//	mot_modem_init();
+	olympus_wlan_init();
 
-if (1==0) {	
-		mot_modem_init();
-		olympus_wlan_init();
-	}
-		mot_sensors_init();
+//	mot_sensors_init();
 
 	pm_power_off = mot_system_power_off;
-if (1==0) tegra_setup_bluesleep();
+	tegra_setup_bluesleep();
 
 	/* Configure SPDIF_OUT as GPIO by default, it can be later controlled
 	   as needed. When SPDIF_OUT is enabled and if HDMI is connected, it
@@ -576,8 +574,8 @@ if (1==0) tegra_setup_bluesleep();
 	gpio_request(TEGRA_GPIO_PD4, "spdif_enable");
 	gpio_direction_output(TEGRA_GPIO_PD4, 0);
 	gpio_export(TEGRA_GPIO_PD4, false);
-	if (1==0) {
-		if ((HWREV_TYPE_IS_PORTABLE(system_rev) || HWREV_TYPE_IS_FINAL(system_rev)))
+	
+	if ((HWREV_TYPE_IS_PORTABLE(system_rev) || HWREV_TYPE_IS_FINAL(system_rev)))
 		{
 			if (HWREV_REV(system_rev) >= HWREV_REV_1 && HWREV_REV(system_rev) < HWREV_REV_2)
 			{
@@ -595,8 +593,7 @@ if (1==0) tegra_setup_bluesleep();
 				config_unused_pins(oly_unused_pins_p3, ARRAY_SIZE(oly_unused_pins_p3));
 			}
 		}
-	}	
-
+	
 	tegra_release_bootloader_fb();
 	if (1==0) read_gpio();	
 }

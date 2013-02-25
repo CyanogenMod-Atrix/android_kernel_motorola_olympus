@@ -361,13 +361,13 @@ static int mot_panel_setup_dc(void)
 {
 	tegra_gpio_enable(47);	
 	gpio_request(47, "disp_5v_en");
-	gpio_direction_output(47, 0);
+	gpio_direction_output(47, 1);
 
 	tegra_gpio_enable(35);
 	gpio_request(35, "disp_reset_n");
-	gpio_direction_output(47, 0);
+	gpio_direction_output(35, 1);
 
-	tegra_gpio_enable(35);
+	tegra_gpio_enable(46);
 	gpio_request(46, "hdmi_5v_en");
 	gpio_direction_output(47, 1);
 

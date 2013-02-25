@@ -427,8 +427,6 @@ struct qtouch_ts_platform_data olympus_touch_data = {
 };
 
 extern struct isl29030_platform_data isl29030_als_ir_data_Olympus;
-extern struct akm8975_platform_data akm8975_data;
-extern struct kxtf9_platform_data kxtf9_data;
 
 static struct i2c_board_info __initdata olympus_i2c_bus1_board_info[] = {
 	{ /* Display backlight */
@@ -441,32 +439,24 @@ static struct i2c_board_info __initdata olympus_i2c_bus1_board_info[] = {
 		.platform_data = &olympus_touch_data,
 		.irq = TEGRA_GPIO_TO_IRQ(OLYMPUS_TOUCH_IRQ_GPIO),
 	},
-#if 0
+
 	{
 		/*  ISL 29030 (prox/ALS) driver */
 		I2C_BOARD_INFO(LD_ISL29030_NAME, 0x44),
 		.platform_data = &isl29030_als_ir_data_Olympus,
 		.irq = 180,
 	},
-#endif
+
 };
-#if 0
-static struct i2c_board_info __initdata olympus_i2c_bus4_board_info[] = {
-	{
-		I2C_BOARD_INFO("akm8975", 0x0C),
-		.platform_data = &akm8975_data,
-		.irq = TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PE2),
-	},
-	{
-		I2C_BOARD_INFO("kxtf9", 0x0F),
-		.platform_data = &kxtf9_data,
-	},
-};
-#endif
+
 static struct tegra_i2c_platform_data olympus_i2c1_platform_data = {
 	.adapter_nr	= 0,
 	.bus_count	= 1,
 	.bus_clk_rate	= { 400000, 0 },
+	.scl_gpio	= {TEGRA_GPIO_PC4, 0},
+	.sda_gpio	= {TEGRA_GPIO_PC5, 0},
+	.arb_recovery = arb_lost_recovery,
+	.slave_addr = 0xFC,
 };
 
 static struct tegra_i2c_platform_data olympus_i2c2_platform_data = {
@@ -479,6 +469,10 @@ static struct tegra_i2c_platform_data olympus_i2c3_platform_data = {
 	.adapter_nr	= 3,
 	.bus_count	= 1,
 	.bus_clk_rate	= { 400000, 0 },
+	.scl_gpio	= {TEGRA_GPIO_PBB2, 0},
+	.sda_gpio	= {TEGRA_GPIO_PBB3, 0},
+	.arb_recovery = arb_lost_recovery,
+	.slave_addr = 0xFC,
 };
 
 static struct tegra_i2c_platform_data olympus_dvc_platform_data = {
@@ -486,6 +480,9 @@ static struct tegra_i2c_platform_data olympus_dvc_platform_data = {
 	.bus_count	= 1,
 	.bus_clk_rate	= { 100000, 0 },
 	.is_dvc		= true,
+	.scl_gpio	= {TEGRA_GPIO_PZ6, 0},
+	.sda_gpio	= {TEGRA_GPIO_PZ7, 0},
+	.arb_recovery = arb_lost_recovery,
 };
 
 void olympus_i2c_reg(void)
@@ -649,11 +646,6 @@ void __init olympus_i2c_init(void)
 	printk("bus 0: %d devices\n", ARRAY_SIZE(olympus_i2c_bus1_board_info));
 	i2c_register_board_info(0, olympus_i2c_bus1_board_info, 
 				ARRAY_SIZE(olympus_i2c_bus1_board_info));
-#if 0
-	printk("bus 3: %d devices\n", ARRAY_SIZE(olympus_i2c_bus4_board_info));
-	i2c_register_board_info(3, olympus_i2c_bus4_board_info, 
-				ARRAY_SIZE(olympus_i2c_bus4_board_info));
-#endif
 
 }
 

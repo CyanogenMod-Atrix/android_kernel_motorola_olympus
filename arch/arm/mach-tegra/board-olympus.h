@@ -1,18 +1,8 @@
 #ifndef __MACH_TEGRA_BOARD_OLYMPUS_H
 #define __MACH_TEGRA_BOARD_OLYMPUS_H
 #include <linux/i2c.h>
-/*#include <linux/i2c/akm8975.h>*/
 #include "hwrev.h"
-/*
-extern struct kxtf9_platform_data kxtf9_data;
-extern struct akm8975_platform_data akm8975_data;
-extern struct isl29030_platform_data isl29030_als_ir_data_Olympus;
-extern struct lm3532_platform_data lm3532_pdata;
-extern struct qtouch_ts_platform_data ts_platform_olympus_p_1_43;
-extern struct cpcap_platform_data tegra_cpcap_data;
-extern struct cpcap_leds tegra_cpcap_leds;
-extern struct platform_driver cpcap_usb_connected_driver;
-extern struct l3g4200d_platform_data tegra_gyro_pdata;*/
+
 
 extern void __init olympus_pinmux_init(void);
 extern int __init olympus_panel_init(void);
@@ -57,8 +47,37 @@ extern void cpcap_set_dock_switch(int state);
 #define TOUCH_GPIO_RESET	TEGRA_GPIO_PF4
 #define TOUCH_GPIO_INTR		TEGRA_GPIO_PF5
 
-#ifndef PROX_INT_GPIO
-#define	PROX_INT_GPIO	TEGRA_GPIO_PE1
-#endif
+//#define MPU_GYRO_NAME           "mpu3050"
+//#define MPU_GYRO_IRQ_GPIO       TEGRA_GPIO_PX1
+//#define MPU_GYRO_ADDR           0x68
+//#define MPU_GYRO_BUS_NUM        3
+//#define MPU_GYRO_ORIENTATION    { 1, 0, 0, 0, 1, 0, 0, 0, 1 }
+
+#define MPU_ACCEL_NAME		"kxtf9"
+#define MPU_ACCEL_IRQ_GPIO	TEGRA_GPIO_PV3
+#define MPU_ACCEL_ADDR		0x0F
+#define MPU_ACCEL_BUS_NUM       3
+#define MPU_ACCEL_ORIENTATION   { 0, 1, 0, -1, 0, 0, 0, 0, 1 }
+
+#define MPU_COMPASS_NAME        "akm8975"
+#define MPU_COMPASS_IRQ_GPIO    TEGRA_GPIO_PE2
+#define MPU_COMPASS_RESET_GPIO	TEGRA_GPIO_PK5
+#define MPU_COMPASS_ADDR        0x0C
+#define MPU_COMPASS_BUS_NUM     3
+#define MPU_COMPASS_ORIENTATION { 0, 1, 0, -1, 0, 0, 0, 0, 1 }
+
+#define SENSOR_TEMP_NAME        "nct1008"
+#define SENSOR_TEMP_IRQ_GPIO    TEGRA_GPIO_PD1
+#define SENSOR_TEMP_RESET_GPIO	TEGRA_GPIO_PV7
+#define SENSOR_TEMP_ADDR        0x4C
+#define SENSOR_TEMP_BUS_NUM     3
+
+#define TEGRA_PROX_INT_GPIO			TEGRA_GPIO_PE1
+#define TEGRA_HF_NORTH_GPIO			TEGRA_GPIO_PS2
+#define TEGRA_HF_SOUTH_GPIO			TEGRA_GPIO_PS0
+#define TEGRA_HF_KICKSTAND_GPIO			TEGRA_GPIO_PW3
+#define TEGRA_VIBRATOR_GPIO			TEGRA_GPIO_PD0
+#define TEGRA_L3G4200D_IRQ_GPIO			TEGRA_GPIO_PH2
 
 #endif
+

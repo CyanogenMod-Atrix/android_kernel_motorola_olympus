@@ -605,9 +605,9 @@ static struct platform_device tegra_camera = {
 
 static struct platform_device *olympus_devices[] __initdata = {
 	&tegra_pmu_device,
-//	&tegra_udc_device,
 	&tegra_gart_device,
 	&tegra_wdt_device,
+	&tegra_spi_slave_device1,
 	&tegra_spi_device2,
 	&tegra_spi_device3,
 	&tegra_spi_device4,

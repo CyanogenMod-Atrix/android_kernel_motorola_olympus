@@ -5,9 +5,14 @@
 #include <linux/input.h>
 #include <linux/i2c.h>
 #include <linux/spi/spi.h>
-#include <linux/i2c/akm8975.h>
+#if defined(CONFIG_SENSORS_AK8975)
+#include <linux/akm8975.h>
+#endif
 #include <linux/isl29030.h>
-#include <linux/kxtf9.h>
+#if defined(CONFIG_MPU_SENSORS_MPU3050)
+#include <linux/mpu.h>
+#endif
+#include <linux/nct1008.h>  
 #include <linux/delay.h>
 #include <linux/regulator/consumer.h>
 #include <linux/gpio.h>
@@ -18,17 +23,7 @@
 #include "gpio-names.h"
 #include "board-olympus.h"
 
-#define TEGRA_PROX_INT_GPIO			TEGRA_GPIO_PE1
-#define TEGRA_HF_NORTH_GPIO			TEGRA_GPIO_PS2
-#define TEGRA_HF_SOUTH_GPIO			TEGRA_GPIO_PS0
-#define TEGRA_HF_KICKSTAND_GPIO		TEGRA_GPIO_PW3
-#define TEGRA_VIBRATOR_GPIO			TEGRA_GPIO_PD0
-#define TEGRA_KXTF9_INT_GPIO		TEGRA_GPIO_PV3
-#define TEGRA_L3G4200D_IRQ_GPIO		TEGRA_GPIO_PH2
-
-#define TEGRA_AKM8975_RESET_GPIO	TEGRA_GPIO_PK5
 #define PWRUP_BAREBOARD             0x00100000 /* Bit 20 */
-
 
 /*
  * Vibrator
@@ -70,7 +65,7 @@ static int isl29030_getIrqStatus(void)
 {
 	int	status = -1;
 
-	status = gpio_get_value(PROX_INT_GPIO);
+	status = gpio_get_value(TEGRA_PROX_INT_GPIO);
 	return status;
 }
 
@@ -99,248 +94,52 @@ static struct platform_device tegra_tmon = {
 	.id             = -1,
 };
 
-
-/*
-static struct bu52014hfv_platform_data bu52014hfv_platform_data = {
-	.docked_north_gpio = TEGRA_HF_NORTH_GPIO,
-	.docked_south_gpio = TEGRA_HF_SOUTH_GPIO,
-	.kickstand_gpio = TEGRA_HF_KICKSTAND_GPIO,
-	.north_is_desk = 1,
-	.set_switch_func = cpcap_set_dock_switch,
-};
-*/
-
-/*
- * Accelerometer
- */
-static struct regulator *kxtf9_regulator;
-static int kxtf9_initialization(void)
-{
-	struct regulator *reg;
-	reg = regulator_get(NULL, "vhvio");
-	if (IS_ERR(reg))
-		return PTR_ERR(reg);
-	kxtf9_regulator = reg;
-	return 0;
-}
-
-static void kxtf9_exit(void)
-{
-	regulator_put(kxtf9_regulator);
-}
-
-static int kxtf9_power_on(void)
-{
-	return regulator_enable(kxtf9_regulator);
-}
-
-static int kxtf9_power_off(void)
-{
-	if (kxtf9_regulator)
-		return regulator_disable(kxtf9_regulator);
-	return 0;
-}
-
-struct kxtf9_platform_data kxtf9_data = {
-	.init = kxtf9_initialization,
-	.exit = kxtf9_exit,
-	.power_on = kxtf9_power_on,
-	.power_off = kxtf9_power_off,
-
-	.min_interval	= 2,
-	.poll_interval	= 200,
-
-	.g_range	= KXTF9_G_8G,
-
-	.axis_map_x	= 0,
-	.axis_map_y	= 1,
-	.axis_map_z	= 2,
-
-	.negate_x	= 1,
-	.negate_y	= 1,
-	.negate_z	= 0,
-
-	.data_odr_init		= ODR25,
-	.ctrl_reg1_init		= RES_12BIT | KXTF9_G_2G | TPE | WUFE | TDTE,
-	.int_ctrl_init		= IEA | IEN,
-	.tilt_timer_init	= 0x03,
-	.engine_odr_init	= OTP12_5 | OWUF50 | OTDT400,
-	.wuf_timer_init		= 0x0A,
-	.wuf_thresh_init	= 0x20,
-	.tdt_timer_init		= 0x78,
-	.tdt_h_thresh_init	= 0xB6,
-	.tdt_l_thresh_init	= 0x1A,
-	.tdt_tap_timer_init	= 0xA2,
-	.tdt_total_timer_init	= 0x24,
-	.tdt_latency_timer_init	= 0x28,
-	.tdt_window_timer_init	= 0xA0,
-
-	.gpio = TEGRA_KXTF9_INT_GPIO,
-	.gesture = 0,
-	.sensitivity_low = {
-		  0x50, 0xFF, 0xFF, 0x32, 0x09, 0x0A, 0xA0,
-	},
-	.sensitivity_medium = {
-		  0x50, 0xFF, 0x68, 0xA3, 0x09, 0x0A, 0xA0,
-	},
-	.sensitivity_high = {
-		  0x78, 0xB6, 0x1A, 0xA2, 0x24, 0x28, 0xA0,
-	},
+#if defined(CONFIG_MPU_SENSORS_MPU3050)
+static struct ext_slave_platform_data mpu3050_kxtf9_data = {
+	.type		= EXT_SLAVE_TYPE_ACCEL,
+	.irq		= TEGRA_GPIO_TO_IRQ(MPU_ACCEL_IRQ_GPIO),
+	.address	= MPU_ACCEL_ADDR,
+	.adapt_num	= MPU_ACCEL_BUS_NUM, 
+	.bus		= EXT_SLAVE_BUS_SECONDARY,
+	.orientation	= MPU_ACCEL_ORIENTATION,
 };
 
-static void __init kxtf9_init(void)
-{
-#ifdef CONFIG_ARM_OF
-	struct device_node *node;
-	const void *prop;
-	int len = 0;
+/*static struct ext_slave_descr {*/
 
-	node = of_find_node_by_path(DT_PATH_ACCELEROMETER);
-	if (node) {
-		prop = of_get_property(node,
-				DT_PROP_ACCELEROMETER_AXIS_MAP_X, &len);
-		if (prop && len)
-			kxtf9_data.axis_map_x = *(u8 *)prop;
-		prop = of_get_property(node,
-				DT_PROP_ACCELEROMETER_AXIS_MAP_Y, &len);
-		if (prop && len)
-			kxtf9_data.axis_map_y = *(u8 *)prop;
-		prop = of_get_property(node,
-				DT_PROP_ACCELEROMETER_AXIS_MAP_Z, &len);
-		if (prop && len)
-			kxtf9_data.axis_map_z = *(u8 *)prop;
-		prop = of_get_property(node,
-				DT_PROP_ACCELEROMETER_NEGATE_X, &len);
-		if (prop && len)
-			kxtf9_data.negate_x = *(u8 *)prop;
-		prop = of_get_property(node,
-				DT_PROP_ACCELEROMETER_NEGATE_Y, &len);
-		if (prop && len)
-			kxtf9_data.negate_y = *(u8 *)prop;
-		prop = of_get_property(node,
-				DT_PROP_ACCELEROMETER_NEGATE_Z, &len);
-		if (prop && len)
-			kxtf9_data.negate_z = *(u8 *)prop;
-		prop = of_get_property(node,
-				DT_PROP_ACCELEROMETER_SENS_LOW, &len);
-		if (prop && len)
-				memcpy(kxtf9_data.sensitivity_low,
-						(u8 *)prop, len);
-		prop = of_get_property(node,
-				DT_PROP_ACCELEROMETER_SENS_MEDIUM, &len);
-		if (prop && len)
-				memcpy(kxtf9_data.sensitivity_medium,
-						(u8 *)prop, len);
-		prop = of_get_property(node,
-				DT_PROP_ACCELEROMETER_SENS_HIGH, &len);
-		if (prop && len)
-				memcpy(kxtf9_data.sensitivity_high,
-						(u8 *)prop, len);
-		of_node_put(node);
-	}
+static struct ext_slave_platform_data mpu_compass_data = {
+        .address        = MPU_COMPASS_ADDR,
+        .irq            = TEGRA_GPIO_TO_IRQ(MPU_COMPASS_IRQ_GPIO),
+        .adapt_num      = MPU_COMPASS_BUS_NUM,
+        .bus            = EXT_SLAVE_BUS_PRIMARY,
+        .orientation    = MPU_COMPASS_ORIENTATION,
+};
+
 #endif
-	gpio_request(kxtf9_data.gpio, "kxtf9 accelerometer int");
-	gpio_direction_input(kxtf9_data.gpio);
-//	omap_cfg_reg(AF9_34XX_GPIO22_DOWN);
-}
 
-struct platform_device kxtf9_platform_device = {
-	.name = "kxtf9",
-	.id = -1,
-	.dev = {
-		.platform_data = &kxtf9_data,
-	},
+static struct nct1008_platform_data olympus_nct1008_pdata = {
+	.supported_hwrev = true,
+	.ext_range = false,
+	.conv_rate = 0x08,
+	.offset = 0,
+	.hysteresis = 0,
+	.shutdown_ext_limit = 115, //115,85
+	.shutdown_local_limit = 115, //120,85
+	.throttling_ext_limit = 90, //90,70
 };
 
-
-/*
- * Compass
- */
-static void __init tegra_akm8975_init(void)
+static void olympus_nct1008_init(void)
 {
-#ifdef TEGRA_AKM8975_RESET_GPIO
-	gpio_request(TEGRA_AKM8975_RESET_GPIO, "akm8975 reset");
-	gpio_direction_output(TEGRA_AKM8975_RESET_GPIO, 1);
-#endif
+       printk(KERN_ERR"olympus_nct1008_init\n");  //wangbing
+	tegra_gpio_enable(SENSOR_TEMP_IRQ_GPIO);
+	gpio_request(SENSOR_TEMP_IRQ_GPIO, "temp_alert");
+	gpio_direction_input(SENSOR_TEMP_IRQ_GPIO);
 }
 
-static struct regulator *akm8975_regulator;
-
-static int akm8975_init(void)
-{
-	struct regulator *reg;
-	int err = 0;
-
-	if (!akm8975_regulator) {
-		reg = regulator_get(NULL, "vhvio");
-		if (IS_ERR(reg))
-			err = PTR_ERR(reg);
-		else
-			akm8975_regulator = reg;
-	}
-
-#ifdef TEGRA_AKM8975_RESET_GPIO
-	gpio_set_value(TEGRA_AKM8975_RESET_GPIO, 1);
-#endif
-	return err;
-}
-
-static void akm8975_exit(void)
-{
-#ifdef TEGRA_AKM8975_RESET_GPIO
-	gpio_set_value(TEGRA_AKM8975_RESET_GPIO, 0);
-#endif
-}
-
-static int akm8975_power_on(void)
-{
-	if (akm8975_regulator)
-		return regulator_enable(akm8975_regulator);
-	return -ENXIO;
-}
-
-static int akm8975_power_off(void)
-{
-	if (akm8975_regulator)
-		return regulator_disable(akm8975_regulator);
-	return -ENXIO;
-}
-
-struct akm8975_platform_data akm8975_data = {
-	.init      = akm8975_init,
-	.exit      = akm8975_exit,
-	.power_on  = akm8975_power_on,
-	.power_off = akm8975_power_off,
-};
-
-struct platform_device akm8975_platform_device = {
-	.name = "akm8975",
-	.id   = 0,
-	.dev  = {
-		.platform_data = &akm8975_data,
-	},
-};
-
-
-/*
- * Hall Effect Sensor
- */
-/*
-static struct platform_device ap20_hall_effect_dock = {
-	.name	= BU52014HFV_MODULE_NAME,
-	.id	= -1,
-	.dev	= {
-		.platform_data  = &bu52014hfv_platform_data,
-	},
-};
-*/
 static void tegra_vibrator_init(void)
 {
         if( gpio_request(tegra_vib_gpio_data.gpio, "vib_en") < 0) return;
         gpio_direction_output(tegra_vib_gpio_data.gpio, 0);
-//	omap_cfg_reg(Y4_34XX_GPIO181);
 }
-
 
 /*
  * ALS/Proximity Sensor
@@ -371,7 +170,7 @@ struct isl29030_platform_data isl29030_als_ir_data_Olympus = {
 	.lens_percent_t = 10,
 	.irq = 0,
 	.getIrqStatus = isl29030_getIrqStatus,
-	.gpio_intr = PROX_INT_GPIO,
+	.gpio_intr = TEGRA_PROX_INT_GPIO,
 };
 
 static struct platform_device isl29030_als_ir = {
@@ -380,10 +179,10 @@ static struct platform_device isl29030_als_ir = {
 };
 static void __init isl29030_init(void)
 {
-	isl29030_als_ir_data_Olympus.irq = gpio_to_irq(PROX_INT_GPIO);
+	isl29030_als_ir_data_Olympus.irq = gpio_to_irq(TEGRA_PROX_INT_GPIO);
 	isl29030_als_ir.dev.platform_data = &(isl29030_als_ir_data_Olympus);
-	gpio_request(PROX_INT_GPIO, "isl29030_proximity_int");
-	gpio_direction_input(PROX_INT_GPIO);
+	gpio_request(TEGRA_PROX_INT_GPIO, "isl29030_proximity_int");
+	gpio_direction_input(TEGRA_PROX_INT_GPIO);
 }
 
 /*
@@ -399,8 +198,8 @@ static int isl29030_power_off(void)
 
 static struct platform_device *tegra_sensors[] __initdata = {
 	&isl29030_als_ir,
-	&kxtf9_platform_device,
-	&akm8975_platform_device,
+//	&kxtf9_platform_device,
+//	&akm8975_platform_device,
 /*	&ap20_hall_effect_dock,*/
 	&tegra_vib_gpio,
 	&tegra_tmon,
@@ -418,68 +217,81 @@ static struct spi_board_info aes1750_spi_device __initdata = {
     .platform_data = &aes1750_interrupt,
     .irq = 0,
 };
-/*
-static struct regulator *tegra_l3g4200d_regulator=NULL;
 
-static void tegra_l3g4200d_exit(void)
-{
-        if (tegra_l3g4200d_regulator)
-                regulator_put(tegra_l3g4200d_regulator);
-
-        gpio_free(TEGRA_L3G4200D_IRQ_GPIO);
-}
-static int tegra_l3g4200d_power_on(void)
-{
-        if (tegra_l3g4200d_regulator)
-                return regulator_enable(tegra_l3g4200d_regulator);
-        return 0;
-}
-static int tegra_l3g4200d_power_off(void)
-{
-        if (tegra_l3g4200d_regulator)
-                return regulator_disable(tegra_l3g4200d_regulator);
-        return 0;
-}
-struct l3g4200d_platform_data tegra_gyro_pdata = {
-        .poll_interval = 200,
-        .min_interval = 0,
-
-        .g_range = 0,
-
-        .ctrl_reg_1 = 0xbf,
-        .ctrl_reg_2 = 0x00,
-        .ctrl_reg_3 = 0x00,
-        .ctrl_reg_4 = 0x00,
-        .ctrl_reg_5 = 0x00,
-        .int_config = 0x00,
-        .int_source = 0x00,
-        .int_th_x_h = 0x00,
-        .int_th_x_l = 0x00,
-        .int_th_y_h = 0x00,
-        .int_th_y_l = 0x00,
-        .int_th_z_h = 0x00,
-        .int_th_z_l = 0x00,
-        .int_duration = 0x00,
-
-        .axis_map_x = 0,
-        .axis_map_y = 0,
-        .axis_map_z = 0,
-
-        .negate_x = 0,
-        .negate_y = 0,
-        .negate_z = 0,
-
-        .exit = tegra_l3g4200d_exit,
-        .power_on = tegra_l3g4200d_power_on,
-        .power_off = tegra_l3g4200d_power_off,
-
+static struct i2c_board_info __initdata olympus_i2c_bus4_board_info[] = {
+	{
+		I2C_BOARD_INFO(MPU_COMPASS_NAME, MPU_COMPASS_ADDR),
+		.platform_data = &mpu_compass_data,
+		.irq = TEGRA_GPIO_TO_IRQ(MPU_COMPASS_IRQ_GPIO),
+	},
+	{
+		I2C_BOARD_INFO(MPU_ACCEL_NAME, MPU_ACCEL_ADDR),
+		.platform_data = &mpu3050_kxtf9_data,
+	},
+	{
+		I2C_BOARD_INFO(SENSOR_TEMP_NAME, SENSOR_TEMP_ADDR),
+		.platform_data = &olympus_nct1008_pdata,
+		.irq = TEGRA_GPIO_TO_IRQ(SENSOR_TEMP_IRQ_GPIO),
+	},	
 };
-*/
+
+static void olympus_mpuirq_init(void)
+{
+        int ret = 0;
+
+        pr_info("*** MPU START *** mpuirq_init...\n");
+
+        /* MPU-IRQ assignment */
+/*        tegra_gpio_enable(MPU_GYRO_IRQ_GPIO);
+        ret = gpio_request(MPU_GYRO_IRQ_GPIO, MPU_GYRO_NAME);
+        if (ret < 0) {
+                pr_err("%s: gpio_request gyro_irq failed %d\n", __func__, ret);
+        }
+
+        ret = gpio_direction_input(MPU_GYRO_IRQ_GPIO);
+        if (ret < 0) {
+                pr_err("%s: gpio_direction_input gyro_irq failed %d\n", __func__, ret);
+        }*/
+
+        /* ACCEL-IRQ assignment */
+        tegra_gpio_enable(MPU_ACCEL_IRQ_GPIO);
+        ret = gpio_request(MPU_ACCEL_IRQ_GPIO, MPU_ACCEL_NAME);
+        if (ret < 0) {
+                pr_err("%s: gpio_request accel_irq1 failed %d\n", __func__, ret);
+        }
+
+        ret = gpio_direction_input(MPU_ACCEL_IRQ_GPIO);
+        if (ret < 0) {
+                pr_err("%s: gpio_direction_input accel_irq1 failed %d\n", __func__, ret);
+        }
+
+        /* COMPASS-IRQ assignment */
+        tegra_gpio_enable(MPU_COMPASS_IRQ_GPIO);
+        ret = gpio_request(MPU_COMPASS_IRQ_GPIO, MPU_COMPASS_NAME);
+        if (ret < 0) {
+                pr_err("%s: gpio_request compass_irq failed %d\n", __func__, ret);
+        }
+
+        ret = gpio_direction_input(MPU_COMPASS_IRQ_GPIO);
+        if (ret < 0) {
+                pr_err("%s: gpio_direction_input compass_irq failed %d\n", __func__, ret);
+        }
+        pr_info("*** MPU END *** mpuirq_init...\n");
+
+}
+
 void __init mot_sensors_init(void)
 {
-	kxtf9_init();
-	tegra_akm8975_init();
+	olympus_mpuirq_init();
 
+	printk("bus 3: %d devices\n", ARRAY_SIZE(olympus_i2c_bus4_board_info));
+	i2c_register_board_info(3, olympus_i2c_bus4_board_info, 
+				ARRAY_SIZE(olympus_i2c_bus4_board_info));
+
+//	kxtf9_init();
+//	tegra_akm8975_init();
+
+	olympus_nct1008_init();
 	tegra_vibrator_init();
 	if(!(bi_powerup_reason() & PWRUP_BAREBOARD)) {
 		isl29030_init();
