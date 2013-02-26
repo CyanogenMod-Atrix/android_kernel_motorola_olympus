@@ -762,7 +762,7 @@ static struct regulator_init_data cpcap_regulator[CPCAP_NUM_REGULATORS] = {
 			.max_uV			= 1475000,
 			.valid_ops_mask		= REGULATOR_CHANGE_STATUS |
                                                   REGULATOR_CHANGE_VOLTAGE,
-			//.always_on 		= 1,
+			.always_on 		= 1,
 		},
 		.num_consumer_supplies	= ARRAY_SIZE(cpcap_sw1_consumers),
 		.consumer_supplies	= cpcap_sw1_consumers,
@@ -773,7 +773,7 @@ static struct regulator_init_data cpcap_regulator[CPCAP_NUM_REGULATORS] = {
 			.max_uV			= 1475000,
 			.valid_ops_mask		= REGULATOR_CHANGE_STATUS |
                                                   REGULATOR_CHANGE_VOLTAGE,
-			//.always_on 		= 1,
+			.always_on 		= 1,
 		},
 		.num_consumer_supplies	= ARRAY_SIZE(cpcap_sw2_consumers),
 		.consumer_supplies	= cpcap_sw2_consumers,
@@ -784,7 +784,7 @@ static struct regulator_init_data cpcap_regulator[CPCAP_NUM_REGULATORS] = {
 			.max_uV			= 1875000,
 			.valid_ops_mask		= REGULATOR_CHANGE_STATUS |
                                                  REGULATOR_CHANGE_VOLTAGE,
-			//.always_on 		= 1,
+			.always_on 		= 1,
 		},
 		.num_consumer_supplies	= ARRAY_SIZE(cpcap_sw3_consumers),
 		.consumer_supplies	= cpcap_sw3_consumers,
@@ -795,7 +795,7 @@ static struct regulator_init_data cpcap_regulator[CPCAP_NUM_REGULATORS] = {
 			.max_uV			= 1475000,
 			.valid_ops_mask		= REGULATOR_CHANGE_STATUS |
                                                   REGULATOR_CHANGE_VOLTAGE,
-			//.always_on		= 1,
+			.always_on		= 1,
 		},
 		.num_consumer_supplies	= ARRAY_SIZE(cpcap_sw4_consumers),
 		.consumer_supplies	= cpcap_sw4_consumers,
@@ -867,7 +867,7 @@ static struct regulator_init_data cpcap_regulator[CPCAP_NUM_REGULATORS] = {
 			.min_uV			= 1500000,
 			.max_uV			= 3000000,
 			.valid_ops_mask		= REGULATOR_CHANGE_STATUS,
-			//.always_on 		= 1,
+			.always_on 		= 1,
 		},
 		.num_consumer_supplies	= ARRAY_SIZE(cpcap_vsdio_consumers),
 		.consumer_supplies	= cpcap_vsdio_consumers,
@@ -878,7 +878,7 @@ static struct regulator_init_data cpcap_regulator[CPCAP_NUM_REGULATORS] = {
 			.max_uV			= 1800000,
 			.valid_ops_mask		= 0,
 			.apply_uV		= 1,
-			//.always_on	 	= 1,
+			.always_on	 	= 1,
 		},
 		.num_consumer_supplies = ARRAY_SIZE(cpcap_vpll_consumers),
 		.consumer_supplies = cpcap_vpll_consumers,
@@ -935,7 +935,7 @@ static struct regulator_init_data cpcap_regulator[CPCAP_NUM_REGULATORS] = {
 			.min_uV			= 1800000,
 			.max_uV			= 2900000,
 			.valid_ops_mask		= 0,
-			//.always_on 		= 1,
+			.always_on 		= 1,
 		},
 		.num_consumer_supplies	= ARRAY_SIZE(cpcap_vsimcard_consumers),
 		.consumer_supplies	= cpcap_vsimcard_consumers,
@@ -956,7 +956,7 @@ static struct regulator_init_data cpcap_regulator[CPCAP_NUM_REGULATORS] = {
 			.max_uV			= 3300000,
 			.valid_ops_mask		= REGULATOR_CHANGE_STATUS,
 			.apply_uV		= 1,
-			//.always_on 		= 1,
+			.always_on 		= 1,
 		},
 		.num_consumer_supplies	= ARRAY_SIZE(cpcap_vusb_consumers),
 		.consumer_supplies	= cpcap_vusb_consumers,
@@ -1053,6 +1053,7 @@ struct spi_board_info tegra_spi_devices[] __initdata = {
         .chip_select = 0,
         .mode = SPI_MODE_0 | SPI_CS_HIGH,
         .max_speed_hz = 8000000,
+//        .platform_data = ??
         .controller_data = &tegra_cpcap_data,
         .irq = INT_EXTERNAL_PMU,
     },
@@ -1231,7 +1232,7 @@ void __init olympus_power_init(void)
 	(void) platform_device_register(&cpcap_reg_virt_vcsi_2);
 	(void) platform_device_register(&cpcap_reg_virt_sw5);
 #endif
-	//regulator_has_full_constraints();
+	regulator_has_full_constraints();
 	olympus_suspend_init();
 }
 

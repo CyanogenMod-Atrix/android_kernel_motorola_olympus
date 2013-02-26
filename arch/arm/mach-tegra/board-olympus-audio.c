@@ -42,48 +42,14 @@
 #include "board.h"
 #include "hwrev.h"
 
-static struct cpcap_audio_state olympus_cpcap_audio_state = {
-	.cpcap                   = NULL,
-	.mode                    = CPCAP_AUDIO_MODE_NORMAL,
-	.codec_mode              = CPCAP_AUDIO_CODEC_OFF,
-	.codec_rate              = CPCAP_AUDIO_CODEC_RATE_8000_HZ,
-	.codec_mute              = CPCAP_AUDIO_CODEC_MUTE,
-	.stdac_mode              = CPCAP_AUDIO_STDAC_OFF,
-	.stdac_rate              = CPCAP_AUDIO_STDAC_RATE_44100_HZ,
-	.stdac_mute              = CPCAP_AUDIO_STDAC_MUTE,
-	.analog_source           = CPCAP_AUDIO_ANALOG_SOURCE_OFF,
-	.codec_primary_speaker   = CPCAP_AUDIO_OUT_NONE,
-	.codec_secondary_speaker = CPCAP_AUDIO_OUT_NONE,
-	.stdac_primary_speaker   = CPCAP_AUDIO_OUT_NONE,
-	.stdac_secondary_speaker = CPCAP_AUDIO_OUT_NONE,
-	.ext_primary_speaker     = CPCAP_AUDIO_OUT_NONE,
-	.ext_secondary_speaker   = CPCAP_AUDIO_OUT_NONE,
-	.codec_primary_balance   = CPCAP_AUDIO_BALANCE_NEUTRAL,
-	.stdac_primary_balance   = CPCAP_AUDIO_BALANCE_NEUTRAL,
-	.ext_primary_balance     = CPCAP_AUDIO_BALANCE_NEUTRAL,
-	.output_gain             = 7,
-	.microphone              = CPCAP_AUDIO_IN_NONE,
-	.input_gain              = 31,
-	.rat_type                = CPCAP_AUDIO_RAT_NONE
-};
-
 /* CPCAP is i2s master; tegra_audio_pdata.master == false */
 static void init_dac2(bool bluetooth);
-static struct cpcap_audio_platform_data cpcap_audio_pdata = {
-	.master = true,
-	.regulator = "vaudio",
-	.state = &olympus_cpcap_audio_state,
-	.speaker_gpio = TEGRA_GPIO_PR3,
-	.headset_gpio = -1,
-	.spdif_gpio = TEGRA_GPIO_PD4,
-	.bluetooth_bypass = init_dac2,
-};
 
 static struct platform_device cpcap_audio_device = {
 	.name   = "cpcap_audio",
 	.id     = -1,
 	.dev    = {
-		.platform_data = &cpcap_audio_pdata,
+//		.platform_data = &cpcap_audio_pdata,
 	},
 };
 
@@ -164,15 +130,15 @@ static void init_dac2(bool bluetooth)
 
 void __init olympus_audio_init(void)
 {
+	if (1==0) {
 	init_dac1();
 	init_dac2(false);
 
 	tegra_i2s_device1.dev.platform_data = &tegra_audio_pdata;
 	tegra_i2s_device2.dev.platform_data = &tegra_audio2_pdata;
-
+	}
 	cpcap_device_register(&cpcap_audio_device);
-
-	tegra_spdif_device.dev.platform_data = &tegra_spdif_pdata;
+	if (1==0) tegra_spdif_device.dev.platform_data = &tegra_spdif_pdata;
 
 }
 

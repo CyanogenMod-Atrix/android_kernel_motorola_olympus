@@ -534,9 +534,9 @@ static void __init tegra_mot_init(void)
 
 	olympus_pinmux_init();
 
-	olympus_power_init();
-
 	olympus_devices_init();
+
+	olympus_power_init();
 	
 	mot_tcmd_init();
 

@@ -221,12 +221,16 @@ static struct spi_board_info aes1750_spi_device __initdata = {
 static struct i2c_board_info __initdata olympus_i2c_bus4_board_info[] = {
 	{
 		I2C_BOARD_INFO(MPU_COMPASS_NAME, MPU_COMPASS_ADDR),
+#if defined(CONFIG_MPU_SENSORS_MPU3050)
 		.platform_data = &mpu_compass_data,
+#endif
 		.irq = TEGRA_GPIO_TO_IRQ(MPU_COMPASS_IRQ_GPIO),
 	},
 	{
 		I2C_BOARD_INFO(MPU_ACCEL_NAME, MPU_ACCEL_ADDR),
+#if defined(CONFIG_MPU_SENSORS_MPU3050)
 		.platform_data = &mpu3050_kxtf9_data,
+#endif
 	},
 	{
 		I2C_BOARD_INFO(SENSOR_TEMP_NAME, SENSOR_TEMP_ADDR),

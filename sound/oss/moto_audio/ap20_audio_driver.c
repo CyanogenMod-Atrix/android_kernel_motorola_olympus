@@ -2386,39 +2386,30 @@ static int audio_probe(struct platform_device *dev)
 	state.codec_out_stream = NULL;
 	state.codec_in_stream = NULL;
 
+	cpcap_audio_state.cpcap = 0;
+	cpcap_audio_state.mode = CPCAP_AUDIO_MODE_NORMAL;
+	cpcap_audio_state.codec_mode = CPCAP_AUDIO_CODEC_OFF;
+	cpcap_audio_state.codec_rate = CPCAP_AUDIO_CODEC_RATE_44100_HZ;
+	cpcap_audio_state.codec_mute = CPCAP_AUDIO_CODEC_UNMUTE;
+	cpcap_audio_state.stdac_mode = CPCAP_AUDIO_STDAC_OFF;
+	cpcap_audio_state.stdac_rate = CPCAP_AUDIO_STDAC_RATE_44100_HZ;
+	cpcap_audio_state.stdac_mute = CPCAP_AUDIO_STDAC_UNMUTE;
+	cpcap_audio_state.analog_source = CPCAP_AUDIO_ANALOG_SOURCE_OFF;
+	cpcap_audio_state.codec_primary_speaker = CPCAP_AUDIO_OUT_NONE;
+	cpcap_audio_state.codec_secondary_speaker = CPCAP_AUDIO_OUT_NONE;
+	cpcap_audio_state.stdac_primary_speaker = CPCAP_AUDIO_OUT_NONE;
+	cpcap_audio_state.stdac_secondary_speaker = CPCAP_AUDIO_OUT_NONE;
+	cpcap_audio_state.ext_primary_speaker = CPCAP_AUDIO_OUT_NONE;
+	cpcap_audio_state.ext_secondary_speaker = CPCAP_AUDIO_OUT_NONE;
+	cpcap_audio_state.codec_primary_balance = CPCAP_AUDIO_BALANCE_NEUTRAL;
+	cpcap_audio_state.stdac_primary_balance = CPCAP_AUDIO_BALANCE_NEUTRAL;
+	cpcap_audio_state.ext_primary_balance = CPCAP_AUDIO_BALANCE_NEUTRAL;
 
-    cpcap_audio_state.cpcap = 0;
-    cpcap_audio_state.mode = CPCAP_AUDIO_MODE_NORMAL;
-    cpcap_audio_state.codec_mode = CPCAP_AUDIO_CODEC_OFF;
-    cpcap_audio_state.codec_rate = CPCAP_AUDIO_CODEC_RATE_44100_HZ;
-    cpcap_audio_state.codec_mute = CPCAP_AUDIO_CODEC_UNMUTE;
-    cpcap_audio_state.stdac_mode = CPCAP_AUDIO_STDAC_OFF;
-    cpcap_audio_state.stdac_rate = CPCAP_AUDIO_STDAC_RATE_44100_HZ;
-    cpcap_audio_state.stdac_mute = CPCAP_AUDIO_STDAC_UNMUTE;
-    cpcap_audio_state.analog_source = CPCAP_AUDIO_ANALOG_SOURCE_OFF;
-    cpcap_audio_state.codec_primary_speaker = CPCAP_AUDIO_OUT_NONE;
-    cpcap_audio_state.codec_secondary_speaker = CPCAP_AUDIO_OUT_NONE;
-    cpcap_audio_state.stdac_primary_speaker = CPCAP_AUDIO_OUT_NONE;
-    cpcap_audio_state.stdac_secondary_speaker = CPCAP_AUDIO_OUT_NONE;
-    cpcap_audio_state.ext_primary_speaker = CPCAP_AUDIO_OUT_NONE;
-    cpcap_audio_state.ext_secondary_speaker = CPCAP_AUDIO_OUT_NONE;
-    cpcap_audio_state.codec_primary_balance = CPCAP_AUDIO_BALANCE_NEUTRAL;
-    cpcap_audio_state.stdac_primary_balance = CPCAP_AUDIO_BALANCE_NEUTRAL;
-    cpcap_audio_state.ext_primary_balance = CPCAP_AUDIO_BALANCE_NEUTRAL;
+	cpcap_audio_state.output_gain = 7;
 
-    cpcap_audio_state.output_gain = 7;
-
-    cpcap_audio_state.microphone = CPCAP_AUDIO_IN_NONE;
-    cpcap_audio_state.input_gain = 0;
-    cpcap_audio_state.rat_type = CPCAP_AUDIO_RAT_NONE;
-
-
-
-
-
-
-
-
+	cpcap_audio_state.microphone = CPCAP_AUDIO_IN_NONE;
+	cpcap_audio_state.input_gain = 0;
+	cpcap_audio_state.rat_type = CPCAP_AUDIO_RAT_NONE;
 	cpcap_audio_state.cpcap = dev->dev.platform_data;
 	cpcap_audio_init(&cpcap_audio_state);
 

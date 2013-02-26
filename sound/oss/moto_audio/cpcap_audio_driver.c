@@ -1275,6 +1275,7 @@ void cpcap_audio_init(struct cpcap_audio_state *state)
 {
 	CPCAP_AUDIO_DEBUG_LOG("%s() called\n", __func__);
 
+	printk("%s() level 1\n",__func__);
 	logged_cpcap_write(state->cpcap, CPCAP_REG_CC, 0, 0xFFFF);
 	logged_cpcap_write(state->cpcap, CPCAP_REG_CDI, 0, 0xBFFF);
 	logged_cpcap_write(state->cpcap, CPCAP_REG_SDAC, 0, 0xFFF);
@@ -1287,13 +1288,16 @@ void cpcap_audio_init(struct cpcap_audio_state *state)
 	logged_cpcap_write(state->cpcap, CPCAP_REG_RXSDOA, 0, 0x1FFF);
 	logged_cpcap_write(state->cpcap, CPCAP_REG_RXEPOA, 0, 0x7FFF);
 
+	printk("%s() level 2\n",__func__);
+
 	if (cpcap_audio_hw_has_hs_driver() || cpcap_audio_hw_has_mic3_switch())
 	        logged_cpcap_write(state->cpcap, CPCAP_REG_GPIO4,
 			   CPCAP_BIT_GPIO4DIR, CPCAP_BIT_GPIO4DIR);
 /*hack*/
+	printk("%s() level 3\n",__func__);
         logged_cpcap_write(state->cpcap, CPCAP_REG_RXCOA,0x1e02,0x1FFF );
 	audio_regu = regulator_get(NULL, "vaudio");
-
+	printk("%s() level 4\n",__func__);
 	if (IS_ERR(audio_regu))
 		CPCAP_AUDIO_ERROR_LOG("could not get regulator for audio\n");
 }
