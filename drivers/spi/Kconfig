@@ -338,12 +338,6 @@ config SPI_SLAVE
        help
          Proveide SPI slave controller support
 
-config SPI_SLAVE_TEGRA
-       boolean "SPI slave driver for NVIDIA Tegra SoCs"
-       depends on ARCH_TEGRA
-       help
-         Enables the integrated SPI slave controllers on NVIDIA Tegra SoCs
-
 config SPI_TEGRA
 	tristate "Nvidia Tegra SPI controller"
 	depends on ARCH_TEGRA

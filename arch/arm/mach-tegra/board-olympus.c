@@ -345,7 +345,7 @@ static __initdata struct tegra_clk_init_table olympus_clk_init_table[] = {
 	{"kbc",		"clk_32k",	32768,		true},
 	{"sdmmc2",	"pll_p",	25000000,	false},
 //	{"i2s1",	"pll_a_out0",	0,		true},
-	{"i2s1",	"pll_a_out0",	0,		false},
+//	{"i2s1",	"pll_a_out0",	0,		false},
 //	{"pll_a_out0",	"pll_a",	11289600,	true}, //added
 	{"spdif_out",	"pll_a_out0",	0,		false},
 	{ NULL,		NULL,		0,		0},
@@ -559,6 +559,7 @@ if (1==0) olympus_emc_init();
 	
 //	mot_modem_init();
 	olympus_wlan_init();
+	olympus_audio_init();
 
 //	mot_sensors_init();
 

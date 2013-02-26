@@ -541,3 +541,10 @@ config SOUND_KAHLUA
 
 endif	# SOUND_OSS
 
+config SOUND_CPCAP_AP20
+	bool "CPCAP & AP20"
+	depends on MFD_CPCAP
+	default "y"
+	help
+	  Say Y here to include support for the CPCAP AP20
+

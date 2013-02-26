@@ -205,9 +205,9 @@ static struct platform_device *cpcap_devices[] = {
 //	&cpcap_usb_device,
 //	&cpcap_usb_det_device,
 //#endif
-#if defined(CONFIG_SOUND_CPCAP_OMAP) ||  defined(CONFIG_SOUND_CPCAP_AP20)
-	&cpcap_audio_device,
-#endif
+//#if defined(CONFIG_SOUND_CPCAP_OMAP) ||  defined(CONFIG_SOUND_CPCAP_AP20)
+//	&cpcap_audio_device,
+//#endif
 //	&cpcap_3mm5_device,
 #ifdef CONFIG_CPCAP_WATCHDOG
 //	&cpcap_wdt_device,

@@ -11,6 +11,7 @@ extern void __init olympus_devices_init(void);
 extern void __init olympus_power_init(void);
 extern void __init olympus_keypad_init(void);
 extern void __init olympus_i2c_init(void);
+extern void __init olympus_audio_init(void);
 extern void __init olympus_usb_gadget_init(void);
 extern void mot_setup_lights(struct i2c_board_info *info);
 extern void mot_setup_touch(struct i2c_board_info *info);
