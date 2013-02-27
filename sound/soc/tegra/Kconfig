@@ -228,3 +228,13 @@ config SND_SOC_TEGRA_MAX98095
 	  Say Y or M here if you want to add support for SoC audio on Tegra
 	  boards using the MAX98095 codec. Currently, only supported board is
 	  Cardhu.
+
+config SND_SOC_TEGRA_MOTSND
+	tristate "SoC Audio support for Motorola Android Platform"
+	depends on SND_SOC_TEGRA && MACH_OLYMPUS
+	select SND_SOC_TEGRA20_I2S if ARCH_TEGRA_2x_SOC
+	select SND_SOC_TEGRA20_SPDIF if ARCH_TEGRA_2x_SOC
+	select SND_SOC_SPDIF
+	help
+	  Say Y if building Motorola Android Platform
+

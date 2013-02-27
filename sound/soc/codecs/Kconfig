@@ -404,6 +404,10 @@ config SND_SOC_WM9712
 config SND_SOC_WM9713
 	tristate
 
+config SND_SOC_CPCAP
+	tristate "CPCAP Codec Support for Motorola Android Platform"
+	depends on MFD_CPCAP
+
 # Amp
 config SND_SOC_LM4857
 	tristate

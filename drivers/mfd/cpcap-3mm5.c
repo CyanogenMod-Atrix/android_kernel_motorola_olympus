@@ -158,7 +158,7 @@ static void hs_handler(enum cpcap_irqs irq, void *data)
 
 	switch_set_state(&data_3mm5->sdev, new_state);
 	if (data_3mm5->cpcap->h2w_new_state)
-		data_3mm5->cpcap->h2w_new_state(new_state);
+		data_3mm5->cpcap->h2w_new_state(data_3mm5->cpcap, new_state);
 
 	dev_info(&data_3mm5->cpcap->spi->dev, "New headset state: %d\n",
 		 new_state);

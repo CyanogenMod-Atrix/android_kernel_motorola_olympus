@@ -795,7 +795,8 @@ struct cpcap_device {
 	void			*battdata;
 	void			*ucdata;
 	void			*accydata;
-	void			(*h2w_new_state)(int);
+	void			*h2w_new_state_data;
+	void			(*h2w_new_state)(struct cpcap_device*, int);
 	int			spdif_gpio;
 };
 

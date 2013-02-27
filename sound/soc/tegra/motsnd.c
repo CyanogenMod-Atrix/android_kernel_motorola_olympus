@@ -30,28 +30,28 @@
 #include <sound/pcm_params.h>
 
 #include <asm/mach-types.h>
-#include <plat/hardware.h>
-#include <plat/gpio.h>
-#include <plat/mcbsp.h>
-#include <plat/clock.h>
-#include "../../../arch/arm/mach-omap2/board-mapphone.h"
+//#include <plat/hardware.h>
+//#include <plat/gpio.h>
+//#include <plat/mcbsp.h>
+//#include <plat/clock.h>
+//#include "../../../arch/arm/mach-omap2/board-mapphone.h"
 
 #define ABE_BYPASS
 #define MOTSND_CONFIG_ENABLE_ABE
 #define MOTSND_CONFIG_ENABLE_SPDIF
 
 #ifdef MOTSND_CONFIG_ENABLE_ABE
-#include "omap-abe.h"
-#include <sound/soc-dsp.h>
-#include "omap-abe-dsp.h"
+//#include "omap-abe.h"
+//#include <sound/soc-dsp.h>
+//#include "omap-abe-dsp.h"
 #endif
-#include "omap-mcbsp.h"
-#include "omap-pcm.h"
+//#include "omap-mcbsp.h"
+//#include "omap-pcm.h"
 #include "../codecs/cpcap.h"
 
-#include "../../../arch/arm/mach-omap2/clock.h"
+//#include "../../../arch/arm/mach-omap2/clock.h"
 
-/* #define MOTSND_DEBUG */
+#define MOTSND_DEBUG
 #ifdef MOTSND_DEBUG
 #define MOTSND_DEBUG_LOG(args...) printk(KERN_INFO "ALSA MOTSND:" args)
 #else
