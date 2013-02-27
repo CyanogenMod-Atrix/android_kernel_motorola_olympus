@@ -32,8 +32,8 @@
 #include "reset.h"
 #include "sleep.h"
 
-//#define DEBUG_CPU_RESET_HANDLER	0	/* Non-zero enables debug code */
-#define DEBUG_CPU_RESET_HANDLER		1	/* Non-zero enables debug code */
+#define DEBUG_CPU_RESET_HANDLER	0	/* Non-zero enables debug code */
+
 
 #define PMC_SCRATCH41		0x140
 

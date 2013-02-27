@@ -780,7 +780,8 @@ static int accy_ioctl(unsigned int cmd, unsigned long arg)
 
 	return retval;
 }
-
+/* for cpcap-audio-core.c testing */
+#if 0
 struct regulator *audio_reg=NULL;
 
 static int audio_pwr_ioctl(unsigned int cmd, unsigned long arg)
@@ -814,7 +815,7 @@ static int audio_pwr_ioctl(unsigned int cmd, unsigned long arg)
 
 	return retval;
 }
-
+#endif
 static long ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
 	int retval = -ENOTTY;
@@ -828,7 +829,7 @@ static long ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		{ CPCAP_IOCTL_NUM_TEST__START,      CPCAP_IOCTL_NUM_TEST__END,      test_ioctl      },
 		{ CPCAP_IOCTL_NUM_ADC__START,       CPCAP_IOCTL_NUM_ADC__END,       adc_ioctl       },
 		{ CPCAP_IOCTL_NUM_ACCY__START,      CPCAP_IOCTL_NUM_ACCY__END,      accy_ioctl      },
-		{ CPCAP_IOCTL_NUM_AUDIO_PWR__START, CPCAP_IOCTL_NUM_AUDIO_PWR__END, audio_pwr_ioctl },
+/*		{ CPCAP_IOCTL_NUM_AUDIO_PWR__START, CPCAP_IOCTL_NUM_AUDIO_PWR__END, audio_pwr_ioctl },*/
 		{ CPCAP_IOCTL_NUM_TEST_SEC__START,  CPCAP_IOCTL_NUM_TEST_SEC__END,  test_ioctl      },
 	};
 

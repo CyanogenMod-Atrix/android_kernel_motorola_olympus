@@ -345,7 +345,7 @@ static __initdata struct tegra_clk_init_table olympus_clk_init_table[] = {
 	{"kbc",		"clk_32k",	32768,		true},
 	{"sdmmc2",	"pll_p",	25000000,	false},
 //	{"i2s1",	"pll_a_out0",	0,		true},
-//	{"i2s1",	"pll_a_out0",	0,		false},
+	{"i2s1",	"pll_a_out0",	0,		false},
 //	{"pll_a_out0",	"pll_a",	11289600,	true}, //added
 	{"spdif_out",	"pll_a_out0",	0,		false},
 	{ NULL,		NULL,		0,		0},
@@ -536,6 +536,8 @@ static void __init tegra_mot_init(void)
 
 	olympus_devices_init();
 
+	olympus_audio_init();
+
 	olympus_power_init();
 	
 	mot_tcmd_init();
@@ -559,7 +561,6 @@ if (1==0) olympus_emc_init();
 	
 //	mot_modem_init();
 	olympus_wlan_init();
-	olympus_audio_init();
 
 //	mot_sensors_init();
 
@@ -575,7 +576,7 @@ if (1==0) olympus_emc_init();
 	gpio_request(TEGRA_GPIO_PD4, "spdif_enable");
 	gpio_direction_output(TEGRA_GPIO_PD4, 0);
 	gpio_export(TEGRA_GPIO_PD4, false);
-	
+	if (1==0)
 	if ((HWREV_TYPE_IS_PORTABLE(system_rev) || HWREV_TYPE_IS_FINAL(system_rev)))
 		{
 			if (HWREV_REV(system_rev) >= HWREV_REV_1 && HWREV_REV(system_rev) < HWREV_REV_2)
