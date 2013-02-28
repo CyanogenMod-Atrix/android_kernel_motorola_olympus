@@ -41,7 +41,7 @@
 #include "devices.h"
 #include "board.h"
 #include "hwrev.h"
-
+#if 0
 static struct cpcap_audio_state olympus_cpcap_audio_state = {
 	.cpcap                   = NULL,
 	.mode                    = CPCAP_AUDIO_MODE_NORMAL,
@@ -78,12 +78,12 @@ static struct cpcap_audio_platform_data cpcap_audio_pdata = {
 	.spdif_gpio = TEGRA_GPIO_PD4,
 //	.bluetooth_bypass = init_dac2,
 };
-
+#endif
 static struct platform_device cpcap_audio_device = {
 	.name   = "cpcap_audio",
 	.id     = -1,
 	.dev    = {
-		.platform_data = &cpcap_audio_pdata,
+	//	.platform_data = &cpcap_audio_pdata,
 	},
 };
 
@@ -165,9 +165,10 @@ static void init_dac2(bool bluetooth)
 void __init olympus_audio_init(void)
 {
 
+	if (1==0) {
 	init_dac1();
 	init_dac2(false);
-	
+	}
 	tegra_i2s_device1.dev.platform_data = &tegra_audio_pdata;
 	tegra_i2s_device2.dev.platform_data = &tegra_audio2_pdata;
 

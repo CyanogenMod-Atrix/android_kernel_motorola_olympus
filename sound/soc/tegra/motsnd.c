@@ -30,26 +30,16 @@
 #include <sound/pcm_params.h>
 
 #include <asm/mach-types.h>
-//#include <plat/hardware.h>
-//#include <plat/gpio.h>
-//#include <plat/mcbsp.h>
-//#include <plat/clock.h>
-//#include "../../../arch/arm/mach-omap2/board-mapphone.h"
+#include "tegra20_das.h"
+#include "tegra20_i2s.h"
+#include "tegra_pcm.h"
+#include "tegra_asoc_utils.h"
 
 #define ABE_BYPASS
-#define MOTSND_CONFIG_ENABLE_ABE
-#define MOTSND_CONFIG_ENABLE_SPDIF
+//#define MOTSND_CONFIG_ENABLE_ABE
+//#define MOTSND_CONFIG_ENABLE_SPDIF
 
-#ifdef MOTSND_CONFIG_ENABLE_ABE
-//#include "omap-abe.h"
-//#include <sound/soc-dsp.h>
-//#include "omap-abe-dsp.h"
-#endif
-//#include "omap-mcbsp.h"
-//#include "omap-pcm.h"
 #include "../codecs/cpcap.h"
-
-//#include "../../../arch/arm/mach-omap2/clock.h"
 
 #define MOTSND_DEBUG
 #ifdef MOTSND_DEBUG
@@ -58,10 +48,15 @@
 #define MOTSND_DEBUG_LOG(args...)
 #endif
 
-static unsigned long dpll_abe_rate;
+//static unsigned long dpll_abe_rate;
 
 #define DPLL_ABE_RATE_SPDIF	90315789
 
+#define DRV_NAME "tegra-snd-olympus"
+
+struct tegra_olympus {
+	struct tegra_asoc_utils_data util_data;
+};
 
 static int motsnd_hw_params(struct snd_pcm_substream *substream,
 			    struct snd_pcm_hw_params *params)
@@ -69,11 +64,30 @@ static int motsnd_hw_params(struct snd_pcm_substream *substream,
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_dai *codec_dai = rtd->codec_dai;
 	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
-	int ret;
-	unsigned long rate;
-	struct clk *dpll_abe_ck;
+	struct snd_soc_codec *codec = rtd->codec;
+	struct snd_soc_card *card = codec->card;
+	struct tegra_olympus *card_data = snd_soc_card_get_drvdata(card);
+	int srate, mclk;
+	int err, ret;
 
 	MOTSND_DEBUG_LOG("%s: entered\n", __func__);
+
+	if (card_data==NULL) {
+		dev_err(card->dev, "card_data is NULL\n");
+		return -1;
+	}
+
+	/* Set codec clock configuration */
+	srate = params_rate(params);
+	mclk = 128 * srate;
+
+	printk("%s: mclk (%d) = 128 * srate (%d);\n", __func__, mclk, srate);
+
+	err = tegra_asoc_utils_set_rate(&card_data->util_data, srate, mclk);
+	if (err < 0) {
+		dev_err(card->dev, "Can't configure clocks\n");
+		return err;
+	}
 
 	/* Set codec DAI configuration */
 	ret = snd_soc_dai_set_fmt(codec_dai,
@@ -96,27 +110,33 @@ static int motsnd_hw_params(struct snd_pcm_substream *substream,
 	}
 
 	/* Set the codec system clock for DAC and ADC */
-	ret = snd_soc_dai_set_sysclk(codec_dai, 0, 26000000,
+/*	ret = snd_soc_dai_set_sysclk(codec_dai, 0, 26000000,
+				     SND_SOC_CLOCK_IN);*/
+	ret = snd_soc_dai_set_sysclk(codec_dai, 0, mclk,
 				     SND_SOC_CLOCK_IN);
 	if (ret < 0) {
 		printk(KERN_ERR "can't set codec system clock\n");
 		return ret;
 	}
 
-	/* Set cpu DAI configuration */
-	ret = snd_soc_dai_set_sysclk(cpu_dai,
-				     OMAP_MCBSP_SYSCLK_CLKX_EXT,
-				     0, 0);
-	if (ret < 0)
-		printk(KERN_ERR "can't set cpu DAI system clock\n");
+	ret = tegra20_das_connect_dac_to_dap(0,0);
+	if (ret < 0) {
+		printk(KERN_ERR "failed to set dap-dac path\n");
+		return ret;
+	}
 
+	ret = tegra20_das_connect_dap_to_dac(0,0);
+	if (ret < 0) {
+		printk(KERN_ERR "failed to set dac-dap path\n");
+		return ret;
+	}
 	return ret;
 }
 
 static struct snd_soc_ops motsnd_ops = {
 	.hw_params = motsnd_hw_params,
 };
-
+#if 0
 static int motsnd_voice_hw_params(struct snd_pcm_substream *substream,
 				  struct snd_pcm_hw_params *params)
 {
@@ -211,7 +231,8 @@ static struct snd_soc_ops motsnd_incall_ops = {
 	.shutdown = motsnd_incall_shutdown,
 	.hw_params = motsnd_incall_hw_params,
 };
-
+#endif
+#if 0
 static int motsnd_fm_hw_params(struct snd_pcm_substream *substream,
 			       struct snd_pcm_hw_params *params)
 {
@@ -278,7 +299,7 @@ static int motsnd_btvoice_hw_params(struct snd_pcm_substream *substream,
 static struct snd_soc_ops motsnd_btvoice_ops = {
 	.hw_params = motsnd_btvoice_hw_params,
 };
-
+#endif
 #ifdef MOTSND_CONFIG_ENABLE_SPDIF
 static int motsnd_spdif_startup(struct snd_pcm_substream *substream)
 {
@@ -364,7 +385,7 @@ static struct snd_soc_ops motsnd_spdif_ops = {
 	.hw_params = motsnd_spdif_hw_params,
 };
 #endif /*ENABLE_SPDIF*/
-
+#if 0
 static int motsnd_bpvoice_hw_params(struct snd_pcm_substream *substream,
 			       struct snd_pcm_hw_params *params)
 {
@@ -408,7 +429,7 @@ static int motsnd_bpvoice_hw_params(struct snd_pcm_substream *substream,
 static struct snd_soc_ops motsnd_bpvoice_ops = {
 	.hw_params = motsnd_bpvoice_hw_params,
 };
-
+#endif
 #ifdef MOTSND_CONFIG_ENABLE_ABE
 static int mcbsp_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 			struct snd_pcm_hw_params *params)
@@ -449,13 +470,13 @@ static int motsnd_cpcap_init(struct snd_soc_pcm_runtime *rtd)
 	MOTSND_DEBUG_LOG("%s: Entered\n", __func__);
 	return 0;
 }
-
+/*
 static int motsnd_cpcap_voice_init(struct snd_soc_pcm_runtime *rtd)
 {
 	MOTSND_DEBUG_LOG("%s: Entered\n", __func__);
 	return 0;
 }
-
+*/
 static struct snd_soc_dai_driver dai[] = {
 {
 	.name = "MODEM",
@@ -528,6 +549,7 @@ static struct snd_soc_dai_link motsnd_dai[] = {
 	.ignore_suspend = 1,
 },
 #endif
+/*
 {
 	.name = "Voice",
 	.stream_name = "McBSP3-Codec",
@@ -605,7 +627,7 @@ static struct snd_soc_dai_link motsnd_dai[] = {
 	.init = motsnd_cpcap_voice_init,
 	.ops = &motsnd_bpvoice_ops,
 	.ignore_suspend = 1,
-},
+},*/
 #if 0
 {
 	.name = "VoiceCall Second",
@@ -636,8 +658,8 @@ static struct snd_soc_dai_link motsnd_dai[] = {
 	.stream_name = "Multimedia",
 	.cpu_dai_name = "MultiMedia1 LP",
 	.platform_name = "aess",
-	.dynamic = 1,
-	.dsp_link = &fe_lp_media,
+//	.dynamic = 1,
+//	.dsp_link = &fe_lp_media,
 //	.supported_be = mm1_be,
 //	.num_be = ARRAY_SIZE(mm1_be),
 //	.fe_playback_channels = 2,
@@ -670,7 +692,7 @@ static struct snd_soc_dai_link motsnd_dai[] = {
 /* Audio machine driver */
 static struct snd_soc_card snd_soc_mot = {
 	.name = "motsnd",
-	.long_name = "Motorola MAPPHONE",
+	.long_name = "Motorola OLYMPUS",
 	.dai_link = motsnd_dai,
 	.num_links = ARRAY_SIZE(motsnd_dai),
 };
