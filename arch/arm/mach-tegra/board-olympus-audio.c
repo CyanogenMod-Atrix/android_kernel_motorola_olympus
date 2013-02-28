@@ -168,12 +168,13 @@ void __init olympus_audio_init(void)
 	if (1==0) {
 	init_dac1();
 	init_dac2(false);
-	}
+	
 	tegra_i2s_device1.dev.platform_data = &tegra_audio_pdata;
 	tegra_i2s_device2.dev.platform_data = &tegra_audio2_pdata;
+	}
 
 	cpcap_device_register(&cpcap_audio_device);
-	tegra_spdif_device.dev.platform_data = &tegra_spdif_pdata;
+	if (1==0) tegra_spdif_device.dev.platform_data = &tegra_spdif_pdata;
 
 }
 

@@ -23,6 +23,7 @@
 #include <linux/platform_device.h>
 #include <linux/cpcap_audio_platform_data.h>
 #include <linux/clk.h>
+#include <linux/slab.h>
 #include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/soc.h>
@@ -701,26 +702,47 @@ static struct platform_device *mot_snd_device;
 
 static int __init motsnd_soc_init(void)
 {
+	struct tegra_olympus *olympus;
 	int ret;
 
 	pr_info("ENTER: MOTSND SoC init\n");
+
 	mot_snd_device = platform_device_alloc("soc-audio", -1);
 	if (!mot_snd_device) {
 		printk(KERN_ERR "Platform device allocation failed\n");
 		return -ENOMEM;
 	}
-	snd_soc_register_dais(&mot_snd_device->dev, dai, ARRAY_SIZE(dai));
-	platform_set_drvdata(mot_snd_device, &snd_soc_mot);
 
+	olympus = kzalloc(sizeof(struct tegra_olympus), GFP_KERNEL);
+	if (!olympus) {
+		dev_err(&mot_snd_device->dev, "Can't allocate tegra asoc utils data\n");
+		return -ENOMEM;
+	}
+
+	ret = tegra_asoc_utils_init(&olympus->util_data, &mot_snd_device->dev, &snd_soc_mot);
+	if (ret) {
+		dev_err(&mot_snd_device->dev, "Can't do tegra_asoc_utils_init()\n");
+		goto err_free_olympus;
+	}
+	pr_info("MOTSND SoC init: snd_soc_register_dais\n");
+	snd_soc_register_dais(&mot_snd_device->dev, dai, ARRAY_SIZE(dai));
+	pr_info("MOTSND SoC init: platform_set_drvdata\n");
+//	platform_set_drvdata(mot_snd_device, &card);
+	dev_set_drvdata(&mot_snd_device->dev, &snd_soc_mot);
+
+	pr_info("MOTSND SoC init: platform_device_add\n");
 	ret = platform_device_add(mot_snd_device);
-	if (ret)
-		goto err;
+	if (ret) 
+		goto err; 
 
 	return 0;
 
 err:
+	tegra_asoc_utils_fini(&olympus->util_data);
 	printk(KERN_ERR "Unable to add platform device\n");
+err_free_olympus:
 	platform_device_put(mot_snd_device);
+	kfree(olympus);
 	return ret;
 }
 module_init(motsnd_soc_init);
