@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Motorola, Inc.
+ * Copyright (C) 2009-2011 Motorola, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -31,50 +31,25 @@
 #include <linux/spi/cpcap.h>
 #include <linux/spi/cpcap-regbits.h>
 
-#define CPCAP_REGULATOR(_name, _id)		\
+#define CPCAP_REGULATOR(_name, _id) 		\
 	{					\
-		.name = _name,			\
+		.name = _name, 			\
 		.id = _id,			\
 		.ops = &cpcap_regulator_ops,	\
-		.type = REGULATOR_VOLTAGE,	\
-		.owner = THIS_MODULE,		\
+		.type = REGULATOR_VOLTAGE, 	\
+		.owner = THIS_MODULE, 		\
 	}
-
-
-#define SW2_SW4_VAL_TBL_SIZE 69
-#define SW2_SW4_VAL_TBL_STEP 12500
-#if 0
-static int sw2_sw4_val_tbl[SW2_SW4_VAL_TBL_SIZE];
-static const int sw5_val_tbl[] = {0, 5050000};
-static const int vcam_val_tbl[] = {2600000, 2700000, 2800000, 2900000};
-static const int vcsi_val_tbl[] = {1200000, 1800000};
-static const int vdac_val_tbl[] = {1200000, 1500000, 1800000, 2500000};
-static const int vdig_val_tbl[] = {1200000, 1350000, 1500000, 1875000};
-static const int vfuse_val_tbl[] = {1500000, 1600000, 1700000, 1800000, 1900000,
-				    2000000, 2100000, 2200000, 2300000, 2400000,
-				    2500000, 2600000, 2700000, 3150000};
-static const int vhvio_val_tbl[] = {2775000};
-static const int vsdio_val_tbl[] = {1500000, 1600000, 1800000, 2600000,
-				    2700000, 2800000, 2900000, 3000000};
-static const int vpll_val_tbl[] = {1200000, 1300000, 1400000, 1800000};
-static const int vrf1_val_tbl[] = {2775000, 2500000}; /* Yes, this is correct */
-static const int vrf2_val_tbl[] = {0, 2775000};
-static const int vrfref_val_tbl[] = {2500000, 2775000};
-static const int vwlan1_val_tbl[] = {1800000, 1900000};
-static const int vwlan2_val_tbl[] = {2775000, 3000000, 3300000, 3300000};
-static const int vsim_val_tbl[] = {1800000, 2900000};
-static const int vsimcard_val_tbl[] = {1800000, 2900000};
-static const int vvib_val_tbl[] = {1300000, 1800000, 2000000, 3000000};
-static const int vusb_val_tbl[] = {0, 3300000};
-static const int vaudio_val_tbl[] = {0, 2775000};
-#endif
-
+#ifdef CONFIG_STOCK_VOLTAGE
+static const int sw1_val_tbl[] = {750000, 762500, 775000, 787500, 800000, 812500, 825000, 837500, 850000, 862500, 875000, 887500, 900000, 912500, 925000, 937500, 950000, 962500, 975000, 987500, 1000000, 1012500, 1025000, 1037500, 1050000, 1062500, 1075000, 1087500, 1100000};
+static const int sw2_val_tbl[] = {900000, 912500, 925000, 937500, 950000, 962500, 975000, 987500, 1000000, 1012500, 1025000, 1037500, 1050000, 1062500, 1075000, 1087500, 1100000};
+static const int sw4_val_tbl[] = {900000, 912500, 925000, 937500, 950000, 962500, 975000, 987500, 1000000, 1012500, 1025000, 1037500, 1050000, 1062500, 1075000, 1087500, 1100000};
+#else
 static const int sw1_val_tbl[] = {750000, 762500, 775000, 787500, 800000, 812500, 825000, 837500, 850000, 862500, 875000, 887500, 900000, 912500, 925000, 937500, 950000, 962500, 975000, 987500, 1000000, 1012500, 1025000, 1037500, 1050000, 1062500, 1075000, 1087500, 1100000, 1112500, 1125000, 1137500, 1150000, 1162500, 1175000, 1187500, 1200000, 1212500, 1225000, 1237500, 1250000, 1262500, 1275000, 1287500, 1300000, 1312500, 1325000, 1337500, 1350000, 1362500, 1375000, 1387500, 1400000, 1412500, 1425000, 1437500, 1450000, 1462500, 1475000};
 static const int sw2_val_tbl[] = {900000, 912500, 925000, 937500, 950000, 962500, 975000, 987500, 1000000, 1012500, 1025000, 1037500, 1050000, 1062500, 1075000, 1087500, 1100000, 1112500, 1125000, 1137500, 1150000, 1162500, 1175000, 1187500, 1200000, 1212500, 1225000, 1237500, 1250000, 1262500, 1275000, 1287500, 1300000, 1312500, 1325000, 1337500, 1350000,
 1362500, 1375000, 1387500, 1400000, 1412500, 1425000, 1437500, 1450000, 1462500, 1475000};
 static const int sw4_val_tbl[] = {900000, 912500, 925000, 937500, 950000, 962500, 975000, 987500, 1000000, 1012500, 1025000, 1037500, 1050000, 1062500, 1075000, 1087500, 1100000, 1112500, 1125000, 1137500, 1150000, 1162500, 1175000, 1187500, 1200000, 1212500, 1225000, 1237500, 1250000, 1262500, 1275000, 1287500, 1300000, 1312500, 1325000, 1337500, 1350000, 1362500, 1375000, 1387500, 1400000, 1412500, 1425000, 1437500, 1450000, 1462500, 1475000
 };
-
+#endif
 static const int sw3_val_tbl[] = {1350000, 1800000, 1850000, 1875000};
 static const int sw5_val_tbl[] = {0, 5050000};
 static const int vcam_val_tbl[] = {2600000, 2700000, 2800000, 2900000};
@@ -299,7 +274,8 @@ static struct {
 	[CPCAP_VPLL]     = {CPCAP_REG_VPLLC,
 			    CPCAP_REG_ASSIGN3,
 			    CPCAP_BIT_VPLL_SEL,
-			    0x0047,
+			    0x0048,
+//			    0x0043,
 			    0x0018,
 			    3,
 			    0x0000,
@@ -460,294 +436,10 @@ static struct {
 			    0,
 			    1000,
                             0},
-#if 0 
-	const enum cpcap_reg reg;
-	const unsigned short mode_mask;
-	const unsigned short volt_mask;
-	const unsigned char volt_shft;
-	unsigned short mode_val;
-	unsigned short off_mode_val;
-	const int val_tbl_sz;
-	const int *val_tbl;
-	unsigned int mode_cntr;
-	const unsigned int volt_trans_time; /* in micro seconds */
-	const unsigned int turn_on_time; /* in micro seconds */
-
-} cpcap_regltr_data[CPCAP_NUM_REGULATORS] = {
-	[CPCAP_SW2]      = {CPCAP_REG_S2C1,
-			    0x0F00,
-			    0x007F,
-			    0,
-			    0x0000,
-			    0x0000,
-			    ARRAY_SIZE(sw2_sw4_val_tbl),
-			    sw2_sw4_val_tbl,
-			    0,
-			    120,
-			    1500},
-
-	[CPCAP_SW4]      = {CPCAP_REG_S4C1,
-			    0x0F00,
-			    0x007F,
-			    0,
-			    0x0000,
-			    0x0000,
-			    ARRAY_SIZE(sw2_sw4_val_tbl),
-			    sw2_sw4_val_tbl,
-			    0,
-			    100,
-			    1500},
-
-	[CPCAP_SW5]      = {CPCAP_REG_S5C,
-			    0x002A,
-			    0x0000,
-			    0,
-			    0x0000,
-			    0x0000,
-			    ARRAY_SIZE(sw5_val_tbl),
-			    sw5_val_tbl,
-			    0,
-			    0,
-			    1500},
-
-	[CPCAP_VCAM]     = {CPCAP_REG_VCAMC,
-			    0x0087,
-			    0x0030,
-			    4,
-			    0x0000,
-			    0x0000,
-			    ARRAY_SIZE(vcam_val_tbl),
-			    vcam_val_tbl,
-			    0,
-			    420,
-			    1000},
-
-	[CPCAP_VCSI]     = {CPCAP_REG_VCSIC,
-			    0x0047,
-			    0x0010,
-			    4,
-			    0x0000,
-			    0x0000,
-			    ARRAY_SIZE(vcsi_val_tbl),
-			    vcsi_val_tbl,
-			    0,
-			    350,
-			    1000},
-
-	[CPCAP_VDAC]     = {CPCAP_REG_VDACC,
-			    0x0087,
-			    0x0030,
-			    4,
-			    0x0000,
-			    0x0000,
-			    ARRAY_SIZE(vdac_val_tbl),
-			    vdac_val_tbl,
-			    0,
-			    420,
-			    1000},
-
-	[CPCAP_VDIG]     = {CPCAP_REG_VDIGC,
-			    0x0087,
-			    0x0030,
-			    4,
-			    0x0000,
-			    0x0000,
-			    ARRAY_SIZE(vdig_val_tbl),
-			    vdig_val_tbl,
-			    0,
-			    420,
-			    1000},
-
-	[CPCAP_VFUSE]    = {CPCAP_REG_VFUSEC,
-			    0x0080,
-			    0x000F,
-			    0,
-			    0x0000,
-			    0x0000,
-			    ARRAY_SIZE(vfuse_val_tbl),
-			    vfuse_val_tbl,
-			    0,
-			    420,
-			    1000},
-
-	[CPCAP_VHVIO]    = {CPCAP_REG_VHVIOC,
-			    0x0017,
-			    0x0000,
-			    0,
-			    0x0000,
-			    0x0000,
-			    ARRAY_SIZE(vhvio_val_tbl),
-			    vhvio_val_tbl,
-			    0,
-			    0,
-			    1000},
-
-	[CPCAP_VSDIO]    = {CPCAP_REG_VSDIOC,
-			    0x0087,
-			    0x0038,
-			    3,
-			    0x0000,
-			    0x0000,
-			    ARRAY_SIZE(vsdio_val_tbl),
-			    vsdio_val_tbl,
-			    0,
-			    420,
-			    1000},
-
-	[CPCAP_VPLL]     = {CPCAP_REG_VPLLC,
-			    0x0043,
-			    0x0018,
-			    3,
-			    0x0000,
-			    0x0000,
-			    ARRAY_SIZE(vpll_val_tbl),
-			    vpll_val_tbl,
-			    0,
-			    420,
-			    100},
-
-	[CPCAP_VRF1]     = {CPCAP_REG_VRF1C,
-			    0x00AC,
-			    0x0002,
-			    1,
-			    0x0000,
-			    0x0000,
-			    ARRAY_SIZE(vrf1_val_tbl),
-			    vrf1_val_tbl,
-			    0,
-			    10,
-			    1000},
-
-	[CPCAP_VRF2]     = {CPCAP_REG_VRF2C,
-			    0x0023,
-			    0x0008,
-			    3,
-			    0x0000,
-			    0x0000,
-			    ARRAY_SIZE(vrf2_val_tbl),
-			    vrf2_val_tbl,
-			    0,
-			    10,
-			    1000},
-
-	[CPCAP_VRFREF]   = {CPCAP_REG_VRFREFC,
-			    0x0023,
-			    0x0008,
-			    3,
-			    0x0000,
-			    0x0000,
-			    ARRAY_SIZE(vrfref_val_tbl),
-			    vrfref_val_tbl,
-			    0,
-			    420,
-			    100},
-
-	[CPCAP_VWLAN1]   = {CPCAP_REG_VWLAN1C,
-			    0x0047,
-			    0x0010,
-			    4,
-			    0x0000,
-			    0x0000,
-			    ARRAY_SIZE(vwlan1_val_tbl),
-			    vwlan1_val_tbl,
-			    0,
-			    420,
-			    1000},
-
-	[CPCAP_VWLAN2]   = {CPCAP_REG_VWLAN2C,
-			    0x020C,
-			    0x00C0,
-			    6,
-			    0x0000,
-			    0x0000,
-			    ARRAY_SIZE(vwlan2_val_tbl),
-			    vwlan2_val_tbl,
-			    0,
-			    420,
-			    1000},
-
-	[CPCAP_VSIM]     = {CPCAP_REG_VSIMC,
-			    0x0023,
-			    0x0008,
-			    3,
-			    0x0000,
-			    0x0000,
-			    ARRAY_SIZE(vsim_val_tbl),
-			    vsim_val_tbl,
-			    0,
-			    420,
-			    1000},
-
-	[CPCAP_VSIMCARD] = {CPCAP_REG_VSIMC,
-			    0x1E80,
-			    0x0008,
-			    3,
-			    0x0000,
-			    0x0000,
-			    ARRAY_SIZE(vsimcard_val_tbl),
-			    vsimcard_val_tbl,
-			    0,
-			    420,
-			    1000},
-
-	[CPCAP_VVIB]     = {CPCAP_REG_VVIBC,
-			    0x0001,
-			    0x000C,
-			    2,
-			    0x0000,
-			    0x0000,
-			    ARRAY_SIZE(vvib_val_tbl),
-			    vvib_val_tbl,
-			    0,
-			    500,
-			    500},
-
-	[CPCAP_VUSB]     = {CPCAP_REG_VUSBC,
-			    0x011C,
-			    0x0040,
-			    6,
-			    0x0000,
-			    0x0000,
-			    ARRAY_SIZE(vusb_val_tbl),
-			    vusb_val_tbl,
-			    0,
-			    0,
-			    1000},
-
-	[CPCAP_VAUDIO]   = {CPCAP_REG_VAUDIOC,
-			    0x0016,
-			    0x0001,
-			    0,
-			    0x0000,
-			    0x0000,
-			    ARRAY_SIZE(vaudio_val_tbl),
-			    vaudio_val_tbl,
-			    0,
-			    0,
-			    1000},
-#endif
 };
 
-static struct cpcap_mode_value * __devinit cpcap_regulator_find_init_mode_mask(
-				   struct cpcap_device *cpcap,
-				   struct cpcap_mode_value *init)
-{
-	unsigned int i = CPCAP_MODE_VALUE_MAX;
-
-	while ((init != NULL) &&
-		   (--i)) {
-		if (init->hw_check == NULL)
-			return init;
-		if (init->hw_check(cpcap))
-			return init;
-		init++;
-	}
-	return NULL;
-}
-
 static int cpcap_regulator_set_voltage(struct regulator_dev *rdev,
-				       int min_uV, int max_uV,
-				       unsigned int *selector)
+				       int min_uV, int max_uV, unsigned int *selector)
 {
 	struct cpcap_device *cpcap;
 	int regltr_id;
@@ -779,6 +471,8 @@ static int cpcap_regulator_set_voltage(struct regulator_dev *rdev,
 		*selector = i;
 
 		i <<= cpcap_regltr_data[regltr_id].volt_shft;
+
+                i += cpcap_regltr_data[regltr_id].bit_offset_from_cpcap_lowest_voltage;
 	}
 
 	retval = cpcap_regacc_write(cpcap, regnr, i,
@@ -813,6 +507,9 @@ static int cpcap_regulator_get_voltage(struct regulator_dev *rdev)
 		return 0;
 
 	volt_bits &= cpcap_regltr_data[regltr_id].volt_mask;
+
+	volt_bits -= cpcap_regltr_data[regltr_id].bit_offset_from_cpcap_lowest_voltage;
+
 	shift = cpcap_regltr_data[regltr_id].volt_shft;
 
 	return cpcap_regltr_data[regltr_id].val_tbl[volt_bits >> shift];
@@ -838,10 +535,10 @@ static int cpcap_regulator_enable(struct regulator_dev *rdev)
 	if ((retval == 0) &&
 		(cpcap_regltr_data[regltr_id].mode_val & CPCAP_REG_OFF_MODE_SEC)) {
 		retval = cpcap_regacc_write(cpcap,
-					cpcap_regltr_data[regltr_id].assignment_reg, 						0, 
-					cpcap_regltr_data[regltr_id].assignment_mask);
+									cpcap_regltr_data[regltr_id].assignment_reg,
+									0,
+									cpcap_regltr_data[regltr_id].assignment_mask);
 	}
-
 	if ((cpcap_regltr_data[regltr_id].turn_on_time) && (retval == 0))
 		udelay(cpcap_regltr_data[regltr_id].turn_on_time);
 
@@ -858,23 +555,19 @@ static int cpcap_regulator_disable(struct regulator_dev *rdev)
 	regltr_id = rdev_get_id(rdev);
 	if (regltr_id >= CPCAP_NUM_REGULATORS)
 		return -EINVAL;
-
 	regnr = cpcap_regltr_data[regltr_id].reg;
 
-/*	return cpcap_regacc_write(cpcap, regnr,
-				  cpcap_regltr_data[regltr_id].off_mode_val,
-				  cpcap_regltr_data[regltr_id].mode_mask);*/
 	retval = 0;
 	if (cpcap_regltr_data[regltr_id].mode_val & CPCAP_REG_OFF_MODE_SEC) {
 		retval = cpcap_regacc_write(cpcap,
-					cpcap_regltr_data[regltr_id].assignment_reg,
-					cpcap_regltr_data[regltr_id].assignment_mask,
-					cpcap_regltr_data[regltr_id].assignment_mask);
+									cpcap_regltr_data[regltr_id].assignment_reg,
+									cpcap_regltr_data[regltr_id].assignment_mask,
+									cpcap_regltr_data[regltr_id].assignment_mask);
 	}
 	if (retval == 0) {
 		retval = cpcap_regacc_write(cpcap, regnr,
-					cpcap_regltr_data[regltr_id].off_mode_val,
-					cpcap_regltr_data[regltr_id].mode_mask);
+									cpcap_regltr_data[regltr_id].off_mode_val,
+									cpcap_regltr_data[regltr_id].mode_mask);
 	}
 	return (retval);
 }
@@ -931,14 +624,13 @@ static int cpcap_regulator_set_mode(struct regulator_dev *rdev,
 
 		if (ret == 0)
 			cpcap_regltr_data[regltr_id].mode_cntr--;
-	} else if (mode == REGULATOR_MODE_IDLE ) {
+	}else if (mode == REGULATOR_MODE_IDLE ) {
              /*For case of  audio manager restart   set regulator to low power mode and reset counter */
 			ret = cpcap_regacc_write(cpcap, regnr,
 						 CPCAP_BIT_AUDIO_LOW_PWR,
 						 CPCAP_BIT_AUDIO_LOW_PWR);
 			cpcap_regltr_data[regltr_id].mode_cntr =0;
          }
-
 
 	return ret;
 }
@@ -978,6 +670,23 @@ static struct regulator_desc regulators[] = {
 	[CPCAP_VAUDIO]   = CPCAP_REGULATOR("vaudio", CPCAP_VAUDIO),
 };
 
+static struct cpcap_mode_value * __devinit cpcap_regulator_find_init_mode_mask(
+				   struct cpcap_device *cpcap,
+				   struct cpcap_mode_value *init)
+{
+	unsigned int i = CPCAP_MODE_VALUE_MAX;
+
+	while ((init != NULL) &&
+		   (--i)) {
+		if (init->hw_check == NULL)
+			return init;
+		if (init->hw_check(cpcap))
+			return init;
+		init++;
+	}
+	return NULL;
+}
+
 static int __devinit cpcap_regulator_probe(struct platform_device *pdev)
 {
 	struct regulator_dev *rdev;
@@ -987,15 +696,11 @@ static int __devinit cpcap_regulator_probe(struct platform_device *pdev)
 	struct cpcap_mode_value *init_mode;
 	enum cpcap_regulator_id reg_id;
 
-	int i;
-	
-	//printk(KERN_INFO "pICS_%s: Starting...",__func__);
-
 	/* Already set by core driver */
 	cpcap = platform_get_drvdata(pdev);
 	data = cpcap->spi->controller_data;
 	init = pdev->dev.platform_data;
-	
+
 	reg_id = pdev->id;
 	/* SW1, SW2, SW3 & SW4 on ST CPCAP 3.1 are initialized to AMS/AMS mode
 	   in board-mot-power.c. Changing the mode bits is disabled here by
@@ -1030,37 +735,25 @@ static int __devinit cpcap_regulator_probe(struct platform_device *pdev)
 	init_mode =
 		cpcap_regulator_find_init_mode_mask(cpcap,
 					data->regulator_mode_values[reg_id]);
+
 	if (init_mode != NULL)
 		cpcap_regltr_data[reg_id].mode_val = init_mode->mode;
 
 	init_mode =
 		cpcap_regulator_find_init_mode_mask(cpcap,
 					data->regulator_off_mode_values[reg_id]);
+
 	if (init_mode != NULL)
 		cpcap_regltr_data[reg_id].off_mode_val = init_mode->mode;
 
-	printk(KERN_INFO "pICS_%s: Working...",__func__);
-	for (i = 0; i < CPCAP_NUM_REGULATORS; i++) {
-		init_mode =
-			cpcap_regulator_find_init_mode_mask(cpcap,
-					data->regulator_mode_values[i]);
-		if (init_mode != NULL)
-			cpcap_regltr_data[i].mode_val = init_mode->mode;
-		init_mode =
-			cpcap_regulator_find_init_mode_mask(cpcap,
-					data->regulator_off_mode_values[i]);
-		if (init_mode != NULL)
-			cpcap_regltr_data[i].off_mode_val = init_mode->mode;
-	}
-
 	rdev = regulator_register(&regulators[reg_id], &pdev->dev,
-				  init, cpcap);
+				init, cpcap);
 	if (IS_ERR(rdev))
 		return PTR_ERR(rdev);
 	/* this is ok since the cpcap is still reachable from the rdev */
 	platform_set_drvdata(pdev, rdev);
-
-/*	if (reg_id == CPCAP_SW5) {
+/*
+	if (reg_id == CPCAP_SW5) {
 		data->regulator_init =
 			cpcap->regulator_pdev[CPCAP_VUSB]->dev.platform_data;
 		data->regulator_init->supply_regulator = "vusb";
@@ -1089,11 +782,6 @@ static struct platform_driver cpcap_regulator_driver = {
 
 static int __init cpcap_regulator_init(void)
 {
-	int i;
-
-/*	for (i = 0; i < SW2_SW4_VAL_TBL_SIZE; i++)
-		sw2_sw4_val_tbl[i] = 600000 + (i * SW2_SW4_VAL_TBL_STEP);*/
-
 	return platform_driver_register(&cpcap_regulator_driver);
 }
 subsys_initcall(cpcap_regulator_init);

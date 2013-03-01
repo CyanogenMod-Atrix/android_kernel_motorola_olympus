@@ -38,7 +38,7 @@
 
 #include "cpcap.h"
 
-/* #define CPCAP_AUDIO_DEBUG */
+#define CPCAP_AUDIO_DEBUG 
 #ifdef CPCAP_AUDIO_DEBUG
 #define CPCAP_AUDIO_DEBUG_LOG(args...) printk(KERN_INFO "ALSA CPCAP:" args)
 #else
@@ -2751,7 +2751,7 @@ static int cpcap_resume(struct snd_soc_codec *codec)
 
 static int cpcap_probe(struct snd_soc_codec *codec)
 {
-	struct device *pdev;
+	struct platform_device *pdev;
 	struct cpcap_audio_state *curr_state;
 
 	pr_info("ENTER: %s\n", __func__);
@@ -2763,8 +2763,8 @@ static int cpcap_probe(struct snd_soc_codec *codec)
 	}
 	cpcap_global_state_pointer = curr_state;
 
-	pdev = container_of(codec->dev, struct device, dev);
-	curr_state->cpcap = dev_get_drvdata(pdev);
+	pdev = container_of(codec->dev, struct platform_device, dev);
+	curr_state->cpcap = platform_get_drvdata(pdev);
 	if (curr_state->cpcap) {
 		curr_state->cpcap->h2w_new_state = &audio_callback;
 		curr_state->cpcap->h2w_new_state_data = curr_state;

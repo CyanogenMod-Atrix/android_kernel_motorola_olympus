@@ -529,7 +529,7 @@ static int __devinit cpcap_probe(struct spi_device *spi)
 	cpcap = kzalloc(sizeof(*cpcap), GFP_KERNEL);
 	if (cpcap == NULL)
 		return -ENOMEM;
-	printk(KERN_INFO "%s : probing\n", __func__);
+	//printk(KERN_INFO "%s : probing\n", __func__);
 	cpcap->spi = spi;
 	data = spi->controller_data;
 //	dev_set_drvdata(&spi->dev, cpcap);
@@ -588,8 +588,8 @@ static int __devinit cpcap_probe(struct spi_device *spi)
 		pdev->dev.platform_data = &data->regulator_init[i];
 		dev_set_drvdata(&pdev->dev, cpcap);
 		cpcap->regulator_pdev[i] = pdev;
-		printk(KERN_INFO "CPCAP: creating %d (%s) regulator\n", i, 
-				pdev->name);
+		/*printk(KERN_INFO "CPCAP: creating %d (%s) regulator\n", i, 
+				pdev->name);*/
 	}
 
 	for (i = 0; i < CPCAP_NUM_REGULATORS; i++) {
@@ -598,7 +598,7 @@ static int __devinit cpcap_probe(struct spi_device *spi)
 		//if (i == CPCAP_VUSB)
 		//	continue;
 		platform_device_add(cpcap->regulator_pdev[i]);
-		printk(KERN_INFO "CPCAP: adding regulator device %d \n", i);
+		/*printk(KERN_INFO "CPCAP: adding regulator device %d \n", i);*/
 	}	
 
 	platform_add_devices(cpcap_devices, ARRAY_SIZE(cpcap_devices));

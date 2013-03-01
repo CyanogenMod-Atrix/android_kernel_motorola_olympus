@@ -337,18 +337,15 @@ struct cpcap_spi_init_data tegra_cpcap_spi_init[] = {
 	/* Set SW1 to AMS/AMS 1.025v. */
 	{CPCAP_REG_S1C1,      0x4822, NULL             },
 	/* Set SW2 to AMS/AMS 1.2v. */
-//	{CPCAP_REG_S2C1,      0x4830, NULL             }, 
-	{CPCAP_REG_S2C1,      0x4822, NULL             },//lowering voltages
+	{CPCAP_REG_S2C1,      0x4830, NULL             }, 
 	/* Set SW3 to AMS/AMS 1.8V for version 3.1 only. */
 	{CPCAP_REG_S3C,       0x0445, is_cpcap_eq_3_1  },
 	/* Set SW3 to Pulse Skip/PFM. */
 	{CPCAP_REG_S3C,       0x043d, NULL             },
 	/* Set SW4 to AMS/AMS 1.2v for version 3.1 only. */
-//	{CPCAP_REG_S4C1,      0x4830, is_cpcap_eq_3_1  },
-	{CPCAP_REG_S4C1,      0x4822, is_cpcap_eq_3_1  },//lowering voltages
+	{CPCAP_REG_S4C1,      0x4830, is_cpcap_eq_3_1  },
 	/* Set SW4 to PFM/PFM 1.2v. */
-//	{CPCAP_REG_S4C1,      0x4930, NULL             },
-	{CPCAP_REG_S4C1,      0x4922, NULL             },//lowering voltages
+	{CPCAP_REG_S4C1,      0x4930, NULL             },
 	/* Set SW4 down to 0.95v when secondary standby is asserted. */
 	{CPCAP_REG_S4C2,      0x301c, NULL             },
 	/* Set SW5 to On/Off. */

@@ -497,11 +497,11 @@ int cpcap_regacc_read(struct cpcap_device *cpcap, enum cpcap_reg reg,
 		retval = cpcap_config_for_read(spi, register_info_tbl
 				      [reg].address, value_ptr);
 
-		 if ( x<75 ) {
+		/* if ( x<75 ) {
                         printk (KERN_INFO "%s: Read 0x%x from register %d\n",
                                 __func__, &value_ptr, register_info_tbl[reg].address);
                         x++;
-                }
+                }*/
 
 		mutex_unlock(&reg_access);
 		if (cpcap->spi->chip_select != CPCAP_SECONDARY_CS) {
@@ -554,7 +554,7 @@ int cpcap_regacc_write(struct cpcap_device *cpcap,
 		old_value &= register_info_tbl[reg].rbw_mask;
 		old_value &= ~mask;
 		value |= old_value;
-		if ( i<75 ) {
+		/*if ( i<75 ) {
 			printk (KERN_INFO "%s: Old value 0x%x in register %d\n",
                                 __func__, temp_old_value, register_info_tbl[reg].address);
                         printk (KERN_INFO "%s: After unmasking 0x%x & 0x%x in register %d\n",
@@ -562,7 +562,7 @@ int cpcap_regacc_write(struct cpcap_device *cpcap,
                         printk (KERN_INFO "%s: Writing 0x%x & 0x%x to register %d\n",
                                 __func__, value, mask, register_info_tbl[reg].address);
                         i++;
-                }
+                }*/
 		retval = cpcap_config_for_write(spi,
 						register_info_tbl[reg].address,
 						value);
