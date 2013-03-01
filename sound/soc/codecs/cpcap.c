@@ -196,139 +196,139 @@ static const struct soc_enum cpcap_codec_op_modes =
 
 /* CDC playback switches */
 static const struct snd_kcontrol_new epcdc_switch_controls =
-	SOC_SINGLE_EXT("Switch",
+	SOC_SINGLE_EXT("EPCDC Switch",
 		CPCAP_AUDIO_REG_INDEX(CPCAP_REG_RXCOA), 0, 1, 0,
 		snd_soc_dapm_get_volsw, snd_soc_put_cpcap_switch);
 
 static const struct snd_kcontrol_new ldsprcdc_switch_controls =
-	SOC_SINGLE_EXT("Switch",
+	SOC_SINGLE_EXT("LDSPRCDC Switch",
 		CPCAP_AUDIO_REG_INDEX(CPCAP_REG_RXCOA), 1, 1, 0,
 		snd_soc_dapm_get_volsw, snd_soc_put_cpcap_switch);
 
 static const struct snd_kcontrol_new ldsplcdc_switch_controls =
-	SOC_SINGLE_EXT("Switch",
+	SOC_SINGLE_EXT("LDSPLCDC Switch",
 		CPCAP_AUDIO_REG_INDEX(CPCAP_REG_RXCOA), 2, 1, 0,
 		snd_soc_dapm_get_volsw, snd_soc_put_cpcap_switch);
 
 static const struct snd_kcontrol_new linercdc_switch_controls =
-	SOC_SINGLE_EXT("Switch",
+	SOC_SINGLE_EXT("LINERCDC Switch",
 		CPCAP_AUDIO_REG_INDEX(CPCAP_REG_RXCOA), 3, 1, 0,
 		snd_soc_dapm_get_volsw, snd_soc_put_cpcap_switch);
 
 static const struct snd_kcontrol_new linelcdc_switch_controls =
-	SOC_SINGLE_EXT("Switch",
+	SOC_SINGLE_EXT("LINELCDC Switch",
 		CPCAP_AUDIO_REG_INDEX(CPCAP_REG_RXCOA), 4, 1, 0,
 		snd_soc_dapm_get_volsw, snd_soc_put_cpcap_switch);
 
 static const struct snd_kcontrol_new hsrcdc_switch_controls =
-	SOC_SINGLE_EXT("Switch",
+	SOC_SINGLE_EXT("HSRCDC Switch",
 		CPCAP_AUDIO_REG_INDEX(CPCAP_REG_RXCOA), 5, 1, 0,
 		snd_soc_dapm_get_volsw, snd_soc_put_cpcap_switch);
 
 static const struct snd_kcontrol_new hslcdc_switch_controls =
-	SOC_SINGLE_EXT("Switch",
+	SOC_SINGLE_EXT("HSLCDC Switch",
 		CPCAP_AUDIO_REG_INDEX(CPCAP_REG_RXCOA), 6, 1, 0,
 		snd_soc_dapm_get_volsw, snd_soc_put_cpcap_switch);
 
 static const struct snd_kcontrol_new usbdmcdc_switch_controls =
-	SOC_SINGLE_EXT("Switch",
+	SOC_SINGLE_EXT("USBDCCDC Switch",
 		CPCAP_AUDIO_REG_INDEX(CPCAP_REG_RXCOA), 7, 1, 0,
 		snd_soc_dapm_get_volsw, snd_soc_put_cpcap_switch);
 
 static const struct snd_kcontrol_new usbdpcdc_switch_controls =
-	SOC_SINGLE_EXT("Switch",
+	SOC_SINGLE_EXT("USBDPCDC Switch",
 		CPCAP_AUDIO_REG_INDEX(CPCAP_REG_RXCOA), 8, 1, 0,
 		snd_soc_dapm_get_volsw, snd_soc_put_cpcap_switch);
 
 /* STDAC playback switches */
 static const struct snd_kcontrol_new epdac_switch_controls =
-	SOC_SINGLE_EXT("Switch",
+	SOC_SINGLE_EXT("EPDAC Switch",
 		CPCAP_AUDIO_REG_INDEX(CPCAP_REG_RXSDOA), 0, 1, 0,
 		snd_soc_dapm_get_volsw, snd_soc_put_cpcap_switch);
 
 static const struct snd_kcontrol_new ldsprdac_switch_controls =
-	SOC_SINGLE_EXT("Switch",
+	SOC_SINGLE_EXT("LDSPRDAC Switch",
 		CPCAP_AUDIO_REG_INDEX(CPCAP_REG_RXSDOA), 1, 1, 0,
 		snd_soc_dapm_get_volsw, snd_soc_put_cpcap_switch);
 
 static const struct snd_kcontrol_new ldspldac_switch_controls =
-	SOC_SINGLE_EXT("Switch",
+	SOC_SINGLE_EXT("LDSPLDAC Switch",
 		CPCAP_AUDIO_REG_INDEX(CPCAP_REG_RXSDOA), 2, 1, 0,
 		snd_soc_dapm_get_volsw, snd_soc_put_cpcap_switch);
 
 static const struct snd_kcontrol_new linerdac_switch_controls =
-	SOC_SINGLE_EXT("Switch",
+	SOC_SINGLE_EXT("LINERDAC Switch",
 		CPCAP_AUDIO_REG_INDEX(CPCAP_REG_RXSDOA), 3, 1, 0,
 		snd_soc_dapm_get_volsw, snd_soc_put_cpcap_switch);
 
 static const struct snd_kcontrol_new lineldac_switch_controls =
-	SOC_SINGLE_EXT("Switch",
+	SOC_SINGLE_EXT("LINELDAC Switch",
 		CPCAP_AUDIO_REG_INDEX(CPCAP_REG_RXSDOA), 4, 1, 0,
 		snd_soc_dapm_get_volsw, snd_soc_put_cpcap_switch);
 
 static const struct snd_kcontrol_new hsrdac_switch_controls =
-	SOC_SINGLE_EXT("Switch",
+	SOC_SINGLE_EXT("HSRDAC Switch",
 		CPCAP_AUDIO_REG_INDEX(CPCAP_REG_RXSDOA), 5, 1, 0,
 		snd_soc_dapm_get_volsw, snd_soc_put_cpcap_switch);
 
 static const struct snd_kcontrol_new hsldac_switch_controls =
-	SOC_SINGLE_EXT("Switch",
+	SOC_SINGLE_EXT("HSLDAC Switch",
 		CPCAP_AUDIO_REG_INDEX(CPCAP_REG_RXSDOA), 6, 1, 0,
 		snd_soc_dapm_get_volsw, snd_soc_put_cpcap_switch);
 
 static const struct snd_kcontrol_new usbdmdac_switch_controls =
-	SOC_SINGLE_EXT("Switch",
+	SOC_SINGLE_EXT("USBDMDAC Switch",
 		CPCAP_AUDIO_REG_INDEX(CPCAP_REG_RXSDOA), 7, 1, 0,
 		snd_soc_dapm_get_volsw, snd_soc_put_cpcap_switch);
 
 static const struct snd_kcontrol_new usbdpdac_switch_controls =
-	SOC_SINGLE_EXT("Switch",
+	SOC_SINGLE_EXT("USBDPDAC Switch",
 		CPCAP_AUDIO_REG_INDEX(CPCAP_REG_RXSDOA), 8, 1, 0,
 		snd_soc_dapm_get_volsw, snd_soc_put_cpcap_switch);
 
 /* ExternalPGA playback switches */
 static const struct snd_kcontrol_new epext_switch_controls =
-	SOC_SINGLE_EXT("Switch",
+	SOC_SINGLE_EXT("EPEXT Switch",
 		CPCAP_AUDIO_REG_INDEX(CPCAP_REG_RXEPOA), 0, 1, 0,
 		snd_soc_dapm_get_volsw, snd_soc_put_cpcap_switch);
 
 static const struct snd_kcontrol_new ldsprext_switch_controls =
-	SOC_SINGLE_EXT("Switch",
+	SOC_SINGLE_EXT("LDSPREXT Switch",
 		CPCAP_AUDIO_REG_INDEX(CPCAP_REG_RXEPOA), 1, 1, 0,
 		snd_soc_dapm_get_volsw, snd_soc_put_cpcap_switch);
 
 static const struct snd_kcontrol_new ldsplext_switch_controls =
-	SOC_SINGLE_EXT("Switch",
+	SOC_SINGLE_EXT("LDSPLEXT Switch",
 		CPCAP_AUDIO_REG_INDEX(CPCAP_REG_RXEPOA), 2, 1, 0,
 		snd_soc_dapm_get_volsw, snd_soc_put_cpcap_switch);
 
 static const struct snd_kcontrol_new linerext_switch_controls =
-	SOC_SINGLE_EXT("Switch",
+	SOC_SINGLE_EXT("LINEREXT Switch",
 		CPCAP_AUDIO_REG_INDEX(CPCAP_REG_RXEPOA), 3, 1, 0,
 		snd_soc_dapm_get_volsw, snd_soc_put_cpcap_switch);
 
 static const struct snd_kcontrol_new linelext_switch_controls =
-	SOC_SINGLE_EXT("Switch",
+	SOC_SINGLE_EXT("LINELEXT Switch",
 		CPCAP_AUDIO_REG_INDEX(CPCAP_REG_RXEPOA), 4, 1, 0,
 		snd_soc_dapm_get_volsw, snd_soc_put_cpcap_switch);
 
 static const struct snd_kcontrol_new hsrext_switch_controls =
-	SOC_SINGLE_EXT("Switch",
+	SOC_SINGLE_EXT("HSREXT Switch",
 		CPCAP_AUDIO_REG_INDEX(CPCAP_REG_RXEPOA), 5, 1, 0,
 		snd_soc_dapm_get_volsw, snd_soc_put_cpcap_switch);
 
 static const struct snd_kcontrol_new hslext_switch_controls =
-	SOC_SINGLE_EXT("Switch",
+	SOC_SINGLE_EXT("HSLEXT Switch",
 		CPCAP_AUDIO_REG_INDEX(CPCAP_REG_RXEPOA), 6, 1, 0,
 		snd_soc_dapm_get_volsw, snd_soc_put_cpcap_switch);
 
 static const struct snd_kcontrol_new usbdmext_switch_controls =
-	SOC_SINGLE_EXT("Switch",
+	SOC_SINGLE_EXT("USBDMEXT Switch",
 		CPCAP_AUDIO_REG_INDEX(CPCAP_REG_RXEPOA), 7, 1, 0,
 		snd_soc_dapm_get_volsw, snd_soc_put_cpcap_switch);
 
 static const struct snd_kcontrol_new usbdpext_switch_controls =
-	SOC_SINGLE_EXT("Switch",
+	SOC_SINGLE_EXT("USBDPEXT Switch",
 		CPCAP_AUDIO_REG_INDEX(CPCAP_REG_RXEPOA), 8, 1, 0,
 		snd_soc_dapm_get_volsw, snd_soc_put_cpcap_switch);
 
