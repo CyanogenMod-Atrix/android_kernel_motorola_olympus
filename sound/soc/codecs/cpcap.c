@@ -2754,6 +2754,8 @@ static int cpcap_probe(struct snd_soc_codec *codec)
 	struct platform_device *pdev;
 	struct cpcap_audio_state *curr_state;
 
+	pr_info("ENTER: %s\n", __func__);
+
 	curr_state = kzalloc(sizeof(struct cpcap_audio_state), GFP_KERNEL);
 	if (!curr_state) {
 		printk(KERN_ERR "Failed to allocate cpcap_audio_state\n");

@@ -49,8 +49,6 @@
 #define MOTSND_DEBUG_LOG(args...)
 #endif
 
-//static unsigned long dpll_abe_rate;
-
 #define DPLL_ABE_RATE_SPDIF	90315789
 
 #define DRV_NAME "tegra-snd-olympus"
@@ -137,7 +135,7 @@ static int motsnd_hw_params(struct snd_pcm_substream *substream,
 static struct snd_soc_ops motsnd_ops = {
 	.hw_params = motsnd_hw_params,
 };
-#if 0
+
 static int motsnd_voice_hw_params(struct snd_pcm_substream *substream,
 				  struct snd_pcm_hw_params *params)
 {
@@ -177,9 +175,9 @@ static int motsnd_voice_hw_params(struct snd_pcm_substream *substream,
 	}
 
 	/* Set cpu DAI configuration */
-	ret = snd_soc_dai_set_sysclk(cpu_dai,
+/*	ret = snd_soc_dai_set_sysclk(cpu_dai,
 				     OMAP_MCBSP_SYSCLK_CLKX_EXT,
-				     0, 0);
+				     0, 0);*/
 	if (ret < 0)
 		printk(KERN_ERR "can't set cpu DAI system clock\n");
 
@@ -201,7 +199,7 @@ static int motsnd_incall_startup(struct snd_pcm_substream *substream)
 	MOTSND_DEBUG_LOG("%s: entered\n", __func__);
 	if (pdata->voice_type == VOICE_TYPE_STE) {
 		/* STE_M570 */
-		mcbsp3_i2s1_pin_mux_switch(1);
+	//	mcbsp3_i2s1_pin_mux_switch(1);
 	}
 	return 0;
 }
@@ -217,7 +215,7 @@ static void motsnd_incall_shutdown(struct snd_pcm_substream *substream)
 	MOTSND_DEBUG_LOG("%s: entered\n", __func__);
 	if (pdata->voice_type == VOICE_TYPE_STE) {
 		/* STE_M570 */
-		mcbsp3_i2s1_pin_mux_switch(0);
+		//mcbsp3_i2s1_pin_mux_switch(0);
 	}
 }
 static int motsnd_incall_hw_params(struct snd_pcm_substream *substream,
@@ -231,18 +229,6 @@ static struct snd_soc_ops motsnd_incall_ops = {
 	.startup = motsnd_incall_startup,
 	.shutdown = motsnd_incall_shutdown,
 	.hw_params = motsnd_incall_hw_params,
-};
-#endif
-#if 0
-static int motsnd_fm_hw_params(struct snd_pcm_substream *substream,
-			       struct snd_pcm_hw_params *params)
-{
-	MOTSND_DEBUG_LOG("%s: entered\n", __func__);
-	return 0;
-}
-
-static struct snd_soc_ops motsnd_fm_ops = {
-	.hw_params = motsnd_fm_hw_params,
 };
 
 static int motsnd_btvoice_hw_params(struct snd_pcm_substream *substream,
@@ -288,9 +274,9 @@ static int motsnd_btvoice_hw_params(struct snd_pcm_substream *substream,
 	}
 
 	/* Set cpu DAI configuration */
-	ret = snd_soc_dai_set_sysclk(cpu_dai,
+/*	ret = snd_soc_dai_set_sysclk(cpu_dai,
 				     OMAP_MCBSP_SYSCLK_CLKX_EXT,
-				     0, 0);
+				     0, 0);*/
 	if (ret < 0)
 		printk(KERN_ERR "can't set cpu DAI system clock\n");
 
@@ -300,184 +286,87 @@ static int motsnd_btvoice_hw_params(struct snd_pcm_substream *substream,
 static struct snd_soc_ops motsnd_btvoice_ops = {
 	.hw_params = motsnd_btvoice_hw_params,
 };
-#endif
-#ifdef MOTSND_CONFIG_ENABLE_SPDIF
-static int motsnd_spdif_startup(struct snd_pcm_substream *substream)
+
+static int motsnd_bt_incall_hw_params(struct snd_pcm_substream *substream,
+				  struct snd_pcm_hw_params *params)
 {
-	unsigned long rate;
-	struct clk *dpll_abe_ck;
+//	int ret;
+	
+	pr_info("ENTER: motsnd_tegra_mm_init\n");
 
-	MOTSND_DEBUG_LOG("%s: entered\n", __func__);
-
-	dpll_abe_ck = clk_get(NULL, "dpll_abe_ck");
-	if (dpll_abe_ck == NULL) {
-		printk(KERN_INFO "%s: "
-			"SPDIF Error: Cannot open ABE DPLL!\n",
-			__func__);
-		return -EPERM ;
-	}
-
-	rate = DPLL_ABE_RATE_SPDIF;
-	dpll_abe_rate = clk_get_rate(dpll_abe_ck);
-
-	if (rate == 0) {
-		printk(KERN_INFO "%s: "
-			"SPDIF Error: ABE DPLL rate invalid!\n",
-			__func__);
-		return -EPERM;
-	}
-
-	if (omap3_noncore_dpll_set_rate(dpll_abe_ck, rate) < 0) {
-		printk(KERN_INFO "%s: "
-			"SPDIF Error: ABE DPLL programming failed!\n",
-			__func__);
-		return -EPERM;
-	} else {
-		propagate_rate(dpll_abe_ck);
-	}
-
+//	return ret;
 	return 0;
-}
+};
 
-static void motsnd_spdif_shutdown(struct snd_pcm_substream *substream)
-{
-	unsigned long rate;
-	struct clk *dpll_abe_ck;
-
-	MOTSND_DEBUG_LOG("%s: entered\n", __func__);
-
-	dpll_abe_ck = clk_get(NULL, "dpll_abe_ck");
-	if (dpll_abe_ck == NULL) {
-		printk(KERN_INFO "%s: "
-			"SPDIF Error: Cannot open ABE DPLL!\n",
-			__func__);
-		return;
-	}
-
-	rate = dpll_abe_rate;
-
-	if (rate == 0) {
-		printk(KERN_INFO "%s: "
-			"SPDIF Error: ABE DPLL rate invalid!\n",
-			__func__);
-		return;
-	}
-
-	if (omap3_noncore_dpll_set_rate(dpll_abe_ck, rate) < 0) {
-		printk(KERN_INFO "%s: "
-			"SPDIF Error: ABE DPLL programming failed!\n",
-			__func__);
-		return;
-	} else {
-		propagate_rate(dpll_abe_ck);
-	}
-}
+static struct snd_soc_ops motsnd_bt_incall_ops = {
+	.hw_params = motsnd_bt_incall_hw_params,
+};
 
 static int motsnd_spdif_hw_params(struct snd_pcm_substream *substream,
 				  struct snd_pcm_hw_params *params)
 {
 	MOTSND_DEBUG_LOG("%s: entered\n", __func__);
 	return 0;
-}
+};
 
 static struct snd_soc_ops motsnd_spdif_ops = {
-	.startup = motsnd_spdif_startup,
-	.shutdown = motsnd_spdif_shutdown,
 	.hw_params = motsnd_spdif_hw_params,
 };
-#endif /*ENABLE_SPDIF*/
-#if 0
-static int motsnd_bpvoice_hw_params(struct snd_pcm_substream *substream,
-			       struct snd_pcm_hw_params *params)
-{
-	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct snd_soc_codec *codec = rtd->codec_dai->codec;
-	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
-	struct platform_device *pdev = container_of(codec->dev,
-			struct platform_device, dev);
-	struct cpcap_audio_pdata *pdata = pdev->dev.platform_data;
-	int ret;
 
-	MOTSND_DEBUG_LOG("%s: entered\n", __func__);
-
-	if (pdata->voice_type == VOICE_TYPE_STE) {
-		/* STE_M570 */
-		/* Set cpu DAI configuration */
-		ret = snd_soc_dai_set_fmt(cpu_dai,
-					  SND_SOC_DAIFMT_I2S |
-					  SND_SOC_DAIFMT_IB_NF |
-					  SND_SOC_DAIFMT_CBM_CFM);
-
-		if (ret < 0) {
-			printk(KERN_ERR "can't set cpu DAI configuration\n");
-			return ret;
-		}
-	} else {
-		ret = -EIO;
-		printk(KERN_ERR "%s: voice_type = %u, not valid modem",
-			__func__, pdata->voice_type);
-		return ret;
-	}
-	/* Set cpu DAI configuration */
-	ret = snd_soc_dai_set_sysclk(cpu_dai,
-				     OMAP_MCBSP_SYSCLK_CLKX_EXT,
-				     0, 0);
-	if (ret < 0)
-		printk(KERN_ERR "can't set cpu DAI system clock\n");
-	return ret;
-}
-
-static struct snd_soc_ops motsnd_bpvoice_ops = {
-	.hw_params = motsnd_bpvoice_hw_params,
-};
-#endif
-#ifdef MOTSND_CONFIG_ENABLE_ABE
-static int mcbsp_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
-			struct snd_pcm_hw_params *params)
-{
-	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
-	struct snd_interval *channels = hw_param_interval(params,
-						SNDRV_PCM_HW_PARAM_CHANNELS);
-	unsigned int be_id = rtd->dai_link->be_id;
-	unsigned int threshold;
-
-	switch (be_id) {
-	case OMAP_ABE_DAI_MM_FM:
-		channels->min = 2;
-		threshold = 2;
-		break;
-	case OMAP_ABE_DAI_BT_VX:
-		channels->min = 1;
-		threshold = 1;
-		break;
-	default:
-		threshold = 1;
-		break;
-	}
-
-	snd_mask_set(&params->masks[SNDRV_PCM_HW_PARAM_FORMAT -
-				    SNDRV_PCM_HW_PARAM_FIRST_MASK],
-			SNDRV_PCM_FORMAT_S16_LE);
-
-	omap_mcbsp_set_tx_threshold(cpu_dai->id, threshold);
-	omap_mcbsp_set_rx_threshold(cpu_dai->id, threshold);
-
-	return 0;
-}
-#endif /*ENABLE_ABE*/
-
+/*
 static int motsnd_cpcap_init(struct snd_soc_pcm_runtime *rtd)
 {
 	MOTSND_DEBUG_LOG("%s: Entered\n", __func__);
 	return 0;
-}
-/*
+}*/
+
 static int motsnd_cpcap_voice_init(struct snd_soc_pcm_runtime *rtd)
 {
 	MOTSND_DEBUG_LOG("%s: Entered\n", __func__);
 	return 0;
 }
-*/
+
+static const struct snd_soc_dapm_widget tegra_dapm_widgets[] = {
+	SND_SOC_DAPM_SPK("Int Spk", NULL),
+};
+
+static const struct snd_soc_dapm_route tegra_audio_map[] = {
+	{"Int Spk", NULL, "ROP"},
+	{"Int Spk", NULL, "RON"},
+	{"Int Spk", NULL, "LOP"},
+	{"Int Spk", NULL, "LON"},
+};
+
+static const struct snd_kcontrol_new tegra_controls[] = {
+	SOC_DAPM_PIN_SWITCH("Int Spk"),
+};
+
+static int motsnd_tegra_mm_init(struct snd_soc_pcm_runtime *rtd) {
+	
+	int ret;
+
+	struct snd_soc_codec *codec = rtd->codec;
+	struct snd_soc_dapm_context *dapm = &codec->dapm;
+
+	pr_info("ENTER: motsnd_tegra_mm_init\n");
+
+	ret = snd_soc_add_controls(codec, tegra_controls, ARRAY_SIZE(tegra_controls));
+	if (ret < 0)
+		return ret;
+
+	snd_soc_dapm_new_controls(dapm, tegra_dapm_widgets, ARRAY_SIZE(tegra_dapm_widgets));
+
+	snd_soc_dapm_add_routes(dapm, tegra_audio_map, ARRAY_SIZE(tegra_audio_map));
+
+	snd_soc_dapm_nc_pin(dapm, "IN3L");
+	snd_soc_dapm_nc_pin(dapm, "IN3R");
+	snd_soc_dapm_nc_pin(dapm, "LINEOUTR");
+	snd_soc_dapm_nc_pin(dapm, "LINEOUTL");
+	snd_soc_dapm_sync(dapm);
+
+	return 0;
+}
+
 static struct snd_soc_dai_driver dai[] = {
 {
 	.name = "MODEM",
@@ -508,192 +397,86 @@ static struct snd_soc_dai_driver dai[] = {
 }
 };
 
-#ifdef MOTSND_CONFIG_ENABLE_ABE
-static const char *mm1_be[] = {
-		OMAP_ABE_BE_MM_EXT0,
-
-};
-
-struct snd_soc_dsp_link fe_lp_media = {
-	.playback	= true,
-	.trigger = {
-		SND_SOC_DSP_TRIGGER_BESPOKE, SND_SOC_DSP_TRIGGER_BESPOKE},
-};
-#endif /*ENABLE_ABE*/
-
 /* Digital audio interface glue - connects codec <--> CPU */
 static struct snd_soc_dai_link motsnd_dai[] = {
-#ifdef ABE_BYPASS
-{
-	.name = "Multimedia",
-	.stream_name = "McBSP2-STDac",
-	.cpu_dai_name = "omap-mcbsp-dai.1",
-	.codec_dai_name = "cpcap stdac",
-	.platform_name = "omap-pcm-audio",
-	.codec_name = "cpcap_audio",
-	.init = motsnd_cpcap_init,
-	.ops = &motsnd_ops,
-	.ignore_suspend = 1,
-},
-#endif
-#ifndef ABE_BYPASS
 {
 	.name = "Multimedia LP",
 	.stream_name = "Multimedia",
-	.cpu_dai_name = "MultiMedia1 LP",
-	.platform_name = "aess",
-	.dynamic = 1,
-	.dsp_link = &fe_lp_media,
-//	.supported_be = mm1_be,
-//	.num_be = ARRAY_SIZE(mm1_be),
-//	.fe_playback_channels = 2,
-	.ignore_suspend = 1,
+	.codec_name = "cpcap_audio",
+	.platform_name = "tegra-pcm-audio",
+	.cpu_dai_name = "tegra20-i2s.0",
+	.codec_dai_name = "cpcap stdac",
+//	.ignore_suspend = ,
+//	.symmetric_rates = ,
+	.init = motsnd_tegra_mm_init,
+	.ops = &motsnd_ops,
 },
-#endif
-/*
 {
 	.name = "Voice",
-	.stream_name = "McBSP3-Codec",
-	.cpu_dai_name = "omap-mcbsp-dai.2",
-	.codec_dai_name = "cpcap codec",
-	.platform_name = "omap-pcm-audio",
+	.stream_name = "Tegra-i2s.1",
 	.codec_name = "cpcap_audio",
+	.platform_name = "tegra-pcm-audio",
+	.cpu_dai_name = "tegra20-i2s.1",
+	.codec_dai_name = "cpcap codec",
+	.ignore_suspend = 1,
+//	.symmetric_rates = ,
 	.init = motsnd_cpcap_voice_init,
 	.ops = &motsnd_voice_ops,
-	.ignore_suspend = 1,
 },
 {
 	.name = "VoiceCall",
-	.stream_name = "Modem-Codec",
-	.cpu_dai_name = "MODEM",
-	.codec_dai_name = "cpcap in-call",
-	.platform_name = "omap-pcm-audio",
+	.stream_name = "Tegra-i2s.1",
 	.codec_name = "cpcap_audio",
+	.platform_name = "tegra-pcm-audio",
+	.cpu_dai_name = "tegra20-i2s.1",
+	.codec_dai_name = "cpcap in-call",
+	.ignore_suspend = 1,
+//	.symmetric_rates = ,
 	.init = motsnd_cpcap_voice_init,
 	.ops = &motsnd_incall_ops,
-	.ignore_suspend = 1,
 },
 {
-	.name = "FMRadio",
-	.stream_name = "FMAudio",
-	.cpu_dai_name = "FMDummy",
-	.codec_dai_name = "cpcap fm",
-	.platform_name = "omap-pcm-audio",
-	.codec_name = "cpcap_audio",
-	.init = motsnd_cpcap_voice_init,
-	.ops = &motsnd_fm_ops,
-	.ignore_suspend = 1,
+	.name = "SPDIF",
+	.stream_name = "SPDIF PCM",
+	.codec_name = "spdif-dit.0",
+	.platform_name = "tegra-pcm-audio",
+	.cpu_dai_name = "tegra20-spdif",
+	.codec_dai_name = "dit-hifi",
+//	.ignore_suspend = ,
+//	.symmetric_rates = ,
+//	.init = ,
+	.ops = &motsnd_spdif_ops,
 },
 {
 	.name = "BTCall",
 	.stream_name = "Modem-BT",
+	.codec_name = "cpcap_audio",
+	.platform_name = "tegra-pcm-audio",
 	.cpu_dai_name = "MODEM",
 	.codec_dai_name = "cpcap bt-call",
-	.platform_name = "omap-pcm-audio",
-	.codec_name = "cpcap_audio",
-	.init = motsnd_cpcap_voice_init,
-	.ops = &motsnd_incall_ops,
 	.ignore_suspend = 1,
+//	.symmetric_rates = ,
+	.init = motsnd_cpcap_voice_init,
+	.ops = &motsnd_bt_incall_ops,
 },
 {
 	.name = "BTVoice",
-	.stream_name = "McBSP3-BT",
-	.cpu_dai_name = "omap-mcbsp-dai.2",
-	.codec_dai_name = "cpcap bt",
-	.platform_name = "omap-pcm-audio",
+	.stream_name = "TEGRA-BT",
 	.codec_name = "cpcap_audio",
+	.platform_name = "tegra-pcm-audio",
+	.cpu_dai_name = "tegra20-i2s.1",
+	.codec_dai_name = "cpcap bt",
+	.ignore_suspend = 1,
+//	.symmetric_rates = ,
 	.init = motsnd_cpcap_voice_init,
 	.ops = &motsnd_btvoice_ops,
-	.ignore_suspend = 1,
 },
-#ifdef MOTSND_CONFIG_ENABLE_SPDIF
-{
-	.name = "McASP",
-	.stream_name = "SPDIF PCM Playback",
-	.cpu_dai_name = "omap-mcasp-dai",
-	.platform_name = "omap-pcm-audio",
-	.codec_dai_name =  "null-codec-dai",
-	.codec_name = "null-codec",
-	.ops = &motsnd_spdif_ops,
-	.ignore_suspend = 1,
-},
-#endif
-{
-	.name = "BPVoice",
-	.stream_name = "McBSP3-BP",
-	.cpu_dai_name = "omap-mcbsp-dai.2",
-	.codec_dai_name = "BPVoice",
-	.platform_name = "omap-pcm-audio",
-	.codec_name = "cpcap_audio",
-	.init = motsnd_cpcap_voice_init,
-	.ops = &motsnd_bpvoice_ops,
-	.ignore_suspend = 1,
-},*/
-#if 0
-{
-	.name = "VoiceCall Second",
-	.stream_name = "Modem-Codec-Second",
-	.cpu_dai_name = "MODEM",
-	.codec_dai_name = "cpcap in-call second",
-	.platform_name = "omap-pcm-audio",
-	.codec_name = "cpcap_audio",
-	.init = motsnd_cpcap_voice_init,
-	.ops = &motsnd_incall_ops,
-	.ignore_suspend = 1,
-},
-{
-	.name = "BTCall Second",
-	.stream_name = "Modem-BT-Second",
-	.cpu_dai_name = "MODEM",
-	.codec_dai_name = "cpcap bt-call second",
-	.platform_name = "omap-pcm-audio",
-	.codec_name = "cpcap_audio",
-	.init = motsnd_cpcap_voice_init,
-	.ops = &motsnd_incall_ops,
-	.ignore_suspend = 1,
-},
-#endif
-#ifdef ABE_BYPASS
-{
-	.name = "Multimedia LP",
-	.stream_name = "Multimedia",
-	.cpu_dai_name = "MultiMedia1 LP",
-	.platform_name = "aess",
-//	.dynamic = 1,
-//	.dsp_link = &fe_lp_media,
-//	.supported_be = mm1_be,
-//	.num_be = ARRAY_SIZE(mm1_be),
-//	.fe_playback_channels = 2,
-	.ignore_suspend = 1,
-},
-#endif
-#ifdef MOTSND_CONFIG_ENABLE_ABE
-{
-	.name = OMAP_ABE_BE_MM_EXT0,
-	.stream_name = "FM Playback",
-
-	/* ABE components - DL1 */
-	.cpu_dai_name = "omap-mcbsp-dai.1",
-	.platform_name = "aess",
-
-	/* Phoenix - DL1 DAC */
-	.codec_dai_name =  "cpcap stdac",
-	.codec_name = "cpcap_audio",
-
-	.no_pcm = 1, /* don't create ALSA pcm for this */
-	.init = motsnd_cpcap_init,
-	.be_hw_params_fixup = mcbsp_be_hw_params_fixup,
-	.ops = &motsnd_ops,
-	.be_id = OMAP_ABE_DAI_MM_FM,
-	.ignore_suspend = 1,
-},
-#endif
 };
 
 /* Audio machine driver */
 static struct snd_soc_card snd_soc_mot = {
 	.name = "motsnd",
-	.long_name = "Motorola OLYMPUS",
+//	.long_name = "Motorola OLYMPUS",
 	.dai_link = motsnd_dai,
 	.num_links = ARRAY_SIZE(motsnd_dai),
 };
@@ -702,6 +485,7 @@ static struct platform_device *mot_snd_device;
 
 static int __init motsnd_soc_init(void)
 {
+	struct snd_soc_card *card = &snd_soc_mot;
 	struct tegra_olympus *olympus;
 	int ret;
 
@@ -719,16 +503,16 @@ static int __init motsnd_soc_init(void)
 		return -ENOMEM;
 	}
 
-	ret = tegra_asoc_utils_init(&olympus->util_data, &mot_snd_device->dev, &snd_soc_mot);
+	ret = tegra_asoc_utils_init(&olympus->util_data, &mot_snd_device->dev, card);
 	if (ret) {
 		dev_err(&mot_snd_device->dev, "Can't do tegra_asoc_utils_init()\n");
 		goto err_free_olympus;
 	}
 	pr_info("MOTSND SoC init: snd_soc_register_dais\n");
 	snd_soc_register_dais(&mot_snd_device->dev, dai, ARRAY_SIZE(dai));
+
 	pr_info("MOTSND SoC init: platform_set_drvdata\n");
-//	platform_set_drvdata(mot_snd_device, &card);
-	dev_set_drvdata(&mot_snd_device->dev, &snd_soc_mot);
+	platform_set_drvdata(mot_snd_device, card);
 
 	pr_info("MOTSND SoC init: platform_device_add\n");
 	ret = platform_device_add(mot_snd_device);
