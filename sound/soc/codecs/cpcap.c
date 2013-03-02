@@ -1407,10 +1407,10 @@ static int snd_soc_put_cpcap_dai_mode(struct snd_kcontrol *kcontrol,
 			cache[CPCAP_AUDIO_REG_INDEX(CPCAP_REG_CC)] | 0x0093);
 		cpcap_audio_reg_write(codec,
 			CPCAP_AUDIO_REG_INDEX(CPCAP_REG_TXI),
-			cache[CPCAP_AUDIO_REG_INDEX(CPCAP_REG_TXI)] | 0x0CC6);
+			cache[CPCAP_AUDIO_REG_INDEX(CPCAP_REG_TXI)] | 0x0CC0);// was 0x0CC6 but the assembly file calls for a 0x0CC0 :)
 		cpcap_audio_reg_write(codec,
 			CPCAP_AUDIO_REG_INDEX(CPCAP_REG_TXMP),
-			cache[CPCAP_AUDIO_REG_INDEX(CPCAP_REG_TXMP)] | 0x0273);
+			cache[CPCAP_AUDIO_REG_INDEX(CPCAP_REG_TXMP)] | 0x0270);
 
 	case 2: /* cpcap_codec_op_modes_texts[2]: Voice Call Headset*/
 	case 3: /* cpcap_codec_op_modes_texts[3]: Voice Call Headset Mic*/
@@ -1488,7 +1488,6 @@ void cpcap_audio_init(struct snd_soc_codec *codec)  //almost verified
 	cpcap_audio_reg_write(codec, 11, 0);
 	cpcap_audio_reg_write(codec, 13, cache[13] | CPCAP_BIT_A2_FREE_RUN);  // <-- to check cache[13] | CPCAP_BIT_A2_FREE_RUN
 	cpcap_audio_reg_write(codec, 0, 101);
-
 	/* This is not an audio register, go through cpcap api directly */
 	cpcap_regacc_write(cpcap, CPCAP_REG_GPIO4,
 			   CPCAP_BIT_GPIO4DIR, CPCAP_BIT_GPIO4DIR); // <-- to check CPCAP_BIT_GPIO4DIR, CPCAP_BIT_GPIO4DIR
