@@ -476,7 +476,7 @@ static struct snd_soc_dai_link motsnd_dai[] = {
 /* Audio machine driver */
 static struct snd_soc_card snd_soc_mot = {
 	.name = "motsnd",
-//	.long_name = "Motorola OLYMPUS",
+	.long_name = "Motorola OLYMPUS",
 	.dai_link = motsnd_dai,
 	.num_links = ARRAY_SIZE(motsnd_dai),
 };

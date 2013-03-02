@@ -1,456 +1,308 @@
-/*
- * Copyright (c) 2010, Motorola, All Rights Reserved.
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- *
- */
-
-#include <linux/delay.h>
-#include <linux/i2c.h>
+#include <linux/kernel.h>
+#include <linux/clk.h>
+#include <linux/platform_device.h>
 #include <linux/init.h>
 #include <linux/input.h>
-#include <linux/kernel.h>
-#include <linux/kxtf9.h>
-#include <linux/l3g4200d.h>
-#include <linux/led-lm3559.h>
-#include <linux/max9635.h>
-#include <linux/moto_bmp085.h>
-#include <linux/cap_prox.h>
-#include <media/ov5650.h>
-#include <media/soc2030.h>
-#include <linux/platform_device.h>
-#include <linux/gpio.h>
-
+#include <linux/i2c.h>
+#include <linux/spi/spi.h>
+#if defined(CONFIG_SENSORS_AK8975)
+#include <linux/akm8975.h>
+#endif
+#include <linux/isl29030.h>
+#if defined(CONFIG_MPU_SENSORS_MPU3050)
+#include <linux/mpu.h>
+#endif
+#include <linux/nct1008.h>  
+#include <linux/delay.h>
 #include <linux/regulator/consumer.h>
-#include <linux/nct1008.h>
+#include <linux/gpio.h>
+#include <linux/vib-gpio.h>
+#include <asm/mach-types.h>
+#include <asm/bootinfo.h>
 
-#include "board-olympus.h"
 #include "gpio-names.h"
+#include "board-olympus.h"
 
-#define KXTF9_IRQ_GPIO		TEGRA_GPIO_PV3
-#define MAX9635_IRQ_GPIO	TEGRA_GPIO_PV1
-#define BMP085_IRQ_GPIO		TEGRA_GPIO_PW0
-#define BMP085_RESET_GPIO	TEGRA_GPIO_PI3
-#define L3G4200D_DRDY_GPIO	TEGRA_GPIO_PH3
-#define AKM8975_IRQ_GPIO	TEGRA_GPIO_PQ2
-#define LM3559_RESETN_GPIO	TEGRA_GPIO_PT4
-#define OV5650_RESETN_GPIO	TEGRA_GPIO_PD2
-#define OV5650_PWRDN_GPIO	TEGRA_GPIO_PBB1
-#define SOC2030_RESETN_GPIO	TEGRA_GPIO_PD5
-#define SOC2030_PWRDN_GPIO	TEGRA_GPIO_PBB5
-#define CAP_PROX_IRQ_GPIO	TEGRA_GPIO_PZ3
-#define NCT1008_THERM2_GPIO	TEGRA_GPIO_PQ7
+#define PWRUP_BAREBOARD             0x00100000 /* Bit 20 */
 
-extern void tegra_throttling_enable(bool enable);
-
-static int stingray_ov5650_power_on(void)
+/*
+ * Vibrator
+ */
+static struct regulator *tegra_vibrator_regulator;
+static int tegra_vibrator_initialization(void)
 {
-	msleep(20);
-
-	gpio_direction_output(OV5650_PWRDN_GPIO, 0);
-	msleep(10);
-
-	gpio_direction_output(OV5650_RESETN_GPIO, 1);
-	msleep(5);
-	gpio_direction_output(OV5650_RESETN_GPIO, 0);
-	msleep(5);
-	gpio_direction_output(OV5650_RESETN_GPIO, 1);
-	msleep(5);
-
+	struct regulator *reg;
+	reg = regulator_get(NULL, "vvib");
+	if (IS_ERR(reg))
+        {
+                printk("VIB_GPIO:vvib regilator open error \n");
+		return PTR_ERR(reg);
+        }
+	tegra_vibrator_regulator = reg;
 	return 0;
 }
 
-static int stingray_ov5650_power_off(void)
+static void tegra_vibrator_exit(void)
 {
-	gpio_direction_output(OV5650_PWRDN_GPIO, 1);
-	gpio_direction_output(OV5650_RESETN_GPIO, 0);
+	regulator_put(tegra_vibrator_regulator);
+}
 
+static int tegra_vibrator_power_on(void)
+{
+	regulator_set_voltage(tegra_vibrator_regulator,
+			3000000, 3000000);
+	return regulator_enable(tegra_vibrator_regulator);
+}
+
+static int tegra_vibrator_power_off(void)
+{
+	if (tegra_vibrator_regulator)
+		return regulator_disable(tegra_vibrator_regulator);
 	return 0;
 }
 
-struct ov5650_platform_data stingray_ov5650_data = {
-	.power_on = stingray_ov5650_power_on,
-	.power_off = stingray_ov5650_power_off,
-	.ignore_otp = false
+static int isl29030_getIrqStatus(void)
+{
+	int	status = -1;
+
+	status = gpio_get_value(TEGRA_PROX_INT_GPIO);
+	return status;
+}
+
+static struct vib_gpio_platform_data tegra_vib_gpio_data = {
+	.gpio = TEGRA_VIBRATOR_GPIO,
+	.max_timeout = 15000,
+	.active_low = 0,
+	.initial_vibrate = 0,
+
+	.init = tegra_vibrator_initialization,
+	.exit = tegra_vibrator_exit,
+	.power_on = tegra_vibrator_power_on,
+	.power_off = tegra_vibrator_power_off,
 };
 
-static int stingray_ov5650_init(void)
-{
-	tegra_gpio_enable(OV5650_RESETN_GPIO);
-	gpio_request(OV5650_RESETN_GPIO, "ov5650_reset");
-	gpio_direction_output(OV5650_RESETN_GPIO, 0);
-	gpio_export(OV5650_RESETN_GPIO, false);
-
-	tegra_gpio_enable(OV5650_PWRDN_GPIO);
-	gpio_request(OV5650_PWRDN_GPIO, "ov5650_pwrdn");
-	gpio_direction_output(OV5650_PWRDN_GPIO, 1);
-	gpio_export(OV5650_PWRDN_GPIO, false);
-	/*STI-OLY fix if statement */
-	if (olympus_revision() <= OLYMPUS_REVISION_1) {
-		stingray_ov5650_data.ignore_otp = true;
-		pr_info("running on old hardware, ignoring OTP data\n");
-	}
-
-	pr_info("initialize the ov5650 sensor\n");
-
-	return 0;
-}
-
-static int stingray_soc2030_init(void)
-{
-	tegra_gpio_enable(SOC2030_RESETN_GPIO);
-	gpio_request(SOC2030_RESETN_GPIO, "soc2030_reset");
-	gpio_direction_output(SOC2030_RESETN_GPIO, 0);
-	gpio_export(SOC2030_RESETN_GPIO, false);
-
-	tegra_gpio_enable(SOC2030_PWRDN_GPIO);
-	gpio_request(SOC2030_PWRDN_GPIO, "soc2030_pwrdn");
-	gpio_direction_output(SOC2030_PWRDN_GPIO, 1);
-	gpio_export(SOC2030_PWRDN_GPIO, false);
-
-	pr_info("initialize the soc2030 sensor\n");
-
-	return 0;
-}
-
-static int stingray_soc2030_power_on(void)
-{
-	gpio_direction_output(SOC2030_PWRDN_GPIO, 0);
-	msleep(10);
-
-	gpio_direction_output(SOC2030_RESETN_GPIO, 1);
-	msleep(5);
-	gpio_direction_output(SOC2030_RESETN_GPIO, 0);
-	msleep(5);
-	gpio_direction_output(SOC2030_RESETN_GPIO, 1);
-	msleep(5);
-
-	return 0;
-}
-
-static int stingray_soc2030_power_off(void)
-{
-	gpio_direction_output(SOC2030_RESETN_GPIO, 0);
-	gpio_direction_output(SOC2030_PWRDN_GPIO, 1);
-	return 0;
-}
-
-struct soc2030_platform_data stingray_soc2030_data = {
-	.power_on = stingray_soc2030_power_on,
-	.power_off = stingray_soc2030_power_off,
-};
-
-static int stingray_bmp085_init(void)
-{
-	/*struct regulator *reg;*/
-
-	tegra_gpio_enable(BMP085_IRQ_GPIO);
-	gpio_request(BMP085_IRQ_GPIO, "bmp085_irq");
-	gpio_direction_input(BMP085_IRQ_GPIO);
-
-	tegra_gpio_enable(BMP085_RESET_GPIO);
-	gpio_request(BMP085_RESET_GPIO, "bmp085_reset");
-	gpio_direction_output(BMP085_RESET_GPIO, 1);
-
-	return 0;
-}
-
-struct bmp085_platform_data stingray_barom_pdata = {
-	.poll_interval = 200,
-	.min_interval = 20,
-	.min_p = 95000,
-	.max_p = 125000,
-	.fuzz = 5,
-	.flat = 5,
-};
-
-static int stingray_kxtf9_gpio_level(void)
-{
-	return gpio_get_value(KXTF9_IRQ_GPIO);
-}
-
-
-struct kxtf9_platform_data stingray_kxtf9_pdata = {
-	.min_interval	= 2,
-	.poll_interval	= 200,
-
-	.g_range	= KXTF9_G_2G,
-
-	.axis_map_x	= 0,
-	.axis_map_y	= 1,
-	.axis_map_z	= 2,
-
-	.negate_x	= 0,
-	.negate_y	= 0,
-	.negate_z	= 0,
-
-
-	.data_odr_init		= ODR100,
-	.ctrl_reg1_init		= RES_12BIT | KXTF9_G_2G | WUFE,
-	.int_ctrl_init		= IEA | IEN,
-	.tilt_timer_init	= 0x03,
-	.engine_odr_init	= OTP12_5 | OWUF50 | OTDT400,
-	.wuf_timer_init		= 0x0A,
-	.wuf_thresh_init	= 0x20,
-	.tdt_timer_init		= 0x78,
-	.tdt_h_thresh_init	= 0xB6,
-	.tdt_l_thresh_init	= 0x1A,
-	.tdt_tap_timer_init	= 0xA2,
-	.tdt_total_timer_init	= 0x24,
-	.tdt_latency_timer_init	= 0x28,
-	.tdt_window_timer_init	= 0xA0,
-
-	.gpio = stingray_kxtf9_gpio_level,
-	.gesture = 0,
-	.sensitivity_low = {
-		  0x50, 0xFF, 0xB8, 0x32, 0x09, 0x0A, 0xA0,
-	},
-	.sensitivity_medium = {
-		  0x50, 0xFF, 0x68, 0x32, 0x09, 0x0A, 0xA0,
-	},
-	.sensitivity_high = {
-		  0x78, 0xB6, 0x1A, 0xA2, 0x24, 0x28, 0xA0,
-	},
-};
-static void stingray_kxtf9_init(void)
-{
-	tegra_gpio_enable(KXTF9_IRQ_GPIO);
-	gpio_request(KXTF9_IRQ_GPIO, "kxtf9_irq");
-	gpio_direction_input(KXTF9_IRQ_GPIO);
-}
-
-struct cap_prox_platform_data stingray_cap_prox_pdata = {
-	.poll_interval			= 10000,
-	.min_poll_interval		= 200,
-	.key1_ref_drift_thres_l		= 5,
-	.key3_ref_drift_thres_l		= 5,
-	.key1_ref_drift_thres_h		= 30,
-	.key3_ref_drift_thres_h 	= 30,
-	.ref_drift_diff_thres 		= 9,
-	.key1_save_drift_thres 		= 125,
-	.key3_save_drift_thres 		= 165,
-	.save_drift_diff_thres 		= 90,
-	.key1_failsafe_thres		= 170,
-	.key3_failsafe_thres		= 100,
-	.key2_signal_thres		= 1700,
-	.key4_signal_thres		= 2200,
-	.plat_cap_prox_cfg = {
-		.lp_mode		= 0x00,
-		.address_ptr		= 0x10,
-		.reset			= 0x20,
-		.key_enable_mask	= 0x35,
-		.data_integration 	= 0x40,
-		.neg_drift_rate		= 0x50,
-		.pos_drift_rate		= 0x60,
-		.force_detect		= 0x70,
-		.calibrate		= 0x80,
-		.thres_key1		= 0x92,
-		.ref_backup		= 0xaa,
-		.thres_key2		= 0xb2,
-		.reserved12		= 0xc0,
-		.drift_hold_time	= 0xd0,
-		.reserved14		= 0xe0,
-		.reserved15		= 0xf0,
+static struct platform_device tegra_vib_gpio = {
+	.name           = "vib-gpio",
+	.id             = -1,
+	.dev            = {
+		.platform_data  = &tegra_vib_gpio_data,
 	},
 };
 
-static void stingray_cap_prox_init(void)
-{
-	tegra_gpio_enable(CAP_PROX_IRQ_GPIO);
-	gpio_request(CAP_PROX_IRQ_GPIO, "cap_prox_irq");
-	gpio_direction_input(CAP_PROX_IRQ_GPIO);
-}
-
-struct max9635_platform_data stingray_max9635_pdata = {
-	.configure = 0x80,
-	.threshold_timer = 0x04,	/* 400mS interrupt delay */
-	.def_low_threshold = 0xFE,
-	.def_high_threshold = 0xFF,
-	.lens_coeff = 20,
+static struct platform_device tegra_tmon = {
+	.name           = "tegra_tmon",
+	.id             = -1,
 };
 
-static int stingray_max9635_init(void)
-{
-	tegra_gpio_enable(MAX9635_IRQ_GPIO);
-	gpio_request(MAX9635_IRQ_GPIO, "max9635_irq");
-	gpio_direction_input(MAX9635_IRQ_GPIO);
-	return 0;
-}
-
-static int stingray_l3g4200d_init(void)
-{
-	tegra_gpio_enable(L3G4200D_DRDY_GPIO);
-	gpio_request(L3G4200D_DRDY_GPIO, "l3g4200d_irq");
-	gpio_direction_input(L3G4200D_DRDY_GPIO);
-	return 0;
-}
-
-struct l3g4200d_platform_data stingray_gyro_pdata = {
-	.poll_interval = 10,
-	.gpio_drdy = L3G4200D_DRDY_GPIO,
-
-	.ctrl_reg1 = 0x1f,	/* ODR100 */
-	.ctrl_reg2 = 0x00,
-	.ctrl_reg3 = 0x08,	/* Enable DRDY interrupt */
-	.ctrl_reg4 = 0xA0,	/* BDU enable, 2000 dps */
-	.ctrl_reg5 = 0x00,
-	.reference = 0x00,
-	.fifo_ctrl_reg = 0x00,
-	.int1_cfg = 0x00,
-	.int1_tsh_xh = 0x00,
-	.int1_tsh_xl = 0x00,
-	.int1_tsh_yh = 0x00,
-	.int1_tsh_yl = 0x00,
-	.int1_tsh_zh = 0x00,
-	.int1_tsh_zl = 0x00,
-	.int1_duration = 0x00,
+#if defined(CONFIG_MPU_SENSORS_MPU3050)
+static struct ext_slave_platform_data mpu3050_kxtf9_data = {
+	.type		= EXT_SLAVE_TYPE_ACCEL,
+	.irq		= TEGRA_GPIO_TO_IRQ(MPU_ACCEL_IRQ_GPIO),
+	.address	= MPU_ACCEL_ADDR,
+	.adapt_num	= MPU_ACCEL_BUS_NUM, 
+	.bus		= EXT_SLAVE_BUS_SECONDARY,
+	.orientation	= MPU_ACCEL_ORIENTATION,
 };
 
-static int stingray_akm8975_init(void)
-{
-	tegra_gpio_enable(AKM8975_IRQ_GPIO);
-	gpio_request(AKM8975_IRQ_GPIO, "akm8975");
-	gpio_direction_input(AKM8975_IRQ_GPIO);
-	return 0;
-}
+/*static struct ext_slave_descr {*/
 
-struct lm3559_platform_data stingray_lm3559_data = {
-	.flags = 0,
-	.flash_duration_def = 0x04, /* 160ms timeout */
-	.vin_monitor_def = 0xC0,
+static struct ext_slave_platform_data mpu_compass_data = {
+        .address        = MPU_COMPASS_ADDR,
+        .irq            = TEGRA_GPIO_TO_IRQ(MPU_COMPASS_IRQ_GPIO),
+        .adapt_num      = MPU_COMPASS_BUS_NUM,
+        .bus            = EXT_SLAVE_BUS_PRIMARY,
+        .orientation    = MPU_COMPASS_ORIENTATION,
 };
 
-static void stingray_lm3559_init(void)
-{
-	tegra_gpio_enable(LM3559_RESETN_GPIO);
-	gpio_request(LM3559_RESETN_GPIO, "lm3559_hwenable");
-	gpio_direction_output(LM3559_RESETN_GPIO, 1);
-	gpio_export(LM3559_RESETN_GPIO, false);
+#endif
 
-	/* define LM3559_STROBE_GPIO for debug, usually controlled by VGP3 */
-	#ifdef LM3559_STROBE_GPIO
-	tegra_gpio_enable(LM3559_STROBE_GPIO);
-	gpio_request(LM3559_STROBE_GPIO, "lm3559_strobe");
-	gpio_direction_output(LM3559_STROBE_GPIO, 0);
-	gpio_export(LM3559_STROBE_GPIO, false);
-	#endif
-}
-
-static struct nct1008_platform_data stingray_nct1008_data = {
+static struct nct1008_platform_data olympus_nct1008_pdata = {
 	.supported_hwrev = true,
-	.ext_range = true,
+	.ext_range = false,
 	.conv_rate = 0x08,
-	.offset = 6,
-	.hysteresis = 5,
-	.shutdown_ext_limit = 115,
-	.shutdown_local_limit = 120,
-	.throttling_ext_limit = 90,
-	.alarm_fn = tegra_throttling_enable,
+	.offset = 0,
+	.hysteresis = 0,
+	.shutdown_ext_limit = 115, //115,85
+	.shutdown_local_limit = 115, //120,85
+	.throttling_ext_limit = 90, //90,70
 };
 
-static int stingray_nct1008_init(void)
+static void olympus_nct1008_init(void)
 {
-	/* STI-OLY fix if statement */
-	if (olympus_revision() >= OLYMPUS_REVISION_2) {
-		tegra_gpio_enable(NCT1008_THERM2_GPIO);
-		gpio_request(NCT1008_THERM2_GPIO, "nct1008_therm2");
-		gpio_direction_input(NCT1008_THERM2_GPIO);
-	} else {
-		stingray_nct1008_data.supported_hwrev = false;
-	}
+       printk(KERN_ERR"olympus_nct1008_init\n");  //wangbing
+	tegra_gpio_enable(SENSOR_TEMP_IRQ_GPIO);
+	gpio_request(SENSOR_TEMP_IRQ_GPIO, "temp_alert");
+	gpio_direction_input(SENSOR_TEMP_IRQ_GPIO);
+}
+
+static void tegra_vibrator_init(void)
+{
+        if( gpio_request(tegra_vib_gpio_data.gpio, "vib_en") < 0) return;
+        gpio_direction_output(tegra_vib_gpio_data.gpio, 0);
+}
+
+/*
+ * ALS/Proximity Sensor
+ */
+struct isl29030_platform_data isl29030_als_ir_data_Olympus = {
+/*
+	NOTE: Original values
+	.configure = 0x6c,
+	.interrupt_cntrl = 0x40,
+	.prox_lower_threshold = 0x1e,
+	.prox_higher_threshold = 0x32,
+	.als_ir_low_threshold = 0x00,
+	.als_ir_high_low_threshold = 0x00,
+	.als_ir_high_threshold = 0x45,
+	.lens_percent_t = 100,
+*/
+	.init = NULL,
+	.exit = NULL,
+	.power_on = NULL,
+	.power_off = NULL,
+	.configure = 0x66,
+	.interrupt_cntrl = 0x20,
+	.prox_lower_threshold = 0x0A,
+	.prox_higher_threshold = 0x14,
+	.crosstalk_vs_covered_threshold = 0xB4,
+	.default_prox_noise_floor = 0x96,
+	.num_samples_for_noise_floor = 0x05,
+	.lens_percent_t = 10,
+	.irq = 0,
+	.getIrqStatus = isl29030_getIrqStatus,
+	.gpio_intr = TEGRA_PROX_INT_GPIO,
+};
+
+static struct platform_device isl29030_als_ir = {
+	.name	= LD_ISL29030_NAME,
+	.id	= -1,
+};
+static void __init isl29030_init(void)
+{
+	isl29030_als_ir_data_Olympus.irq = gpio_to_irq(TEGRA_PROX_INT_GPIO);
+	isl29030_als_ir.dev.platform_data = &(isl29030_als_ir_data_Olympus);
+	gpio_request(TEGRA_PROX_INT_GPIO, "isl29030_proximity_int");
+	gpio_direction_input(TEGRA_PROX_INT_GPIO);
+}
+
+/*
+static int isl29030_power_on(void)
+{
 	return 0;
 }
 
-static struct i2c_board_info __initdata stingray_i2c_bus4_sensor_info[] = {
-	{
-		I2C_BOARD_INFO("akm8975", 0x0C),
-		.irq = TEGRA_GPIO_TO_IRQ(AKM8975_IRQ_GPIO),
-	},
-	{
-		I2C_BOARD_INFO("kxtf9", 0x0F),
-		.platform_data = &stingray_kxtf9_pdata,
-		.irq = TEGRA_GPIO_TO_IRQ(KXTF9_IRQ_GPIO),
-	},
-	{
-		I2C_BOARD_INFO("nct1008", 0x4C),
-		.platform_data = &stingray_nct1008_data,
-		.irq = TEGRA_GPIO_TO_IRQ(NCT1008_THERM2_GPIO),
-	},
-	{
-		I2C_BOARD_INFO("cap-prox", 0x12),
-		.platform_data = &stingray_cap_prox_pdata,
-		.irq = TEGRA_GPIO_TO_IRQ(CAP_PROX_IRQ_GPIO),
-	},
-};
-
-static struct i2c_board_info __initdata stingray_i2c_bus1_sensor_info[] = {
-	{
-		I2C_BOARD_INFO(BMP085_NAME, 0x77),
-		.platform_data = &stingray_barom_pdata,
-		.irq = TEGRA_GPIO_TO_IRQ(BMP085_IRQ_GPIO),
-	 },
-	{
-		 I2C_BOARD_INFO(MAX9635_NAME, 0x4b),
-		.platform_data = &stingray_max9635_pdata,
-		.irq = TEGRA_GPIO_TO_IRQ(MAX9635_IRQ_GPIO),
-	 },
-};
-
-static struct i2c_board_info __initdata stingray_i2c_bus3_sensor_info[] = {
-	 {
-		I2C_BOARD_INFO(L3G4200D_NAME, 0x68),
-		.platform_data = &stingray_gyro_pdata,
-		.irq = TEGRA_GPIO_TO_IRQ(L3G4200D_DRDY_GPIO),
-	 },
-
-	 {
-		I2C_BOARD_INFO(LM3559_NAME, 0x53),
-		.platform_data = &stingray_lm3559_data,
-	 },
-
-	 {
-		 I2C_BOARD_INFO("ov5650", 0x36),
-		 .platform_data = &stingray_ov5650_data,
-	 },
-
-	 {
-		 I2C_BOARD_INFO("dw9714l", 0x0C),
-	 },
-
-	 {
-		 I2C_BOARD_INFO("soc2030", 0x3c),
-		 .platform_data = &stingray_soc2030_data,
-	 },
-};
-
-int __init stingray_sensors_init(void)
+static int isl29030_power_off(void)
 {
-	stingray_bmp085_init();
-	stingray_kxtf9_init();
-	stingray_max9635_init();
-	stingray_l3g4200d_init();
-	stingray_akm8975_init();
-	stingray_lm3559_init();
-	stingray_ov5650_init();
-	stingray_soc2030_init();
-	stingray_cap_prox_init();
-	stingray_nct1008_init();
+	return 0;
+}*/
 
-	i2c_register_board_info(3, stingray_i2c_bus4_sensor_info,
-		ARRAY_SIZE(stingray_i2c_bus4_sensor_info));
-	i2c_register_board_info(2, stingray_i2c_bus3_sensor_info,
-		ARRAY_SIZE(stingray_i2c_bus3_sensor_info));
-	return i2c_register_board_info(0, stingray_i2c_bus1_sensor_info,
-		ARRAY_SIZE(stingray_i2c_bus1_sensor_info));
+static struct platform_device *tegra_sensors[] __initdata = {
+	&isl29030_als_ir,
+//	&kxtf9_platform_device,
+//	&akm8975_platform_device,
+/*	&ap20_hall_effect_dock,*/
+	&tegra_vib_gpio,
+	&tegra_tmon,
+};
+
+static int aes1750_interrupt = TEGRA_GPIO_PM5;
+
+static struct spi_board_info aes1750_spi_device __initdata = {
+    .modalias = "aes1750",
+    .bus_num = 1,
+    .chip_select = 2,
+    .mode = SPI_MODE_1,
+    .max_speed_hz = 15000000,
+    .controller_data = NULL,
+    .platform_data = &aes1750_interrupt,
+    .irq = 0,
+};
+
+static struct i2c_board_info __initdata olympus_i2c_bus4_board_info[] = {
+	{
+		I2C_BOARD_INFO(MPU_COMPASS_NAME, MPU_COMPASS_ADDR),
+#if defined(CONFIG_MPU_SENSORS_MPU3050)
+		.platform_data = &mpu_compass_data,
+#endif
+		.irq = TEGRA_GPIO_TO_IRQ(MPU_COMPASS_IRQ_GPIO),
+	},
+	{
+		I2C_BOARD_INFO(MPU_ACCEL_NAME, MPU_ACCEL_ADDR),
+#if defined(CONFIG_MPU_SENSORS_MPU3050)
+		.platform_data = &mpu3050_kxtf9_data,
+#endif
+	},
+	{
+		I2C_BOARD_INFO(SENSOR_TEMP_NAME, SENSOR_TEMP_ADDR),
+		.platform_data = &olympus_nct1008_pdata,
+		.irq = TEGRA_GPIO_TO_IRQ(SENSOR_TEMP_IRQ_GPIO),
+	},	
+};
+
+static void olympus_mpuirq_init(void)
+{
+        int ret = 0;
+
+        pr_info("*** MPU START *** mpuirq_init...\n");
+
+        /* MPU-IRQ assignment */
+/*        tegra_gpio_enable(MPU_GYRO_IRQ_GPIO);
+        ret = gpio_request(MPU_GYRO_IRQ_GPIO, MPU_GYRO_NAME);
+        if (ret < 0) {
+                pr_err("%s: gpio_request gyro_irq failed %d\n", __func__, ret);
+        }
+
+        ret = gpio_direction_input(MPU_GYRO_IRQ_GPIO);
+        if (ret < 0) {
+                pr_err("%s: gpio_direction_input gyro_irq failed %d\n", __func__, ret);
+        }*/
+
+        /* ACCEL-IRQ assignment */
+        tegra_gpio_enable(MPU_ACCEL_IRQ_GPIO);
+        ret = gpio_request(MPU_ACCEL_IRQ_GPIO, MPU_ACCEL_NAME);
+        if (ret < 0) {
+                pr_err("%s: gpio_request accel_irq1 failed %d\n", __func__, ret);
+        }
+
+        ret = gpio_direction_input(MPU_ACCEL_IRQ_GPIO);
+        if (ret < 0) {
+                pr_err("%s: gpio_direction_input accel_irq1 failed %d\n", __func__, ret);
+        }
+
+        /* COMPASS-IRQ assignment */
+        tegra_gpio_enable(MPU_COMPASS_IRQ_GPIO);
+        ret = gpio_request(MPU_COMPASS_IRQ_GPIO, MPU_COMPASS_NAME);
+        if (ret < 0) {
+                pr_err("%s: gpio_request compass_irq failed %d\n", __func__, ret);
+        }
+
+        ret = gpio_direction_input(MPU_COMPASS_IRQ_GPIO);
+        if (ret < 0) {
+                pr_err("%s: gpio_direction_input compass_irq failed %d\n", __func__, ret);
+        }
+        pr_info("*** MPU END *** mpuirq_init...\n");
+
+}
+
+void __init mot_sensors_init(void)
+{
+	olympus_mpuirq_init();
+
+	printk("bus 3: %d devices\n", ARRAY_SIZE(olympus_i2c_bus4_board_info));
+	i2c_register_board_info(3, olympus_i2c_bus4_board_info, 
+				ARRAY_SIZE(olympus_i2c_bus4_board_info));
+
+//	kxtf9_init();
+//	tegra_akm8975_init();
+
+	olympus_nct1008_init();
+	tegra_vibrator_init();
+	if(!(bi_powerup_reason() & PWRUP_BAREBOARD)) {
+		isl29030_init();
+	}
+
+	platform_add_devices(tegra_sensors, ARRAY_SIZE(tegra_sensors));
+
+        aes1750_spi_device.irq = gpio_to_irq(aes1750_interrupt);
+        spi_register_board_info(&aes1750_spi_device,sizeof(aes1750_spi_device));
 }

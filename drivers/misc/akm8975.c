@@ -16,7 +16,7 @@
 
 /*
  * Revised by AKM 2009/04/02
- * Revised by Motorola 2010/05/27
+ * Revised by Motorola 2010/08/16
  *
  */
 
@@ -29,14 +29,15 @@
 #include <linux/uaccess.h>
 #include <linux/delay.h>
 #include <linux/input.h>
+#include <linux/regulator/consumer.h>
 #include <linux/workqueue.h>
 #include <linux/freezer.h>
 #include <linux/akm8975.h>
-#include <linux/earlysuspend.h>
+#include <linux/pm.h>
 
 #define AK8975DRV_CALL_DBG 0
 #if AK8975DRV_CALL_DBG
-#define FUNCDBG(msg)	pr_err("%s:%s\n", __func__, msg);
+#define FUNCDBG(msg)	pr_info("%s:%s\n", __func__, msg);
 #else
 #define FUNCDBG(msg)
 #endif
@@ -46,13 +47,10 @@
 
 struct akm8975_data {
 	struct i2c_client *this_client;
-	struct akm8975_platform_data *pdata;
 	struct input_dev *input_dev;
 	struct work_struct work;
 	struct mutex flags_lock;
-#ifdef CONFIG_HAS_EARLYSUSPEND
-	struct early_suspend early_suspend;
-#endif
+	struct regulator *regulator;
 };
 
 /*
@@ -66,8 +64,6 @@ static DECLARE_WAIT_QUEUE_HEAD(open_wq);
 static atomic_t open_flag;
 
 static short m_flag;
-static short a_flag;
-static short t_flag;
 static short mv_flag;
 
 static short akmd_delay;
@@ -156,28 +152,16 @@ static void akm8975_ecs_report_value(struct akm8975_data *akm, short *rbuf)
 	mutex_lock(&akm->flags_lock);
 	/* Report magnetic sensor information */
 	if (m_flag) {
-		input_report_abs(data->input_dev, ABS_RX, rbuf[0]);
-		input_report_abs(data->input_dev, ABS_RY, rbuf[1]);
-		input_report_abs(data->input_dev, ABS_RZ, rbuf[2]);
-		input_report_abs(data->input_dev, ABS_RUDDER, rbuf[4]);
+		input_report_rel(data->input_dev, REL_RX, rbuf[0]);
+		input_report_rel(data->input_dev, REL_RY, rbuf[1]);
+		input_report_rel(data->input_dev, REL_RZ, rbuf[2]);
+		input_report_rel(data->input_dev, REL_HWHEEL, rbuf[4]);
 	}
-
-	/* Report acceleration sensor information */
-	if (a_flag) {
-		input_report_abs(data->input_dev, ABS_X, rbuf[6]);
-		input_report_abs(data->input_dev, ABS_Y, rbuf[7]);
-		input_report_abs(data->input_dev, ABS_Z, rbuf[8]);
-		input_report_abs(data->input_dev, ABS_WHEEL, rbuf[5]);
-	}
-
-	/* Report temperature information */
-	if (t_flag)
-		input_report_abs(data->input_dev, ABS_THROTTLE, rbuf[3]);
 
 	if (mv_flag) {
-		input_report_abs(data->input_dev, ABS_HAT0X, rbuf[9]);
-		input_report_abs(data->input_dev, ABS_HAT0Y, rbuf[10]);
-		input_report_abs(data->input_dev, ABS_BRAKE, rbuf[11]);
+		input_report_rel(data->input_dev, REL_DIAL, rbuf[9]);
+		input_report_rel(data->input_dev, REL_WHEEL, rbuf[10]);
+		input_report_rel(data->input_dev, REL_MISC, rbuf[11]);
 	}
 	mutex_unlock(&akm->flags_lock);
 
@@ -188,10 +172,8 @@ static void akm8975_ecs_close_done(struct akm8975_data *akm)
 {
 	FUNCDBG("called");
 	mutex_lock(&akm->flags_lock);
-	m_flag = 1;
-	a_flag = 1;
-	t_flag = 1;
-	mv_flag = 1;
+	m_flag = 0;
+	mv_flag = 0;
 	mutex_unlock(&akm->flags_lock);
 }
 
@@ -222,8 +204,8 @@ static int akm_aot_release(struct inode *inode, struct file *file)
 	return 0;
 }
 
-static int akm_aot_ioctl(struct inode *inode, struct file *file,
-	      unsigned int cmd, unsigned long arg)
+static long akm_aot_ioctl(struct file *file,
+			  unsigned int cmd, unsigned long arg)
 {
 	void __user *argp = (void __user *) arg;
 	short flag;
@@ -233,7 +215,6 @@ static int akm_aot_ioctl(struct inode *inode, struct file *file,
 
 	switch (cmd) {
 	case ECS_IOCTL_APP_SET_MFLAG:
-	case ECS_IOCTL_APP_SET_AFLAG:
 	case ECS_IOCTL_APP_SET_MVFLAG:
 		if (copy_from_user(&flag, argp, sizeof(flag)))
 			return -EFAULT;
@@ -251,16 +232,10 @@ static int akm_aot_ioctl(struct inode *inode, struct file *file,
 	mutex_lock(&akm->flags_lock);
 	switch (cmd) {
 	case ECS_IOCTL_APP_SET_MFLAG:
-	  m_flag = flag;
+		m_flag = flag;
 		break;
 	case ECS_IOCTL_APP_GET_MFLAG:
 		flag = m_flag;
-		break;
-	case ECS_IOCTL_APP_SET_AFLAG:
-		a_flag = flag;
-		break;
-	case ECS_IOCTL_APP_GET_AFLAG:
-		flag = a_flag;
 		break;
 	case ECS_IOCTL_APP_SET_MVFLAG:
 		mv_flag = flag;
@@ -275,13 +250,13 @@ static int akm_aot_ioctl(struct inode *inode, struct file *file,
 		flag = akmd_delay;
 		break;
 	default:
+		mutex_unlock(&akm->flags_lock);
 		return -ENOTTY;
 	}
 	mutex_unlock(&akm->flags_lock);
 
 	switch (cmd) {
 	case ECS_IOCTL_APP_GET_MFLAG:
-	case ECS_IOCTL_APP_GET_AFLAG:
 	case ECS_IOCTL_APP_GET_MVFLAG:
 	case ECS_IOCTL_APP_GET_DELAY:
 		if (copy_to_user(argp, &flag, sizeof(flag)))
@@ -316,8 +291,8 @@ static int akmd_release(struct inode *inode, struct file *file)
 	return 0;
 }
 
-static int akmd_ioctl(struct inode *inode, struct file *file, unsigned int cmd,
-		      unsigned long arg)
+static long akmd_ioctl(struct file *file, unsigned int cmd,
+		       unsigned long arg)
 {
 	void __user *argp = (void __user *) arg;
 
@@ -429,80 +404,44 @@ static irqreturn_t akm8975_interrupt(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
-static int akm8975_power_off(struct akm8975_data *akm)
+#ifdef CONFIG_PM_SLEEP
+static int akm8975_suspend(struct device *dev)
 {
-#if AK8975DRV_CALL_DBG
-	pr_info("%s\n", __func__);
-#endif
-	if (akm->pdata->power_off)
-		akm->pdata->power_off();
-
-	return 0;
-}
-
-static int akm8975_power_on(struct akm8975_data *akm)
-{
-	int err;
-
-#if AK8975DRV_CALL_DBG
-	pr_info("%s\n", __func__);
-#endif
-	if (akm->pdata->power_on) {
-		err = akm->pdata->power_on();
-		if (err < 0)
-			return err;
-	}
-	return 0;
-}
-
-static int akm8975_suspend(struct i2c_client *client, pm_message_t mesg)
-{
+	struct i2c_client *client = to_i2c_client(dev);
 	struct akm8975_data *akm = i2c_get_clientdata(client);
+	int ret = 0;
 
 #if AK8975DRV_CALL_DBG
 	pr_info("%s\n", __func__);
 #endif
 	/* TO DO: might need more work after power mgmt
 	   is enabled */
-	return akm8975_power_off(akm);
+	if (akm->regulator)
+		ret = regulator_disable(akm->regulator);
+	return ret;
 }
 
-static int akm8975_resume(struct i2c_client *client)
+static int akm8975_resume(struct device *dev)
 {
+	struct i2c_client *client = to_i2c_client(dev);
 	struct akm8975_data *akm = i2c_get_clientdata(client);
+	int ret = 0;
 
 #if AK8975DRV_CALL_DBG
 	pr_info("%s\n", __func__);
 #endif
 	/* TO DO: might need more work after power mgmt
 	   is enabled */
-	return akm8975_power_on(akm);
+	if (akm->regulator)
+		ret = regulator_enable(akm->regulator);
+	return ret;
 }
-
-#ifdef CONFIG_HAS_EARLYSUSPEND
-static void akm8975_early_suspend(struct early_suspend *handler)
-{
-	struct akm8975_data *akm;
-	akm = container_of(handler, struct akm8975_data, early_suspend);
-
-#if AK8975DRV_CALL_DBG
-	pr_info("%s\n", __func__);
-#endif
-	akm8975_suspend(akm->this_client, PMSG_SUSPEND);
-}
-
-static void akm8975_early_resume(struct early_suspend *handler)
-{
-	struct akm8975_data *akm;
-	akm = container_of(handler, struct akm8975_data, early_suspend);
-
-#if AK8975DRV_CALL_DBG
-	pr_info("%s\n", __func__);
-#endif
-	akm8975_resume(akm->this_client);
-}
+#else
+#define akm8975_suspend NULL
+#define akm8975_resume NULL
 #endif
 
+static SIMPLE_DEV_PM_OPS(akm8975_pm, akm8975_suspend, akm8975_resume);
 
 static int akm8975_init_client(struct i2c_client *client)
 {
@@ -522,15 +461,13 @@ static int akm8975_init_client(struct i2c_client *client)
 	init_waitqueue_head(&open_wq);
 
 	mutex_lock(&data->flags_lock);
-	m_flag = 1;
-	a_flag = 1;
-	t_flag = 1;
-	mv_flag = 1;
+	m_flag = 0;
+	mv_flag = 0;
 	mutex_unlock(&data->flags_lock);
 
 	return 0;
 err:
-  return ret;
+	return ret;
 }
 
 static const struct file_operations akmd_fops = {
@@ -566,12 +503,6 @@ int akm8975_probe(struct i2c_client *client,
 	int err;
 	FUNCDBG("called");
 
-	if (client->dev.platform_data == NULL) {
-		dev_err(&client->dev, "platform data is NULL. exiting.\n");
-		err = -ENODEV;
-		goto exit_platform_data_null;
-	}
-
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
 		dev_err(&client->dev, "platform data is NULL. exiting.\n");
 		err = -ENODEV;
@@ -586,15 +517,18 @@ int akm8975_probe(struct i2c_client *client,
 		goto exit_alloc_data_failed;
 	}
 
-	akm->pdata = client->dev.platform_data;
-
 	mutex_init(&akm->flags_lock);
 	INIT_WORK(&akm->work, akm_work_func);
 	i2c_set_clientdata(client, akm);
 
-	err = akm8975_power_on(akm);
-	if (err < 0)
-		goto exit_power_on_failed;
+	akm->regulator = regulator_get(&client->dev, "vcc");
+	if (IS_ERR_OR_NULL(akm->regulator)) {
+		dev_err(&client->dev, "unable to get regulator %s\n",
+				 dev_name(&client->dev));
+		akm->regulator = NULL;
+	} else {
+		regulator_enable(akm->regulator);
+	}
 
 	akm8975_init_client(client);
 	akm->this_client = client;
@@ -608,32 +542,22 @@ int akm8975_probe(struct i2c_client *client,
 		goto exit_input_dev_alloc_failed;
 	}
 
-	set_bit(EV_ABS, akm->input_dev->evbit);
+	/* orientation: yaw */
+	input_set_capability(akm->input_dev, EV_REL, REL_RX);
+	/* orientation: pitch */
+	input_set_capability(akm->input_dev, EV_REL, REL_RY);
+	/* orientation: roll */
+	input_set_capability(akm->input_dev, EV_REL, REL_RZ);
 
-	/* yaw */
-	input_set_abs_params(akm->input_dev, ABS_RX, 0, 23040, 0, 0);
-	/* pitch */
-	input_set_abs_params(akm->input_dev, ABS_RY, -11520, 11520, 0, 0);
-	/* roll */
-	input_set_abs_params(akm->input_dev, ABS_RZ, -5760, 5760, 0, 0);
-	/* x-axis acceleration */
-	input_set_abs_params(akm->input_dev, ABS_X, -5760, 5760, 0, 0);
-	/* y-axis acceleration */
-	input_set_abs_params(akm->input_dev, ABS_Y, -5760, 5760, 0, 0);
-	/* z-axis acceleration */
-	input_set_abs_params(akm->input_dev, ABS_Z, -5760, 5760, 0, 0);
-	/* temparature */
-	input_set_abs_params(akm->input_dev, ABS_THROTTLE, -30, 85, 0, 0);
-	/* status of magnetic sensor */
-	input_set_abs_params(akm->input_dev, ABS_RUDDER, 0, 3, 0, 0);
-	/* status of acceleration sensor */
-	input_set_abs_params(akm->input_dev, ABS_WHEEL, 0, 3, 0, 0);
+	/* status of orientation sensor */
+	input_set_capability(akm->input_dev, EV_REL, REL_HWHEEL);
+
 	/* x-axis of raw magnetic vector */
-	input_set_abs_params(akm->input_dev, ABS_HAT0X, -20480, 20479, 0, 0);
+	input_set_capability(akm->input_dev, EV_REL, REL_DIAL);
 	/* y-axis of raw magnetic vector */
-	input_set_abs_params(akm->input_dev, ABS_HAT0Y, -20480, 20479, 0, 0);
+	input_set_capability(akm->input_dev, EV_REL, REL_WHEEL);
 	/* z-axis of raw magnetic vector */
-	input_set_abs_params(akm->input_dev, ABS_BRAKE, -20480, 20479, 0, 0);
+	input_set_capability(akm->input_dev, EV_REL, REL_MISC);
 
 	akm->input_dev->name = "compass";
 
@@ -657,24 +581,17 @@ int akm8975_probe(struct i2c_client *client,
 	}
 
 	err = device_create_file(&client->dev, &dev_attr_akm_ms1);
-
-#ifdef CONFIG_HAS_EARLYSUSPEND
-	akm->early_suspend.suspend = akm8975_early_suspend;
-	akm->early_suspend.resume = akm8975_early_resume;
-	register_early_suspend(&akm->early_suspend);
-#endif
 	return 0;
 
 exit_misc_device_register_failed:
 exit_input_register_device_failed:
 	input_free_device(akm->input_dev);
 exit_input_dev_alloc_failed:
-	akm8975_power_off(akm);
-exit_power_on_failed:
+	if (akm->regulator)
+		regulator_put(akm->regulator);
 	kfree(akm);
 exit_alloc_data_failed:
 exit_check_functionality_failed:
-exit_platform_data_null:
 	return err;
 }
 
@@ -686,7 +603,10 @@ static int __devexit akm8975_remove(struct i2c_client *client)
 	input_unregister_device(akm->input_dev);
 	misc_deregister(&akmd_device);
 	misc_deregister(&akm_aot_device);
-	akm8975_power_off(akm);
+	if (akm->regulator) {
+		regulator_disable(akm->regulator);
+		regulator_put(akm->regulator);
+	}
 	kfree(akm);
 	return 0;
 }
@@ -701,26 +621,21 @@ MODULE_DEVICE_TABLE(i2c, akm8975_id);
 static struct i2c_driver akm8975_driver = {
 	.probe = akm8975_probe,
 	.remove = akm8975_remove,
-#ifndef CONFIG_HAS_EARLYSUSPEND
-	.resume = akm8975_resume,
-	.suspend = akm8975_suspend,
-#endif
 	.id_table = akm8975_id,
 	.driver = {
 		.name = "akm8975",
+		.pm = &akm8975_pm,
 	},
 };
 
 static int __init akm8975_init(void)
 {
 	pr_info("AK8975 compass driver: init\n");
-	FUNCDBG("AK8975 compass driver: init\n");
 	return i2c_add_driver(&akm8975_driver);
 }
 
 static void __exit akm8975_exit(void)
 {
-	FUNCDBG("AK8975 compass driver: exit\n");
 	i2c_del_driver(&akm8975_driver);
 }
 

@@ -408,6 +408,14 @@ config SENSORS_NCT1008
 	 Say yes here if you wish to include the ON Semiconductor
 	 NCT1008 Temperature sensor.
 
+config SENSORS_KXTF9
+	tristate "KXTF9 Accelerometer"
+	default n
+	depends on I2C
+	help
+	  If you say yes here you wish to include the Kionix
+	  KXTF9 accelerometer driver.
+
 config EP93XX_PWM
 	tristate "EP93xx PWM support"
 	depends on ARCH_EP93XX

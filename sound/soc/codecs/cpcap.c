@@ -1462,7 +1462,7 @@ static int snd_soc_put_cpcap_dai_mode(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
-void cpcap_audio_init(struct snd_soc_codec *codec)
+void cpcap_audio_init(struct snd_soc_codec *codec)  //almost verified 
 {
 	int i;
 	struct cpcap_device *cpcap;
@@ -1481,16 +1481,17 @@ void cpcap_audio_init(struct snd_soc_codec *codec)
 	cpcap_audio_reg_write(codec, 3, 0);
 	cpcap_audio_reg_write(codec, 4, 4);
 	cpcap_audio_reg_write(codec, 5, 0);
-	cpcap_audio_reg_write(codec, 6, 0x0400);
+	cpcap_audio_reg_write(codec, 6, 0);
 	cpcap_audio_reg_write(codec, 7, 0);
 	cpcap_audio_reg_write(codec, 9, 0);
 	cpcap_audio_reg_write(codec, 10, 0);
 	cpcap_audio_reg_write(codec, 11, 0);
-	cpcap_audio_reg_write(codec, 13, cache[13] | CPCAP_BIT_A2_FREE_RUN);
+	cpcap_audio_reg_write(codec, 13, cache[13] | CPCAP_BIT_A2_FREE_RUN);  // <-- to check cache[13] | CPCAP_BIT_A2_FREE_RUN
+	cpcap_audio_reg_write(codec, 0, 101);
 
 	/* This is not an audio register, go through cpcap api directly */
 	cpcap_regacc_write(cpcap, CPCAP_REG_GPIO4,
-			   CPCAP_BIT_GPIO4DIR, CPCAP_BIT_GPIO4DIR);
+			   CPCAP_BIT_GPIO4DIR, CPCAP_BIT_GPIO4DIR); // <-- to check CPCAP_BIT_GPIO4DIR, CPCAP_BIT_GPIO4DIR
 	vaudio_get();
 }
 
@@ -2749,7 +2750,7 @@ static int cpcap_resume(struct snd_soc_codec *codec)
 	return 0;
 }
 
-static int cpcap_probe(struct snd_soc_codec *codec)
+static int cpcap_probe(struct snd_soc_codec *codec) // verified
 {
 	struct platform_device *pdev;
 	struct cpcap_audio_state *curr_state;
@@ -2776,16 +2777,13 @@ static int cpcap_probe(struct snd_soc_codec *codec)
 	curr_state->codec = codec;
 	snd_soc_codec_set_drvdata(codec, curr_state);
 	cpcap_audio_init(codec);
+	printk("%s: after cpcap_audio_init(codec)\n", __func__);
 	snd_soc_add_controls(codec, cpcap_snd_controls,
 			     ARRAY_SIZE(cpcap_snd_controls));
+	printk("%s: after snd_soc_add_controls\n", __func__);
 	cpcap_add_widgets(codec);
-/*
-	gpio_clk_sel = get_gpio_by_name("clk_sel");
-	if (gpio_clk_sel < 0)
-		CPCAP_AUDIO_DEBUG_LOG("Cannot retrieve clk_sel GPIO\n");
-	else
-		CPCAP_AUDIO_DEBUG_LOG("clk_sel = gpio %d\n", gpio_clk_sel);
-*/
+	printk("%s: cpcap_add_widgets(codec);\n", __func__);
+
 	return 0;
 }
 
