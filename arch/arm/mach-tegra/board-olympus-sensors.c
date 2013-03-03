@@ -18,16 +18,16 @@
 #include "gpio-names.h"
 #include "board-olympus.h"
 
-#define TEGRA_PROX_INT_GPIO			TEGRA_GPIO_PE1
-#define TEGRA_HF_NORTH_GPIO			TEGRA_GPIO_PS2
-#define TEGRA_HF_SOUTH_GPIO			TEGRA_GPIO_PS0
+#define TEGRA_PROX_INT_GPIO		TEGRA_GPIO_PE1
+#define TEGRA_HF_NORTH_GPIO		TEGRA_GPIO_PS2
+#define TEGRA_HF_SOUTH_GPIO		TEGRA_GPIO_PS0
 #define TEGRA_HF_KICKSTAND_GPIO		TEGRA_GPIO_PW3
-#define TEGRA_VIBRATOR_GPIO			TEGRA_GPIO_PD0
+#define TEGRA_VIBRATOR_GPIO		TEGRA_GPIO_PD0
 #define TEGRA_KXTF9_INT_GPIO		TEGRA_GPIO_PV3
 #define TEGRA_L3G4200D_IRQ_GPIO		TEGRA_GPIO_PH2
 
 #define TEGRA_AKM8975_RESET_GPIO	TEGRA_GPIO_PK5
-#define PWRUP_BAREBOARD             0x00100000 /* Bit 20 */
+#define PWRUP_BAREBOARD            	0x00100000 /* Bit 20 */
 
 
 /*
@@ -475,6 +475,19 @@ struct l3g4200d_platform_data tegra_gyro_pdata = {
 
 };
 */
+
+static struct i2c_board_info __initdata olympus_i2c_bus4_board_info[] = {
+	{
+		I2C_BOARD_INFO("akm8975", 0x0C),
+		.platform_data = &akm8975_data,
+		.irq = TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PE2),
+	},
+	{
+		I2C_BOARD_INFO("kxtf9", 0x0F),
+		.platform_data = &kxtf9_data,
+	},
+};
+
 void __init mot_sensors_init(void)
 {
 	kxtf9_init();
@@ -489,5 +502,10 @@ void __init mot_sensors_init(void)
 
         aes1750_spi_device.irq = gpio_to_irq(aes1750_interrupt);
         spi_register_board_info(&aes1750_spi_device,sizeof(aes1750_spi_device));
+
+	
+	printk("bus 3: %d devices\n", ARRAY_SIZE(olympus_i2c_bus4_board_info));
+	i2c_register_board_info(3, olympus_i2c_bus4_board_info, 
+				ARRAY_SIZE(olympus_i2c_bus4_board_info));
 }
 

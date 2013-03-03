@@ -29,6 +29,7 @@
 #include <linux/irq.h>
 #include <linux/miscdevice.h>
 #include <linux/uaccess.h>
+#include <linux/slab.h>
 
 #include <linux/workqueue.h>
 
@@ -764,7 +765,7 @@ static int kxtf9_misc_open(struct inode *inode, struct file *file)
 	return 0;
 }
 
-static int kxtf9_misc_ioctl(struct inode *inode, struct file *file,
+static long kxtf9_misc_ioctl(struct file *file,
 				unsigned int cmd, unsigned long arg)
 {
 	void __user *argp = (void __user *)arg;
@@ -998,9 +999,9 @@ set_x_error:
 			return -EINVAL;
 		printk_ioctl("%s: SET_FUZZ %d\n", __func__, io_int);
 		spin_lock_irqsave(&tf9->input_dev->event_lock, flags);
-		tf9->input_dev->absfuzz[ABS_X] = io_int;
-		tf9->input_dev->absfuzz[ABS_Y] = io_int;
-		tf9->input_dev->absfuzz[ABS_Z] = io_int;
+		tf9->input_dev->absinfo[ABS_X].fuzz = io_int;
+		tf9->input_dev->absinfo[ABS_Y].fuzz = io_int;
+		tf9->input_dev->absinfo[ABS_Z].fuzz = io_int;
 		spin_unlock_irqrestore(&tf9->input_dev->event_lock, flags);
 		break;
 	case KXTF9_IOCTL_SET_XYZ_HISTORY:
@@ -1008,9 +1009,9 @@ set_x_error:
 			return -EFAULT;
 		printk_ioctl("%s: SET_XYZ_HISTORY %d\n", __func__, io_int);
 		spin_lock_irqsave(&tf9->input_dev->event_lock, flags);
-		tf9->input_dev->abs[ABS_X] = io_int;
-		tf9->input_dev->abs[ABS_Y] = io_int;
-		tf9->input_dev->abs[ABS_Z] = io_int;
+		tf9->input_dev->absinfo[ABS_X].value = io_int;
+		tf9->input_dev->absinfo[ABS_Y].value = io_int;
+		tf9->input_dev->absinfo[ABS_Y].value = io_int;
 		spin_unlock_irqrestore(&tf9->input_dev->event_lock, flags);
 		break;
 	default:
@@ -1023,7 +1024,7 @@ set_x_error:
 static const struct file_operations kxtf9_misc_fops = {
 	.owner = THIS_MODULE,
 	.open = kxtf9_misc_open,
-	.ioctl = kxtf9_misc_ioctl,
+	.unlocked_ioctl = kxtf9_misc_ioctl,
 };
 
 static struct miscdevice kxtf9_misc_device = {
