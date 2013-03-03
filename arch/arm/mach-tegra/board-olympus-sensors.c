@@ -371,7 +371,7 @@ struct isl29030_platform_data isl29030_als_ir_data_Olympus = {
 	.lens_percent_t = 10,
 	.irq = 0,
 	.getIrqStatus = isl29030_getIrqStatus,
-	.gpio_intr = PROX_INT_GPIO,
+	.gpio_intr = TEGRA_PROX_INT_GPIO,
 };
 
 static struct platform_device isl29030_als_ir = {
@@ -380,10 +380,10 @@ static struct platform_device isl29030_als_ir = {
 };
 static void __init isl29030_init(void)
 {
-	isl29030_als_ir_data_Olympus.irq = gpio_to_irq(PROX_INT_GPIO);
+	isl29030_als_ir_data_Olympus.irq = gpio_to_irq(TEGRA_PROX_INT_GPIO);
 	isl29030_als_ir.dev.platform_data = &(isl29030_als_ir_data_Olympus);
-	gpio_request(PROX_INT_GPIO, "isl29030_proximity_int");
-	gpio_direction_input(PROX_INT_GPIO);
+	gpio_request(TEGRA_PROX_INT_GPIO, "isl29030_proximity_int");
+	gpio_direction_input(TEGRA_PROX_INT_GPIO);
 }
 
 /*
