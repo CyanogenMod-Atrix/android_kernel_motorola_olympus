@@ -453,36 +453,35 @@ static struct tegra_i2c_platform_data olympus_i2c1_platform_data = {
 	.adapter_nr	= 0,
 	.bus_count	= 1,
 	.bus_clk_rate	= { 400000, 0 },
-	.scl_gpio	= {TEGRA_GPIO_PC4, 0},
-	.sda_gpio	= {TEGRA_GPIO_PC5, 0},
-	.arb_recovery = arb_lost_recovery,
-	.slave_addr = 0xFC,
+//	.scl_gpio	= {TEGRA_GPIO_PC4, 0},
+//	.sda_gpio	= {TEGRA_GPIO_PC5, 0},
+//	.arb_recovery = arb_lost_recovery,
+//	.slave_addr = 0xFC,
 };
 
 static struct tegra_i2c_platform_data olympus_i2c2_platform_data = {
 	.adapter_nr	= 1,
 	.bus_count	= 1,
-	.bus_clk_rate	= { 400000, 400000 },
 };
 
 static struct tegra_i2c_platform_data olympus_i2c3_platform_data = {
-	.adapter_nr	= 3,
+	.adapter_nr	= 2,
 	.bus_count	= 1,
 	.bus_clk_rate	= { 400000, 0 },
-	.scl_gpio	= {TEGRA_GPIO_PBB2, 0},
-	.sda_gpio	= {TEGRA_GPIO_PBB3, 0},
-	.arb_recovery = arb_lost_recovery,
-	.slave_addr = 0xFC,
+//	.scl_gpio	= {TEGRA_GPIO_PBB2, 0},
+//	.sda_gpio	= {TEGRA_GPIO_PBB3, 0},
+//	.arb_recovery = arb_lost_recovery,
+//	.slave_addr = 0xFC,
 };
 
 static struct tegra_i2c_platform_data olympus_dvc_platform_data = {
-	.adapter_nr	= 4,
+	.adapter_nr	= 3,
 	.bus_count	= 1,
-	.bus_clk_rate	= { 100000, 0 },
+	.bus_clk_rate	= { 400000, 0 },
 	.is_dvc		= true,
-	.scl_gpio	= {TEGRA_GPIO_PZ6, 0},
-	.sda_gpio	= {TEGRA_GPIO_PZ7, 0},
-	.arb_recovery = arb_lost_recovery,
+//	.scl_gpio	= {TEGRA_GPIO_PZ6, 0},
+//	.sda_gpio	= {TEGRA_GPIO_PZ7, 0},
+//	.arb_recovery = arb_lost_recovery,
 };
 
 void olympus_i2c_reg(void)
