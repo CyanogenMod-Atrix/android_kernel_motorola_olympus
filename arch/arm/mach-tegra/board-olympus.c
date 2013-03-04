@@ -559,7 +559,7 @@ if (1==0) olympus_emc_init();
 
 	platform_device_register(&tegra_w1_device);
 	
-//	mot_modem_init();
+	mot_modem_init();
 	olympus_wlan_init();
 
 	mot_sensors_init();

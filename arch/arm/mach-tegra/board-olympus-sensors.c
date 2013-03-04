@@ -412,7 +412,7 @@ static struct spi_board_info aes1750_spi_device __initdata = {
     .modalias = "aes1750",
     .bus_num = 1,
     .chip_select = 2,
-    .mode = SPI_MODE_1,
+    .mode = SPI_MODE_1 | SPI_CS_HIGH,
     .max_speed_hz = 15000000,
     .controller_data = NULL,
     .platform_data = &aes1750_interrupt,
@@ -492,8 +492,8 @@ void __init mot_sensors_init(void)
 {
 	kxtf9_init();
 	tegra_akm8975_init();
-
 	tegra_vibrator_init();
+
 	if(!(bi_powerup_reason() & PWRUP_BAREBOARD)) {
 		isl29030_init();
 	}

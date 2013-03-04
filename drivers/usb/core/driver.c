@@ -1608,6 +1608,20 @@ void usb_autopm_get_interface_no_resume(struct usb_interface *intf)
 }
 EXPORT_SYMBOL_GPL(usb_autopm_get_interface_no_resume);
 
+/**
+ * usb_autopm_schedule_autosuspend - queue an autosuspend request
+ * @intf: the usb_interface whose usb device should be suspended
+ * @delay: number of jiffies to wait before sending the request
+ *		or 0 for immediate execution
+ *
+ * This routine can run in atomic context.
+ */
+void usb_autopm_schedule_autosuspend(struct usb_interface *intf, int delay)
+{
+	schedule_delayed_work(&intf->autopm_ws, delay);
+}
+EXPORT_SYMBOL_GPL(usb_autopm_schedule_autosuspend);
+
 /* Internal routine to check whether we may autosuspend a device. */
 static int autosuspend_check(struct usb_device *udev)
 {

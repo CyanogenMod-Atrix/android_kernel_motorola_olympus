@@ -901,9 +901,9 @@ static int spi_tegra_setup(struct spi_device *spi)
 	unsigned long flags;
 
 	
-	dev_info(&spi->dev, "setup %d bpw, %s, %scpol, %scpha, %dHz\n",
+	dev_info(&spi->dev, "setup %d bpw, %scs_high, %scpol, %scpha, %dHz\n",
 		spi->bits_per_word,
-		(spi->mode & SPI_CS_HIGH) ? "cs_high, " : "",
+		(spi->mode & SPI_CS_HIGH) ? "" : "~",
 		spi->mode & SPI_CPOL ? "" : "~",
 		spi->mode & SPI_CPHA ? "" : "~",
 		spi->max_speed_hz);
@@ -930,7 +930,7 @@ static int spi_tegra_setup(struct spi_device *spi)
 		return -EINVAL;
 	}
 
-	dev_info(&spi->dev, "setup chipselect %d (0x%x)\n", spi->chip_select, cs_bit);
+	
 	pm_runtime_get_sync(&tspi->pdev->dev);
 	tegra_spi_clk_enable(tspi);
 
@@ -940,6 +940,7 @@ static int spi_tegra_setup(struct spi_device *spi)
 		val |= cs_bit;
 	else
 		val &= ~cs_bit;
+	dev_info(&spi->dev, "setup chipselect %d (0x%lx)\n", spi->chip_select, val);
 	tspi->def_command_reg = val;
 	spi_tegra_writel(tspi, tspi->def_command_reg, SLINK_COMMAND);
 	spin_unlock_irqrestore(&tspi->lock, flags);
@@ -1538,8 +1539,9 @@ skip_dma_alloc:
 	if (ret < 0) {
 		dev_err(&pdev->dev, "can not register to master err %d\n", ret);
 		goto exit_destry_wq;
+	} else {
+		dev_info(&pdev->dev, "on bus %d\n", master->bus_num);
 	}
-
 	return ret;
 
 exit_destry_wq:

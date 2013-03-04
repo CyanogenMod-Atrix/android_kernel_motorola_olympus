@@ -2765,6 +2765,7 @@ static int cpcap_probe(struct snd_soc_codec *codec) // verified
 
 	pdev = container_of(codec->dev, struct platform_device, dev);
 	curr_state->cpcap = platform_get_drvdata(pdev);
+	pr_info("ENTER: %s\n", __func__);
 	if (curr_state->cpcap) {
 		curr_state->cpcap->h2w_new_state = &audio_callback;
 		curr_state->cpcap->h2w_new_state_data = curr_state;
@@ -2814,6 +2815,8 @@ struct snd_soc_codec_driver soc_codec_dev_cpcap = {
 static int __devinit cpcap_codec_probe(struct platform_device *pdev)
 {
 	int ret = 0;
+
+	printk("%s:ENTER\n", __func__);
 
 	ret = snd_soc_register_codec(&pdev->dev,
 			&soc_codec_dev_cpcap, cpcap_dai, ARRAY_SIZE(cpcap_dai));

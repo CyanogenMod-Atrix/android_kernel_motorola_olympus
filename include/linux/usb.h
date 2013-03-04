@@ -184,6 +184,7 @@ struct usb_interface {
 	struct device dev;		/* interface specific device info */
 	struct device *usb_dev;
 	atomic_t pm_usage_cnt;		/* usage counter for autosuspend */
+	struct delayed_work autopm_ws;	/* delayed autosuspend requests */
 	struct work_struct reset_ws;	/* for resets in atomic context */
 };
 #define	to_usb_interface(d) container_of(d, struct usb_interface, dev)
@@ -525,6 +526,7 @@ extern int usb_autopm_get_interface_async(struct usb_interface *intf);
 extern void usb_autopm_put_interface_async(struct usb_interface *intf);
 extern void usb_autopm_get_interface_no_resume(struct usb_interface *intf);
 extern void usb_autopm_put_interface_no_suspend(struct usb_interface *intf);
+extern void usb_autopm_schedule_autosuspend(struct usb_interface *intf, int delay);
 
 static inline void usb_mark_last_busy(struct usb_device *udev)
 {

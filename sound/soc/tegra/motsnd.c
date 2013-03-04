@@ -57,7 +57,7 @@ struct tegra_olympus {
 	struct tegra_asoc_utils_data util_data;
 };
 
-static int motsnd_hw_params(struct snd_pcm_substream *substream,
+static int motsnd_hw_params(struct snd_pcm_substream *substream, 	//verified
 			    struct snd_pcm_hw_params *params)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
@@ -326,22 +326,22 @@ static int motsnd_cpcap_voice_init(struct snd_soc_pcm_runtime *rtd)
 	return 0;
 }
 
-static const struct snd_soc_dapm_widget tegra_dapm_widgets[] = {
+static const struct snd_soc_dapm_widget tegra_dapm_widgets[] = {	//verified
 	SND_SOC_DAPM_SPK("Int Spk", NULL),
 };
 
-static const struct snd_soc_dapm_route tegra_audio_map[] = {
+static const struct snd_soc_dapm_route tegra_audio_map[] = { 	//verified
 	{"Int Spk", NULL, "ROP"},
 	{"Int Spk", NULL, "RON"},
 	{"Int Spk", NULL, "LOP"},
 	{"Int Spk", NULL, "LON"},
 };
 
-static const struct snd_kcontrol_new tegra_controls[] = {
+static const struct snd_kcontrol_new tegra_controls[] = {	//verified
 	SOC_DAPM_PIN_SWITCH("Int Spk"),
 };
 
-static int motsnd_tegra_mm_init(struct snd_soc_pcm_runtime *rtd) {
+static int motsnd_tegra_mm_init(struct snd_soc_pcm_runtime *rtd) {	//verified
 	
 	int ret;
 
@@ -367,7 +367,7 @@ static int motsnd_tegra_mm_init(struct snd_soc_pcm_runtime *rtd) {
 	return 0;
 }
 
-static struct snd_soc_dai_driver dai[] = {
+static struct snd_soc_dai_driver dai[] = { 	//verified
 {
 	.name = "MODEM",
 	.playback = {
@@ -398,7 +398,7 @@ static struct snd_soc_dai_driver dai[] = {
 };
 
 /* Digital audio interface glue - connects codec <--> CPU */
-static struct snd_soc_dai_link motsnd_dai[] = {
+static struct snd_soc_dai_link motsnd_dai[] = {		//verified
 {
 	.name = "Multimedia LP",
 	.stream_name = "Multimedia",
@@ -474,16 +474,16 @@ static struct snd_soc_dai_link motsnd_dai[] = {
 };
 
 /* Audio machine driver */
-static struct snd_soc_card snd_soc_mot = {
+static struct snd_soc_card snd_soc_mot = { 	//verified
 	.name = "motsnd",
-	.long_name = "Motorola OLYMPUS",
+//	.long_name = "Motorola OLYMPUS",
 	.dai_link = motsnd_dai,
 	.num_links = ARRAY_SIZE(motsnd_dai),
 };
 
 static struct platform_device *mot_snd_device;
 
-static int __init motsnd_soc_init(void)
+static int __init motsnd_soc_init(void)	//verified
 {
 	struct snd_soc_card *card = &snd_soc_mot;
 	struct tegra_olympus *olympus;
@@ -531,7 +531,7 @@ err_free_olympus:
 }
 module_init(motsnd_soc_init);
 
-static void __exit motsnd_soc_exit(void)
+static void __exit motsnd_soc_exit(void)	//verified
 {
 	platform_device_unregister(mot_snd_device);
 }

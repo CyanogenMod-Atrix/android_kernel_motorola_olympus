@@ -46,16 +46,16 @@
 #define   SLINK_BOTH_EN			(1 << 10)
 #define   SLINK_CS_SW			(1 << 11)
 #define   SLINK_CS_VALUE		(1 << 12)
-#define   SLINK_CS_POLARITY		(1 << 13)
+#define   SLINK_CS_POLARITY		(1 << 13) //2000
 #define   SLINK_IDLE_SDA_DRIVE_LOW	(0 << 16)
 #define   SLINK_IDLE_SDA_DRIVE_HIGH	(1 << 16)
 #define   SLINK_IDLE_SDA_PULL_LOW	(2 << 16)
 #define   SLINK_IDLE_SDA_PULL_HIGH	(3 << 16)
 #define   SLINK_IDLE_SDA_MASK		(3 << 16)
-#define   SLINK_CS_POLARITY1		(1 << 20)
+#define   SLINK_CS_POLARITY1		(1 << 20) //100000
 #define   SLINK_CK_SDA			(1 << 21)
-#define   SLINK_CS_POLARITY2		(1 << 22)
-#define   SLINK_CS_POLARITY3		(1 << 23)
+#define   SLINK_CS_POLARITY2		(1 << 22) //400000
+#define   SLINK_CS_POLARITY3		(1 << 23) //
 #define   SLINK_IDLE_SCLK_DRIVE_LOW	(0 << 24)
 #define   SLINK_IDLE_SCLK_DRIVE_HIGH	(1 << 24)
 #define   SLINK_IDLE_SCLK_PULL_LOW	(2 << 24)
@@ -811,8 +811,9 @@ static int spi_tegra_setup(struct spi_device *spi)
 	unsigned long val;
 	unsigned long flags;
 
-	dev_dbg(&spi->dev, "setup %d bpw, %scpol, %scpha, %dHz\n",
+	dev_info(&spi->dev, "setup %d bpw, %scs_high, %scpol, %scpha, %dHz\n",
 		spi->bits_per_word,
+		(spi->mode & SPI_CS_HIGH) ? "" : "~",
 		spi->mode & SPI_CPOL ? "" : "~",
 		spi->mode & SPI_CPHA ? "" : "~",
 		spi->max_speed_hz);
@@ -845,6 +846,7 @@ static int spi_tegra_setup(struct spi_device *spi)
 		val |= cs_bit;
 	else
 		val &= ~cs_bit;
+	dev_info(&spi->dev, "setup chipselect %d (0x%lx)\n", spi->chip_select, val);
 	tspi->def_command_reg |= val;
 
 	if (!tspi->is_clkon_always && !tspi->clk_state) {
@@ -1188,7 +1190,7 @@ static int __init spi_tegra_probe(struct platform_device *pdev)
 		goto fail_irq_req;
 	}
 
-	tspi->clk = clk_get(&pdev->dev, NULL);
+	tspi->clk = clk_get(&pdev->dev, "spi");
 	if (IS_ERR_OR_NULL(tspi->clk)) {
 		dev_err(&pdev->dev, "can not get clock\n");
 		ret = PTR_ERR(tspi->clk);
@@ -1312,6 +1314,8 @@ skip_dma_alloc:
 	if (ret < 0) {
 		dev_err(&pdev->dev, "can not register to master err %d\n", ret);
 		goto fail_master_register;
+	} else {
+		dev_info(&pdev->dev, "on bus %d\n", master->bus_num);
 	}
 	return ret;
 
