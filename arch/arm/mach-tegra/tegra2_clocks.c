@@ -2516,12 +2516,12 @@ struct clk tegra_list_shared_clks[] = {
 	SHARED_CLK("avp.sclk",	"tegra-avp",		"sclk",	&tegra_clk_virtual_sclk),
 	SHARED_CLK("mon.sclk",	"tegra-stat-mon",	"sclk",	&tegra_clk_virtual_sclk),
 	SHARED_CLK("bsea.sclk",	"tegra-aes",		"sclk",	&tegra_clk_virtual_sclk),
-	SHARED_CLK("usbd.sclk",	"tegra-udc.0",	"sclk",	&tegra_clk_virtual_sclk),
+	SHARED_CLK("usbd.sclk",	"tegra-udc.0",		"sclk",	&tegra_clk_virtual_sclk),
 	SHARED_CLK("usb1.sclk",	"tegra-ehci.0",		"sclk",	&tegra_clk_virtual_sclk),
 	SHARED_CLK("usb2.sclk",	"tegra-ehci.1",		"sclk",	&tegra_clk_virtual_sclk),
 	SHARED_CLK("usb3.sclk",	"tegra-ehci.2",		"sclk",	&tegra_clk_virtual_sclk),
 //	SHARED_CLK("sbc1.sclk",	"spi_tegra.0",		"sclk",	&tegra_clk_virtual_sclk),
-	SHARED_CLK("sbc1.sclk",	"spi_slave_tegra.0",		"sclk",	&tegra_clk_virtual_sclk),
+	SHARED_CLK("sbc1.sclk",	"spi_slave_tegra.0",	"sclk",	&tegra_clk_virtual_sclk),
 	SHARED_CLK("sbc2.sclk",	"spi_tegra.1",		"sclk",	&tegra_clk_virtual_sclk),
 	SHARED_CLK("sbc3.sclk",	"spi_tegra.2",		"sclk",	&tegra_clk_virtual_sclk),
 	SHARED_CLK("sbc4.sclk",	"spi_tegra.3",		"sclk",	&tegra_clk_virtual_sclk),
@@ -2533,11 +2533,11 @@ struct clk tegra_list_shared_clks[] = {
 	SHARED_CLK("3d.emc",	"tegra_gr3d",		"emc",	&tegra_clk_emc),
 	SHARED_CLK("2d.emc",	"tegra_gr2d",		"emc",	&tegra_clk_emc),
 	SHARED_CLK("mpe.emc",	"tegra_mpe",		"emc",	&tegra_clk_emc),
-	SHARED_CLK("usbd.emc",	"tegra-udc.0",	"emc",	&tegra_clk_emc),
+	SHARED_CLK("usbd.emc",	"tegra-udc.0",		"emc",	&tegra_clk_emc),
 	SHARED_CLK("usb1.emc",	"tegra-ehci.0",		"emc",	&tegra_clk_emc),
 	SHARED_CLK("usb2.emc",	"tegra-ehci.1",		"emc",	&tegra_clk_emc),
 	SHARED_CLK("usb3.emc",	"tegra-ehci.2",		"emc",	&tegra_clk_emc),
-	SHARED_CLK("camera.emc",	"tegra_camera",		"emc",	&tegra_clk_emc),
+	SHARED_CLK("camera.emc","tegra_camera",		"emc",	&tegra_clk_emc),
 };
 
 #define CLK_DUPLICATE(_name, _dev, _con)		\

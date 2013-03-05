@@ -331,13 +331,6 @@ config SPI_STMP3XXX
 	help
 	  SPI driver for Freescale STMP37xx/378x SoC SSP interface
 
-config SPI_SLAVE
-#      boolean "SPI Slave Support"
-       boolean
-       default SPI
-       help
-         Proveide SPI slave controller support
-
 config SPI_TEGRA
 	tristate "Nvidia Tegra SPI controller"
 	depends on ARCH_TEGRA

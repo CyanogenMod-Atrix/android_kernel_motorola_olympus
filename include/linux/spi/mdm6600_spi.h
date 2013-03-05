@@ -20,7 +20,7 @@ struct mdm6600_spi_platform_data
 
 struct mdm6600_spi_device
 {
-	struct spi_slave_device *spi;
+	struct spi_device *spi;
 /* mrdy is used by spi master to:
      a) As as a response for SPI slave initiated transaction, tell slave that master is ready and
          will shift clock out;

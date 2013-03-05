@@ -13,7 +13,8 @@
 #include <linux/reboot.h>
 #include <linux/notifier.h>
 #include <linux/delay.h>
-#include <linux/spi/spi_slave.h>
+#include <linux/spi/spi.h>
+#include <linux/spi-tegra.h>
 #include <linux/spi/mdm6600_spi.h>
 #include "spi_dbg.h"
 
@@ -148,12 +149,13 @@ static void mdm6600_spi_handle_peer_shutdown(void *context)
 	disable_irq_nosync(spi->mrdy_irq);
 }
 
-static int __devinit mdm6600_spi_probe(struct spi_slave_device *spi)
+static int mdm6600_spi_probe(struct spi_device *spi)
 {
 	struct mdm6600_spi_platform_data *plat;
 
 	plat = (struct mdm6600_spi_platform_data *)spi->dev.platform_data;
-
+	printk(KERN_INFO "%s, spi dev=%p, srdy=%d, mrdy=%d\n", __func__,
+			spi, plat->gpio_srdy, plat->gpio_mrdy);
 	SPI_IPC_INFO("%s, spi dev=%p, srdy=%d, mrdy=%d\n", __func__,
 			spi, plat->gpio_srdy, plat->gpio_mrdy);
 
@@ -174,44 +176,44 @@ static int __devinit mdm6600_spi_probe(struct spi_slave_device *spi)
 	return 0;
 }
 
-static int mdm6600_spi_suspend(struct spi_slave_device *dev, pm_message_t mesg)
+static int mdm6600_spi_suspend(struct spi_device *spi, pm_message_t mesg)
 {
 	SPI_IPC_INFO("%s\n", __func__);
         return 0;
 }
 
-static int mdm6600_spi_resume(struct spi_slave_device *dev)
+static int mdm6600_spi_resume(struct spi_device *spi)
 {
 	SPI_IPC_INFO("%s\n", __func__);
         return 0;
 }
 
-static int __devexit mdm6600_spi_remove(struct spi_slave_device *spi)
+static int __devexit mdm6600_spi_remove(struct spi_device *spi)
 {
 	return 0;
 }
 
-static struct spi_slave_driver mdm6600_spi_driver = {
+static struct spi_driver mdm6600_spi_driver = {
 	.driver = {
 		   .name = "mdm6600_spi",
-		   .bus = &spi_slave_bus_type,
+		   .bus = &spi_bus_type,
 		   .owner = THIS_MODULE,
 		   },
 	.probe = mdm6600_spi_probe,
         .suspend = mdm6600_spi_suspend,
         .resume = mdm6600_spi_resume,
-	.remove = __devexit_p(mdm6600_spi_remove),
+	.remove	= __exit_p(mdm6600_spi_remove),
 };
 
 static int __init mdm6600_spi_init(void)
 {
 	SPI_IPC_INFO("%s\n", __func__);
-	return spi_slave_register_driver(&mdm6600_spi_driver);
+	return spi_register_driver(&mdm6600_spi_driver);
 }
 
 static void mdm6600_spi_shutdown(void)
 {
-	spi_slave_unregister_driver(&mdm6600_spi_driver);
+	spi_unregister_driver(&mdm6600_spi_driver);
 }
 
 subsys_initcall(mdm6600_spi_init);

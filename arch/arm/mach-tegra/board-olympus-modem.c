@@ -14,10 +14,9 @@
 
 #include <mach/mdm_ctrl.h>
 
-#ifdef CONFIG_SPI_SLAVE
-#include <linux/spi/spi_slave.h>
+#include <linux/spi/spi.h>
+#include <linux/spi-tegra.h>
 #include <linux/spi/mdm6600_spi.h>
-#endif
 
 #include "gpio-names.h"
 #include "board-olympus.h"
@@ -262,7 +261,6 @@ static int __init mot_mdm_ctrl_init(void)
 /*
  * MDM6600 SPI IPC link configuration
  */
-#ifdef CONFIG_SPI_SLAVE
 struct mdm6600_spi_platform_data mdm6600_spi_platform_data = {
 	.gpio_mrdy = MDM6600_HOST_WAKE_GPIO,
 	.gpio_srdy = MDM6600_PEER_WAKE_GPIO,
@@ -271,12 +269,12 @@ struct mdm6600_spi_platform_data mdm6600_spi_platform_data = {
 #endif
 };
 
-struct spi_slave_board_info tegra_spi_slave_devices[] __initdata = {
+struct spi_board_info tegra_spi_mdm6600_device[] __initdata = {
 {
 	.modalias = "mdm6600_spi",
 	.bus_num = 0,
 	.chip_select = 0,
-	.mode = SPI_MODE_0,
+	.mode = SPI_MODE_0 | SPI_CS_HIGH,
 	.max_speed_hz = 26000000,
 	.platform_data = &mdm6600_spi_platform_data,
 	.irq = 0,
@@ -285,15 +283,9 @@ struct spi_slave_board_info tegra_spi_slave_devices[] __initdata = {
 
 static int __init mot_setup_mdm6600_spi_ipc(void)
 {
-	return spi_slave_register_board_info(tegra_spi_slave_devices,
-				ARRAY_SIZE(tegra_spi_slave_devices));
+	return spi_register_board_info(tegra_spi_mdm6600_device,
+				ARRAY_SIZE(tegra_spi_mdm6600_device));
 }
-#else
-static int __init mot_setup_mdm6600_spi_ipc(void)
-{
-	return 0;
-}
-#endif
 
 /*
  * MDM6600 USB IPC link configuration

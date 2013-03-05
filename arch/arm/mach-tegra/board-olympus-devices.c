@@ -546,18 +546,18 @@ static void olympus_usb_init(void)
 	platform_device_register(&rndis_device);
 
 }
-#if 0
+
 /*
  * SPI
  */
-
+#if 0
 static struct tegra_spi_platform_data olympus_spi_pdata = {
 	.is_dma_based		= true,
 	.max_dma_buffer		= (16 * 1024),
 	.is_clkon_always	= false,
 	.max_rate		= 100000000,
 };
-
+/*
 struct spi_clk_parent spi_parent_clk[] = {
 	[0] = {.name = "pll_p"},
 #ifndef CONFIG_TEGRA_PLLM_RESTRICTED
@@ -566,13 +566,13 @@ struct spi_clk_parent spi_parent_clk[] = {
 #else
 	[1] = {.name = "clk_m"},
 #endif
-};
+};*/
 
 static void __init olympus_spi_init(void)
 {
-	int i;
-	struct clk *clk;
-
+//	int i;
+//	struct clk *clk;
+/*
 	printk("this board spi init\n");
         for (i = 0; i < ARRAY_SIZE(spi_parent_clk); ++i) {
       		clk = tegra_get_clock_by_name(spi_parent_clk[i].name);					
@@ -585,7 +585,7 @@ static void __init olympus_spi_init(void)
 	}
 	olympus_spi_pdata.parent_clk_list = spi_parent_clk;
 	olympus_spi_pdata.parent_clk_count = ARRAY_SIZE(spi_parent_clk);	
-
+*/
 	tegra_spi_device1.dev.platform_data = &olympus_spi_pdata;
 	platform_device_register(&tegra_spi_device1);
 
@@ -594,6 +594,9 @@ static void __init olympus_spi_init(void)
 	
 	tegra_spi_device3.dev.platform_data = &olympus_spi_pdata;
 	platform_device_register(&tegra_spi_device3);
+
+	tegra_spi_device3.dev.platform_data = &olympus_spi_pdata;
+	platform_device_register(&tegra_spi_device4);
 
 }
 #endif
@@ -608,7 +611,7 @@ static struct platform_device *olympus_devices[] __initdata = {
 	&tegra_gart_device,
 	&tegra_wdt_device,
 	&tegra_spi_slave_device1,
-	//&tegra_spi_device1,
+//	&tegra_spi_device1,
 	&tegra_spi_device2,
 	&tegra_spi_device3,
 	&tegra_spi_device4,
@@ -667,7 +670,7 @@ void __init olympus_devices_init()
 //	struct clk *clk;
 
 	olympus_uart_init();
-//	olympus_spi_init();
+	//olympus_spi_init();
 
 	platform_add_devices(olympus_devices, ARRAY_SIZE(olympus_devices));
 

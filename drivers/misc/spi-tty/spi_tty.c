@@ -12,7 +12,8 @@
 #include <linux/circ_buf.h>
 #include <linux/delay.h>
 #include <asm/uaccess.h>
-#include <linux/spi/spi_slave.h>
+#include <linux/spi/spi.h>
+#include <linux/spi-tegra.h>
 #include <linux/spi/mdm6600_spi.h>
 #include <linux/mdm_ctrl.h>
 #include "spi_dbg.h"
@@ -78,8 +79,8 @@ module_param(tx_count, ulong, S_IRUGO|S_IWUSR);
 unsigned long write_count;
 module_param(write_count, ulong, S_IRUGO|S_IWUSR);
 
-struct spi_slave_message spi_big_msg;
-struct spi_slave_transfer spi_big_trans;
+struct spi_message spi_big_msg;
+struct spi_transfer spi_big_trans;
 extern struct mdm6600_spi_device mdm6600_spi_dev;
 static struct spi_tty_s *spi_tty_gbl;
 
@@ -274,7 +275,7 @@ void spi_tty_write_worker(struct work_struct *work)
 		spi_big_trans.len = c + SPI_MSG_HEADER_LEN;
 		spi_ipc_buf_dump("tx header: ", spi_big_trans.tx_buf, SPI_MSG_HEADER_LEN);
 		spi_ipc_buf_dump_ascii("tx data: ", spi_big_trans.tx_buf + SPI_MSG_HEADER_LEN, (c>16?16:c));
-		spi_slave_sync(mdm6600_spi_dev.spi, &spi_big_msg);
+		spi_sync(mdm6600_spi_dev.spi, &spi_big_msg);
 
 		if (spi_big_msg.actual_length == SPI_TRANSACTION_LEN) {
 			tx_count++;
@@ -567,7 +568,7 @@ static int __init spi_tty_init(void)
 		return -ESRCH;
 	}
 
-	spi_slave_message_init(&spi_big_msg);
+	spi_message_init(&spi_big_msg);
 
 	spi_big_trans.tx_buf = kmalloc(SPI_TRANSACTION_LEN*2, GFP_KERNEL);
 	if (!spi_big_trans.tx_buf) {
@@ -577,7 +578,7 @@ static int __init spi_tty_init(void)
 	}
 
 	spi_big_trans.rx_buf = spi_big_trans.tx_buf + SPI_TRANSACTION_LEN;
-	spi_slave_message_add_tail(&spi_big_trans, &spi_big_msg);
+	spi_message_add_tail(&spi_big_trans, &spi_big_msg);
 
 	spi_tty_driver = alloc_tty_driver(SPI_TTY_MINORS);
 	if (!spi_tty_driver)
