@@ -1,0 +1,16 @@
+This file is used to identify all the components and files making the Atrix (olympus):
+
+* arch/arm/mach-tegra/board-olympus.c
+* arch/arm/mach-tegra/board-olympus-devices.c
+* arch/arm/mach-tegra/board-olympus-memory.c
+* arch/arm/mach-tegra/board-olympus-misc.c
+* arch/arm/mach-tegra/board-olympus-panel.c
+* arch/arm/mach-tegra/board-olympus-power.c
+* arch/arm/mach-tegra/board-olympus-power.c
+* drivers/mfd/cpcap-irq.c
+* drivers/mfd/cpcap-uc.c
+* drivers/mfd/cpcap-usb-det.c
+* drivers/usb/core/devio.c
+* drivers/usb/gadget/android.c
+* drivers/usb/gadget.old/android.c
+* drivers/watchdog/cpcap_wdt.c
