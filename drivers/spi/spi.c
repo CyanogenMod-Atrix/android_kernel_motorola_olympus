@@ -422,9 +422,12 @@ struct spi_device *spi_new_device(struct spi_master *master,
 	 * suggests syslogged diagnostics are best here (ugh).
 	 */
 
+	printk("%s: modalias 1 %s\n", __func__, chip->modalias);
+
 	proxy = spi_alloc_device(master);
 	if (!proxy)
 		return NULL;
+	printk("%s: modalias 3 %s\n", __func__, chip->modalias);
 
 	WARN_ON(strlen(chip->modalias) >= sizeof(proxy->modalias));
 
@@ -436,12 +439,14 @@ struct spi_device *spi_new_device(struct spi_master *master,
 	proxy->dev.platform_data = (void *) chip->platform_data;
 	proxy->controller_data = chip->controller_data;
 	proxy->controller_state = NULL;
+	printk("%s: modalias 3 %s\n", __func__, chip->modalias);
 
 	status = spi_add_device(proxy);
 	if (status < 0) {
 		spi_dev_put(proxy);
 		return NULL;
 	}
+	printk("%s: modalias 4 %s\n", __func__, chip->modalias);
 
 	return proxy;
 }
