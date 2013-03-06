@@ -397,7 +397,7 @@ static const struct snd_soc_dapm_widget cpcap_dapm_widgets[] = {
 	SND_SOC_DAPM_OUTPUT("LDSPR"),
 	SND_SOC_DAPM_OUTPUT("LDSPL"),
 	SND_SOC_DAPM_OUTPUT("HSR"),
-//	SND_SOC_DAPM_OUTPUT("HSL"),
+	SND_SOC_DAPM_OUTPUT("HSL"),
 	SND_SOC_DAPM_OUTPUT("LINER"),
 	SND_SOC_DAPM_OUTPUT("LINEL"),
 	SND_SOC_DAPM_OUTPUT("EMUSPKR"),
@@ -405,22 +405,22 @@ static const struct snd_soc_dapm_widget cpcap_dapm_widgets[] = {
 	SND_SOC_DAPM_OUTPUT("EP"),
 
 	/* Analog input muxes for the capture amplifiers */
-/*	SND_SOC_DAPM_MUX("Analog Right Capture Route",
+	SND_SOC_DAPM_MUX("Analog Right Capture Route",
 		SND_SOC_NOPM, 0, 0, &cpcap_micr_control),
 	SND_SOC_DAPM_MUX("Analog Left Capture Route",
 		SND_SOC_NOPM, 0, 0, &cpcap_micl_control),
 	SND_SOC_DAPM_MUX("Analog External Right Capture Route",
 		SND_SOC_NOPM, 0, 0, &cpcap_ext_micr_control),
 	SND_SOC_DAPM_MUX("Analog External Left Capture Route",
-		SND_SOC_NOPM, 0, 0, &cpcap_ext_micl_control),*/
+		SND_SOC_NOPM, 0, 0, &cpcap_ext_micl_control),
 
 	/* Analog capture PGAs */
-/*	SND_SOC_DAPM_PGA("MIC1PGA",
+	SND_SOC_DAPM_PGA("MIC1PGA",
 		CPCAP_AUDIO_REG_INDEX(CPCAP_REG_TXI),
 		1, 0, NULL, 0),
 	SND_SOC_DAPM_PGA("MIC2PGA",
 		CPCAP_AUDIO_REG_INDEX(CPCAP_REG_TXI),
-		6, 0, NULL, 0),*/
+		6, 0, NULL, 0),
 
 	/* ADCs */
 	SND_SOC_DAPM_ADC("ADC Right", "Right Front Capture",
@@ -439,10 +439,10 @@ static const struct snd_soc_dapm_widget cpcap_dapm_widgets[] = {
 		SND_SOC_NOPM, 0, 0, cpcap_mixer_controls,
 		ARRAY_SIZE(cpcap_mixer_controls)),
 
-/*	SND_SOC_DAPM_DAC_E("CDC Playback", "Codec Output",
+	SND_SOC_DAPM_DAC_E("CDC Playback", "Codec Output",
 		CPCAP_AUDIO_REG_INDEX(CPCAP_REG_RXCOA), 10, 0,
 		cpcap_audio_power_event,
-		SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_PRE_PMD),*/
+		SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_PRE_PMD),
 	SND_SOC_DAPM_DAC_E("DAC Playback", "STDac Output",
 		CPCAP_AUDIO_REG_INDEX(CPCAP_REG_RXSDOA), 12, 0,
 		cpcap_audio_power_event,
@@ -457,8 +457,8 @@ static const struct snd_soc_dapm_widget cpcap_dapm_widgets[] = {
 		SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_PRE_PMD),
 
 	/* Analog playback switches */
-/*	SND_SOC_DAPM_SWITCH("EPCDC",
-		SND_SOC_NOPM, 0, 0, &epcdc_switch_controls),*/
+	SND_SOC_DAPM_SWITCH("EPCDC",
+		SND_SOC_NOPM, 0, 0, &epcdc_switch_controls),
 	SND_SOC_DAPM_SWITCH("LDSPRCDC",
 		SND_SOC_NOPM, 0, 0, &ldsprcdc_switch_controls),
 	SND_SOC_DAPM_SWITCH("LDSPLCDC",
@@ -517,16 +517,16 @@ static const struct snd_soc_dapm_widget cpcap_dapm_widgets[] = {
 
 static const struct snd_soc_dapm_route intercon[] = {
 	/* Capture path */
-/*	{"Analog Right Capture Route", "Mic1", "MIC1R"},
+	{"Analog Right Capture Route", "Mic1", "MIC1R"},
 	{"Analog Right Capture Route", "HS Mic", "MICHS"},
 	{"Analog Right Capture Route", "EMU Mic", "MICEMU"},
-	{"Analog External Right Capture Route", "EXT MicR", "MICEXTR"},*/
+	{"Analog External Right Capture Route", "EXT MicR", "MICEXTR"},
 
 	{"Analog Left Capture Route", "Mic2", "MIC2L"},
 	{"Analog External Left Capture Route", "EXT MicL", "MICEXTL"},
 
-/*	{"MIC1PGA", NULL, "Analog Right Capture Route"},
-	{"MIC2PGA", NULL, "Analog Left Capture Route"},*/
+	{"MIC1PGA", NULL, "Analog Right Capture Route"},
+	{"MIC2PGA", NULL, "Analog Left Capture Route"},
 
 	{"ADC Right", NULL, "MIC1PGA"},
 	{"ADC Right", NULL, "Analog External Right Capture Route"},
@@ -544,7 +544,7 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"EXT Playback Left", NULL, "CPCAP Mixer"},
 
 	/* To Earpice */
-/*	{"EPCDC", "Switch", "CDC Playback"},*/
+	{"EPCDC", "Switch", "CDC Playback"},
 	{"EPDAC", "Switch", "DAC Playback"},
 	{"EPEXT", "Switch", "EXT Playback Right"},
 
@@ -2629,7 +2629,7 @@ struct snd_soc_dai_driver cpcap_dai[] = {
 		.formats = SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FORMAT_S24_LE,},
 	.ops = &cpcap_dai_mm_ops,
 },
-{
+/*{
 	.name = "cpcap codec",
 	.playback = {
 		.stream_name = "Voice Playback",
@@ -2661,7 +2661,7 @@ struct snd_soc_dai_driver cpcap_dai[] = {
 		.formats = SNDRV_PCM_FMTBIT_S16_LE,},
 	.ops = &cpcap_dai_incall_ops,
 },
-/*{
+{
 	.name = "cpcap in-call second",
 	.playback = {
 		.stream_name = "InCall DL",
@@ -2676,7 +2676,7 @@ struct snd_soc_dai_driver cpcap_dai[] = {
 		.rates = SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_16000,
 		.formats = SNDRV_PCM_FMTBIT_S16_LE,},
 	.ops = &cpcap_dai_incall_second_ops,
-},*/
+},
 {
 	.name = "cpcap bt-call",
 	.playback = {
@@ -2693,7 +2693,7 @@ struct snd_soc_dai_driver cpcap_dai[] = {
 		.formats = SNDRV_PCM_FMTBIT_S16_LE,},
 	.ops = &cpcap_dai_btcall_ops,
 },
-/*{
+{
 	.name = "cpcap bt-call second",
 	.playback = {
 		.stream_name = "BTCall DL",
@@ -2708,7 +2708,7 @@ struct snd_soc_dai_driver cpcap_dai[] = {
 		.rates = SNDRV_PCM_RATE_8000,
 		.formats = SNDRV_PCM_FMTBIT_S16_LE,},
 	.ops = &cpcap_dai_btcall_second_ops,
-},*/
+},
 {
 	.name = "cpcap bt",
 	.playback = {
@@ -2749,7 +2749,7 @@ struct snd_soc_dai_driver cpcap_dai[] = {
 		.rates = SNDRV_PCM_RATE_8000_48000,
 		.formats = SNDRV_PCM_FMTBIT_S16_LE,},
 	.ops = &cpcap_dai_fm_ops,
-},
+},*/
 };
 
 static int cpcap_suspend(struct snd_soc_codec *codec, pm_message_t state)

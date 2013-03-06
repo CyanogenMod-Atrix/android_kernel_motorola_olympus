@@ -1505,8 +1505,10 @@ card_probe_error:
 static void snd_soc_instantiate_cards(void)
 {
 	struct snd_soc_card *card;
-	list_for_each_entry(card, &card_list, list)
+	list_for_each_entry(card, &card_list, list) {
+		printk(KERN_INFO "%s: card: %s", __func__, card->name);
 		snd_soc_instantiate_card(card);
+	}
 }
 
 /* probes a new socdev */

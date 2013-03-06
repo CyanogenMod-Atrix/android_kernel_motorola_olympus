@@ -135,7 +135,7 @@ static int motsnd_hw_params(struct snd_pcm_substream *substream, 	//verified
 static struct snd_soc_ops motsnd_ops = {
 	.hw_params = motsnd_hw_params,
 };
-
+#if 0
 static int motsnd_voice_hw_params(struct snd_pcm_substream *substream,
 				  struct snd_pcm_hw_params *params)
 {
@@ -240,7 +240,7 @@ static struct snd_soc_ops motsnd_incall_ops = {
 	.shutdown = motsnd_incall_shutdown,
 	.hw_params = motsnd_incall_hw_params,
 };
-
+#if 0
 static int motsnd_btvoice_hw_params(struct snd_pcm_substream *substream,
 				  struct snd_pcm_hw_params *params)
 {
@@ -318,7 +318,7 @@ static int motsnd_bt_incall_hw_params(struct snd_pcm_substream *substream,
 static struct snd_soc_ops motsnd_bt_incall_ops = {
 	.hw_params = motsnd_bt_incall_hw_params,
 };
-
+#endif
 static int motsnd_spdif_hw_params(struct snd_pcm_substream *substream,
 				  struct snd_pcm_hw_params *params)
 {
@@ -343,7 +343,7 @@ static int motsnd_cpcap_voice_init(struct snd_soc_pcm_runtime *rtd)
 
 	return 0;
 }
-
+#endif
 static const struct snd_soc_dapm_widget tegra_dapm_widgets[] = {	//verified
 	SND_SOC_DAPM_SPK("Int Spk", NULL),
 };
@@ -385,7 +385,7 @@ static int motsnd_tegra_mm_init(struct snd_soc_pcm_runtime *rtd) {	//verified
 
 	return 0;
 }
-
+/*
 static struct snd_soc_dai_driver dai[] = { 	//verified
 {
 	.name = "MODEM",
@@ -415,7 +415,7 @@ static struct snd_soc_dai_driver dai[] = { 	//verified
 	},
 }
 };
-
+*/
 /* Digital audio interface glue - connects codec <--> CPU */
 static struct snd_soc_dai_link motsnd_dai[] = {		//verified
 {
@@ -430,7 +430,7 @@ static struct snd_soc_dai_link motsnd_dai[] = {		//verified
 	.init = motsnd_tegra_mm_init,
 	.ops = &motsnd_ops,
 },
-{
+/*{
 	.name = "Voice",
 	.stream_name = "Tegra-i2s.1",
 	.codec_name = "cpcap_audio",
@@ -447,7 +447,7 @@ static struct snd_soc_dai_link motsnd_dai[] = {		//verified
 	.stream_name = "Tegra-i2s.1",
 	.codec_name = "cpcap_audio",
 	.platform_name = "tegra-pcm-audio",
-	.cpu_dai_name = "tegra20-i2s.1",
+//	.cpu_dai_name = "tegra20-i2s.1",
 	.codec_dai_name = "cpcap in-call",
 	.ignore_suspend = 1,
 //	.symmetric_rates = ,
@@ -459,7 +459,7 @@ static struct snd_soc_dai_link motsnd_dai[] = {		//verified
 	.stream_name = "SPDIF PCM",
 	.codec_name = "spdif-dit.0",
 	.platform_name = "tegra-pcm-audio",
-	.cpu_dai_name = "tegra20-spdif",
+//	.cpu_dai_name = "tegra20-spdif",
 	.codec_dai_name = "dit-hifi",
 //	.ignore_suspend = ,
 //	.symmetric_rates = ,
@@ -489,13 +489,13 @@ static struct snd_soc_dai_link motsnd_dai[] = {		//verified
 //	.symmetric_rates = ,
 	.init = motsnd_cpcap_voice_init,
 	.ops = &motsnd_btvoice_ops,
-},
+},*/
 };
 
 /* Audio machine driver */
 static struct snd_soc_card snd_soc_mot = { 	//verified
 	.name = "motsnd",
-//	.long_name = "Motorola OLYMPUS",
+	.long_name = "Motorola OLYMPUS",
 	.dai_link = motsnd_dai,
 	.num_links = ARRAY_SIZE(motsnd_dai),
 };
@@ -527,8 +527,8 @@ static int __init motsnd_soc_init(void)	//verified
 		dev_err(&mot_snd_device->dev, "Can't do tegra_asoc_utils_init()\n");
 		goto err_free_olympus;
 	}
-	pr_info("MOTSND SoC init: snd_soc_register_dais\n");
-	snd_soc_register_dais(&mot_snd_device->dev, dai, ARRAY_SIZE(dai));
+//	pr_info("MOTSND SoC init: snd_soc_register_dais\n");
+//	snd_soc_register_dais(&mot_snd_device->dev, dai, ARRAY_SIZE(dai));
 
 	pr_info("MOTSND SoC init: platform_set_drvdata\n");
 //	snd_soc_card_set_drvdata(card, mot_snd_device);
