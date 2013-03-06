@@ -25,7 +25,7 @@
 #define TEGRA_VIBRATOR_GPIO		TEGRA_GPIO_PD0
 #define TEGRA_KXTF9_INT_GPIO		TEGRA_GPIO_PV3
 #define TEGRA_L3G4200D_IRQ_GPIO		TEGRA_GPIO_PH2
-
+#define TEGRA_AKM8975_IRQ_GPIO		TEGRA_GPIO_PE2
 #define TEGRA_AKM8975_RESET_GPIO	TEGRA_GPIO_PK5
 #define PWRUP_BAREBOARD            	0x00100000 /* Bit 20 */
 
@@ -44,6 +44,7 @@ static int tegra_vibrator_initialization(void)
 		return PTR_ERR(reg);
         }
 	tegra_vibrator_regulator = reg;
+
 	return 0;
 }
 
@@ -256,14 +257,20 @@ struct platform_device kxtf9_platform_device = {
 /*
  * Compass
  */
-static void __init tegra_akm8975_init(void)
+static int  tegra_akm8975_init(void)
 {
-#ifdef TEGRA_AKM8975_RESET_GPIO
+//	int ret;
+	
+	tegra_gpio_enable(TEGRA_AKM8975_IRQ_GPIO);
+	gpio_request(TEGRA_AKM8975_IRQ_GPIO, "akm8975");
+	gpio_direction_input(TEGRA_AKM8975_IRQ_GPIO);
+
+	tegra_gpio_enable(TEGRA_AKM8975_RESET_GPIO);
 	gpio_request(TEGRA_AKM8975_RESET_GPIO, "akm8975 reset");
 	gpio_direction_output(TEGRA_AKM8975_RESET_GPIO, 1);
-#endif
+	return 0;
 }
-
+#if 0
 static struct regulator *akm8975_regulator;
 
 static int akm8975_init(void)
@@ -279,17 +286,13 @@ static int akm8975_init(void)
 			akm8975_regulator = reg;
 	}
 
-#ifdef TEGRA_AKM8975_RESET_GPIO
 	gpio_set_value(TEGRA_AKM8975_RESET_GPIO, 1);
-#endif
 	return err;
 }
 
 static void akm8975_exit(void)
 {
-#ifdef TEGRA_AKM8975_RESET_GPIO
 	gpio_set_value(TEGRA_AKM8975_RESET_GPIO, 0);
-#endif
 }
 
 static int akm8975_power_on(void)
@@ -320,6 +323,7 @@ struct platform_device akm8975_platform_device = {
 		.platform_data = &akm8975_data,
 	},
 };
+#endif
 
 
 /*
@@ -400,8 +404,8 @@ static int isl29030_power_off(void)
 static struct platform_device *tegra_sensors[] __initdata = {
 	&isl29030_als_ir,
 	&kxtf9_platform_device,
-	&akm8975_platform_device,
-/*	&ap20_hall_effect_dock,*/
+/*	&akm8975_platform_device,
+	&ap20_hall_effect_dock,*/
 	&tegra_vib_gpio,
 	&tegra_tmon,
 };
@@ -479,7 +483,7 @@ struct l3g4200d_platform_data tegra_gyro_pdata = {
 static struct i2c_board_info __initdata olympus_i2c_bus4_board_info[] = {
 	{
 		I2C_BOARD_INFO("akm8975", 0x0C),
-		.platform_data = &akm8975_data,
+//		.platform_data = &akm8975_data,
 		.irq = TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PE2),
 	},
 	{

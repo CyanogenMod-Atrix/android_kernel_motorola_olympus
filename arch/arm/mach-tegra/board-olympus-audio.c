@@ -22,7 +22,9 @@
 #include <linux/i2c-tegra.h>
 #include <linux/interrupt.h>
 #include <linux/input.h>
+#include <linux/of.h>
 #include <linux/spi/cpcap.h>
+#include <linux/cpcap_audio_platform_data.h>
 
 #include <asm/mach-types.h>
 #include <asm/io.h>
@@ -33,7 +35,6 @@
 #include <mach/i2s.h>
 #include <mach/spdif.h>
 #include <mach/audio.h>
-#include <mach/cpcap_audio.h>
 #include <mach/io.h>
 
 #include "board-olympus.h"
@@ -41,49 +42,13 @@
 #include "devices.h"
 #include "board.h"
 #include "hwrev.h"
-#if 0
-static struct cpcap_audio_state olympus_cpcap_audio_state = {
-	.cpcap                   = NULL,
-	.mode                    = CPCAP_AUDIO_MODE_NORMAL,
-	.codec_mode              = CPCAP_AUDIO_CODEC_OFF,
-	.codec_rate              = CPCAP_AUDIO_CODEC_RATE_8000_HZ,
-	.codec_mute              = CPCAP_AUDIO_CODEC_MUTE,
-	.stdac_mode              = CPCAP_AUDIO_STDAC_OFF,
-	.stdac_rate              = CPCAP_AUDIO_STDAC_RATE_44100_HZ,
-	.stdac_mute              = CPCAP_AUDIO_STDAC_MUTE,
-	.analog_source           = CPCAP_AUDIO_ANALOG_SOURCE_OFF,
-	.codec_primary_speaker   = CPCAP_AUDIO_OUT_NONE,
-	.codec_secondary_speaker = CPCAP_AUDIO_OUT_NONE,
-	.stdac_primary_speaker   = CPCAP_AUDIO_OUT_NONE,
-	.stdac_secondary_speaker = CPCAP_AUDIO_OUT_NONE,
-	.ext_primary_speaker     = CPCAP_AUDIO_OUT_NONE,
-	.ext_secondary_speaker   = CPCAP_AUDIO_OUT_NONE,
-	.codec_primary_balance   = CPCAP_AUDIO_BALANCE_NEUTRAL,
-	.stdac_primary_balance   = CPCAP_AUDIO_BALANCE_NEUTRAL,
-	.ext_primary_balance     = CPCAP_AUDIO_BALANCE_NEUTRAL,
-	.output_gain             = 7,
-	.microphone              = CPCAP_AUDIO_IN_NONE,
-	.input_gain              = 31,
-	.rat_type                = CPCAP_AUDIO_RAT_NONE
-};
 
-/* CPCAP is i2s master; tegra_audio_pdata.master == false */
-static void init_dac2(bool bluetooth);
-static struct cpcap_audio_platform_data cpcap_audio_pdata = {
-	.master = true,
-	.regulator = "vaudio",
-	.state = &olympus_cpcap_audio_state,
-//	.speaker_gpio = TEGRA_GPIO_PR3,
-	.headset_gpio = -1,
-	.spdif_gpio = TEGRA_GPIO_PD4,
-//	.bluetooth_bypass = init_dac2,
-};
-#endif
 static struct platform_device cpcap_audio_device = {
 	.name   = "cpcap_audio",
 	.id     = -1,
 	.dev    = {
-	//	.platform_data = &cpcap_audio_pdata,
+//		.platform_data = &cpcap_audio_pdata,
+		.platform_data = NULL,
 	},
 };
 
@@ -127,51 +92,20 @@ static struct tegra_audio_platform_data tegra_spdif_pdata = {
 	.fifo_fmt	= 1,
 };
 
-static void *das_base = IO_ADDRESS(TEGRA_APB_MISC_BASE);
-
-static inline void das_writel(unsigned long value, unsigned long offset)
+static void get_cpcap_audio_data(void)
 {
-	writel(value, das_base + offset);
-}
+	static struct cpcap_audio_pdata data;
 
-#define APB_MISC_DAS_DAP_CTRL_SEL_0             0xc00
-#define APB_MISC_DAS_DAC_INPUT_DATA_CLK_SEL_0   0xc40
+	cpcap_audio_device.dev.platform_data = (void *)&data;
 
-static void init_dac1(void)
-{
-	bool master = tegra_audio_pdata.i2s_master;
-	/* DAC1 -> DAP1 */
-	das_writel((!master)<<31, APB_MISC_DAS_DAP_CTRL_SEL_0);
-	das_writel(0, APB_MISC_DAS_DAC_INPUT_DATA_CLK_SEL_0);
-}
-
-static void init_dac2(bool bluetooth)
-{
-	if (!bluetooth) {
-		/* DAC2 -> DAP2 for CPCAP CODEC */
-		bool master = tegra_audio2_pdata.i2s_master;
-		das_writel((!master)<<31 | 1, APB_MISC_DAS_DAP_CTRL_SEL_0 + 4);
-		das_writel(1<<28 | 1<<24 | 1,
-				APB_MISC_DAS_DAC_INPUT_DATA_CLK_SEL_0 + 4);
-	} else {
-		/* DAC2 -> DAP4 for Bluetooth Voice */
-		bool master = tegra_audio2_pdata.dsp_master;
-		das_writel((!master)<<31 | 1, APB_MISC_DAS_DAP_CTRL_SEL_0 + 12);
-		das_writel(3<<28 | 3<<24 | 3,
-				APB_MISC_DAS_DAC_INPUT_DATA_CLK_SEL_0 + 4);
-	}
 }
 
 void __init olympus_audio_init(void)
 {
-
-	if (1==0) {
-	init_dac1();
-	init_dac2(false);
+	get_cpcap_audio_data();
 	
-	tegra_i2s_device1.dev.platform_data = &tegra_audio_pdata;
-	tegra_i2s_device2.dev.platform_data = &tegra_audio2_pdata;
-	}
+	if (1==0) tegra_i2s_device1.dev.platform_data = &tegra_audio_pdata;
+	if (1==0) tegra_i2s_device2.dev.platform_data = &tegra_audio2_pdata;
 
 	cpcap_device_register(&cpcap_audio_device);
 	if (1==0) tegra_spdif_device.dev.platform_data = &tegra_spdif_pdata;

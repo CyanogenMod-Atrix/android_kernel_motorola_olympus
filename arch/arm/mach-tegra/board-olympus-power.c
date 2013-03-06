@@ -690,11 +690,12 @@ struct regulator_consumer_supply cpcap_sw5_consumers[] = {
 };
 
 struct regulator_consumer_supply cpcap_vcam_consumers[] = {
-	REGULATOR_CONSUMER("vcc", NULL /* cpcap_cam_device */),
+	REGULATOR_CONSUMER("vccam", NULL /* cpcap_cam_device */),
 };
 
 struct regulator_consumer_supply cpcap_vhvio_consumers[] = {
 	REGULATOR_CONSUMER("vhvio", NULL /* lighting_driver */),
+	REGULATOR_CONSUMER("vcc", NULL /* compass_driver */),
 #if 0
 	REGULATOR_CONSUMER("vhvio", NULL /* lighting_driver */),
 	REGULATOR_CONSUMER("vhvio", NULL /* magnetometer */),

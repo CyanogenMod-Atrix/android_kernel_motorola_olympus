@@ -38,7 +38,7 @@
 
 #include "cpcap.h"
 
-#define CPCAP_AUDIO_DEBUG 
+#define CPCAP_AUDIO_DEBUG 1
 #ifdef CPCAP_AUDIO_DEBUG
 #define CPCAP_AUDIO_DEBUG_LOG(args...) printk(KERN_INFO "ALSA CPCAP:" args)
 #else
@@ -397,7 +397,7 @@ static const struct snd_soc_dapm_widget cpcap_dapm_widgets[] = {
 	SND_SOC_DAPM_OUTPUT("LDSPR"),
 	SND_SOC_DAPM_OUTPUT("LDSPL"),
 	SND_SOC_DAPM_OUTPUT("HSR"),
-	SND_SOC_DAPM_OUTPUT("HSL"),
+//	SND_SOC_DAPM_OUTPUT("HSL"),
 	SND_SOC_DAPM_OUTPUT("LINER"),
 	SND_SOC_DAPM_OUTPUT("LINEL"),
 	SND_SOC_DAPM_OUTPUT("EMUSPKR"),
@@ -405,22 +405,22 @@ static const struct snd_soc_dapm_widget cpcap_dapm_widgets[] = {
 	SND_SOC_DAPM_OUTPUT("EP"),
 
 	/* Analog input muxes for the capture amplifiers */
-	SND_SOC_DAPM_MUX("Analog Right Capture Route",
+/*	SND_SOC_DAPM_MUX("Analog Right Capture Route",
 		SND_SOC_NOPM, 0, 0, &cpcap_micr_control),
 	SND_SOC_DAPM_MUX("Analog Left Capture Route",
 		SND_SOC_NOPM, 0, 0, &cpcap_micl_control),
 	SND_SOC_DAPM_MUX("Analog External Right Capture Route",
 		SND_SOC_NOPM, 0, 0, &cpcap_ext_micr_control),
 	SND_SOC_DAPM_MUX("Analog External Left Capture Route",
-		SND_SOC_NOPM, 0, 0, &cpcap_ext_micl_control),
+		SND_SOC_NOPM, 0, 0, &cpcap_ext_micl_control),*/
 
 	/* Analog capture PGAs */
-	SND_SOC_DAPM_PGA("MIC1PGA",
+/*	SND_SOC_DAPM_PGA("MIC1PGA",
 		CPCAP_AUDIO_REG_INDEX(CPCAP_REG_TXI),
 		1, 0, NULL, 0),
 	SND_SOC_DAPM_PGA("MIC2PGA",
 		CPCAP_AUDIO_REG_INDEX(CPCAP_REG_TXI),
-		6, 0, NULL, 0),
+		6, 0, NULL, 0),*/
 
 	/* ADCs */
 	SND_SOC_DAPM_ADC("ADC Right", "Right Front Capture",
@@ -439,10 +439,10 @@ static const struct snd_soc_dapm_widget cpcap_dapm_widgets[] = {
 		SND_SOC_NOPM, 0, 0, cpcap_mixer_controls,
 		ARRAY_SIZE(cpcap_mixer_controls)),
 
-	SND_SOC_DAPM_DAC_E("CDC Playback", "Codec Output",
+/*	SND_SOC_DAPM_DAC_E("CDC Playback", "Codec Output",
 		CPCAP_AUDIO_REG_INDEX(CPCAP_REG_RXCOA), 10, 0,
 		cpcap_audio_power_event,
-		SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_PRE_PMD),
+		SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_PRE_PMD),*/
 	SND_SOC_DAPM_DAC_E("DAC Playback", "STDac Output",
 		CPCAP_AUDIO_REG_INDEX(CPCAP_REG_RXSDOA), 12, 0,
 		cpcap_audio_power_event,
@@ -457,8 +457,8 @@ static const struct snd_soc_dapm_widget cpcap_dapm_widgets[] = {
 		SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_PRE_PMD),
 
 	/* Analog playback switches */
-	SND_SOC_DAPM_SWITCH("EPCDC",
-		SND_SOC_NOPM, 0, 0, &epcdc_switch_controls),
+/*	SND_SOC_DAPM_SWITCH("EPCDC",
+		SND_SOC_NOPM, 0, 0, &epcdc_switch_controls),*/
 	SND_SOC_DAPM_SWITCH("LDSPRCDC",
 		SND_SOC_NOPM, 0, 0, &ldsprcdc_switch_controls),
 	SND_SOC_DAPM_SWITCH("LDSPLCDC",
@@ -517,16 +517,16 @@ static const struct snd_soc_dapm_widget cpcap_dapm_widgets[] = {
 
 static const struct snd_soc_dapm_route intercon[] = {
 	/* Capture path */
-	{"Analog Right Capture Route", "Mic1", "MIC1R"},
+/*	{"Analog Right Capture Route", "Mic1", "MIC1R"},
 	{"Analog Right Capture Route", "HS Mic", "MICHS"},
 	{"Analog Right Capture Route", "EMU Mic", "MICEMU"},
-	{"Analog External Right Capture Route", "EXT MicR", "MICEXTR"},
+	{"Analog External Right Capture Route", "EXT MicR", "MICEXTR"},*/
 
 	{"Analog Left Capture Route", "Mic2", "MIC2L"},
 	{"Analog External Left Capture Route", "EXT MicL", "MICEXTL"},
 
-	{"MIC1PGA", NULL, "Analog Right Capture Route"},
-	{"MIC2PGA", NULL, "Analog Left Capture Route"},
+/*	{"MIC1PGA", NULL, "Analog Right Capture Route"},
+	{"MIC2PGA", NULL, "Analog Left Capture Route"},*/
 
 	{"ADC Right", NULL, "MIC1PGA"},
 	{"ADC Right", NULL, "Analog External Right Capture Route"},
@@ -544,7 +544,7 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"EXT Playback Left", NULL, "CPCAP Mixer"},
 
 	/* To Earpice */
-	{"EPCDC", "Switch", "CDC Playback"},
+/*	{"EPCDC", "Switch", "CDC Playback"},*/
 	{"EPDAC", "Switch", "DAC Playback"},
 	{"EPEXT", "Switch", "EXT Playback Right"},
 
@@ -623,6 +623,8 @@ static struct vaudio_data vaudio;
 
 static int vaudio_mode(unsigned char mode)
 {
+	CPCAP_AUDIO_DEBUG_LOG("%s: Entered\n", __func__);
+
 	if (IS_ERR(vaudio.regulator)) {
 		printk(KERN_ERR "%s: Invalid vaudio\n", __func__);
 		return -EINVAL;
@@ -638,6 +640,8 @@ static int vaudio_mode(unsigned char mode)
 
 static int vaudio_get(void)
 {
+	CPCAP_AUDIO_DEBUG_LOG("%s: Entered\n", __func__);
+
 	vaudio.regulator = regulator_get(NULL, "vaudio");
 	if (IS_ERR(vaudio.regulator)) {
 		printk(KERN_ERR "%s: invalid vaudio\n", __func__);
@@ -656,6 +660,8 @@ static unsigned int cpcap_audio_reg_read(struct snd_soc_codec *codec,
 	struct cpcap_device *cpcap;
 	struct cpcap_audio_state *state = snd_soc_codec_get_drvdata(codec);
 	unsigned short *cache = codec->reg_cache;
+
+	CPCAP_AUDIO_DEBUG_LOG("%s: Entered\n", __func__);
 
 	if (reg >= CPCAP_AUDIO_REG_NUM) {
 		printk(KERN_ERR "%s: invalid register %u\n", __func__, reg);
@@ -693,6 +699,8 @@ static int cpcap_audio_reg_write(struct snd_soc_codec *codec,
 	struct cpcap_audio_state *state = snd_soc_codec_get_drvdata(codec);
 	unsigned short *cache = codec->reg_cache;
 
+	CPCAP_AUDIO_DEBUG_LOG("%s: Entered\n", __func__);
+
 	if (reg >= CPCAP_AUDIO_REG_NUM) {
 		printk(KERN_ERR "%s: invalid register %u\n", __func__, reg);
 		return -EIO;
@@ -722,6 +730,7 @@ static int cpcap_audio_reg_write(struct snd_soc_codec *codec,
 
 static void cpcap_audio_register_dump(struct snd_soc_codec *codec)
 {
+	CPCAP_AUDIO_DEBUG_LOG("%s: Entered\n", __func__);
 #ifdef CPCAP_AUDIO_DEBUG
 	unsigned short *cache;
 	int i = 0;
@@ -1031,6 +1040,7 @@ static int snd_soc_put_cpcap_switch(struct snd_kcontrol *kcontrol,
 static int snd_soc_get_emu_antipop(struct snd_kcontrol *kcontrol,
 			struct snd_ctl_elem_value *ucontrol)
 {
+	CPCAP_AUDIO_DEBUG_LOG("%s: Entered\n", __func__);
 	ucontrol->value.integer.value[0] = emu_analog_antipop;
 	return 0;
 }
@@ -1111,6 +1121,7 @@ static int snd_soc_put_cpcap_mixer(struct snd_kcontrol *kcontrol,
 	struct cpcap_audio_state *state = snd_soc_codec_get_drvdata(codec);
 	int stdac_workaround_needed = 0;
 
+	CPCAP_AUDIO_DEBUG_LOG("%s: Entered\n", __func__);
 	if (!state && cpcap_global_state_pointer) {
 		state = cpcap_global_state_pointer;
 		CPCAP_AUDIO_DEBUG_LOG("put_mixer using global codec %p"
@@ -1344,6 +1355,7 @@ static int snd_soc_put_cpcap_gpio(struct snd_kcontrol *kcontrol,
 static int snd_soc_get_cpcap_sdac(struct snd_kcontrol *kcontrol,
 					struct snd_ctl_elem_value *ucontrol)
 {
+	CPCAP_AUDIO_DEBUG_LOG("%s: Entered\n", __func__);
 	return 0;
 }
 
@@ -1384,6 +1396,7 @@ static int snd_soc_put_cpcap_sdac(struct snd_kcontrol *kcontrol,
 static int snd_soc_get_cpcap_dai_mode(struct snd_kcontrol *kcontrol,
 				      struct snd_ctl_elem_value *ucontrol)
 {
+	CPCAP_AUDIO_DEBUG_LOG("%s: Entered\n", __func__);
 	return 0;
 }
 
@@ -1564,6 +1577,8 @@ static int cpcap_add_widgets(struct snd_soc_codec *codec)
 	snd_soc_dapm_ignore_suspend(&codec->dapm, "AIFIN Voice");
 	snd_soc_dapm_ignore_suspend(&codec->dapm, "AIFIN Multimedia");
 	snd_soc_dapm_ignore_suspend(&codec->dapm, "AIFIN ExternalPGA");
+
+	CPCAP_AUDIO_DEBUG_LOG("%s: Exited\n", __func__);
 
 	return 0;
 }
@@ -2764,8 +2779,9 @@ static int cpcap_probe(struct snd_soc_codec *codec) // verified
 	cpcap_global_state_pointer = curr_state;
 
 	pdev = container_of(codec->dev, struct platform_device, dev);
+	pr_info("%s: pdev->id: %d, pdev->name: %s\n", __func__, pdev->id, pdev->name);
 	curr_state->cpcap = platform_get_drvdata(pdev);
-	pr_info("ENTER: %s\n", __func__);
+//	curr_state->cpcap = dev_get_drvdata(codec->dev);
 	if (curr_state->cpcap) {
 		curr_state->cpcap->h2w_new_state = &audio_callback;
 		curr_state->cpcap->h2w_new_state_data = curr_state;
