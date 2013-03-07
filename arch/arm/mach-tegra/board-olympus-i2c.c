@@ -180,10 +180,11 @@ static struct qtm_touch_keyarray_cfg sholes_key_array_data[] = {
 struct qtouch_ts_platform_data olympus_touch_data = {
 
 	.flags		= (QTOUCH_SWAP_XY |
-			   QTOUCH_USE_MULTITOUCH |
-			   QTOUCH_CFG_BACKUPNV |
-			   QTOUCH_EEPROM_CHECKSUM),
+					QTOUCH_USE_MULTITOUCH |
+					QTOUCH_CFG_BACKUPNV),
 	.irqflags		= (IRQF_TRIGGER_LOW),
+	.gpio_reset		= TOUCH_GPIO_RESET,
+	.gpio_intr		= TOUCH_GPIO_INTR,
 	.abs_min_x		= 0,
 	.abs_max_x		= 1023,
 	.abs_min_y		= 0,
@@ -199,12 +200,63 @@ struct qtouch_ts_platform_data olympus_touch_data = {
 	.fuzz_y			= 0,
 	.fuzz_p			= 2,
 	.fuzz_w			= 2,
-	.boot_i2c_addr	= XMEGAT_BL_I2C_ADDR,
 	.hw_reset		= olympus_touch_reset,
-	.key_array = {
+	.key_array =
+	{
 		.cfg		= NULL,
 		.keys		= NULL,
 		.num_keys	= 0,
+	},
+	.buttons_count	= 0,
+	.buttons[0] =
+	{
+		.minX = 64,
+		.maxX = 222,
+		.minY = 933,
+		.maxY = 1023,
+		.key = KEY_MENU,
+		.exists = 1,
+		.pressed = 0,
+	},
+	.buttons[1] =
+	{
+		.minX = 310,
+		.maxX = 468,
+		.minY = 933,
+		.maxY = 1023,
+		.key = KEY_HOME,
+		.exists = 1,
+		.pressed = 0,
+	},
+	.buttons[2] =
+	{
+		.minX = 556,
+		.maxX = 714,
+		.minY = 933,
+		.maxY = 1023,
+		.key = KEY_BACK,
+		.exists = 1,
+		.pressed = 0,
+	},
+	.buttons[3] =
+	{
+		.minX = 802,
+		.maxX = 1024,
+		.minY = 933,
+		.maxY = 1023,
+		.key = KEY_SEARCH,
+		.exists = 1,
+		.pressed = 0,
+	},
+	.buttons[4] =
+	{
+		.minX = 0,
+		.maxX = 0,
+		.minY = 0,
+		.maxY = 0,
+		.key = 0,
+		.exists = 0,
+		.pressed = 0,
 	},
 	.power_cfg	= {
 		.idle_acq_int	= 0xff,
@@ -213,11 +265,11 @@ struct qtouch_ts_platform_data olympus_touch_data = {
 	},
 	.acquire_cfg	= {
 		.charge_time	= 0x06,
-/*		.atouch_drift	= 0x00,*/
+		.atouch_drift	= 0x00,
 		.touch_drift	= 0x0a,
 		.drift_susp	= 0x05,
 		.touch_autocal	= 0x00,
-/*		.sync		= 0,*/
+		.sync		= 0,
 		.atch_cal_suspend_time	= 0,
 		.atch_cal_suspend_thres	= 0,
 	},
@@ -381,10 +433,10 @@ struct qtouch_ts_platform_data olympus_touch_data = {
 		.voltage		= 0,
 	},
 	.noise1_suppression_cfg = {
-		.ctrl		= 0x01,
-		.version	= 0x01,
-		.atch_thr	= 0x64,
-		.duty_cycle	= 0x08,
+		.ctrl		= 0x00,
+		.version	= 0x00,
+		.atch_thr	= 0x00,
+		.duty_cycle	= 0x00,
 		.drift_thr	= 0x00,
 		.clamp_thr	= 0x00,
 		.diff_thr	= 0x00,
