@@ -546,6 +546,8 @@ static void __init tegra_mot_init(void)
 
 	olympus_i2c_init();
 
+	olympus_kbc_init();
+
 	olympus_keypad_init();
 
 	if( (bi_powerup_reason() & PWRUP_FACTORY_CABLE) &&

@@ -37,19 +37,18 @@
 #include "board.h"
 #include "hwrev.h"
 
-
-//#define XMEGAT_BL_I2C_ADDR		0x24
-#define XMEGAT_BL_I2C_ADDR		0x4A
 #define OLYMPUS_TOUCH_IRQ_GPIO 		45
 #define OLYMPUS_TOUCH_RESET_GPIO 	44
 #define OLYMPUS_COMPASS_IRQ_GPIO TEGRA_GPIO_PE2
 
-#define TEGRA_BACKLIGHT_EN_GPIO 	32 /* TEGRA_GPIO_PE0 */
-#define TEGRA_KEY_BACKLIGHT_EN_GPIO 	47 /* TEGRA_GPIO_PE0 */
+#define TEGRA_BACKLIGHT_EN_GPIO 	32 /* TEGRA_GPIO_P?? */
+#define TEGRA_KEY_BACKLIGHT_EN_GPIO 	47 /* TEGRA_GPIO_P?? */
 
 static int disp_backlight_init(void)
 {
     int ret;
+
+    tegra_gpio_enable(TEGRA_BACKLIGHT_EN_GPIO);
     if ((ret = gpio_request(TEGRA_BACKLIGHT_EN_GPIO, "backlight_en"))) {
         pr_err("%s: gpio_request(%d, backlight_en) failed: %d\n",
             __func__, TEGRA_BACKLIGHT_EN_GPIO, ret);
@@ -72,6 +71,7 @@ static int disp_backlight_init(void)
 		pr_info("%s: gpio_request(%d, key_backlight_en) success!\n",
 			__func__, TEGRA_KEY_BACKLIGHT_EN_GPIO);
 	}
+        tegra_gpio_enable(TEGRA_KEY_BACKLIGHT_EN_GPIO);
 	if ((ret = gpio_direction_output(TEGRA_KEY_BACKLIGHT_EN_GPIO, 1))) {
 		pr_err("%s: gpio_direction_output(key_backlight_en) failed: %d\n",
 			__func__, ret);
@@ -122,17 +122,17 @@ struct lm3532_platform_data lm3532_pdata = {
 
 extern int MotorolaBootDispArgGet(unsigned int *arg);
 
-static int olympus_touch_reset(void)
+static int touch_reset(void)
 {
 	gpio_set_value(OLYMPUS_TOUCH_RESET_GPIO, 0);
-	msleep(10);
+	msleep(1);
 	gpio_set_value(OLYMPUS_TOUCH_RESET_GPIO, 1);
-	msleep(100);
+	msleep(41);
 
 	return 0;
 }
 /*
-static struct vkey sholes_touch_vkeys[] = {
+static struct vkey touch_vkeys[] = {
 	{
 		.code		= KEY_BACK,
 	},
@@ -146,49 +146,22 @@ static struct vkey sholes_touch_vkeys[] = {
 		.code		= KEY_SEARCH,
 	},
 };
-
-static struct qtm_touch_keyarray_cfg sholes_key_array_data[] = {
-	{
-		.ctrl = 0,
-		.x_origin = 0,
-		.y_origin = 0,
-		.x_size = 0,
-		.y_size = 0,
-		.aks_cfg = 0,
-		.burst_len = 0,
-		.tch_det_thr = 0,
-		.tch_det_int = 0,
-		.reserve9 = 0,
-		.reserve10 = 0,
-	},
-	{
-		.ctrl = 0,
-		.x_origin = 0,
-		.y_origin = 0,
-		.x_size = 0,
-		.y_size = 0,
-		.aks_cfg = 0,
-		.burst_len = 0,
-		.tch_det_thr = 0,
-		.tch_det_int = 0,
-		.reserve9 = 0,
-		.reserve10 = 0,
-	},
-};
 */
 
-struct qtouch_ts_platform_data olympus_touch_data = {
-
-	.flags		= (QTOUCH_SWAP_XY |
+struct qtouch_ts_platform_data ts_platform_olympus_p_1_37 = 
+{
+/*	.flags		= (QTOUCH_SWAP_XY | */
+/*			   QTOUCH_EEPROM_CHECKSUM), */
+	.flags		= (QTOUCH_SWAP_XY | 
 					QTOUCH_USE_MULTITOUCH |
 					QTOUCH_CFG_BACKUPNV),
-	.irqflags		= (IRQF_TRIGGER_LOW),
+	.irqflags		= (IRQF_TRIGGER_FALLING | IRQF_TRIGGER_LOW),
 	.gpio_reset		= TOUCH_GPIO_RESET,
 	.gpio_intr		= TOUCH_GPIO_INTR,
-	.abs_min_x		= 0,
-	.abs_max_x		= 1023,
-	.abs_min_y		= 0,
-	.abs_max_y		= 1023,
+	.abs_min_x		= 60,
+	.abs_max_x		= 963,
+	.abs_min_y		= 43,
+	.abs_max_y		= 873,
 	.abs_min_p		= 0,
 	.abs_max_p		= 255,
 	.abs_min_w		= 0,
@@ -200,70 +173,74 @@ struct qtouch_ts_platform_data olympus_touch_data = {
 	.fuzz_y			= 0,
 	.fuzz_p			= 2,
 	.fuzz_w			= 2,
-	.hw_reset		= olympus_touch_reset,
-	.key_array =
+	.hw_reset		= touch_reset,
+	.key_array = 
 	{
 		.cfg		= NULL,
 		.keys		= NULL,
 		.num_keys	= 0,
 	},
-	.buttons_count	= 0,
+/* cvk011c  : Move    virtual key support  to the framework for haptic support
+	.buttons_count	= 4,
 	.buttons[0] =
-	{
-		.minX = 64,
-		.maxX = 222,
-		.minY = 933,
-		.maxY = 1023,
+	{	
+		.minX = 64, 
+		.maxX = 222, 
+		.minY = 933, 
+		.maxY = 1023, 
 		.key = KEY_MENU,
 		.exists = 1,
 		.pressed = 0,
 	},
 	.buttons[1] =
-	{
-		.minX = 310,
-		.maxX = 468,
-		.minY = 933,
-		.maxY = 1023,
+	{	
+		.minX = 310, 
+		.maxX = 468, 
+		.minY = 933, 
+		.maxY = 1023, 
 		.key = KEY_HOME,
 		.exists = 1,
 		.pressed = 0,
 	},
 	.buttons[2] =
-	{
-		.minX = 556,
-		.maxX = 714,
-		.minY = 933,
-		.maxY = 1023,
+	{	
+		.minX = 556, 
+		.maxX = 714, 
+		.minY = 933, 
+		.maxY = 1023, 
 		.key = KEY_BACK,
 		.exists = 1,
 		.pressed = 0,
 	},
 	.buttons[3] =
-	{
-		.minX = 802,
-		.maxX = 1024,
-		.minY = 933,
-		.maxY = 1023,
+	{	
+		.minX = 802, 
+		.maxX = 1024, 
+		.minY = 933, 
+		.maxY = 1023, 
 		.key = KEY_SEARCH,
 		.exists = 1,
 		.pressed = 0,
 	},
 	.buttons[4] =
-	{
-		.minX = 0,
-		.maxX = 0,
-		.minY = 0,
-		.maxY = 0,
+	{	
+		.minX = 0, 
+		.maxX = 0, 
+		.minY = 0, 
+		.maxY = 0, 
 		.key = 0,
 		.exists = 0,
 		.pressed = 0,
 	},
-	.power_cfg	= {
+*/
+	.power_cfg	= 
+	{
 		.idle_acq_int	= 0xff,
 		.active_acq_int	= 0xff,
 		.active_idle_to	= 0x01,
 	},
-	.acquire_cfg	= {
+	.acquire_cfg	= 
+	{
 		.charge_time	= 0x06,
 		.atouch_drift	= 0x00,
 		.touch_drift	= 0x0a,
@@ -273,7 +250,8 @@ struct qtouch_ts_platform_data olympus_touch_data = {
 		.atch_cal_suspend_time	= 0,
 		.atch_cal_suspend_thres	= 0,
 	},
-	.multi_touch_cfg	= {
+	.multi_touch_cfg	= 
+	{
 		.ctrl		= 0x0b,
 		.x_origin	= 0,
 		.y_origin	= 0,
@@ -302,30 +280,36 @@ struct qtouch_ts_platform_data olympus_touch_data = {
 		.x_edge_dist	= 0,
 		.y_edge_ctrl	= 0,
 		.y_edge_dist	= 0,
-		.jump_limit	= 0,
 	},
-	.linear_tbl_cfg = {
+	.linear_tbl_cfg = 
+	{
 		.ctrl		= 0x00,
 		.x_offset	= 0x0000,
-		.x_segment = {
+		.x_segment = 
+		{
 			0x00, 0x00, 0x00, 0x00,
 			0x00, 0x00, 0x00, 0x00,
 			0x00, 0x00, 0x00, 0x00,
 			0x00, 0x00, 0x00, 0x00
 		},
 		.y_offset = 0x0000,
-		.y_segment = {
+		.y_segment = 
+		{
 			0x00, 0x00, 0x00, 0x00,
 			0x00, 0x00, 0x00, 0x00,
 			0x00, 0x00, 0x00, 0x00,
 			0x00, 0x00, 0x00, 0x00
 		},
 	},
-	.comms_config_cfg = {
+	/* Motorola - BEGIN - qa2113 - 11/18/2009 - XmegaT firmware 1.5 support */
+	.comms_config_cfg = 
+	{
 		.ctrl		= 0,
 		.command	= 0,
 	},
-	.gpio_pwm_cfg = {
+	/* Motorola - END - qa2113 - 11/18/2009 - XmegaT firmware 1.5 support */
+	.gpio_pwm_cfg = 
+	{
 		.ctrl			= 0,
 		.report_mask		= 0,
 		.pin_direction		= 0,
@@ -338,61 +322,63 @@ struct qtouch_ts_platform_data olympus_touch_data = {
 		.duty_cycle_1		= 0,
 		.duty_cycle_2		= 0,
 		.duty_cycle_3		= 0,
+		/* Motorola - BEGIN - qa2113 - 11/18/2009 - XmegaT firmware 1.5 support */
 		.trigger_0		= 0,
 		.trigger_1		= 0,
 		.trigger_2		= 0,
 		.trigger_3		= 0,
+		/* Motorola - END - qa2113 - 11/18/2009 - XmegaT firmware 1.5 support */
 	},
-	.grip_face_suppression_cfg = {
+	.grip_suppression_cfg = 
+	{
 		.ctrl		= 0x00,
 		.xlogrip	= 0x00,
 		.xhigrip	= 0x00,
 		.ylogrip	= 0x00,
 		.yhigrip	= 0x00,
 		.maxtchs	= 0x00,
-		.reserve6	= 0x00,
+		.reserve0	= 0x00,
 		.szthr1		= 0x00,
 		.szthr2		= 0x00,
 		.shpthr1	= 0x00,
 		.shpthr2	= 0x00,
 		.supextto	= 0x00,
 	},
-	.noise_suppression_cfg = {
+	.noise_suppression_cfg = 
+	{
 		.ctrl			= 0,
+		.outlier_filter_len	= 0,
+		.reserve0		= 0,
+		.gcaf_upper_limit	= 0,
+		.gcaf_lower_limit	= 0,
+		.gcaf_low_count		= 0,
+		.noise_threshold	= 0,
 		.reserve1		= 0,
-		.reserve2		= 0,
-		.reserve3		= 0,
-		.reserve4		= 0,
-		.reserve5		= 0,
-		.reserve6		= 0,
-		.reserve7		= 0,
-		.noise_thres		= 0,
-		.reserve9		= 0,
 		.freq_hop_scale		= 0,
-		.burst_freq_0		= 0,
-		.burst_freq_1           = 0,
-		.burst_freq_2           = 0,
-		.burst_freq_3           = 0,
-		.burst_freq_4           = 0,
-		.reserve16		= 0,
+		.burst_freq_1		= 0,
+		.burst_freq_2		= 0,
+		.burst_freq_3		= 0,
+		.burst_freq_4		= 0,
+		.idle_gcaf_valid	= 0,
 	},
-	.touch_proximity_cfg = {
+	.touch_proximity_cfg = 
+	{
 		.ctrl			= 0,
 		.x_origin		= 0,
 		.y_origin		= 0,
 		.x_size			= 0,
 		.y_size			= 0,
-		.reserve5		= 0,
+		.reserve0		= 0,
 		.blen			= 0,
 		.tch_thresh		= 0,
 		.tch_detect_int		= 0,
 		.average		= 0,
-		.move_null_rate		= 0,
-		.move_det_tresh		= 0,
+		.rate			= 0,
 	},
-	.one_touch_gesture_proc_cfg = {
+	.one_touch_gesture_proc_cfg = 
+	{
 		.ctrl			= 0,
-		.num_gestures		= 0,
+		.numgest		= 0,
 		.gesture_enable		= 0,
 		.pres_proc		= 0,
 		.tap_time_out		= 0,
@@ -406,93 +392,640 @@ struct qtouch_ts_platform_data olympus_touch_data = {
 		.tap_threshold		= 0,
 		.throw_threshold	= 0,
 	},
-	.self_test_cfg = {
+	.self_test_cfg = 
+	{
 		.ctrl			= 0,
 		.command		= 0,
 		.high_signal_limit_0	= 0,
 		.low_signal_limit_0	= 0,
 		.high_signal_limit_1	= 0,
 		.low_signal_limit_1	= 0,
-		.high_signal_limit_2	= 0,
-		.low_signal_limit_2	= 0,
 	},
-	.two_touch_gesture_proc_cfg = {
+	.two_touch_gesture_proc_cfg = 
+	{
 		.ctrl			= 0,
-		.num_gestures		= 0,
-		.reserve2		= 0,
+		.numgest		= 0,
 		.gesture_enable		= 0,
 		.rotate_threshold	= 0,
 		.zoom_threshold		= 0,
+		.tcheventto		= 0,
 	},
-	.cte_config_cfg = {
+	.cte_config_cfg = 
+	{
 		.ctrl			= 1,
 		.command		= 0,
-		.reserve2		= 3,
+		.mode			= 3,
 		.idle_gcaf_depth	= 4,
 		.active_gcaf_depth	= 8,
+		/* Motorola - BEGIN - qa2113 - 11/18/2009 - XmegaT firmware 1.5 support */
 		.voltage		= 0,
+		/* Motorola - END - qa2113 - 11/18/2009 - XmegaT firmware 1.5 support */
 	},
-	.noise1_suppression_cfg = {
+	.noise1_suppression_cfg = 
+	{
 		.ctrl		= 0x00,
 		.version	= 0x00,
-		.atch_thr	= 0x00,
+		.atchthr	= 0x00,
 		.duty_cycle	= 0x00,
-		.drift_thr	= 0x00,
-		.clamp_thr	= 0x00,
-		.diff_thr	= 0x00,
-		.adjustment	= 0x00,
-		.average	= 0x0000,
-		.temp		= 0x00,
-		.offset = {
-			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-		},
-		.bad_chan = {
-			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-			0x00, 0x00, 0x00
-		},
-		.x_short	= 0x00,
 	},
-	.vkeys			= {
-		.count		= 0,
-		.keys		= NULL,
+/*
+	.vkeys = {
+		.count = ARRAY_SIZE(touch_vkeys);
+		.keys = touch_keys,
 	},
+*/
 };
+
+struct qtouch_ts_platform_data ts_platform_olympus_p_1_43 = 
+{
+/*	.flags		= (QTOUCH_SWAP_XY | */
+/*			   QTOUCH_EEPROM_CHECKSUM), */
+	.flags		= (QTOUCH_SWAP_XY | 
+					QTOUCH_USE_MULTITOUCH |
+					QTOUCH_CFG_BACKUPNV),
+	.irqflags		= (IRQF_TRIGGER_FALLING | IRQF_TRIGGER_LOW),
+	.gpio_reset		= TOUCH_GPIO_RESET,
+	.gpio_intr		= TOUCH_GPIO_INTR,
+	.abs_min_x		= 0,
+	.abs_max_x		= 1018,
+	.abs_min_y		= 10,
+	.abs_max_y		= 930,
+	.abs_min_p		= 0,
+	.abs_max_p		= 255,
+	.abs_min_w		= 0,
+	.abs_max_w		= 32,
+	.x_delta		= 1023,
+	.y_delta		= 1023,
+	.nv_checksum		= 0xc240,
+	.fuzz_x			= 0,
+	.fuzz_y			= 0,
+	.fuzz_p			= 2,
+	.fuzz_w			= 2,
+	.hw_reset		= touch_reset,
+	.key_array = 
+	{
+		.cfg		= NULL,
+		.keys		= NULL,
+		.num_keys	= 0,
+	},
+/* cvk011c  : Move    virtual key support  to the framework for haptic support
+	.buttons_count	= 4,
+	.buttons[0] =
+	{	
+		.minX = 64, 
+		.maxX = 222, 
+		.minY = 933, 
+		.maxY = 1023, 
+		.key = KEY_MENU,
+		.exists = 1,
+		.pressed = 0,
+	},
+	.buttons[1] =
+	{	
+		.minX = 310, 
+		.maxX = 468, 
+		.minY = 933, 
+		.maxY = 1023, 
+		.key = KEY_HOME,
+		.exists = 1,
+		.pressed = 0,
+	},
+	.buttons[2] =
+	{	
+		.minX = 556, 
+		.maxX = 714, 
+		.minY = 933, 
+		.maxY = 1023, 
+		.key = KEY_BACK,
+		.exists = 1,
+		.pressed = 0,
+	},
+	.buttons[3] =
+	{	
+		.minX = 802, 
+		.maxX = 1024, 
+		.minY = 933, 
+		.maxY = 1023, 
+		.key = KEY_SEARCH,
+		.exists = 1,
+		.pressed = 0,
+	},
+	.buttons[4] =
+	{	
+		.minX = 0, 
+		.maxX = 0, 
+		.minY = 0, 
+		.maxY = 0, 
+		.key = 0,
+		.exists = 0,
+		.pressed = 0,
+	},
+*/
+	.power_cfg	= 
+	{
+		.idle_acq_int	= 0xff,
+		.active_acq_int	= 0xff,
+		.active_idle_to	= 0x01,
+	},
+	.acquire_cfg	= 
+	{
+		.charge_time	= 0x06,
+		.atouch_drift	= 0x00,
+		.touch_drift	= 0x0a,
+		.drift_susp	= 0x05,
+		.touch_autocal	= 0x00,
+		.sync		= 0,
+		.atch_cal_suspend_time	= 0,
+		.atch_cal_suspend_thres	= 0,
+	},
+	.multi_touch_cfg	= 
+	{
+		.ctrl		= 0x0b,
+		.x_origin	= 0,
+		.y_origin	= 0,
+		.x_size		= 0x13,
+		.y_size		= 0x0b,
+		.aks_cfg	= 0,
+		.burst_len	= 0x41,
+		.tch_det_thr	= 0x14,
+		.tch_det_int	= 0x2,
+		.orient		= 4,
+		.mrg_to		= 0x19,
+		.mov_hyst_init	= 0x05,
+		.mov_hyst_next	= 0x05,
+		.mov_filter	= 0,
+		.num_touch	= 0x02,
+		.merge_hyst	= 0x05,
+		.merge_thresh	= 0x05,
+		.amp_hyst       = 0,
+		.x_res		= 0x0000,
+		.y_res		= 0x0000,
+		.x_low_clip	= 0x00,
+		.x_high_clip	= 0x00,
+		.y_low_clip	= 0x00,
+		.y_high_clip	= 0x00,
+		.x_edge_ctrl	= 0,
+		.x_edge_dist	= 0,
+		.y_edge_ctrl	= 0,
+		.y_edge_dist	= 0,
+	},
+	.linear_tbl_cfg = 
+	{
+		.ctrl		= 0x00,
+		.x_offset	= 0x0000,
+		.x_segment = 
+		{
+			0x00, 0x00, 0x00, 0x00,
+			0x00, 0x00, 0x00, 0x00,
+			0x00, 0x00, 0x00, 0x00,
+			0x00, 0x00, 0x00, 0x00
+		},
+		.y_offset = 0x0000,
+		.y_segment = 
+		{
+			0x00, 0x00, 0x00, 0x00,
+			0x00, 0x00, 0x00, 0x00,
+			0x00, 0x00, 0x00, 0x00,
+			0x00, 0x00, 0x00, 0x00
+		},
+	},
+	/* Motorola - BEGIN - qa2113 - 11/18/2009 - XmegaT firmware 1.5 support */
+	.comms_config_cfg = 
+	{
+		.ctrl		= 0,
+		.command	= 0,
+	},
+	/* Motorola - END - qa2113 - 11/18/2009 - XmegaT firmware 1.5 support */
+	.gpio_pwm_cfg = 
+	{
+		.ctrl			= 0,
+		.report_mask		= 0,
+		.pin_direction		= 0,
+		.internal_pullup	= 0,
+		.output_value		= 0,
+		.wake_on_change		= 0,
+		.pwm_enable		= 0,
+		.pwm_period		= 0,
+		.duty_cycle_0		= 0,
+		.duty_cycle_1		= 0,
+		.duty_cycle_2		= 0,
+		.duty_cycle_3		= 0,
+		/* Motorola - BEGIN - qa2113 - 11/18/2009 - XmegaT firmware 1.5 support */
+		.trigger_0		= 0,
+		.trigger_1		= 0,
+		.trigger_2		= 0,
+		.trigger_3		= 0,
+		/* Motorola - END - qa2113 - 11/18/2009 - XmegaT firmware 1.5 support */
+	},
+	.grip_suppression_cfg = 
+	{
+		.ctrl		= 0x00,
+		.xlogrip	= 0x00,
+		.xhigrip	= 0x00,
+		.ylogrip	= 0x00,
+		.yhigrip	= 0x00,
+		.maxtchs	= 0x00,
+		.reserve0	= 0x00,
+		.szthr1		= 0x00,
+		.szthr2		= 0x00,
+		.shpthr1	= 0x00,
+		.shpthr2	= 0x00,
+		.supextto	= 0x00,
+	},
+	.noise_suppression_cfg = 
+	{
+		.ctrl			= 0,
+		.outlier_filter_len	= 0,
+		.reserve0		= 0,
+		.gcaf_upper_limit	= 0,
+		.gcaf_lower_limit	= 0,
+		.gcaf_low_count		= 0,
+		.noise_threshold	= 0,
+		.reserve1		= 0,
+		.freq_hop_scale		= 0,
+		.burst_freq_1		= 0,
+		.burst_freq_2		= 0,
+		.burst_freq_3		= 0,
+		.burst_freq_4		= 0,
+		.idle_gcaf_valid	= 0,
+	},
+	.touch_proximity_cfg = 
+	{
+		.ctrl			= 0,
+		.x_origin		= 0,
+		.y_origin		= 0,
+		.x_size			= 0,
+		.y_size			= 0,
+		.reserve0		= 0,
+		.blen			= 0,
+		.tch_thresh		= 0,
+		.tch_detect_int		= 0,
+		.average		= 0,
+		.rate			= 0,
+	},
+	.one_touch_gesture_proc_cfg = 
+	{
+		.ctrl			= 0,
+		.numgest		= 0,
+		.gesture_enable		= 0,
+		.pres_proc		= 0,
+		.tap_time_out		= 0,
+		.flick_time_out		= 0,
+		.drag_time_out		= 0,
+		.short_press_time_out	= 0,
+		.long_press_time_out	= 0,
+		.repeat_press_time_out	= 0,
+		.flick_threshold	= 0,
+		.drag_threshold		= 0,
+		.tap_threshold		= 0,
+		.throw_threshold	= 0,
+	},
+	.self_test_cfg = 
+	{
+		.ctrl			= 0,
+		.command		= 0,
+		.high_signal_limit_0	= 0,
+		.low_signal_limit_0	= 0,
+		.high_signal_limit_1	= 0,
+		.low_signal_limit_1	= 0,
+	},
+	.two_touch_gesture_proc_cfg = 
+	{
+		.ctrl			= 0,
+		.numgest		= 0,
+		.gesture_enable		= 0,
+		.rotate_threshold	= 0,
+		.zoom_threshold		= 0,
+		.tcheventto		= 0,
+	},
+	.cte_config_cfg = 
+	{
+		.ctrl			= 1,
+		.command		= 0,
+		.mode			= 3,
+		.idle_gcaf_depth	= 4,
+		.active_gcaf_depth	= 8,
+		/* Motorola - BEGIN - qa2113 - 11/18/2009 - XmegaT firmware 1.5 support */
+		.voltage		= 0,
+		/* Motorola - END - qa2113 - 11/18/2009 - XmegaT firmware 1.5 support */
+	},
+	.noise1_suppression_cfg = 
+	{
+		.ctrl		= 0x00,
+		.version	= 0x00,
+		.atchthr	= 0x00,
+		.duty_cycle	= 0x00,
+	},
+/*
+	.vkeys = {
+		.count = ARRAY_SIZE(touch_vkeys);
+		.keys = touch_keys,
+	},
+*/
+};
+
+struct qtouch_ts_platform_data ts_platform_olympus_m_1 = 
+{
+/*	.flags		= (QTOUCH_SWAP_XY | */
+/*			   QTOUCH_EEPROM_CHECKSUM), */
+	.flags		= (QTOUCH_SWAP_XY | 
+					QTOUCH_USE_MULTITOUCH |
+					QTOUCH_CFG_BACKUPNV),
+	.irqflags		= (IRQF_TRIGGER_FALLING | IRQF_TRIGGER_LOW),
+	.gpio_reset		= TOUCH_GPIO_RESET,
+	.gpio_intr		= TOUCH_GPIO_INTR,
+	.abs_min_x		= 0,
+	.abs_max_x		= 1023,
+	.abs_min_y		= 0,
+	.abs_max_y		= 1023,
+	.abs_min_p		= 0,
+	.abs_max_p		= 255,
+	.abs_min_w		= 0,
+	.abs_max_w		= 15,
+	.x_delta		= 400,
+	.y_delta		= 250,
+	.nv_checksum		= 0xc240,
+	.fuzz_x			= 0,
+	.fuzz_y			= 0,
+	.fuzz_p			= 2,
+	.fuzz_w			= 2,
+	.hw_reset		= touch_reset,
+	.key_array = 
+	{
+		.cfg		= NULL,
+		.keys		= NULL,
+		.num_keys	= 0,
+	},
+	.buttons_count	= 0,
+	.buttons[0] =
+	{	
+		.minX = 64, 
+		.maxX = 222, 
+		.minY = 933, 
+		.maxY = 1023, 
+		.key = KEY_MENU,
+		.exists = 1,
+		.pressed = 0,
+	},
+	.buttons[1] =
+	{	
+		.minX = 310, 
+		.maxX = 468, 
+		.minY = 933, 
+		.maxY = 1023, 
+		.key = KEY_HOME,
+		.exists = 1,
+		.pressed = 0,
+	},
+	.buttons[2] =
+	{	
+		.minX = 556, 
+		.maxX = 714, 
+		.minY = 933, 
+		.maxY = 1023, 
+		.key = KEY_BACK,
+		.exists = 1,
+		.pressed = 0,
+	},
+	.buttons[3] =
+	{	
+		.minX = 802, 
+		.maxX = 1024, 
+		.minY = 933, 
+		.maxY = 1023, 
+		.key = KEY_SEARCH,
+		.exists = 1,
+		.pressed = 0,
+	},
+	.buttons[4] =
+	{	
+		.minX = 0, 
+		.maxX = 0, 
+		.minY = 0, 
+		.maxY = 0, 
+		.key = 0,
+		.exists = 0,
+		.pressed = 0,
+	},
+	.power_cfg	= 
+	{
+		.idle_acq_int	= 0xff,
+		.active_acq_int	= 0xff,
+		.active_idle_to	= 0x01,
+	},
+	.acquire_cfg	= 
+	{
+		.charge_time	= 0x06,
+		.atouch_drift	= 0x00,
+		.touch_drift	= 0x0a,
+		.drift_susp	= 0x05,
+		.touch_autocal	= 0x00,
+		.sync		= 0,
+		.atch_cal_suspend_time	= 0,
+		.atch_cal_suspend_thres	= 0,
+	},
+	.multi_touch_cfg	= 
+	{
+		.ctrl		= 0x0b,
+		.x_origin	= 0,
+		.y_origin	= 0,
+		.x_size		= 0x13,
+		.y_size		= 0x0b,
+		.aks_cfg	= 0,
+		.burst_len	= 0x41,
+		.tch_det_thr	= 0x14,
+		.tch_det_int	= 0x2,
+		.orient		= 4,
+		.mrg_to		= 0x19,
+		.mov_hyst_init	= 0x05,
+		.mov_hyst_next	= 0x05,
+		.mov_filter	= 0,
+		.num_touch	= 0x02,
+		.merge_hyst	= 0x05,
+		.merge_thresh	= 0x05,
+		.amp_hyst       = 0,
+		.x_res		= 0x0000,
+		.y_res		= 0x0000,
+		.x_low_clip	= 0x00,
+		.x_high_clip	= 0x00,
+		.y_low_clip	= 0x00,
+		.y_high_clip	= 0x00,
+		.x_edge_ctrl	= 0,
+		.x_edge_dist	= 0,
+		.y_edge_ctrl	= 0,
+		.y_edge_dist	= 0,
+	},
+	.linear_tbl_cfg = 
+	{
+		.ctrl		= 0x00,
+		.x_offset	= 0x0000,
+		.x_segment = 
+		{
+			0x00, 0x00, 0x00, 0x00,
+			0x00, 0x00, 0x00, 0x00,
+			0x00, 0x00, 0x00, 0x00,
+			0x00, 0x00, 0x00, 0x00
+		},
+		.y_offset = 0x0000,
+		.y_segment = 
+		{
+			0x00, 0x00, 0x00, 0x00,
+			0x00, 0x00, 0x00, 0x00,
+			0x00, 0x00, 0x00, 0x00,
+			0x00, 0x00, 0x00, 0x00
+		},
+	},
+	/* Motorola - BEGIN - qa2113 - 11/18/2009 - XmegaT firmware 1.5 support */
+	.comms_config_cfg = 
+	{
+		.ctrl		= 0,
+		.command	= 0,
+	},
+	/* Motorola - END - qa2113 - 11/18/2009 - XmegaT firmware 1.5 support */
+	.gpio_pwm_cfg = 
+	{
+		.ctrl			= 0,
+		.report_mask		= 0,
+		.pin_direction		= 0,
+		.internal_pullup	= 0,
+		.output_value		= 0,
+		.wake_on_change		= 0,
+		.pwm_enable		= 0,
+		.pwm_period		= 0,
+		.duty_cycle_0		= 0,
+		.duty_cycle_1		= 0,
+		.duty_cycle_2		= 0,
+		.duty_cycle_3		= 0,
+		/* Motorola - BEGIN - qa2113 - 11/18/2009 - XmegaT firmware 1.5 support */
+		.trigger_0		= 0,
+		.trigger_1		= 0,
+		.trigger_2		= 0,
+		.trigger_3		= 0,
+		/* Motorola - END - qa2113 - 11/18/2009 - XmegaT firmware 1.5 support */
+	},
+	.grip_suppression_cfg = 
+	{
+		.ctrl		= 0x00,
+		.xlogrip	= 0x00,
+		.xhigrip	= 0x00,
+		.ylogrip	= 0x00,
+		.yhigrip	= 0x00,
+		.maxtchs	= 0x00,
+		.reserve0	= 0x00,
+		.szthr1		= 0x00,
+		.szthr2		= 0x00,
+		.shpthr1	= 0x00,
+		.shpthr2	= 0x00,
+		.supextto	= 0x00,
+	},
+	.noise_suppression_cfg = 
+	{
+		.ctrl			= 0,
+		.outlier_filter_len	= 0,
+		.reserve0		= 0,
+		.gcaf_upper_limit	= 0,
+		.gcaf_lower_limit	= 0,
+		.gcaf_low_count		= 0,
+		.noise_threshold	= 0,
+		.reserve1		= 0,
+		.freq_hop_scale		= 0,
+		.burst_freq_1		= 0,
+		.burst_freq_2		= 0,
+		.burst_freq_3		= 0,
+		.burst_freq_4		= 0,
+		.idle_gcaf_valid	= 0,
+	},
+	.touch_proximity_cfg = 
+	{
+		.ctrl			= 0,
+		.x_origin		= 0,
+		.y_origin		= 0,
+		.x_size			= 0,
+		.y_size			= 0,
+		.reserve0		= 0,
+		.blen			= 0,
+		.tch_thresh		= 0,
+		.tch_detect_int		= 0,
+		.average		= 0,
+		.rate			= 0,
+	},
+	.one_touch_gesture_proc_cfg = 
+	{
+		.ctrl			= 0,
+		.numgest		= 0,
+		.gesture_enable		= 0,
+		.pres_proc		= 0,
+		.tap_time_out		= 0,
+		.flick_time_out		= 0,
+		.drag_time_out		= 0,
+		.short_press_time_out	= 0,
+		.long_press_time_out	= 0,
+		.repeat_press_time_out	= 0,
+		.flick_threshold	= 0,
+		.drag_threshold		= 0,
+		.tap_threshold		= 0,
+		.throw_threshold	= 0,
+	},
+	.self_test_cfg = 
+	{
+		.ctrl			= 0,
+		.command		= 0,
+		.high_signal_limit_0	= 0,
+		.low_signal_limit_0	= 0,
+		.high_signal_limit_1	= 0,
+		.low_signal_limit_1	= 0,
+	},
+	.two_touch_gesture_proc_cfg = 
+	{
+		.ctrl			= 0,
+		.numgest		= 0,
+		.gesture_enable		= 0,
+		.rotate_threshold	= 0,
+		.zoom_threshold		= 0,
+		.tcheventto		= 0,
+	},
+	.cte_config_cfg = 
+	{
+		.ctrl			= 1,
+		.command		= 0,
+		.mode			= 3,
+		.idle_gcaf_depth	= 4,
+		.active_gcaf_depth	= 8,
+		/* Motorola - BEGIN - qa2113 - 11/18/2009 - XmegaT firmware 1.5 support */
+		.voltage		= 0,
+		/* Motorola - END - qa2113 - 11/18/2009 - XmegaT firmware 1.5 support */
+	},
+	.noise1_suppression_cfg = 
+	{
+		.ctrl		= 0x00,
+		.version	= 0x00,
+		.atchthr	= 0x00,
+		.duty_cycle	= 0x00,
+	},
+/*
+	.vkeys = {
+		.count = ARRAY_SIZE(touch_vkeys);
+		.keys = touch_keys,
+	},
+*/
+};
+
 
 extern struct isl29030_platform_data isl29030_als_ir_data_Olympus;
 
 static struct i2c_board_info __initdata olympus_i2c_bus1_board_info[] = {
-	{ /* Display backlight */
+	[BACKLIGHT] = { /* Display backlight */
 		I2C_BOARD_INFO(LM3532_NAME, LM3532_I2C_ADDR),
 		.platform_data = &lm3532_pdata,
 		/*.irq = ..., */
 	},
-	{
+	[TOUCHSCREEN] = {
 		I2C_BOARD_INFO(QTOUCH_TS_NAME, XMEGAT_BL_I2C_ADDR),
-		.platform_data = &olympus_touch_data,
+	//	.platform_data = &ts_platform_olympus_p_1_37,
 		.irq = TEGRA_GPIO_TO_IRQ(OLYMPUS_TOUCH_IRQ_GPIO),
 	},
 
-	{
+	[PROX] = {
 		/*  ISL 29030 (prox/ALS) driver */
 		I2C_BOARD_INFO(LD_ISL29030_NAME, 0x44),
 		.platform_data = &isl29030_als_ir_data_Olympus,
@@ -619,15 +1152,7 @@ static void olympus_touch_init(void)
 {
 	int ret = 0;
 	struct kobject *properties_kobj = NULL;
-
-	tegra_gpio_enable(OLYMPUS_TOUCH_IRQ_GPIO);
-	gpio_request(OLYMPUS_TOUCH_IRQ_GPIO, "touch_irq");
-	gpio_direction_input(OLYMPUS_TOUCH_IRQ_GPIO);
-
-	tegra_gpio_enable(OLYMPUS_TOUCH_RESET_GPIO);
-	gpio_request(OLYMPUS_TOUCH_RESET_GPIO, "touch_reset");
-	gpio_direction_output(OLYMPUS_TOUCH_RESET_GPIO, 1);
-	
+	struct i2c_board_info *info = &olympus_i2c_bus1_board_info[TOUCHSCREEN];	
 
 	printk("\n%s: Updating i2c_bus_board_info with correct setup info for TS\n", __func__);
 	/*
@@ -643,9 +1168,9 @@ static void olympus_touch_init(void)
 		pr_err("failed to create board_properties\n");
 
 	printk("TOUCH: determining size of the screen\n");
-#if 0
+
 	/* Setup Olympus Mortable as a default */ 
-	olympus_i2c_bus1_board_info->platform_data = 
+	info->platform_data = 
 		&ts_platform_olympus_m_1;
 	if (HWREV_TYPE_IS_PORTABLE(system_rev)  ||
 	    HWREV_TYPE_IS_FINAL(system_rev) )
@@ -662,7 +1187,16 @@ static void olympus_touch_init(void)
 				&ts_platform_olympus_p_1_37;
 		}
 	}
-#endif	
+
+	tegra_gpio_enable(OLYMPUS_TOUCH_RESET_GPIO);
+/*	gpio_request(OLYMPUS_TOUCH_RESET_GPIO, "ts_rst");
+	gpio_direction_output(OLYMPUS_TOUCH_RESET_GPIO, 1);
+//	gpio_direction_input(OLYMPUS_TOUCH_RESET_GPIO);*/
+
+	tegra_gpio_enable(OLYMPUS_TOUCH_IRQ_GPIO);
+/*	gpio_request(OLYMPUS_TOUCH_IRQ_GPIO, "ts_intr");
+	gpio_direction_input(OLYMPUS_TOUCH_IRQ_GPIO);*/
+
 }
 
 static void olympus_lights_init(void)

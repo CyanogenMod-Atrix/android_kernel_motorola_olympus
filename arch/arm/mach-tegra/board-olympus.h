@@ -3,7 +3,7 @@
 #include <linux/i2c.h>
 #include "hwrev.h"
 
-
+extern int __init olympus_kbc_init(void);
 extern void __init olympus_pinmux_init(void);
 extern int __init olympus_panel_init(void);
 extern void __init olympus_emc_init(void);
@@ -40,8 +40,9 @@ extern void mot_keymap_update_init(void);
 
 extern void cpcap_set_dock_switch(int state);
 
-#define	BACKLIGHT_DEV		0
-#define	TOUCHSCREEN_DEV		1
+#define	BACKLIGHT	0
+#define	TOUCHSCREEN	1
+#define	PROX		2
 
 #define SERIAL_NUMBER_STRING_LEN 17
 

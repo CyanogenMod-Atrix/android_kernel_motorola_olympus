@@ -129,6 +129,7 @@ obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-panel.o
 obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-audio.o
 obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-misc.o
 obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-keypad.o
+obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-kbc.o
 obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-modem.o
 obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-i2c.o
 obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-wifi.o
