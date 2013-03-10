@@ -97,7 +97,7 @@ static char oly_unused_pins_p3[] = {
         TEGRA_GPIO_PL5,
         TEGRA_GPIO_PL6,
         TEGRA_GPIO_PL7,
-	/* TEGRA_GPIO_PT2, ICS uses it */
+	TEGRA_GPIO_PT2,
         TEGRA_GPIO_PD6,
         TEGRA_GPIO_PD7,
         TEGRA_GPIO_PR3,
@@ -169,7 +169,7 @@ static char oly_unused_pins_p2[] = {
         TEGRA_GPIO_PL5,
         TEGRA_GPIO_PL6,
         TEGRA_GPIO_PL7,
-        /*TEGRA_GPIO_PT2, ICS uses it */
+        TEGRA_GPIO_PT2,
         TEGRA_GPIO_PD6,
         TEGRA_GPIO_PD7,
         TEGRA_GPIO_PR3,
@@ -239,7 +239,7 @@ static char oly_unused_pins_p1[] = {
         TEGRA_GPIO_PL5,
         TEGRA_GPIO_PL6,
         TEGRA_GPIO_PL7,
-	/* TEGRA_GPIO_PT2, ICS uses it */
+	TEGRA_GPIO_PT2,
         TEGRA_GPIO_PD6,
         TEGRA_GPIO_PD7,
         TEGRA_GPIO_PR3,
@@ -544,11 +544,11 @@ static void __init tegra_mot_init(void)
 
 	olympus_panel_init();
 
-	olympus_i2c_init();
+	//olympus_keypad_init();
 
 	olympus_kbc_init();
 
-	olympus_keypad_init();
+	olympus_i2c_init();
 
 	if( (bi_powerup_reason() & PWRUP_FACTORY_CABLE) &&
 	    (bi_powerup_reason() != PWRUP_INVALID) ){
@@ -564,10 +564,10 @@ if (1==0) olympus_emc_init();
 	mot_modem_init();
 	olympus_wlan_init();
 
-//	mot_sensors_init();
+	mot_sensors_init();
 
 	pm_power_off = mot_system_power_off;
-	tegra_setup_bluesleep();
+	if (1==0) tegra_setup_bluesleep();
 
 	/* Configure SPDIF_OUT as GPIO by default, it can be later controlled
 	   as needed. When SPDIF_OUT is enabled and if HDMI is connected, it

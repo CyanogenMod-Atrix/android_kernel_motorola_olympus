@@ -268,8 +268,8 @@ static struct platform_device cpcap_usb_device = {
 };
 
 static struct cpcap_whisper_pdata usb_det_pdata = {
-	.data_gpio = TEGRA_GPIO_PV6,
-	.pwr_gpio  = TEGRA_GPIO_PT2,
+//	.data_gpio = TEGRA_GPIO_PV6,
+//	.pwr_gpio  = TEGRA_GPIO_PT2,
 //	.pwr_gpio  = TEGRA_GPIO_PF3,
 //	.uartmux   = 1,
 };
@@ -1051,7 +1051,6 @@ struct spi_board_info tegra_spi_devices[] __initdata = {
         .chip_select = 0,
         .mode = SPI_MODE_0 | SPI_CS_HIGH,
         .max_speed_hz = 8000000,
-//        .platform_data = ??
         .controller_data = &tegra_cpcap_data,
         .irq = INT_EXTERNAL_PMU,
     },

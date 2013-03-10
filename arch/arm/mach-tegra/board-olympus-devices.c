@@ -606,13 +606,16 @@ static struct platform_device tegra_camera = {
 	.id = -1,
 };
 
+static struct platform_device olympus_touch_xmegat = {
+	.name = "qtouch-obp-ts",
+	.id = -1,
+};
+
 static struct platform_device *olympus_devices[] __initdata = {
 	&tegra_pmu_device,
 	&tegra_gart_device,
 	&tegra_wdt_device,
-//	&tegra_kbc_device,
 	&tegra_spi_slave_device1,
-//	&tegra_spi_device1,
 	&tegra_spi_device2,
 	&tegra_spi_device3,
 	&tegra_spi_device4,
@@ -625,6 +628,9 @@ static struct platform_device *olympus_devices[] __initdata = {
 	&tegra_pcm_device,
 	&tegra_spdif_device,
 	&spdif_dit_device,
+//	&mot_codec_cpcap,
+//	&spdif_dit_device,
+	&olympus_touch_xmegat,
 };
 
 static int tegra_reboot_notify(struct notifier_block *nb,

@@ -770,13 +770,24 @@ config TOUCHSCREEN_SYN_RMI4_SPI
 	  To compile this driver as a module, choose M here: the
 	  module will be called rmi-spi.
 
-config TOUCHSCREEN_QUANTUM_OBP
-	tristate "Quantum OBP based touchscreens"
+config TOUCHSCREEN_XMEGAT
+	tristate "Atmel xMegaT Touchscreen"
 	depends on I2C
 	help
-	  Say Y here if you have a Quantum touchscreen that uses
-	  the Object Based Protocol based firmware.
+	  Say Y here to enable XMegaT touchscreen support.
 
 	  If unsure, say N.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called xmeagat.
+
+config XMEGAT_USE_RESET_TO_RESUME
+	bool
+	default y
+
+config XMEGAT_DO_HARD_RESET
+	bool
+	depends on XMEGAT_USE_RESET_TO_RESUME
+	default y
 
 endif

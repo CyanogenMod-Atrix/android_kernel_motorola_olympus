@@ -43,18 +43,18 @@ static const unsigned short olympus_p3_keymap[ARRAY_SIZE(olympus_col_gpios) *
 	[KEYMAP_INDEX(0, 1)] = KEY_VOLUMEDOWN,
 	[KEYMAP_INDEX(1, 1)] = KEY_CAMERA,
 	[KEYMAP_INDEX(2, 1)] = KEY_HOME,
-	[KEYMAP_INDEX(0, 2)] = KEY_AUX,
+	[KEYMAP_INDEX(0, 2)] = KEY_AUX,	
 	[KEYMAP_INDEX(1, 2)] = KEY_SEARCH,
 	[KEYMAP_INDEX(2, 2)] = KEY_BACK,*/
-	[KEYMAP_INDEX(0, 0)] = 115,
-	[KEYMAP_INDEX(1, 0)] = 114,
-	[KEYMAP_INDEX(2, 0)] = 152,
-	[KEYMAP_INDEX(0, 1)] = 211,
-	[KEYMAP_INDEX(1, 1)] = 212,
-	[KEYMAP_INDEX(2, 1)] = 217,
-	[KEYMAP_INDEX(0, 2)] = 139,
-	[KEYMAP_INDEX(1, 2)] = 102,
-	[KEYMAP_INDEX(2, 2)] = 158,
+	[KEYMAP_INDEX(0, 0)] = 0x73,
+	[KEYMAP_INDEX(0, 1)] = 0xd3,
+	[KEYMAP_INDEX(0, 2)] = 0x8b,
+	[KEYMAP_INDEX(1, 0)] = 0x72,
+	[KEYMAP_INDEX(1, 1)] = 0xd4,
+	[KEYMAP_INDEX(1, 2)] = 0x66,
+	[KEYMAP_INDEX(2, 0)] = 0x00,
+	[KEYMAP_INDEX(2, 1)] = 0xd9,
+	[KEYMAP_INDEX(2, 2)] = 0x9e,
 };
 
 static struct gpio_event_matrix_info olympus_keypad_matrix_info = {

@@ -285,6 +285,7 @@ struct qtm_cmd_proc_msg
 #define QTM_TOUCH_MULTI_STATUS_MOVE		(1 << 4)
 #define QTM_TOUCH_MULTI_STATUS_VECTOR		(1 << 3)
 #define QTM_TOUCH_MULTI_STATUS_AMPLITUDE	(1 << 2)
+#define QTM_TOUCH_MULTI_STATUS_SUPPRESS		(1 << 1)
 struct qtm_touch_multi_msg 
 {
 	uint8_t			report_id;
@@ -743,6 +744,7 @@ struct coordinate_map
 	int y_data;
 	int z_data;
 	int w_data;
+	int vector;
 	int down;
 };
 

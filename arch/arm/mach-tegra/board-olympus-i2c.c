@@ -37,8 +37,8 @@
 #include "board.h"
 #include "hwrev.h"
 
-#define OLYMPUS_TOUCH_IRQ_GPIO 		45
-#define OLYMPUS_TOUCH_RESET_GPIO 	44
+#define OLYMPUS_TOUCH_IRQ_GPIO 		TEGRA_GPIO_PF5
+#define OLYMPUS_TOUCH_RESET_GPIO 	TEGRA_GPIO_PF4
 #define OLYMPUS_COMPASS_IRQ_GPIO TEGRA_GPIO_PE2
 
 #define TEGRA_BACKLIGHT_EN_GPIO 	32 /* TEGRA_GPIO_P?? */
@@ -49,6 +49,7 @@ static int disp_backlight_init(void)
     int ret;
 
     tegra_gpio_enable(TEGRA_BACKLIGHT_EN_GPIO);
+    tegra_gpio_enable(TEGRA_KEY_BACKLIGHT_EN_GPIO);
     if ((ret = gpio_request(TEGRA_BACKLIGHT_EN_GPIO, "backlight_en"))) {
         pr_err("%s: gpio_request(%d, backlight_en) failed: %d\n",
             __func__, TEGRA_BACKLIGHT_EN_GPIO, ret);
@@ -71,7 +72,6 @@ static int disp_backlight_init(void)
 		pr_info("%s: gpio_request(%d, key_backlight_en) success!\n",
 			__func__, TEGRA_KEY_BACKLIGHT_EN_GPIO);
 	}
-        tegra_gpio_enable(TEGRA_KEY_BACKLIGHT_EN_GPIO);
 	if ((ret = gpio_direction_output(TEGRA_KEY_BACKLIGHT_EN_GPIO, 1))) {
 		pr_err("%s: gpio_direction_output(key_backlight_en) failed: %d\n",
 			__func__, ret);
@@ -145,16 +145,13 @@ static struct vkey touch_vkeys[] = {
 	{
 		.code		= KEY_SEARCH,
 	},
-};
-*/
+};*/
 
 struct qtouch_ts_platform_data ts_platform_olympus_p_1_37 = 
 {
 /*	.flags		= (QTOUCH_SWAP_XY | */
 /*			   QTOUCH_EEPROM_CHECKSUM), */
-	.flags		= (QTOUCH_SWAP_XY | 
-					QTOUCH_USE_MULTITOUCH |
-					QTOUCH_CFG_BACKUPNV),
+	.flags		= (QTOUCH_SWAP_XY | QTOUCH_USE_MULTITOUCH | QTOUCH_CFG_BACKUPNV),
 	.irqflags		= (IRQF_TRIGGER_FALLING | IRQF_TRIGGER_LOW),
 	.gpio_reset		= TOUCH_GPIO_RESET,
 	.gpio_intr		= TOUCH_GPIO_INTR,
@@ -180,7 +177,6 @@ struct qtouch_ts_platform_data ts_platform_olympus_p_1_37 =
 		.keys		= NULL,
 		.num_keys	= 0,
 	},
-/* cvk011c  : Move    virtual key support  to the framework for haptic support
 	.buttons_count	= 4,
 	.buttons[0] =
 	{	
@@ -232,7 +228,6 @@ struct qtouch_ts_platform_data ts_platform_olympus_p_1_37 =
 		.exists = 0,
 		.pressed = 0,
 	},
-*/
 	.power_cfg	= 
 	{
 		.idle_acq_int	= 0xff,
@@ -428,21 +423,19 @@ struct qtouch_ts_platform_data ts_platform_olympus_p_1_37 =
 		.atchthr	= 0x00,
 		.duty_cycle	= 0x00,
 	},
-/*
-	.vkeys = {
-		.count = ARRAY_SIZE(touch_vkeys);
+
+/*	.vkeys = {
+		.count = ARRAY_SIZE(touch_vkeys),
 		.keys = touch_keys,
-	},
-*/
+	},*/
+
 };
 
 struct qtouch_ts_platform_data ts_platform_olympus_p_1_43 = 
 {
 /*	.flags		= (QTOUCH_SWAP_XY | */
 /*			   QTOUCH_EEPROM_CHECKSUM), */
-	.flags		= (QTOUCH_SWAP_XY | 
-					QTOUCH_USE_MULTITOUCH |
-					QTOUCH_CFG_BACKUPNV),
+	.flags			= (QTOUCH_SWAP_XY | QTOUCH_USE_MULTITOUCH | QTOUCH_CFG_BACKUPNV),
 	.irqflags		= (IRQF_TRIGGER_FALLING | IRQF_TRIGGER_LOW),
 	.gpio_reset		= TOUCH_GPIO_RESET,
 	.gpio_intr		= TOUCH_GPIO_INTR,
@@ -728,9 +721,7 @@ struct qtouch_ts_platform_data ts_platform_olympus_m_1 =
 {
 /*	.flags		= (QTOUCH_SWAP_XY | */
 /*			   QTOUCH_EEPROM_CHECKSUM), */
-	.flags		= (QTOUCH_SWAP_XY | 
-					QTOUCH_USE_MULTITOUCH |
-					QTOUCH_CFG_BACKUPNV),
+	.flags		= (QTOUCH_SWAP_XY | QTOUCH_USE_MULTITOUCH | QTOUCH_CFG_BACKUPNV),
 	.irqflags		= (IRQF_TRIGGER_FALLING | IRQF_TRIGGER_LOW),
 	.gpio_reset		= TOUCH_GPIO_RESET,
 	.gpio_intr		= TOUCH_GPIO_INTR,
@@ -1010,7 +1001,6 @@ struct qtouch_ts_platform_data ts_platform_olympus_m_1 =
 */
 };
 
-
 extern struct isl29030_platform_data isl29030_als_ir_data_Olympus;
 
 static struct i2c_board_info __initdata olympus_i2c_bus1_board_info[] = {
@@ -1020,8 +1010,9 @@ static struct i2c_board_info __initdata olympus_i2c_bus1_board_info[] = {
 		/*.irq = ..., */
 	},
 	[TOUCHSCREEN] = {
-		I2C_BOARD_INFO(QTOUCH_TS_NAME, XMEGAT_BL_I2C_ADDR),
-	//	.platform_data = &ts_platform_olympus_p_1_37,
+		//I2C_BOARD_INFO(QTOUCH_TS_NAME, XMEGAT_BL_I2C_ADDR),
+		I2C_BOARD_INFO(QTOUCH_TS_NAME, 0x4a),
+		.platform_data = &ts_platform_olympus_m_1,
 		.irq = TEGRA_GPIO_TO_IRQ(OLYMPUS_TOUCH_IRQ_GPIO),
 	},
 
@@ -1170,6 +1161,7 @@ static void olympus_touch_init(void)
 	printk("TOUCH: determining size of the screen\n");
 
 	/* Setup Olympus Mortable as a default */ 
+
 	info->platform_data = 
 		&ts_platform_olympus_m_1;
 	if (HWREV_TYPE_IS_PORTABLE(system_rev)  ||
@@ -1189,14 +1181,7 @@ static void olympus_touch_init(void)
 	}
 
 	tegra_gpio_enable(OLYMPUS_TOUCH_RESET_GPIO);
-/*	gpio_request(OLYMPUS_TOUCH_RESET_GPIO, "ts_rst");
-	gpio_direction_output(OLYMPUS_TOUCH_RESET_GPIO, 1);
-//	gpio_direction_input(OLYMPUS_TOUCH_RESET_GPIO);*/
-
 	tegra_gpio_enable(OLYMPUS_TOUCH_IRQ_GPIO);
-/*	gpio_request(OLYMPUS_TOUCH_IRQ_GPIO, "ts_intr");
-	gpio_direction_input(OLYMPUS_TOUCH_IRQ_GPIO);*/
-
 }
 
 static void olympus_lights_init(void)
@@ -1224,8 +1209,9 @@ static void olympus_lights_init(void)
 void __init olympus_i2c_init(void)
 {
 	olympus_i2c_reg();
-	olympus_touch_init();
 	olympus_lights_init();
+	olympus_touch_init();
+
 	
 	printk("%s: registering i2c devices...\n", __func__);
 	printk("bus 0: %d devices\n", ARRAY_SIZE(olympus_i2c_bus1_board_info));
