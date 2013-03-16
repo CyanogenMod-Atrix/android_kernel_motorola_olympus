@@ -26,6 +26,7 @@
 #include <linux/mmc/sh_mobile_sdhi.h>
 #include <linux/mfd/tmio.h>
 #include <linux/sh_dma.h>
+#include <linux/delay.h>
 
 #include "tmio_mmc.h"
 
@@ -55,6 +56,39 @@ static int sh_mobile_sdhi_get_cd(struct platform_device *pdev)
 		return -ENOSYS;
 }
 
+static int sh_mobile_sdhi_wait_idle(struct tmio_mmc_host *host)
+{
+	int timeout = 1000;
+
+	while (--timeout && !(sd_ctrl_read16(host, CTL_STATUS2) & (1 << 13)))
+		udelay(1);
+
+	if (!timeout) {
+		dev_warn(host->pdata->dev, "timeout waiting for SD bus idle\n");
+		return -EBUSY;
+	}
+
+	return 0;
+}
+
+static int sh_mobile_sdhi_write16_hook(struct tmio_mmc_host *host, int addr)
+{
+	switch (addr)
+	{
+	case CTL_SD_CMD:
+	case CTL_STOP_INTERNAL_ACTION:
+	case CTL_XFER_BLK_COUNT:
+	case CTL_SD_CARD_CLK_CTL:
+	case CTL_SD_XFER_LEN:
+	case CTL_SD_MEM_CARD_OPT:
+	case CTL_TRANSACTION_CTL:
+	case CTL_DMA_ENABLE:
+		return sh_mobile_sdhi_wait_idle(host);
+	}
+
+	return 0;
+}
+
 static int __devinit sh_mobile_sdhi_probe(struct platform_device *pdev)
 {
 	struct sh_mobile_sdhi *priv;
@@ -62,7 +96,7 @@ static int __devinit sh_mobile_sdhi_probe(struct platform_device *pdev)
 	struct sh_mobile_sdhi_info *p = pdev->dev.platform_data;
 	struct tmio_mmc_host *host;
 	char clk_name[8];
-	int ret;
+	int i, irq, ret;
 
 	priv = kzalloc(sizeof(struct sh_mobile_sdhi), GFP_KERNEL);
 	if (priv == NULL) {
@@ -71,6 +105,7 @@ static int __devinit sh_mobile_sdhi_probe(struct platform_device *pdev)
 	}
 
 	mmc_data = &priv->mmc_data;
+	p->pdata = mmc_data;
 
 	snprintf(clk_name, sizeof(clk_name), "sdhi%d", pdev->id);
 	priv->clk = clk_get(&pdev->dev, clk_name);
@@ -88,10 +123,12 @@ static int __devinit sh_mobile_sdhi_probe(struct platform_device *pdev)
 	mmc_data->capabilities = MMC_CAP_MMC_HIGHSPEED;
 	if (p) {
 		mmc_data->flags = p->tmio_flags;
+		if (mmc_data->flags & TMIO_MMC_HAS_IDLE_WAIT)
+			mmc_data->write16_hook = sh_mobile_sdhi_write16_hook;
 		mmc_data->ocr_mask = p->tmio_ocr_mask;
 		mmc_data->capabilities |= p->tmio_caps;
 
-		if (p->dma_slave_tx >= 0 && p->dma_slave_rx >= 0) {
+		if (p->dma_slave_tx > 0 && p->dma_slave_rx > 0) {
 			priv->param_tx.slave_id = p->dma_slave_tx;
 			priv->param_rx.slave_id = p->dma_slave_rx;
 			priv->dma_priv.chan_priv_tx = &priv->param_tx;
@@ -116,11 +153,36 @@ static int __devinit sh_mobile_sdhi_probe(struct platform_device *pdev)
 	if (ret < 0)
 		goto eprobe;
 
-	pr_info("%s at 0x%08lx irq %d\n", mmc_hostname(host->mmc),
-		(unsigned long)host->ctl, host->irq);
+	for (i = 0; i < 3; i++) {
+		irq = platform_get_irq(pdev, i);
+		if (irq < 0) {
+			if (i) {
+				continue;
+			} else {
+				ret = irq;
+				goto eirq;
+			}
+		}
+		ret = request_irq(irq, tmio_mmc_irq, 0,
+				  dev_name(&pdev->dev), host);
+		if (ret) {
+			while (i--) {
+				irq = platform_get_irq(pdev, i);
+				if (irq >= 0)
+					free_irq(irq, host);
+			}
+			goto eirq;
+		}
+	}
+	dev_info(&pdev->dev, "%s base at 0x%08lx clock rate %u MHz\n",
+		 mmc_hostname(host->mmc), (unsigned long)
+		 (platform_get_resource(pdev,IORESOURCE_MEM, 0)->start),
+		 mmc_data->hclk / 1000000);
 
 	return ret;
 
+eirq:
+	tmio_mmc_host_remove(host);
 eprobe:
 	clk_disable(priv->clk);
 	clk_put(priv->clk);
@@ -134,8 +196,19 @@ static int sh_mobile_sdhi_remove(struct platform_device *pdev)
 	struct mmc_host *mmc = platform_get_drvdata(pdev);
 	struct tmio_mmc_host *host = mmc_priv(mmc);
 	struct sh_mobile_sdhi *priv = container_of(host->pdata, struct sh_mobile_sdhi, mmc_data);
+	struct sh_mobile_sdhi_info *p = pdev->dev.platform_data;
+	int i, irq;
+
+	p->pdata = NULL;
 
 	tmio_mmc_host_remove(host);
+
+	for (i = 0; i < 3; i++) {
+		irq = platform_get_irq(pdev, i);
+		if (irq >= 0)
+			free_irq(irq, host);
+	}
+
 	clk_disable(priv->clk);
 	clk_put(priv->clk);
 	kfree(priv);
@@ -143,10 +216,18 @@ static int sh_mobile_sdhi_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static const struct dev_pm_ops tmio_mmc_dev_pm_ops = {
+	.suspend = tmio_mmc_host_suspend,
+	.resume = tmio_mmc_host_resume,
+	.runtime_suspend = tmio_mmc_host_runtime_suspend,
+	.runtime_resume = tmio_mmc_host_runtime_resume,
+};
+
 static struct platform_driver sh_mobile_sdhi_driver = {
 	.driver		= {
 		.name	= "sh_mobile_sdhi",
 		.owner	= THIS_MODULE,
+		.pm	= &tmio_mmc_dev_pm_ops,
 	},
 	.probe		= sh_mobile_sdhi_probe,
 	.remove		= __devexit_p(sh_mobile_sdhi_remove),

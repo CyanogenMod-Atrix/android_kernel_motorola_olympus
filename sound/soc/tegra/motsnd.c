@@ -57,7 +57,7 @@ struct tegra_olympus {
 	struct tegra_asoc_utils_data util_data;
 };
 
-static int motsnd_hw_params(struct snd_pcm_substream *substream, 	//verified
+static int motsnd_hw_params(struct snd_pcm_substream *substream, 	//verified??
 			    struct snd_pcm_hw_params *params)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
@@ -71,16 +71,24 @@ static int motsnd_hw_params(struct snd_pcm_substream *substream, 	//verified
 
 	MOTSND_DEBUG_LOG("%s: entered\n", __func__);
 
+	/* Set codec clock configuration */
+	srate = params_rate(params);
+	mclk = 0;
+	if ((srate==88200) || (srate==96000)) {
+		mclk = srate << 7;
+	} else if (srate!=64000) {	
+		mclk = srate << 8;
+	}
+	while (mclk<=5999999) {
+		mclk = mclk << 1;
+	}
+	
 	if (card_data==NULL) {
 		dev_err(card->dev, "card_data is NULL\n");
 		return -1;
 	}
 
-	/* Set codec clock configuration */
-	srate = params_rate(params);
-	mclk = 128 * srate;
-
-	printk("%s: mclk (%d) = 128 * srate (%d);\n", __func__, mclk, srate);
+	printk("%s: clk (%d) , srate (%d);\n", __func__, mclk, srate);
 
 	err = tegra_asoc_utils_set_rate(&card_data->util_data, srate, mclk);
 	if (err < 0) {
@@ -240,7 +248,7 @@ static struct snd_soc_ops motsnd_incall_ops = {
 	.shutdown = motsnd_incall_shutdown,
 	.hw_params = motsnd_incall_hw_params,
 };
-#if 0
+
 static int motsnd_btvoice_hw_params(struct snd_pcm_substream *substream,
 				  struct snd_pcm_hw_params *params)
 {
@@ -318,7 +326,7 @@ static int motsnd_bt_incall_hw_params(struct snd_pcm_substream *substream,
 static struct snd_soc_ops motsnd_bt_incall_ops = {
 	.hw_params = motsnd_bt_incall_hw_params,
 };
-#endif
+
 static int motsnd_spdif_hw_params(struct snd_pcm_substream *substream,
 				  struct snd_pcm_hw_params *params)
 {
@@ -330,12 +338,11 @@ static struct snd_soc_ops motsnd_spdif_ops = {
 	.hw_params = motsnd_spdif_hw_params,
 };
 
-/*
 static int motsnd_cpcap_init(struct snd_soc_pcm_runtime *rtd)
 {
 	MOTSND_DEBUG_LOG("%s: Entered\n", __func__);
 	return 0;
-}*/
+}
 
 static int motsnd_cpcap_voice_init(struct snd_soc_pcm_runtime *rtd)
 {
@@ -385,7 +392,7 @@ static int motsnd_tegra_mm_init(struct snd_soc_pcm_runtime *rtd) {	//verified
 
 	return 0;
 }
-/*
+
 static struct snd_soc_dai_driver dai[] = { 	//verified
 {
 	.name = "MODEM",
@@ -415,7 +422,7 @@ static struct snd_soc_dai_driver dai[] = { 	//verified
 	},
 }
 };
-*/
+
 /* Digital audio interface glue - connects codec <--> CPU */
 static struct snd_soc_dai_link motsnd_dai[] = {		//verified
 {
@@ -447,7 +454,7 @@ static struct snd_soc_dai_link motsnd_dai[] = {		//verified
 	.stream_name = "Tegra-i2s.1",
 	.codec_name = "cpcap_audio",
 	.platform_name = "tegra-pcm-audio",
-//	.cpu_dai_name = "tegra20-i2s.1",
+	.cpu_dai_name = "tegra20-i2s.1",
 	.codec_dai_name = "cpcap in-call",
 	.ignore_suspend = 1,
 //	.symmetric_rates = ,
@@ -459,7 +466,7 @@ static struct snd_soc_dai_link motsnd_dai[] = {		//verified
 	.stream_name = "SPDIF PCM",
 	.codec_name = "spdif-dit.0",
 	.platform_name = "tegra-pcm-audio",
-//	.cpu_dai_name = "tegra20-spdif",
+	.cpu_dai_name = "tegra20-spdif",
 	.codec_dai_name = "dit-hifi",
 //	.ignore_suspend = ,
 //	.symmetric_rates = ,
@@ -521,17 +528,19 @@ static int __init motsnd_soc_init(void)	//verified
 		dev_err(&mot_snd_device->dev, "Can't allocate tegra asoc utils data\n");
 		return -ENOMEM;
 	}
+	snd_soc_card_set_drvdata(card, mot_snd_device);
+
+	pr_info("MOTSND SoC init: snd_soc_register_dais\n");
+	snd_soc_register_dais(&mot_snd_device->dev, dai, ARRAY_SIZE(dai));
 
 	ret = tegra_asoc_utils_init(&olympus->util_data, &mot_snd_device->dev, card);
 	if (ret) {
 		dev_err(&mot_snd_device->dev, "Can't do tegra_asoc_utils_init()\n");
 		goto err_free_olympus;
 	}
-//	pr_info("MOTSND SoC init: snd_soc_register_dais\n");
-//	snd_soc_register_dais(&mot_snd_device->dev, dai, ARRAY_SIZE(dai));
 
 	pr_info("MOTSND SoC init: platform_set_drvdata\n");
-//	snd_soc_card_set_drvdata(card, mot_snd_device);
+
 	platform_set_drvdata(mot_snd_device, card);
 
 	pr_info("%s: mot_snd_device: id: %d, name: %s\n", __func__, mot_snd_device->id, mot_snd_device->name);

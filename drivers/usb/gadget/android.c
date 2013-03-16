@@ -32,6 +32,8 @@
 #include <linux/usb/gadget.h>
 
 #include "gadget_chips.h"
+#include <linux/cpcap-accy.h>
+#include <linux/switch.h>
 
 /*
  * Kbuild is not very cooperative with respect to linking separately
@@ -154,6 +156,41 @@ static struct usb_configuration android_config_driver = {
 	.unbind		= android_unbind_config,
 	.bConfigurationValue = 1,
 };
+
+void android_usb_set_connected(int connected, unsigned int accy)
+{
+	struct android_dev *dev = _android_dev;
+
+	if (!dev)
+		return;
+
+	printk(KERN_INFO "%s - connected = %d, accy = %d \n",
+		__func__, connected, accy);
+	switch (accy) {
+	case CPCAP_ACCY_USB:
+		if (connected)
+//			switch_set_state(&dev->sdev, CABLE_USB);
+			printk(KERN_INFO "%s should do switch_set_state(&dev->sdev, CABLE_USB);\n",__func__);
+		else
+//			switch_set_state(&dev->sdev, CABLE_NONE);
+			printk(KERN_INFO "%s should do switch_set_state(&dev->sdev, CABLE_NONE);\n",__func__);
+		break;
+	case CPCAP_ACCY_FACTORY:
+		if (connected)
+//			switch_set_state(&dev->sdev, CABLE_FACTORY);
+			printk(KERN_INFO "%s should do switch_set_state(&dev->sdev, CABLE_FACTORY);\n",__func__);
+		else
+//			switch_set_state(&dev->sdev, CABLE_NONE);
+			printk(KERN_INFO "%s should do switch_set_state(&dev->sdev, CABLE_NONE);\n",__func__);
+		break;
+	default:
+		return;
+	}
+
+	if (connected && dev->cdev && dev->cdev->gadget)
+		usb_gadget_vbus_connect(dev->cdev->gadget);
+
+}
 
 static void android_work(struct work_struct *data)
 {
@@ -847,46 +884,27 @@ static ssize_t enable_store(struct device *pdev, struct device_attribute *attr,
 	sscanf(buff, "%d", &enabled);
 	if (enabled && !dev->enabled) {
 		/* update values in composite driver's copy of device descriptor */
-		printk(KERN_INFO "pICS_%s: level 1; UGLY HACK, PLEEASE FIX IT!\n",__func__);
-	  if (cdev) {
 		printk(KERN_INFO "pICS_%s: device_desc.idVendor = 0x%x;\n",__func__, device_desc.idVendor);
-		printk(KERN_INFO "pICS_%s: cdev->desc.idVendor = 0x%x;\n",__func__, cdev->desc.idVendor);
 		cdev->desc.idVendor = device_desc.idVendor;
-		printk(KERN_INFO "pICS_%s: level 1a;\n",__func__);
 		printk(KERN_INFO "pICS_%s: device_desc.idProduct = 0x%x;\n",__func__, device_desc.idProduct);
-		//printk(KERN_INFO "pICS_%s: cdev->desc.idProduct = 0x%x;\n",__func__, cdev->desc.idProduct);
 		cdev->desc.idProduct = device_desc.idProduct;
-		printk(KERN_INFO "pICS_%s: level 1b;\n",__func__);
 		printk(KERN_INFO "pICS_%s: device_desc.bcdDevice = 0x%x;\n",__func__, device_desc.bcdDevice);
 		cdev->desc.bcdDevice = device_desc.bcdDevice;
-		printk(KERN_INFO "pICS_%s: level 1c;\n",__func__);
 		printk(KERN_INFO "pICS_%s: device_desc.bDeviceClass = 0x%x;\n",__func__, device_desc.bDeviceClass);
 		cdev->desc.bDeviceClass = device_desc.bDeviceClass;
-		printk(KERN_INFO "pICS_%s: level 1d;\n",__func__);
 		printk(KERN_INFO "pICS_%s: device_desc.bDeviceSubClass = 0x%x;\n",__func__, device_desc.bDeviceSubClass);
 		cdev->desc.bDeviceSubClass = device_desc.bDeviceSubClass;
-		printk(KERN_INFO "pICS_%s: level 1e;\n",__func__);
 		printk(KERN_INFO "pICS_%s: device_desc.bDeviceProtocol = 0x%x;\n",__func__, device_desc.bDeviceProtocol);
 		cdev->desc.bDeviceProtocol = device_desc.bDeviceProtocol;
-	
-		printk(KERN_INFO "pICS_%s: level 2;\n",__func__);
 		usb_add_config(cdev, &android_config_driver,
 					android_bind_config);
-	   
-		printk(KERN_INFO "pICS_%s: level 3;\n",__func__);
 		usb_gadget_connect(cdev->gadget);
-		};
-		printk(KERN_INFO "pICS_%s: level 4;\n",__func__);
 		dev->enabled = true;
 	} else if (!enabled && dev->enabled) {
-		printk(KERN_INFO "pICS_%s: level alt 1;\n",__func__);
 		usb_gadget_disconnect(cdev->gadget);
-		printk(KERN_INFO "pICS_%s: level alt 2;\n",__func__);
 		/* Cancel pending control requests */
 		usb_ep_dequeue(cdev->gadget->ep0, cdev->req);
-		printk(KERN_INFO "pICS_%s: level alt 3;\n",__func__);
 		usb_remove_config(cdev, &android_config_driver);
-		printk(KERN_INFO "pICS_%s: level alt 4;\n",__func__);
 		dev->enabled = false;
 	} else {
 		pr_err("android_usb: already %s\n",
@@ -1100,11 +1118,9 @@ android_setup(struct usb_gadget *gadget, const struct usb_ctrlrequest *c)
 	req->complete = composite_setup_complete;
 	req->length = 0;
 	gadget->ep0->driver_data = cdev;
-	printk(KERN_INFO "pICS_%s: level 0; \n",__func__);
 
 	list_for_each_entry(f, &dev->enabled_functions, enabled_list) {
 		if (f->ctrlrequest) {
-			printk(KERN_INFO "pICS_%s: level 1; \n",__func__);
 			value = f->ctrlrequest(f, cdev, c);
 			if (value >= 0)
 				break;
@@ -1122,12 +1138,10 @@ android_setup(struct usb_gadget *gadget, const struct usb_ctrlrequest *c)
 
 	spin_lock_irqsave(&cdev->lock, flags);
 	if (!dev->connected) {
-		printk(KERN_INFO "pICS_%s: level 2; \n",__func__);
 		dev->connected = 1;
 		schedule_work(&dev->work);
 	}
 	else if (c->bRequest == USB_REQ_SET_CONFIGURATION && cdev->config) {
-		printk(KERN_INFO "pICS_%s: level 3; \n",__func__);
 		schedule_work(&dev->work);
 	}
 	spin_unlock_irqrestore(&cdev->lock, flags);

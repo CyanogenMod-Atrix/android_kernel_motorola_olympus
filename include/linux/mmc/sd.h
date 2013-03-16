@@ -9,8 +9,8 @@
  * your option) any later version.
  */
 
-#ifndef MMC_SD_H
-#define MMC_SD_H
+#ifndef LINUX_MMC_SD_H
+#define LINUX_MMC_SD_H
 
 /* SD commands                           type  argument     response */
   /* class 0 */
@@ -66,7 +66,7 @@
 
 #define SCR_SPEC_VER_0		0	/* Implements system specification 1.0 - 1.01 */
 #define SCR_SPEC_VER_1		1	/* Implements system specification 1.10 */
-#define SCR_SPEC_VER_2		2	/* Implements system specification 2.00 */
+#define SCR_SPEC_VER_2		2	/* Implements system specification 2.00-3.0X */
 
 /*
  * SD bus widths
@@ -91,5 +91,4 @@
 #define SD_SWITCH_ACCESS_DEF	0
 #define SD_SWITCH_ACCESS_HS	1
 
-#endif
-
+#endif /* LINUX_MMC_SD_H */

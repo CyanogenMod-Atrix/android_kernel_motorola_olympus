@@ -191,6 +191,54 @@ static irqreturn_t tegra_ehci_irq(struct usb_hcd *hcd)
 }
 
 
+#ifdef CONFIG_MACH_OLYMPUS
+void tegra_ehci_enable_host (struct usb_hcd *hcd)
+{
+	printk(KERN_DEBUG "%s  TO DO\n", __func__);
+#if 0
+	struct ehci_hcd *ehci = hcd_to_ehci (hcd);
+	unsigned long flags;
+
+	spin_lock_irqsave (&ehci->lock, flags);
+
+	if (ehci->transceiver->state == OTG_STATE_A_HOST) {
+		if (!ehci->host_reinited) {
+			schedule_work(&ehci->irq_work);
+			spin_unlock_irqrestore (&ehci->lock, flags);
+			return;
+		} else
+			printk(KERN_DEBUG "%s host initialized already\n", __func__);
+	} else if (ehci->transceiver->state == OTG_STATE_A_SUSPEND) {
+		if (!ehci->host_reinited) {
+			printk(KERN_DEBUG "%s host not initialized\n", __func__);
+			spin_unlock_irqrestore (&ehci->lock, flags);
+			return;
+		}
+		else {
+			/* Force the disconnect because otherwise we could get
+			 * left in the connected state if the last getPorStatus
+			 * request comes in before the HOST -> SUSPEND state
+			 * change. */
+			spin_unlock_irqrestore (&ehci->lock, flags);
+			/* indicate hcd flags, that hardware is not accessible now */
+			clear_bit(HCD_FLAG_HW_ACCESSIBLE, &hcd->flags);
+			ehci_halt(ehci);
+			tegra_ehci_power_down(hcd);
+			ehci->transceiver->state = OTG_STATE_UNDEFINED;
+			ehci->host_reinited = 0;
+			return;
+		}
+	} else
+		printk(KERN_DEBUG "%s unexpected state\n", __func__);
+
+	spin_unlock_irqrestore (&ehci->lock, flags);
+	ehci_irq(hcd);
+
+	return;
+#endif
+}
+#endif
+
 static int tegra_ehci_hub_control(
 	struct usb_hcd	*hcd,
 	u16	typeReq,

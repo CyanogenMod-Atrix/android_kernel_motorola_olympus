@@ -509,9 +509,6 @@ static void olympus_usb_init(void)
 	/* OTG should be the first to be registered */
 	cpcap_otg_device.dev.platform_data = &cpcap_otg_pdata;
 	cpcap_device_register(&cpcap_otg_device);
-//	platform_device_register(&cpcap_otg_device);
-
-//	platform_device_register(&tegra_otg_device);
 
 	snprintf(serial, sizeof(serial), "037c7148423ff097");
 
@@ -611,11 +608,16 @@ static struct platform_device olympus_touch_xmegat = {
 	.id = -1,
 };
 
+static struct platform_device mot_codec_cpcap = {
+	.name   = "cpcap_audio",
+};
+
 static struct platform_device *olympus_devices[] __initdata = {
 	&tegra_pmu_device,
 	&tegra_gart_device,
 	&tegra_wdt_device,
-	&tegra_spi_slave_device1,
+//	&tegra_spi_slave_device1,
+//	&tegra_spi_device1,
 	&tegra_spi_device2,
 	&tegra_spi_device3,
 	&tegra_spi_device4,
@@ -627,9 +629,8 @@ static struct platform_device *olympus_devices[] __initdata = {
 	&tegra_das_device,
 	&tegra_pcm_device,
 	&tegra_spdif_device,
+	&mot_codec_cpcap,
 	&spdif_dit_device,
-//	&mot_codec_cpcap,
-//	&spdif_dit_device,
 	&olympus_touch_xmegat,
 };
 

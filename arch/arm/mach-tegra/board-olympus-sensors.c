@@ -6,7 +6,9 @@
 #include <linux/i2c.h>
 #include <linux/spi/spi.h>
 #include <linux/akm8975.h>
+#include <linux/adt7461.h>
 #include <linux/isl29030.h>
+#include <linux/bu52014hfv.h>
 #include <linux/kxtf9.h>
 #include <linux/delay.h>
 #include <linux/regulator/consumer.h>
@@ -17,6 +19,7 @@
 
 #include "gpio-names.h"
 #include "board-olympus.h"
+#include "cpu-tegra.h"
 
 #define TEGRA_PROX_INT_GPIO		TEGRA_GPIO_PE1
 #define TEGRA_HF_NORTH_GPIO		TEGRA_GPIO_PS2
@@ -27,6 +30,7 @@
 #define TEGRA_L3G4200D_IRQ_GPIO		TEGRA_GPIO_PH2
 #define TEGRA_AKM8975_IRQ_GPIO		TEGRA_GPIO_PE2
 #define TEGRA_AKM8975_RESET_GPIO	TEGRA_GPIO_PK5
+#define TEGRA_ADT7461_IRQ_GPIO		TEGRA_GPIO_PE5
 #define PWRUP_BAREBOARD            	0x00100000 /* Bit 20 */
 
 
@@ -40,7 +44,7 @@ static int tegra_vibrator_initialization(void)
 	reg = regulator_get(NULL, "vvib");
 	if (IS_ERR(reg))
         {
-                printk("VIB_GPIO:vvib regilator open error \n");
+                printk("VIB_GPIO:vvib regulator open error \n");
 		return PTR_ERR(reg);
         }
 	tegra_vibrator_regulator = reg;
@@ -100,8 +104,6 @@ static struct platform_device tegra_tmon = {
 	.id             = -1,
 };
 
-
-/*
 static struct bu52014hfv_platform_data bu52014hfv_platform_data = {
 	.docked_north_gpio = TEGRA_HF_NORTH_GPIO,
 	.docked_south_gpio = TEGRA_HF_SOUTH_GPIO,
@@ -109,7 +111,7 @@ static struct bu52014hfv_platform_data bu52014hfv_platform_data = {
 	.north_is_desk = 1,
 	.set_switch_func = cpcap_set_dock_switch,
 };
-*/
+
 
 /*
  * Accelerometer
@@ -118,7 +120,7 @@ static struct regulator *kxtf9_regulator;
 static int kxtf9_initialization(void)
 {
 	struct regulator *reg;
-	reg = regulator_get(NULL, "vhvio");
+	reg = regulator_get(NULL, "vhvio_kxtf9");
 	if (IS_ERR(reg))
 		return PTR_ERR(reg);
 	kxtf9_regulator = reg;
@@ -240,9 +242,9 @@ static void __init kxtf9_init(void)
 		of_node_put(node);
 	}
 #endif
-	gpio_request(kxtf9_data.gpio, "kxtf9 accelerometer int");
-	gpio_direction_input(kxtf9_data.gpio);
-//	omap_cfg_reg(AF9_34XX_GPIO22_DOWN);
+	tegra_gpio_enable(TEGRA_KXTF9_INT_GPIO);
+	gpio_request(TEGRA_KXTF9_INT_GPIO, "kxtf9 accelerometer int");
+	gpio_direction_input(TEGRA_KXTF9_INT_GPIO);
 }
 
 struct platform_device kxtf9_platform_device = {
@@ -257,20 +259,16 @@ struct platform_device kxtf9_platform_device = {
 /*
  * Compass
  */
-static int  tegra_akm8975_init(void)
+
+static void __init tegra_akm8975_init(void)
 {
-//	int ret;
-	
 	tegra_gpio_enable(TEGRA_AKM8975_IRQ_GPIO);
-	gpio_request(TEGRA_AKM8975_IRQ_GPIO, "akm8975");
-	gpio_direction_input(TEGRA_AKM8975_IRQ_GPIO);
 
 	tegra_gpio_enable(TEGRA_AKM8975_RESET_GPIO);
 	gpio_request(TEGRA_AKM8975_RESET_GPIO, "akm8975 reset");
 	gpio_direction_output(TEGRA_AKM8975_RESET_GPIO, 1);
-	return 0;
 }
-#if 0
+
 static struct regulator *akm8975_regulator;
 
 static int akm8975_init(void)
@@ -278,15 +276,25 @@ static int akm8975_init(void)
 	struct regulator *reg;
 	int err = 0;
 
+	printk (KERN_INFO "%s: Doing stuff\n", __func__);
+
 	if (!akm8975_regulator) {
 		reg = regulator_get(NULL, "vhvio");
-		if (IS_ERR(reg))
-			err = PTR_ERR(reg);
-		else
+//		reg = regulator_get(NULL, "vcc");
+		if (IS_ERR(reg)) {
+			printk (KERN_INFO "%s: Regulator error\n", __func__);
+			err = PTR_ERR(reg); 
+		} else {
+			printk (KERN_INFO "%s: Regulator request OK\n", __func__);
 			akm8975_regulator = reg;
+		}
 	}
 
 	gpio_set_value(TEGRA_AKM8975_RESET_GPIO, 1);
+
+	gpio_request(TEGRA_AKM8975_IRQ_GPIO, "akm8975_DRDY");
+	gpio_direction_input(TEGRA_AKM8975_IRQ_GPIO);
+
 	return err;
 }
 
@@ -297,8 +305,16 @@ static void akm8975_exit(void)
 
 static int akm8975_power_on(void)
 {
-	if (akm8975_regulator)
-		return regulator_enable(akm8975_regulator);
+	int ret;
+
+	printk (KERN_INFO "%s: Doing stuff\n", __func__);
+
+	ret = 0;
+	if (akm8975_regulator) {
+		ret = regulator_enable(akm8975_regulator);
+		printk (KERN_INFO "%s: ret = %d\n", __func__, ret);
+		return ret;
+	}
 	return -ENXIO;
 }
 
@@ -323,13 +339,12 @@ struct platform_device akm8975_platform_device = {
 		.platform_data = &akm8975_data,
 	},
 };
-#endif
 
 
 /*
  * Hall Effect Sensor
  */
-/*
+
 static struct platform_device ap20_hall_effect_dock = {
 	.name	= BU52014HFV_MODULE_NAME,
 	.id	= -1,
@@ -337,12 +352,14 @@ static struct platform_device ap20_hall_effect_dock = {
 		.platform_data  = &bu52014hfv_platform_data,
 	},
 };
-*/
+
 static void tegra_vibrator_init(void)
 {
-        if( gpio_request(tegra_vib_gpio_data.gpio, "vib_en") < 0) return;
+	tegra_gpio_enable(tegra_vib_gpio_data.gpio);
+        if( gpio_request(tegra_vib_gpio_data.gpio, "vib_en") < 0) {
+		printk (KERN_INFO "%s: Error requesting gpio 'vib_en' %u\n", __func__, tegra_vib_gpio_data.gpio);
+	};
         gpio_direction_output(tegra_vib_gpio_data.gpio, 0);
-//	omap_cfg_reg(Y4_34XX_GPIO181);
 }
 
 
@@ -384,9 +401,12 @@ static struct platform_device isl29030_als_ir = {
 };
 static void __init isl29030_init(void)
 {
+	tegra_gpio_enable(TEGRA_PROX_INT_GPIO); 
 	isl29030_als_ir_data_Olympus.irq = gpio_to_irq(TEGRA_PROX_INT_GPIO);
 	isl29030_als_ir.dev.platform_data = &(isl29030_als_ir_data_Olympus);
-	gpio_request(TEGRA_PROX_INT_GPIO, "isl29030_proximity_int");
+	if( gpio_request(TEGRA_PROX_INT_GPIO, "isl29030_proximity_int") < 0) {
+		printk (KERN_INFO "%s: Error requesting gpio 'isl29030_proximity_int' %u\n", __func__, TEGRA_PROX_INT_GPIO);
+	};
 	gpio_direction_input(TEGRA_PROX_INT_GPIO);
 }
 
@@ -404,8 +424,8 @@ static int isl29030_power_off(void)
 static struct platform_device *tegra_sensors[] __initdata = {
 	&isl29030_als_ir,
 	&kxtf9_platform_device,
-/*	&akm8975_platform_device,
-	&ap20_hall_effect_dock,*/
+	&akm8975_platform_device,
+	&ap20_hall_effect_dock,
 	&tegra_vib_gpio,
 	&tegra_tmon,
 };
@@ -480,10 +500,30 @@ struct l3g4200d_platform_data tegra_gyro_pdata = {
 };
 */
 
+struct adt7461_platform_data olympus_adt7461_pdata = {
+	.supported_hwrev = true,
+	.ext_range = false,
+	.therm2 = true,
+	.conv_rate = 5,
+	.offset = 0,
+	.hysteresis = 0,
+	.shutdown_ext_limit = 115,
+	.shutdown_local_limit = 120,
+	.throttling_ext_limit = 90,
+	.alarm_fn = tegra_throttling_enable,
+	.irq_gpio = TEGRA_ADT7461_IRQ_GPIO,
+};
+
 static struct i2c_board_info __initdata olympus_i2c_bus4_board_info[] = {
 	{
+		I2C_BOARD_INFO("adt7461", 0x4C),
+		//.irq = 229;
+		.irq = TEGRA_GPIO_TO_IRQ(TEGRA_ADT7461_IRQ_GPIO),
+		.platform_data = &olympus_adt7461_pdata,
+	},
+	{
 		I2C_BOARD_INFO("akm8975", 0x0C),
-//		.platform_data = &akm8975_data,
+		.platform_data = &akm8975_data,
 		.irq = TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PE2),
 	},
 	{
@@ -496,17 +536,21 @@ void __init mot_sensors_init(void)
 {
 	kxtf9_init();
 	tegra_akm8975_init();
+
+	tegra_gpio_enable(TEGRA_GPIO_PE5); 
+	if( gpio_request(TEGRA_GPIO_PE5, "adt7461") < 0) {
+		printk (KERN_INFO "%s: Error requesting gpio 'adt7461' %u\n", __func__, TEGRA_GPIO_PE5);
+	};
+	gpio_direction_input(TEGRA_GPIO_PE5);
+
 	tegra_vibrator_init();
 
-	if(!(bi_powerup_reason() & PWRUP_BAREBOARD)) {
-		isl29030_init();
-	}
-
+	isl29030_init();
+	
 	platform_add_devices(tegra_sensors, ARRAY_SIZE(tegra_sensors));
 
         aes1750_spi_device.irq = gpio_to_irq(aes1750_interrupt);
         spi_register_board_info(&aes1750_spi_device,sizeof(aes1750_spi_device));
-
 	
 	printk("bus 3: %d devices\n", ARRAY_SIZE(olympus_i2c_bus4_board_info));
 	i2c_register_board_info(3, olympus_i2c_bus4_board_info, 

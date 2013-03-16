@@ -189,8 +189,15 @@ int tegra_asoc_utils_set_rate(struct tegra_asoc_utils_data *data, int srate,
 
 	clk_change = ((new_baseclock != data->set_baseclock) ||
 			(mclk != data->set_mclk));
+	printk("%s: new_baseclock (%u);\n", __func__, new_baseclock);
+	printk("%s: data->set_baseclock (%u);\n", __func__, data->set_baseclock);
+	printk("%s: data->set_mclk (%u);\n", __func__, data->set_mclk);
+	printk("%s: clk_change (%u);\n", __func__, clk_change);
+
 	if (!clk_change)
 		return 0;
+
+	printk("%s: data->locK_count (%u);\n", __func__, data->lock_count);
 
 	/* Don't change rate if already one dai-link is using it */
 	if (data->lock_count)
@@ -204,6 +211,7 @@ int tegra_asoc_utils_set_rate(struct tegra_asoc_utils_data *data, int srate,
 		clk_disable(data->clk_pll_a);
 		reenable_clock = true;
 	}
+	printk("%s: clk_set_rate (data->clk_pll_a, new_baseclock=%u);\n", __func__, new_baseclock);
 	err = clk_set_rate(data->clk_pll_a, new_baseclock);
 	if (err) {
 		dev_err(data->dev, "Can't set pll_a rate: %d\n", err);
@@ -217,6 +225,7 @@ int tegra_asoc_utils_set_rate(struct tegra_asoc_utils_data *data, int srate,
 		clk_disable(data->clk_pll_a_out0);
 		reenable_clock = true;
 	}
+	printk("%s: clk_set_rate (data->clk_pll_a, mclk=%u);\n", __func__, mclk);
 	err = clk_set_rate(data->clk_pll_a_out0, mclk);
 	if (err) {
 		dev_err(data->dev, "Can't set clk_pll_a_out0 rate: %d\n", err);

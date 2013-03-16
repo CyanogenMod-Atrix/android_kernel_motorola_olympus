@@ -1,6 +1,6 @@
 GCOV_PROFILE := y
 
-subdir-ccflags-y := -Werror
+#subdir-ccflags-y := -Werror
 
 obj-y                                   += ahb.o
 obj-y                                   += apbio.o
@@ -132,11 +132,9 @@ obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-keypad.o
 obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-kbc.o
 obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-modem.o
 obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-i2c.o
-obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-wifi.o
-obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-sensors.o
 #obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-wlan.o
+obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-sensors.o
 obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-power.o
-#obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-usb.o
 #obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-bluetooth.o
 #obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-gps.o
 obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-memory.o

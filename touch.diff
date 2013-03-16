@@ -1,0 +1,3956 @@
+/*								/*
+ * drivers/input/touchscreen/qtouch_obp_ts.c - driver for Qua	 * drivers/input/touchscreen/qtouch_obp_ts.c - driver for Qua
+ *								 *
+ * Copyright (C) 2009 Google, Inc.				 * Copyright (C) 2009 Google, Inc.
+ * Copyright (C) 2009 Motorola, Inc.			      |	 * Copyright (C) 2009-2010 Motorola, Inc.
+ *								 *
+ * This software is licensed under the terms of the GNU Gener	 * This software is licensed under the terms of the GNU Gener
+ * License version 2, as published by the Free Software Found	 * License version 2, as published by the Free Software Found
+ * may be copied, distributed, and modified under those terms	 * may be copied, distributed, and modified under those terms
+ *								 *
+ * This program is distributed in the hope that it will be us	 * This program is distributed in the hope that it will be us
+ * but WITHOUT ANY WARRANTY; without even the implied warrant	 * but WITHOUT ANY WARRANTY; without even the implied warrant
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See 	 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See 
+ * GNU General Public License for more details.			 * GNU General Public License for more details.
+ *								 *
+ * Derived from the Motorola OBP touch driver.			 * Derived from the Motorola OBP touch driver.
+ *								 *
+ */								 */
+#include <linux/delay.h>					#include <linux/delay.h>
+#include <linux/device.h>					#include <linux/device.h>
+#include <linux/earlysuspend.h>					#include <linux/earlysuspend.h>
+#include <linux/gpio.h>						#include <linux/gpio.h>
+#include <linux/i2c.h>						#include <linux/i2c.h>
+#include <linux/input.h>					#include <linux/input.h>
+#include <linux/interrupt.h>					#include <linux/interrupt.h>
+#include <linux/irq.h>						#include <linux/irq.h>
+#include <linux/kernel.h>					#include <linux/kernel.h>
+#include <linux/platform_device.h>				#include <linux/platform_device.h>
+#include <linux/miscdevice.h>				      <
+#include <linux/mutex.h>				      <
+#include <linux/qtouch_obp_ts.h>				#include <linux/qtouch_obp_ts.h>
+#include <linux/wakelock.h>				      <
+#include <linux/slab.h>						#include <linux/slab.h>
+#include <asm/io.h>					      |	#include <linux/firmware.h>
+#include <asm/uaccess.h>				      |	#include <linux/regulator/consumer.h>
+							      <
+/* Alternative resume methods */			      <
+/* use soft reset instead of power config */		      <
+//#define CONFIG_XMEGAT_USE_RESET_TO_RESUME 1		      <
+/* do hard reset before soft reset */			      <
+//#define CONFIG_XMEGAT_DO_HARD_RESET  1		      <
+							      <
+/*							      <
+#define	USE_NVODM_STUFF	1				      <
+*/							      <
+
+#define IGNORE_CHECKSUM_MISMATCH				#define IGNORE_CHECKSUM_MISMATCH
+
+struct axis_map 					      |	struct qtm_object {
+{							      |		struct qtm_obj_entry		entry;
+							      >		uint8_t				report_id_min;
+							      >		uint8_t				report_id_max;
+							      >	};
+							      >
+							      >	struct axis_map {
+	int	key;							int	key;
+	int	x;							int	x;
+	int	y;							int	y;
+};								};
+
+							      >	struct coordinate_map {
+							      >		int x_data;
+							      >		int y_data;
+							      >		int z_data;
+							      >		int w_data;
+							      >		int vector;
+							      >		int down;
+							      >	};
+							      >
+#define _BITMAP_LEN			BITS_TO_LONGS(QTM_OBP	#define _BITMAP_LEN			BITS_TO_LONGS(QTM_OBP
+#define _NUM_FINGERS		10			      |	#define _NUM_FINGERS			10
+struct qtouch_ts_data 					      |	struct qtouch_ts_data {
+{							      <
+	struct i2c_client		*client;			struct i2c_client		*client;
+	/* Use this mutex to protect access to i2c */	      <
+	struct mutex				i2c_lock;     <
+	struct input_dev		*input_dev;			struct input_dev		*input_dev;
+	struct work_struct		init_work;			struct work_struct		init_work;
+	struct work_struct		work;				struct work_struct		work;
+							      >		struct work_struct		boot_work;
+	struct qtouch_ts_platform_data	*pdata;				struct qtouch_ts_platform_data	*pdata;
+	struct coordinate_map		finger_data[_NUM_FING		struct coordinate_map		finger_data[_NUM_FING
+	struct coordinate_map		prev_finger_data[_NUM <
+	struct early_suspend		early_suspend;			struct early_suspend		early_suspend;
+
+	struct qtm_object		obj_tbl[QTM_OBP_MAX_O		struct qtm_object		obj_tbl[QTM_OBP_MAX_O
+	struct	wake_lock		wLock;		      <
+	char	modeOfOperation;			      <
+	char	irqStatus;				      <
+	char	dlStatus;				      <
+	char	XferStatus;				      <
+	char	suspendMode;				      <
+	char	selfStatus;				      <
+	struct  selftest	selfStatusReport;	      <
+	bool	multiMode;				      <
+							      <
+	unsigned long			obj_map[_BITMAP_LEN];		unsigned long			obj_map[_BITMAP_LEN];
+
+	uint32_t			last_keystate;			uint32_t			last_keystate;
+	uint32_t			eeprom_checksum;		uint32_t			eeprom_checksum;
+	uint8_t			    checksum_cnt;	      |		uint8_t				checksum_cnt;
+	int					x_delta;      |		int				x_delta;
+	int					y_delta;      |		int				y_delta;
+							      >		uint8_t				family_id;
+							      >		uint8_t				variant_id;
+							      >		uint8_t				fw_version;
+							      >		uint8_t				build_version;
+							      >		uint8_t				fw_error_count;
+							      >		uint32_t			touch_fw_size;
+							      >		uint8_t				*touch_fw_image;
+							      >		uint8_t				base_fw_version;
+							      >		uint8_t				*touch_fw;
+							      >
+							      >		uint8_t				xpos_rshift_lsb;
+							      >		uint8_t				ypos_rshift_lsb;
+							      >		uint8_t				xpos_lshift_msb;
+							      >		uint8_t				ypos_lshift_msb;
+							      >
+							      >		atomic_t			irq_enabled;
+							      >		atomic_t			process_open;
+							      >		int				enable_irq_flag;
+							      >		int				status;
+							      >
+							      >		uint8_t				mode;
+							      >		int				boot_pkt_size;
+							      >		int				current_pkt_sz;
+							      >		uint8_t				org_i2c_addr;
+
+	bool				hw_init;	/* Fl <
+	/* Note: The message buffer is reused for reading dif		/* Note: The message buffer is reused for reading dif
+	 * MUST enforce that there is no concurrent access to		 * MUST enforce that there is no concurrent access to
+	uint8_t				msg_buf[20];	      |		uint8_t				*msg_buf;
+	int				msg_size;			int				msg_size;
+	int				irqRest;	      <
+	int				irqInt;		      <
+	int					i2cNormAddr;  <
+	int					i2cBLAddr;    <
+
+	uint8_t				cal_check_flag;	      |		struct regulator		*regulator;
+	unsigned long		cal_timer;		      <
+};								};
+
+struct qtm_id_info qtm_info;				      <
+							      <
+struct qtouch_ts_data *tsGl;				      <
+struct qtouch_buttons	*buttons[BUTTON_MAX+1];		      <
+							      <
+#ifdef CONFIG_HAS_EARLYSUSPEND					#ifdef CONFIG_HAS_EARLYSUSPEND
+static void qtouch_ts_early_suspend(struct early_suspend *han	static void qtouch_ts_early_suspend(struct early_suspend *han
+static void qtouch_ts_late_resume(struct early_suspend *handl	static void qtouch_ts_late_resume(struct early_suspend *handl
+#endif								#endif
+
+static int qtouch_hw_init(struct qtouch_ts_data *ts);	      <
+							      <
+extern unsigned int	MotorolaBootDispArgGet(int *);	      <
+							      <
+static struct workqueue_struct *qtouch_ts_wq;			static struct workqueue_struct *qtouch_ts_wq;
+static irqreturn_t qtouch_ts_irq_handler(int irq, void *dev_i |	const struct firmware *fw_entry;
+							      <
+static int ignore_keyarray_touches = 0;			      <
+#define KEYARRAY_IGNORE_TIME (msecs_to_jiffies(100))	      <
+							      <
+static	int	need2check4IC_problem;			      <
+
+static uint32_t qtouch_tsdebug;					static uint32_t qtouch_tsdebug;
+module_param_named(tsdebug, qtouch_tsdebug, uint, 0664);	module_param_named(tsdebug, qtouch_tsdebug, uint, 0664);
+
+#define QTOUCH_INFO(args...) {qtouch_printk(qtouch_tsdebug, a |	static uint32_t qtouch_disable_touch;
+#define QTOUCH_INFO2(args...) {qtouch_printk((qtouch_tsdebug& |	module_param_named(disable_touch, qtouch_disable_touch, uint,
+#define QTOUCH_INFO4(args...) {qtouch_printk((qtouch_tsdebug& <
+#define QTOUCH_ERR(args...) {qtouch_printk(0xff,args);}	      <
+static void qtouch_printk (int, char *, ...);		      <
+							      <
+static	int	qtouch_ioctl_open(struct inode *inode, struct <
+static	long qtouch_ioctl_ioctl(struct file *filp, unsigned i <
+static	int qtouch_ioctl_write(struct file *flip, const char  <
+static int qtouch_read(struct qtouch_ts_data *ts, void *buf,  <
+							      <
+static uint8_t calibrate_chip(struct qtouch_ts_data *ts);     <
+static uint8_t check_chip_calibration(struct qtouch_ts_data * <
+							      <
+struct	file_operations	qtouch_fops =			      <
+{							      <
+	.owner		= THIS_MODULE,			      <
+	.open		= qtouch_ioctl_open,		      <
+	.unlocked_ioctl	= qtouch_ioctl_ioctl,		      <
+	.write		= qtouch_ioctl_write,		      <
+};							      <
+							      <
+static struct miscdevice qtouch_pf_driver = 		      <
+{							      <
+	.minor = MISC_DYNAMIC_MINOR,			      <
+	.name = "touchpad",				      <
+	.fops = &qtouch_fops,				      <
+};							      <
+							      <
+static	char	dumpStr[100];				      <
+static void	qtouch_dump_block(const char *fn, char *block <
+{							      <
+	int	i;					      <
+							      <
+	strlcpy(dumpStr,fn,20);				      <
+	strcat(dumpStr,": ");				      <
+	/* dump 20 digits per line. */			      <
+	for ( i = 0; i < blSize; i++ )			      <
+	{						      <
+		char tmp[5];				      <
+		if ( i > 0 && !(i % 20) )		      <
+		{					      <
+			strcat(dumpStr,"\n");		      <
+			QTOUCH_INFO(dumpStr);		      <
+			strlcpy(dumpStr,fn, 20);	      <
+			strcat(dumpStr,": ");		      <
+		}					      <
+							      <
+		sprintf(tmp,"%02X ", block[i]);		      <
+		strcat(dumpStr,tmp);			      <
+	}						      <
+	strcat(dumpStr,"\n");				      <
+	QTOUCH_INFO(dumpStr);				      <
+	return;						      <
+}							      <
+							      <
+static void clean_i2c(struct qtouch_ts_data *ts)	      <
+{							      <
+	int		ret;				      <
+	char	buf[5];					      <
+	char	clean;					      <
+	int		dCount = 0;			      <
+							      <
+	QTOUCH_INFO("%s: Enter...\n",__func__);		      <
+	clean = FALSE;					      <
+	while ( !clean )				      <
+	{						      <
+		ret = qtouch_read(ts, (char *)buf, 1);	      <
+		if ( ret < 1 )				      <
+			clean = TRUE;			      <
+		if ( buf[0] == 0xff )			      <
+			clean = TRUE;			      <
+		dCount++;				      <
+	}						      <
+	QTOUCH_INFO("%s: Exit...\n",__func__);		      <
+	return;						      <
+}							      <
+							      <
+static void qtouch_enable_irq(int irq)			      <
+{							      <
+	if ( !tsGl->irqStatus )				      <
+	{						      <
+		QTOUCH_INFO("%s: Enabling IRQ %d.\n", __func_ <
+		enable_irq(irq);			      <
+		tsGl->irqStatus = TRUE;			      <
+	}						      <
+	else						      <
+		QTOUCH_INFO("%s: IRQ should be enabled by now <
+}							      <
+							      <
+static void qtouch_disable_irq(int irq)			      <
+{							      <
+	if ( tsGl->irqStatus )				      <
+	{						      <
+		QTOUCH_INFO("%s: Disabling IRQ %d.\n", __func <
+		tsGl->irqStatus = FALSE;		      <
+		disable_irq(irq);			      <
+	}						      <
+	else						      <
+		QTOUCH_INFO("%s: IRQ should be disabled by no <
+							      <
+}							      <
+
+static irqreturn_t qtouch_ts_irq_handler(int irq, void *dev_i	static irqreturn_t qtouch_ts_irq_handler(int irq, void *dev_i
+{								{
+	struct qtouch_ts_data *ts = dev_id;				struct qtouch_ts_data *ts = dev_id;
+							      >		int ret;
+
+	QTOUCH_INFO("%s: Enter...\n",__func__);		      |		disable_irq_nosync(ts->client->irq);
+							      |		if (ts->mode == 1)
+	queue_work(qtouch_ts_wq, &ts->work);		      |			ret = queue_work(qtouch_ts_wq, &ts->boot_work
+							      >		else
+							      >			ret = queue_work(qtouch_ts_wq, &ts->work);
+							      >		WARN_ON(!ret);
+
+	QTOUCH_INFO("%s: Exit...\n",__func__);		      |		return IRQ_HANDLED;
+	return 0; 					      <
+}								}
+
+static int qtouch_write(struct qtouch_ts_data *ts, void *buf,	static int qtouch_write(struct qtouch_ts_data *ts, void *buf,
+{								{
+	int retries = 10;						int retries = 10;
+	int ret;							int ret;
+
+	mutex_lock(&ts->i2c_lock);			      <
+							      <
+	do {								do {
+		ret = i2c_master_send(ts->client, (char *)buf			ret = i2c_master_send(ts->client, (char *)buf
+	} while ((ret < buf_sz) && (--retries > 0));			} while ((ret < buf_sz) && (--retries > 0));
+
+	if (ret < 0)							if (ret < 0)
+	{						      |			pr_info("%s: Error while trying to write %d b
+		QTOUCH_INFO("%s: Error while trying to write  |				buf_sz);
+	}						      |		else if (ret != buf_sz) {
+	else if (ret != buf_sz) 			      |			pr_info("%s: Write %d bytes, expected %d\n", 
+	{						      |				ret, buf_sz);
+		QTOUCH_INFO("%s: Write %d bytes, expected %d\ <
+		ret = -EIO;							ret = -EIO;
+	}								}
+							      <
+	mutex_unlock(&ts->i2c_lock);			      <
+							      <
+	return ret;							return ret;
+}								}
+
+static int qtouch_set_addr(struct qtouch_ts_data *ts, uint16_	static int qtouch_set_addr(struct qtouch_ts_data *ts, uint16_
+{								{
+	int ret;							int ret;
+
+	/* Note: addr on the wire is LSB first */			/* Note: addr on the wire is LSB first */
+	ret = qtouch_write(ts, (char *)&addr, sizeof(uint16_t		ret = qtouch_write(ts, (char *)&addr, sizeof(uint16_t
+	if (ret < 0)							if (ret < 0)
+		QTOUCH_INFO("%s: Can't send obp addr 0x%4x\n" |			pr_info("%s: Can't send obp addr 0x%4x\n", __
+
+	return ret >= 0 ? 0 : ret;					return ret >= 0 ? 0 : ret;
+}								}
+
+static int qtouch_read(struct qtouch_ts_data *ts, void *buf, 	static int qtouch_read(struct qtouch_ts_data *ts, void *buf, 
+{								{
+	int retries = 10;						int retries = 10;
+	int ret;							int ret;
+
+	mutex_lock(&ts->i2c_lock);			      |		do {
+							      <
+	QTOUCH_INFO("%s: Read %d bytes into address 0x%X\n",  <
+	do 						      <
+	{						      <
+		memset(buf, 0, buf_sz);						memset(buf, 0, buf_sz);
+		ret = i2c_master_recv(ts->client, (char *)buf			ret = i2c_master_recv(ts->client, (char *)buf
+	} while ((ret < 0) && (--retries > 0));				} while ((ret < 0) && (--retries > 0));
+
+	if (ret < 0)							if (ret < 0)
+	{						      |			pr_info("%s: Error while trying to read %d by
+		QTOUCH_ERR("%s: Error while trying to read %d <
+			buf_sz);							buf_sz);
+	}						      |		else if (ret != buf_sz) {
+	else if (ret != buf_sz) 			      |			pr_info("%s: Read %d bytes, expected %d\n", _
+	{						      <
+		QTOUCH_INFO("%s: Read %d bytes, expected %d\n <
+			ret, buf_sz);							ret, buf_sz);
+		ret = -EIO;							ret = -EIO;
+	}								}
+	else						      <
+		QTOUCH_INFO("%s: Read %d bytes\n", __func__,  <
+							      <
+	mutex_unlock(&ts->i2c_lock);			      <
+
+	return ret >= 0 ? 0 : ret;					return ret >= 0 ? 0 : ret;
+}								}
+
+static int qtouch_read_addr(struct qtouch_ts_data *ts, uint16	static int qtouch_read_addr(struct qtouch_ts_data *ts, uint16
+			    void *buf, int buf_sz)					    void *buf, int buf_sz)
+{								{
+	int ret;							int ret;
+
+	ret = qtouch_set_addr(ts, addr);				ret = qtouch_set_addr(ts, addr);
+	if (ret != 0)							if (ret != 0)
+		return ret;							return ret;
+
+	return qtouch_read(ts, buf, buf_sz);				return qtouch_read(ts, buf, buf_sz);
+}								}
+
+static struct qtm_obj_message *qtouch_read_msg(struct qtouch_	static struct qtm_obj_message *qtouch_read_msg(struct qtouch_
+{								{
+	int ret;							int ret;
+
+	ret = qtouch_read(ts, ts->msg_buf, ts->msg_size);		ret = qtouch_read(ts, ts->msg_buf, ts->msg_size);
+	if (!ret)							if (!ret)
+		return (struct qtm_obj_message *)ts->msg_buf;			return (struct qtm_obj_message *)ts->msg_buf;
+	return NULL;							return NULL;
+}								}
+
+static int qtouch_write_addr(struct qtouch_ts_data *ts, uint1	static int qtouch_write_addr(struct qtouch_ts_data *ts, uint1
+			     void *buf, int buf_sz)					     void *buf, int buf_sz)
+{								{
+	int ret;							int ret;
+	uint8_t write_buf[128];				      |		uint8_t *write_buf;
+
+	if (buf_sz + sizeof(uint16_t) > sizeof(write_buf))    |		write_buf = kzalloc((buf_sz + sizeof(uint16_t)), GFP_
+	{						      |		if (write_buf == NULL) {
+		QTOUCH_ERR("%s: Buffer too large (%d)\n", __f |			pr_err("%s: Can't allocate write buffer (%d)\
+		return -EINVAL;				      |				 __func__, buf_sz);
+							      >			return -ENOMEM;
+	}								}
+
+	memcpy(write_buf, (void *)&addr, sizeof(addr));			memcpy(write_buf, (void *)&addr, sizeof(addr));
+	memcpy((void *)write_buf + sizeof(addr), buf, buf_sz)		memcpy((void *)write_buf + sizeof(addr), buf, buf_sz)
+
+	ret = qtouch_write(ts, write_buf, buf_sz + sizeof(add		ret = qtouch_write(ts, write_buf, buf_sz + sizeof(add
+
+	if (ret < 0) 					      |		kfree(write_buf);
+	{						      |
+		QTOUCH_ERR("%s: Could not write %d bytes.\n", |		if (ret < 0) {
+							      >			pr_err("%s: Could not write %d bytes.\n", __f
+		return ret;							return ret;
+	}								}
+
+	return 0;							return 0;
+}								}
+							      >	static uint32_t crc24(uint32_t crc, uint8_t first_byte, uint8
+							      >	{
+							      >		static const uint32_t crcpoly = 0x80001b;
+							      >		uint32_t result = 0;
+							      >		uint16_t data_word = 0;
+							      >
+							      >		data_word = (uint16_t)((uint16_t)(sec_byte << 8u) | f
+							      >		result = ((crc<<1u) ^ (uint32_t)data_word);
+							      >		/* If bit 25 is set, XOR result with crcpoly */
+							      >		if (result & 0x1000000)
+							      >			result ^= crcpoly;
+							      >
+							      >		return result;
+							      >	}
+
+static uint16_t calc_csum(uint16_t curr_sum, void *_buf, int  |	static uint32_t calc_csum(uint32_t curr_sum, void *_buf, int 
+{								{
+	uint8_t *buf = _buf;						uint8_t *buf = _buf;
+	uint32_t new_sum;				      |		int i = 0;
+	int i;						      |		int odd = 0;
+
+	while (buf_sz-- > 0) 				      |		if (buf_sz % 2) {
+	{						      |			buf_sz -= 1;
+		new_sum = (((uint32_t) curr_sum) << 8) | *(bu |			odd = 1;
+		for (i = 0; i < 8; ++i) 		      |		}
+		{					      |		while (i < buf_sz) {
+			if (new_sum & 0x800000)		      |			curr_sum = crc24(curr_sum, *(buf + i), *(buf 
+				new_sum ^= 0x800500;	      |			i += 2;
+			new_sum <<= 1;			      |		}
+		}					      |		if (odd)
+		curr_sum = ((uint32_t) new_sum >> 8) & 0xffff |			curr_sum = crc24(curr_sum, *(buf + i), 0);
+	}						      |		/* Final Result */
+							      >		curr_sum = (curr_sum & 0x00FFFFFF);
+
+	return curr_sum;						return curr_sum;
+}								}
+
+static inline struct qtm_object *find_obj(struct qtouch_ts_da	static inline struct qtm_object *find_obj(struct qtouch_ts_da
+{								{
+	return &ts->obj_tbl[id];					return &ts->obj_tbl[id];
+}								}
+
+static struct qtm_object *create_obj(struct qtouch_ts_data *t	static struct qtm_object *create_obj(struct qtouch_ts_data *t
+				     struct qtm_obj_entry *en					     struct qtm_obj_entry *en
+{								{
+	struct qtm_object *obj;						struct qtm_object *obj;
+
+	obj = &ts->obj_tbl[entry->type];				obj = &ts->obj_tbl[entry->type];
+	memcpy(&obj->entry, entry, sizeof(*entry));			memcpy(&obj->entry, entry, sizeof(*entry));
+	set_bit(entry->type, ts->obj_map);				set_bit(entry->type, ts->obj_map);
+
+	return obj;							return obj;
+}								}
+
+static struct qtm_object *find_object_rid(struct qtouch_ts_da	static struct qtm_object *find_object_rid(struct qtouch_ts_da
+{								{
+	int i;								int i;
+
+	for_each_set_bit(i, ts->obj_map, QTM_OBP_MAX_OBJECT_N		for_each_set_bit(i, ts->obj_map, QTM_OBP_MAX_OBJECT_N
+		struct qtm_object *obj = &ts->obj_tbl[i];			struct qtm_object *obj = &ts->obj_tbl[i];
+
+		if ((rid >= obj->report_id_min) && (rid <= ob			if ((rid >= obj->report_id_min) && (rid <= ob
+			return obj;							return obj;
+	}								}
+
+	return NULL;							return NULL;
+}								}
+
+static int qtouch_force_reset(struct qtouch_ts_data *ts, uint |	static void qtouch_force_reset(struct qtouch_ts_data *ts, uin
+{								{
+	struct qtm_object *obj;						struct qtm_object *obj;
+	uint16_t addr;							uint16_t addr;
+	uint8_t val;					      |		uint8_t val = 1;
+	int ret;							int ret;
+
+	if (ts->pdata->hw_reset && !sw_reset) 		      |		if (ts->pdata->hw_reset && !sw_reset) {
+	{						      |			pr_info("%s: Forcing HW reset\n", __func__);
+		QTOUCH_INFO("%s: Forcing HW reset\n", __func_ <
+		QTOUCH_INFO("%s: Taking device out of reset\n <
+		ts->pdata->hw_reset();						ts->pdata->hw_reset();
+	}						      |		} else if (sw_reset) {
+	else if (sw_reset) 				      |			pr_info("%s: Forcing SW reset\n", __func__);
+	{						      <
+		QTOUCH_INFO("%s: Forcing SW reset\n", __func_ <
+		obj = find_obj(ts, QTM_OBJ_GEN_CMD_PROC);			obj = find_obj(ts, QTM_OBJ_GEN_CMD_PROC);
+		addr = obj->entry.addr + offsetof(struct qtm_ |			addr =
+		val = 1;				      |			    obj->entry.addr + offsetof(struct qtm_gen
+							      >			/* Check to see if to reset into boot mode */
+							      >			if (sw_reset == 2)
+							      >				val = 0xa5;
+		ret = qtouch_write_addr(ts, addr, &val, 1);			ret = qtouch_write_addr(ts, addr, &val, 1);
+		if (ret)							if (ret)
+			QTOUCH_ERR("%s: Unable to send the re |				pr_err("%s: Unable to send the reset 
+	}								}
+	return 0;					      <
+}								}
+
+static int qtouch_force_calibration(struct qtouch_ts_data *ts	static int qtouch_force_calibration(struct qtouch_ts_data *ts
+{								{
+	struct qtm_object *obj;						struct qtm_object *obj;
+	uint16_t addr;							uint16_t addr;
+	uint8_t val;							uint8_t val;
+	int ret;							int ret;
+
+	QTOUCH_INFO("%s: Forcing calibration\n", __func__);   |		pr_info("%s: Forcing calibration\n", __func__);
+
+	obj = find_obj(ts, QTM_OBJ_GEN_CMD_PROC);			obj = find_obj(ts, QTM_OBJ_GEN_CMD_PROC);
+
+	addr = obj->entry.addr + offsetof(struct qtm_gen_cmd_		addr = obj->entry.addr + offsetof(struct qtm_gen_cmd_
+	val = 1;							val = 1;
+	ret = qtouch_write_addr(ts, addr, &val, 1);			ret = qtouch_write_addr(ts, addr, &val, 1);
+	if (ret)							if (ret)
+		QTOUCH_ERR("%s: Unable to send the calibrate  |			pr_err("%s: Unable to send the calibrate mess
+	return ret;					      <
+}							      <
+							      <
+#if 0							      <
+static int qtouch_force_backupnv(struct qtouch_ts_data *ts)   <
+{							      <
+	struct qtm_object *obj;				      <
+	uint16_t addr;					      <
+	uint8_t val;					      <
+	int ret;					      <
+							      <
+	QTOUCH_INFO("%s: Forcing Backup NV\n", __func__);     <
+							      <
+	obj = find_obj(ts, QTM_OBJ_GEN_CMD_PROC);	      <
+							      <
+	addr = obj->entry.addr + offsetof(struct qtm_gen_cmd_ <
+	val = 0x55;					      <
+	ret = qtouch_write_addr(ts, addr, &val, 1);	      <
+	if (ret)					      <
+		QTOUCH_ERR("%s: Unable to send the Backup NV  <
+					__func__);	      <
+	return ret;					      <
+}							      <
+#endif							      <
+							      <
+static int	mode_codes[5] = 			      <
+{							      <
+	/* 16x14 */ 224,				      <
+	/* 17x13 */ 221,				      <
+	/* 18x12 */ 216,				      <
+	/* 19x11 */ 209,				      <
+	/* 20x10 */ 200,				      <
+};							      <
+							      <
+static int qtouch_get_channels_count(struct qtouch_ts_data *t <
+{							      <
+	struct qtm_object *obj;				      <
+	struct qtm_spt_cte_config_cfg	msg;		      <
+	int ret;					      <
+							      <
+	QTOUCH_INFO("%s: Getting number of channels\n", __fun <
+							      <
+	obj = find_obj(ts, QTM_OBJ_SPT_CTE_CONFIG);	      <
+	ret = qtouch_read_addr(ts, obj->entry.addr, &msg, siz <
+	if (!ret)					      <
+	{						      <
+		QTOUCH_INFO("%s: CTECONFIG result: mode = 0x% <
+		if ( msg.mode >= 0 && msg.mode < 5 )	      <
+			ret = mode_codes[msg.mode];	      <
+		else					      <
+			ret = -1;			      <
+	}						      <
+	return ret;					      <
+}							      <
+							      <
+static int qtouch_get_sens_data(struct qtouch_ts_data *ts, st <
+{							      <
+	struct qtm_object *obj;				      <
+	struct	qtm_gen_cmd_proc	msg;		      <
+	uint16_t addr;					      <
+	int ret;					      <
+							      <
+	QTOUCH_INFO("%s: Getting diagnostics\n", __func__);   <
+							      <
+	obj = find_obj(ts, QTM_OBJ_GEN_CMD_PROC);	      <
+	addr = obj->entry.addr;				      <
+	if ( mode == 0 )				      <
+	{						      <
+		msg.diagnostic = QTOUCH_DIAG_REFERENCE_MODE;  <
+	}						      <
+	else						      <
+	{						      <
+		msg.diagnostic = QTOUCH_DIAG_PAGE_DOWN;	      <
+	}						      <
+	ret = qtouch_write_addr(ts, addr, &(msg), sizeof(msg) <
+	if (ret)					      <
+	{						      <
+		QTOUCH_ERR("%s: Unable to initiate diagnostic <
+	}						      <
+							      <
+	/* Get the diagnostics information */		      <
+	obj = find_obj(ts, QTM_OBJ_DEBUG_DIAGNOSTICS_T37);    <
+	ret = qtouch_read_addr(ts, obj->entry.addr, dbgMsg, s <
+	if (!ret)					      <
+	{						      <
+		QTOUCH_INFO("%s: DEBUG_DIAG result: mode = 0x <
+	}						      <
+	return ret;					      <
+}							      <
+							      <
+							      <
+static int qtouch_force_selftest(struct qtouch_ts_data *ts, c <
+{							      <
+	struct qtm_object *obj;				      <
+	struct	qtm_spt_self_test_rslt	msg;		      <
+	uint16_t addr;					      <
+	int	i;					      <
+	int ret;					      <
+							      <
+	QTOUCH_INFO("%s: Forcing self-test\n", __func__);     <
+							      <
+	obj = find_obj(ts, QTM_OBJ_SPT_SELF_TEST);	      <
+							      <
+	addr = obj->entry.addr;				      <
+	if ( mode )					      <
+	{						      <
+		ts->pdata->self_test_cfg.ctrl = 0x03;	      <
+		ts->pdata->self_test_cfg.command = 0xFE;      <
+		ts->selfStatus = QTOUCH_SELFTEST_INPROGRESS;  <
+		memset((char *) &(ts->selfStatusReport), 0, s <
+	}						      <
+	else						      <
+	{						      <
+		ts->pdata->self_test_cfg.ctrl = 0x03;	      <
+		ts->pdata->self_test_cfg.command = 0xFE;      <
+		ts->selfStatus = QTOUCH_SELFTEST_DONE;	      <
+	}						      <
+	ret = qtouch_write_addr(ts, addr, &(ts->pdata->self_t <
+	if (ret)					      <
+	{						      <
+		QTOUCH_ERR("%s: Unable to send the request fo <
+	}						      <
+	else						      <
+	{						      <
+		obj = find_obj(ts, QTM_OBJ_GEN_MSG_PROC);     <
+		ret = qtouch_read_addr(ts, obj->entry.addr, & <
+		if (!ret)				      <
+		{					      <
+			QTOUCH_INFO("%s: SELFTEST result: sta <
+			ts->selfStatusReport.status = msg.sta <
+			for ( i = 0; i < 5; i++ )	      <
+				ts->selfStatusReport.info[i]  <
+		}					      <
+	}						      <
+	return ret;					      <
+}							      <
+							      <
+static int qtouch_force_bootloaderMode(struct qtouch_ts_data  <
+{							      <
+	struct qtm_object *obj;				      <
+	uint16_t addr;					      <
+	uint8_t val;					      <
+	int ret;					      <
+							      <
+	QTOUCH_INFO("%s: Forcing bootloader mode\n", __func__ <
+							      <
+	obj = find_obj(ts, QTM_OBJ_GEN_CMD_PROC);	      <
+							      <
+	addr = obj->entry.addr + offsetof(struct qtm_gen_cmd_ <
+	val = 0xA5;					      <
+	ret = qtouch_write_addr(ts, addr, &val, 1);	      <
+	if (ret)					      <
+		QTOUCH_ERR("%s: Unable to send the force boot <
+	return ret;							return ret;
+}								}
+
+#undef min							#undef min
+#define min(a, b) (((a) < (b)) ? (a) : (b))			#define min(a, b) (((a) < (b)) ? (a) : (b))
+static int qtouch_power_config(struct qtouch_ts_data *ts, int	static int qtouch_power_config(struct qtouch_ts_data *ts, int
+{								{
+	struct qtm_gen_power_cfg pwr_cfg;				struct qtm_gen_power_cfg pwr_cfg;
+	struct qtm_object *obj;						struct qtm_object *obj;
+
+	if (!on) 					      |		if (!on) {
+	{						      <
+		/* go to standby mode */					/* go to standby mode */
+		pwr_cfg.idle_acq_int = 0;					pwr_cfg.idle_acq_int = 0;
+		pwr_cfg.active_acq_int = 0;					pwr_cfg.active_acq_int = 0;
+	} 						      |		} else {
+	else 						      <
+	{						      <
+		pwr_cfg.idle_acq_int = ts->pdata->power_cfg.i			pwr_cfg.idle_acq_int = ts->pdata->power_cfg.i
+		pwr_cfg.active_acq_int = ts->pdata->power_cfg			pwr_cfg.active_acq_int = ts->pdata->power_cfg
+	}								}
+
+	pwr_cfg.active_idle_to = ts->pdata->power_cfg.active_		pwr_cfg.active_idle_to = ts->pdata->power_cfg.active_
+
+	obj = find_obj(ts, QTM_OBJ_GEN_PWR_CONF);			obj = find_obj(ts, QTM_OBJ_GEN_PWR_CONF);
+	return qtouch_write_addr(ts, obj->entry.addr, &pwr_cf		return qtouch_write_addr(ts, obj->entry.addr, &pwr_cf
+				 min(sizeof(pwr_cfg), obj->en					 min(sizeof(pwr_cfg), obj->en
+}								}
+
+/* Apply the configuration provided in the platform_data to t	/* Apply the configuration provided in the platform_data to t
+static int qtouch_hw_init(struct qtouch_ts_data *ts)		static int qtouch_hw_init(struct qtouch_ts_data *ts)
+{								{
+	struct qtm_object *obj;						struct qtm_object *obj;
+	int i;								int i;
+	int ret;							int ret;
+	uint16_t adj_addr;						uint16_t adj_addr;
+
+	QTOUCH_ERR("%s: Doing hw init\n", __func__);	      |		pr_info("%s: Doing hw init\n", __func__);
+	ts->hw_init = TRUE;				      <
+
+	/* take the IC out of suspend */				/* take the IC out of suspend */
+	qtouch_power_config(ts, TRUE);			      |		qtouch_power_config(ts, 1);
+
+	/* configure the acquisition object. */				/* configure the acquisition object. */
+	obj = find_obj(ts, QTM_OBJ_GEN_ACQUIRE_CONF);			obj = find_obj(ts, QTM_OBJ_GEN_ACQUIRE_CONF);
+	ret = qtouch_write_addr(ts, obj->entry.addr, &ts->pda		ret = qtouch_write_addr(ts, obj->entry.addr, &ts->pda
+				min(sizeof(ts->pdata->acquire					min(sizeof(ts->pdata->acquire
+				    obj->entry.size));						    obj->entry.size));
+	if (ret != 0) 					      |		if (ret != 0) {
+	{						      |			pr_err("%s: Can't write acquisition config\n"
+		QTOUCH_ERR("%s: Can't write acquisition confi |			return ret;
+		goto failed2write;			      <
+	}								}
+
+	/* The multitouch and keyarray objects have very simi		/* The multitouch and keyarray objects have very simi
+	 * layout, but are just different enough where we bas		 * layout, but are just different enough where we bas
+	 * repeat the same code */					 * repeat the same code */
+
+	/* configure the multi-touch object. */				/* configure the multi-touch object. */
+	obj = find_obj(ts, QTM_OBJ_TOUCH_MULTI);			obj = find_obj(ts, QTM_OBJ_TOUCH_MULTI);
+	if (obj && obj->entry.num_inst > 0) 		      |		if (obj && obj->entry.num_inst > 0) {
+	{						      <
+		struct qtm_touch_multi_cfg cfg;					struct qtm_touch_multi_cfg cfg;
+		memcpy(&cfg, &ts->pdata->multi_touch_cfg, siz			memcpy(&cfg, &ts->pdata->multi_touch_cfg, siz
+		if (ts->pdata->flags & QTOUCH_USE_MULTITOUCH)			if (ts->pdata->flags & QTOUCH_USE_MULTITOUCH)
+			cfg.ctrl |= (1 << 1) | (1 << 0); /* r				cfg.ctrl |= (1 << 1) | (1 << 0); /* r
+		else								else
+			cfg.ctrl = 0;							cfg.ctrl = 0;
+		ret = qtouch_write_addr(ts, obj->entry.addr, 			ret = qtouch_write_addr(ts, obj->entry.addr, 
+					min(sizeof(cfg), obj-						min(sizeof(cfg), obj-
+		if (ret != 0) 				      |			if (ret != 0) {
+		{					      |				pr_err("%s: Can't write multi-touch c
+			QTOUCH_ERR("%s: Can't write multi-tou |				       __func__);
+			goto failed2write;		      |				return ret;
+		}								}
+	}								}
+
+	/* configure the key-array object. */				/* configure the key-array object. */
+	obj = find_obj(ts, QTM_OBJ_TOUCH_KEYARRAY);			obj = find_obj(ts, QTM_OBJ_TOUCH_KEYARRAY);
+	if (obj && obj->entry.num_inst > 0) 		      |		if (obj && obj->entry.num_inst > 0) {
+	{						      <
+		struct qtm_touch_keyarray_cfg cfg;				struct qtm_touch_keyarray_cfg cfg;
+		for (i = 0; i < obj->entry.num_inst; i++)     |			for (i = 0; i < obj->entry.num_inst; i++) {
+		{					      |				if (ts->pdata->flags & QTOUCH_USE_KEY
+			if (i > (ts->pdata->key_array.num_key |					memcpy(&cfg, &ts->pdata->key_
+			{				      |					       sizeof(cfg));
+				QTOUCH_INFO("%s: No entry key |				} else
+				memset(&cfg, 0, sizeof(cfg)); <
+			} 				      <
+			else if (ts->pdata->flags & QTOUCH_US <
+			{				      <
+				memcpy(&cfg, &ts->pdata->key_ <
+				cfg.ctrl |= (1 << 1) | (1 <<  <
+			}				      <
+			else				      <
+				memset(&cfg, 0, sizeof(cfg));					memset(&cfg, 0, sizeof(cfg));
+
+			adj_addr = obj->entry.addr + ((obj->e |				adj_addr = obj->entry.addr +
+			ret = qtouch_write_addr(ts, adj_addr, |					((obj->entry.size + 1) * i);
+			if (ret != 0) 			      |				ret = qtouch_write_addr(ts, adj_addr,
+			{				      |							min(sizeof(cf
+				QTOUCH_ERR("%s: Can't write k |							    obj->entr
+				goto failed2write;	      |				if (ret != 0) {
+							      >					pr_err("%s: Can't write keyar
+							      >						   __func__);
+							      >					return ret;
+			}								}
+		}								}
+	}								}
+
+	/* configure the signal filter */				/* configure the signal filter */
+	obj = find_obj(ts, QTM_OBJ_PROCG_SIG_FILTER);			obj = find_obj(ts, QTM_OBJ_PROCG_SIG_FILTER);
+	if (obj && obj->entry.num_inst > 0) 		      |		if (obj && obj->entry.num_inst > 0) {
+	{						      <
+		ret = qtouch_write_addr(ts, obj->entry.addr,			ret = qtouch_write_addr(ts, obj->entry.addr,
+					&ts->pdata->sig_filte						&ts->pdata->sig_filte
+					min(sizeof(ts->pdata-						min(sizeof(ts->pdata-
+					    obj->entry.size))						    obj->entry.size))
+		if (ret != 0) 				      |			if (ret != 0) {
+		{					      |				pr_err("%s: Can't write signal filter
+			QTOUCH_ERR("%s: Can't write signal fi |				       __func__);
+			goto failed2write;		      |				return ret;
+		}								}
+	}								}
+
+	/* configure the linearization table */				/* configure the linearization table */
+	obj = find_obj(ts, QTM_OBJ_PROCI_LINEAR_TBL);			obj = find_obj(ts, QTM_OBJ_PROCI_LINEAR_TBL);
+	if (obj && obj->entry.num_inst > 0) 		      |		if (obj && obj->entry.num_inst > 0) {
+	{						      <
+		ret = qtouch_write_addr(ts, obj->entry.addr,			ret = qtouch_write_addr(ts, obj->entry.addr,
+					&ts->pdata->linear_tb						&ts->pdata->linear_tb
+					min(sizeof(ts->pdata-						min(sizeof(ts->pdata-
+					    obj->entry.size))						    obj->entry.size))
+		if (ret != 0) 				      |			if (ret != 0) {
+		{					      |				pr_err("%s: Can't write linear table 
+			QTOUCH_ERR("%s: Can't write linear ta |				       __func__);
+			goto failed2write;		      |				return ret;
+		}								}
+	}								}
+
+	/* Motorola - BEGIN - qa2113 - 11/18/2009 - XmegaT fi <
+	/* configure the comms configuration */				/* configure the comms configuration */
+	obj = find_obj(ts, QTM_OBJ_SPT_COM_CONFIG);			obj = find_obj(ts, QTM_OBJ_SPT_COM_CONFIG);
+	if (obj && obj->entry.num_inst > 0) 		      |		if (obj && obj->entry.num_inst > 0) {
+	{						      <
+		ret = qtouch_write_addr(ts, obj->entry.addr,			ret = qtouch_write_addr(ts, obj->entry.addr,
+					&ts->pdata->comms_con						&ts->pdata->comms_con
+					min(sizeof(ts->pdata-						min(sizeof(ts->pdata-
+					    obj->entry.size))						    obj->entry.size))
+		if (ret != 0) 				      |			if (ret != 0) {
+		{					      |				pr_err("%s: Can't write the comms con
+			QTOUCH_ERR("%s: Can't write the comms |				       __func__);
+			goto failed2write;		      |				return ret;
+		}								}
+	}								}
+	/* Motorola - END - qa2113 - 11/18/2009 - XmegaT firm <
+
+	/* configure the GPIO PWM support */				/* configure the GPIO PWM support */
+	obj = find_obj(ts, QTM_OBJ_SPT_GPIO_PWM);			obj = find_obj(ts, QTM_OBJ_SPT_GPIO_PWM);
+	if (obj && obj->entry.num_inst > 0) 		      |		if (obj && obj->entry.num_inst > 0) {
+	{						      <
+		ret = qtouch_write_addr(ts, obj->entry.addr,			ret = qtouch_write_addr(ts, obj->entry.addr,
+					&ts->pdata->gpio_pwm_						&ts->pdata->gpio_pwm_
+					min(sizeof(ts->pdata-						min(sizeof(ts->pdata-
+					    obj->entry.size))						    obj->entry.size))
+		if (ret != 0) 				      |			if (ret != 0) {
+		{					      |				pr_err("%s: Can't write the GPIO PWM 
+			QTOUCH_ERR("%s: Can't write the GPIO  |				       __func__);
+			goto failed2write;		      |				return ret;
+		}								}
+	}								}
+
+	/* configure the grip suppression table */	      |		/* configure the grip face suppression table */
+	obj = find_obj(ts, QTM_OBJ_PROCI_GRIPFACESUPPRESSION)		obj = find_obj(ts, QTM_OBJ_PROCI_GRIPFACESUPPRESSION)
+	if (obj && obj->entry.num_inst > 0) 		      |		if (obj && obj->entry.num_inst > 0) {
+	{						      <
+		ret = qtouch_write_addr(ts, obj->entry.addr,			ret = qtouch_write_addr(ts, obj->entry.addr,
+					&ts->pdata->grip_supp |						&ts->pdata->grip_face
+					min(sizeof(ts->pdata- |						min(sizeof
+							      >						    (ts->pdata->grip_
+					    obj->entry.size))						    obj->entry.size))
+		if (ret != 0) 				      |			if (ret != 0) {
+		{					      |				pr_err("%s: Can't write the grip face
+			QTOUCH_ERR("%s: Can't write the grip  |				       __func__);
+			goto failed2write;		      |				return ret;
+		}								}
+	}								}
+
+	/* configure noise suppression */				/* configure noise suppression */
+	obj = find_obj(ts, QTM_OBJ_PROCG_NOISE_SUPPRESSION);		obj = find_obj(ts, QTM_OBJ_PROCG_NOISE_SUPPRESSION);
+	if (obj && obj->entry.num_inst > 0) 		      |		if (obj && obj->entry.num_inst > 0) {
+	{						      <
+		ret = qtouch_write_addr(ts, obj->entry.addr,			ret = qtouch_write_addr(ts, obj->entry.addr,
+					&ts->pdata->noise_sup						&ts->pdata->noise_sup
+					min(sizeof(ts->pdata-						min(sizeof(ts->pdata-
+					    obj->entry.size))						    obj->entry.size))
+		if (ret != 0) 				      |			if (ret != 0) {
+		{					      |				pr_err("%s: Can't write the noise sup
+			QTOUCH_ERR("%s: Can't write the noise |				       __func__);
+			goto failed2write;		      |				return ret;
+		}								}
+	}								}
+
+	/* configure the touch proximity sensor */			/* configure the touch proximity sensor */
+	obj = find_obj(ts, QTM_OBJ_TOUCH_PROXIMITY);			obj = find_obj(ts, QTM_OBJ_TOUCH_PROXIMITY);
+	if (obj && obj->entry.num_inst > 0) 		      |		if (obj && obj->entry.num_inst > 0) {
+	{						      <
+		ret = qtouch_write_addr(ts, obj->entry.addr,			ret = qtouch_write_addr(ts, obj->entry.addr,
+					&ts->pdata->touch_pro						&ts->pdata->touch_pro
+					min(sizeof(ts->pdata-						min(sizeof(ts->pdata-
+					    obj->entry.size))						    obj->entry.size))
+		if (ret != 0) 				      |			if (ret != 0) {
+		{					      |				pr_err("%s: Can't write the touch pro
+			QTOUCH_ERR("%s: Can't write the touch |				       __func__);
+			goto failed2write;		      |				return ret;
+		}								}
+	}								}
+							      |
+	/* configure the one touch gesture processor */			/* configure the one touch gesture processor */
+	obj = find_obj(ts, QTM_OBJ_PROCI_ONE_TOUCH_GESTURE_PR		obj = find_obj(ts, QTM_OBJ_PROCI_ONE_TOUCH_GESTURE_PR
+	if (obj && obj->entry.num_inst > 0) 		      |		if (obj && obj->entry.num_inst > 0) {
+	{						      <
+		ret = qtouch_write_addr(ts, obj->entry.addr,			ret = qtouch_write_addr(ts, obj->entry.addr,
+					&ts->pdata->one_touch						&ts->pdata->one_touch
+					min(sizeof(ts->pdata-						min(sizeof(ts->pdata-
+					    obj->entry.size))						    obj->entry.size))
+		if (ret != 0) 				      |			if (ret != 0) {
+		{					      |				pr_err("%s: Can't write the one touch
+			QTOUCH_ERR("%s: Can't write the one t |				       __func__);
+			goto failed2write;		      |				return ret;
+		}								}
+	}								}
+
+	/* configure self test */					/* configure self test */
+	obj = find_obj(ts, QTM_OBJ_SPT_SELF_TEST);			obj = find_obj(ts, QTM_OBJ_SPT_SELF_TEST);
+	if (obj && obj->entry.num_inst > 0) 		      |		if (obj && obj->entry.num_inst > 0) {
+	{						      <
+		ret = qtouch_write_addr(ts, obj->entry.addr,			ret = qtouch_write_addr(ts, obj->entry.addr,
+					&ts->pdata->self_test						&ts->pdata->self_test
+					min(sizeof(ts->pdata-						min(sizeof(ts->pdata-
+					    obj->entry.size))						    obj->entry.size))
+		if (ret != 0) 				      |			if (ret != 0) {
+		{					      |				pr_err("%s: Can't write the self test
+			QTOUCH_ERR("%s: Can't write the self  |				       __func__);
+			goto failed2write;		      |				return ret;
+		}								}
+	}								}
+
+	/* configure the two touch gesture processor */			/* configure the two touch gesture processor */
+	obj = find_obj(ts, QTM_OBJ_PROCI_TWO_TOUCH_GESTURE_PR		obj = find_obj(ts, QTM_OBJ_PROCI_TWO_TOUCH_GESTURE_PR
+	if (obj && obj->entry.num_inst > 0) 		      |		if (obj && obj->entry.num_inst > 0) {
+	{						      <
+		ret = qtouch_write_addr(ts, obj->entry.addr,			ret = qtouch_write_addr(ts, obj->entry.addr,
+					&ts->pdata->two_touch						&ts->pdata->two_touch
+					min(sizeof(ts->pdata-						min(sizeof(ts->pdata-
+					    obj->entry.size))						    obj->entry.size))
+		if (ret != 0) 				      |			if (ret != 0) {
+		{					      |				pr_err("%s: Can't write the two touch
+			QTOUCH_ERR("%s: Can't write the two t |				       __func__);
+			goto failed2write;		      |				return ret;
+		}								}
+	}								}
+
+	/* configure the capacitive touch engine  */			/* configure the capacitive touch engine  */
+	obj = find_obj(ts, QTM_OBJ_SPT_CTE_CONFIG);			obj = find_obj(ts, QTM_OBJ_SPT_CTE_CONFIG);
+	if (obj && obj->entry.num_inst > 0) 		      |		if (obj && obj->entry.num_inst > 0) {
+	{						      <
+		ret = qtouch_write_addr(ts, obj->entry.addr,			ret = qtouch_write_addr(ts, obj->entry.addr,
+					&ts->pdata->cte_confi						&ts->pdata->cte_confi
+					min(sizeof(ts->pdata-						min(sizeof(ts->pdata-
+					    obj->entry.size))						    obj->entry.size))
+		if (ret != 0) 				      |			if (ret != 0) {
+		{					      |				pr_err("%s: Can't write the capacitiv
+			QTOUCH_ERR("%s: Can't write the capac |				       __func__);
+			goto failed2write;		      |				return ret;
+		}								}
+	}								}
+
+	/* configure the noise suppression table */			/* configure the noise suppression table */
+	obj = find_obj(ts, QTM_OBJ_NOISESUPPRESSION_1);			obj = find_obj(ts, QTM_OBJ_NOISESUPPRESSION_1);
+	if (obj && obj->entry.num_inst > 0) 		      |		if (obj && obj->entry.num_inst > 0) {
+	{						      <
+		ret = qtouch_write_addr(ts, obj->entry.addr,			ret = qtouch_write_addr(ts, obj->entry.addr,
+					&ts->pdata->noise1_su						&ts->pdata->noise1_su
+					min(sizeof(ts->pdata- |						min(sizeof
+							      >						    (ts->pdata->noise
+							      >						    obj->entry.size))
+							      >			if (ret != 0) {
+							      >				pr_err("%s: Can't write the noise sup
+							      >				       __func__);
+							      >				return ret;
+							      >			}
+							      >		}
+							      >
+							      >		/* configure the grip suppression table */
+							      >		obj = find_obj(ts, QTM_OBJ_PROCI_GRIPSUPPRESSION);
+							      >		if (obj && obj->entry.num_inst > 0) {
+							      >			ret = qtouch_write_addr(ts, obj->entry.addr,
+							      >						&ts->pdata->gripsuppr
+							      >						min(sizeof(ts->pdata-
+					    obj->entry.size))						    obj->entry.size))
+		if (ret != 0) 				      |			if (ret != 0) {
+		{					      |				pr_err("%s: Can't write the grip supp
+			QTOUCH_ERR("%s: Can't write the noise |				       __func__);
+			goto failed2write;		      |				return ret;
+							      >			}
+							      >		}
+							      >
+							      >		/* configure the palm suppression table */
+							      >		obj = find_obj(ts, QTM_OBJ_PROCI_PALMSUPPRESSION);
+							      >		if (obj && obj->entry.num_inst > 0) {
+							      >			ret = qtouch_write_addr(ts, obj->entry.addr,
+							      >						&ts->pdata->palm_supp
+							      >						min(sizeof(ts->pdata-
+							      >						    obj->entry.size))
+							      >			if (ret != 0) {
+							      >				pr_err("%s: Can't write the palm supp
+							      >				       __func__);
+							      >				return ret;
+							      >			}
+							      >		}
+							      >
+							      >		/* configure the Digitizer HID config */
+							      >		obj = find_obj(ts, QTM_OBJ_SPT_DIGITIZER);
+							      >		if (obj && obj->entry.num_inst > 0) {
+							      >			ret = qtouch_write_addr(ts, obj->entry.addr,
+							      >						&ts->pdata->spt_digit
+							      >						min(sizeof(ts->pdata-
+							      >						    obj->entry.size))
+							      >			if (ret != 0) {
+							      >				pr_err("%s: Can't write the Digitizer
+							      >				       __func__);
+							      >				return ret;
+		}								}
+	}								}
+
+	ret = qtouch_force_calibration(ts);				ret = qtouch_force_calibration(ts);
+	if (ret != 0) 					      |		if (ret != 0) {
+	{						      |			pr_err("%s: Unable to recalibrate after reset
+		QTOUCH_ERR("%s: Unable to recalibrate after r |			return ret;
+		goto failed2write;			      <
+	}								}
+
+	/* Write the settings into nvram, if needed */			/* Write the settings into nvram, if needed */
+	if (ts->pdata->flags & QTOUCH_CFG_BACKUPNV) 	      |		if (ts->pdata->flags & QTOUCH_CFG_BACKUPNV) {
+	{						      <
+		uint8_t val;							uint8_t val;
+		uint16_t addr;							uint16_t addr;
+
+		obj = find_obj(ts, QTM_OBJ_GEN_CMD_PROC);			obj = find_obj(ts, QTM_OBJ_GEN_CMD_PROC);
+		addr = obj->entry.addr + offsetof(struct qtm_			addr = obj->entry.addr + offsetof(struct qtm_
+						  backupnv);							  backupnv);
+		val = 0x55;							val = 0x55;
+		ret = qtouch_write_addr(ts, addr, &val, 1);			ret = qtouch_write_addr(ts, addr, &val, 1);
+		if (ret != 0) 				      |			if (ret != 0) {
+		{					      |				pr_err("%s: Can't backup nvram settin
+			QTOUCH_ERR("%s: Can't backup nvram se |				return ret;
+			goto failed2write;		      <
+		}								}
+		/* Since the IC does not indicate that has co			/* Since the IC does not indicate that has co
+		backup place a hard wait here.  If we communi			backup place a hard wait here.  If we communi
+		IC during backup the EEPROM may be corrupted 			IC during backup the EEPROM may be corrupted 
+
+		msleep(500);				      |			msleep(QTM_OBP_SLEEP_WAIT_FOR_BACKUP);
+	}								}
+
+	/* If debugging, read back and print all settings */		/* If debugging, read back and print all settings */
+	if (qtouch_tsdebug) 				      |		if (qtouch_tsdebug) {
+	{						      <
+		int object;							int object;
+		int size;							int size;
+		uint8_t *data_buff;						uint8_t *data_buff;
+		int byte;							int byte;
+		int msg_bytes;							int msg_bytes;
+		int msg_location;						int msg_location;
+		char *msg;							char *msg;
+
+		msg = kmalloc(1024, GFP_KERNEL);				msg = kmalloc(1024, GFP_KERNEL);
+		if (msg != NULL) 			      |			if (msg != NULL) {
+		{					      |				for (object = 7; object < QTM_OBP_MAX
+			for (object = 7; object < QTM_OBP_MAX |
+			{				      |					size = ts->obj_tbl[object].en
+				size = ts->obj_tbl[object].en |					       * ts->obj_tbl[object].
+				if (size != 0) 		      |					if (size != 0) {
+				{			      <
+					data_buff = kmalloc(s						data_buff = kmalloc(s
+					if (data_buff == NULL |						if (data_buff == NULL
+					{		      |							pr_err("%s: O
+						QTOUCH_ERR("% |							       __func
+						continue;							continue;
+					}								}
+
+					qtouch_read_addr(ts,						qtouch_read_addr(ts,
+					                 ts->						                 ts->
+					                 (voi						                 (voi
+
+					msg_location = sprint |						msg_location = sprint
+					for (byte=0; byte < s |						                     
+					{		      |						for (byte = 0; byte <
+						msg_bytes = s							msg_bytes = s
+						             							             
+						             							             
+						             							             
+						msg_location 							msg_location 
+						if (msg_locat							if (msg_locat
+							break								break
+					}								}
+					if (msg_location < 10 |						if (msg_location < 10
+					{		      |							pr_info("%s\n
+						QTOUCH_INFO(" |						} else {
+					} 		      |							pr_info("%s: 
+					else 		      |							        __fun
+					{		      <
+						QTOUCH_INFO(" <
+					}								}
+							      |
+					kfree (data_buff);    |						kfree(data_buff);
+				}								}
+			}								}
+			kfree (msg);			      |
+							      >				kfree(msg);
+		}								}
+		qtouch_set_addr(ts, ts->obj_tbl[QTM_OBJ_GEN_M <
+	}								}
+
+	/* reset the address pointer */					/* reset the address pointer */
+	ret = qtouch_set_addr(ts, ts->obj_tbl[QTM_OBJ_GEN_MSG		ret = qtouch_set_addr(ts, ts->obj_tbl[QTM_OBJ_GEN_MSG
+	if (ret != 0) 					      |		if (ret != 0) {
+	{						      |			pr_err("%s: Unable to reset address pointer a
+		QTOUCH_ERR("%s: Unable to reset address point |			       __func__);
+		goto failed2write;			      |			return ret;
+	}						      |		}
+failed2write:						      <
+	clean_i2c(ts);					      <
+	ts->hw_init = FALSE;				      <
+	return 0;					      <
+}							      <
+
+static int do_cmd_selftest_msg(struct qtouch_ts_data *ts, str <
+{							      <
+	struct qtm_spt_self_test_rslt *msg = _msg;	      <
+	int	i;					      <
+							      <
+	ts->selfStatusReport.status = msg->status;	      <
+	for ( i = 0; i < 5; i++ )			      <
+		ts->selfStatusReport.info[i] = msg->info[i];  <
+	ts->selfStatus = QTOUCH_SELFTEST_DONE;		      <
+	return 0;							return 0;
+}								}
+
+/* Handles a message from the command processor object. */	/* Handles a message from the command processor object. */
+static int do_cmd_proc_msg(struct qtouch_ts_data *ts, struct  |	static int do_cmd_proc_msg(struct qtouch_ts_data *ts, struct 
+							      >				   void *_msg)
+{								{
+	struct qtm_cmd_proc_msg *msg = _msg;				struct qtm_cmd_proc_msg *msg = _msg;
+	int ret = 0;							int ret = 0;
+	int hw_reset = 0;						int hw_reset = 0;
+	uint32_t checksum = 0x0;			      |		uint32_t checksum = (msg->checksum[2] << 16)
+							      >					| (msg->checksum[1] << 8) | m
+
+	if (msg->status & QTM_CMD_PROC_STATUS_RESET) 	      |		if (msg->status & QTM_CMD_PROC_STATUS_RESET) {
+	{						      |			if (qtouch_tsdebug)
+		QTOUCH_INFO("%s:EEPROM checksum is 0x%02X%02X |				pr_info("%s:EEPROM checksum is 0x%X c
+				__func__, msg->checksum[2], m |					__func__, checksum, ts->check
+				msg->checksum[0], ts->checksu |			if (checksum != ts->eeprom_checksum) {
+							      |				if (ts->checksum_cnt > 2) {
+		checksum = (msg->checksum[0] |		      <
+			(msg->checksum[1] << BITS_PER_BYTE) | <
+			(msg->checksum[2] << (BITS_PER_BYTE < <
+							      <
+		checksum = __le32_to_cpu(checksum);	      <
+		if (checksum != ts->eeprom_checksum)	      <
+		{					      <
+			if (ts->checksum_cnt > 2) 	      <
+			{				      <
+				/* Assume the checksum is wha					/* Assume the checksum is wha
+				disable the touch screen so s					disable the touch screen so s
+				ts->eeprom_checksum = checksu					ts->eeprom_checksum = checksu
+				ts->checksum_cnt = 0;						ts->checksum_cnt = 0;
+			} 				      |				} else {
+			else 				      |					pr_info("%s:EEPROM checksum d
+			{				      |						__func__, checksum);
+				ret = qtouch_hw_init(ts);					ret = qtouch_hw_init(ts);
+				if (ret != 0)							if (ret != 0)
+					QTOUCH_ERR("%s:Cannot |						pr_err("%s:Cannot ini
+						   __func__);							   __func__);
+				hw_reset = 1;							hw_reset = 1;
+				ts->checksum_cnt++;						ts->checksum_cnt++;
+			}								}
+							      >			} else {
+							      >				pr_info("%s:EEPROM checksum matches\n
+		}								}
+							      |			pr_info("%s: Reset done.\n", __func__);
+		calibrate_chip(ts);			      <
+							      <
+		QTOUCH_INFO("%s: Reset done.\n", __func__);   <
+	}						      <
+							      <
+	if (msg->status & QTM_CMD_PROC_STATUS_CAL) 	      <
+	{						      <
+		ts->cal_check_flag = 1;			      <
+		ts->cal_timer = 0;			      <
+		QTOUCH_INFO("%s: Self-calibration started.\n" <
+	}								}
+
+							      >		if (msg->status & QTM_CMD_PROC_STATUS_CAL)
+							      >			pr_info("%s: Self-calibration started.\n", __
+
+	if (msg->status & QTM_CMD_PROC_STATUS_OFL)			if (msg->status & QTM_CMD_PROC_STATUS_OFL)
+		QTOUCH_ERR("%s: Acquisition cycle length over |			pr_err("%s: Acquisition cycle length overflow
+
+	if (msg->status & QTM_CMD_PROC_STATUS_SIGERR)			if (msg->status & QTM_CMD_PROC_STATUS_SIGERR)
+		QTOUCH_ERR("%s: Acquisition error\n", __func_ |			pr_err("%s: Acquisition error\n", __func__);
+
+	if (msg->status & QTM_CMD_PROC_STATUS_CFGERR) 	      |		if (msg->status & QTM_CMD_PROC_STATUS_CFGERR) {
+	{						      |			pr_err("%s: Configuration error\n", __func__)
+		QTOUCH_ERR("%s: Configuration error\n", __fun |			ret = qtouch_hw_init(ts);
+							      >			if (ret != 0)
+							      >				pr_err("%s:Cannot init the touch IC\n
+	}								}
+	/* Check the EEPROM checksum.  An ESD event may cause		/* Check the EEPROM checksum.  An ESD event may cause
+	the checksum to change during operation so we need to		the checksum to change during operation so we need to
+	reprogram the EEPROM and reset the IC */			reprogram the EEPROM and reset the IC */
+	if (ts->pdata->flags & QTOUCH_EEPROM_CHECKSUM) 	      |		if (ts->pdata->flags & QTOUCH_EEPROM_CHECKSUM) {
+	{						      |			if (checksum != ts->eeprom_checksum) {
+		QTOUCH_INFO("%s:EEPROM checksum is 0x%02X%02X <
+			__func__, msg->checksum[2], msg->chec <
+			msg->checksum[0], ts->checksum_cnt);  <
+							      <
+		checksum = (msg->checksum[0] |		      <
+			(msg->checksum[1] << BITS_PER_BYTE) | <
+			(msg->checksum[2] << (BITS_PER_BYTE < <
+							      <
+		if (checksum != ts->eeprom_checksum) 	      <
+		{					      <
+			if (qtouch_tsdebug)						if (qtouch_tsdebug)
+				pr_info("%s:EEPROM checksum i |					pr_info("%s:EEPROM checksum i
+					__func__, checksum, t |						__func__, checksum,
+							      |						ts->checksum_cnt);
+			if (ts->checksum_cnt > 2) 	      |				if (ts->checksum_cnt > 2) {
+			{				      <
+				/* Assume the checksum is wha					/* Assume the checksum is wha
+				disable the touch screen so s					disable the touch screen so s
+				ts->eeprom_checksum = checksu					ts->eeprom_checksum = checksu
+				ts->checksum_cnt = 0;						ts->checksum_cnt = 0;
+			}				      |				} else {
+			else 				      |					if (!hw_reset) {
+			{				      |						ret = qtouch_hw_init(
+				if (!hw_reset) 		      |						if (ret != 0)
+				{			      |							pr_err("%s:Ca
+					qtouch_force_reset(ts |							__func__);
+							      >						qtouch_force_reset(ts
+					ts->checksum_cnt++;						ts->checksum_cnt++;
+				}								}
+			}								}
+		}								}
+	}								}
+	return ret;							return ret;
+}								}
+
+/* Handles a message from a multi-touch object. */		/* Handles a message from a multi-touch object. */
+static int do_touch_multi_msg(struct qtouch_ts_data *ts, stru	static int do_touch_multi_msg(struct qtouch_ts_data *ts, stru
+			      void *_msg)						      void *_msg)
+{								{
+	struct qtm_touch_multi_msg *msg = _msg;				struct qtm_touch_multi_msg *msg = _msg;
+	int i;								int i;
+	int x;								int x;
+	int y;								int y;
+	int pressure;							int pressure;
+	int width;							int width;
+	uint32_t finger;						uint32_t finger;
+	int down;							int down;
+	int btnFlag;					      |		int num_fingers_down;
+	int stuckFinger;				      <
+
+	QTOUCH_INFO4("%s: dump of arrived multitouch message: <
+	QTOUCH_INFO4("\treport_id: %d\n",msg->report_id);     <
+	QTOUCH_INFO4("\tstatus: 0x%x\n",msg->status);	      <
+	QTOUCH_INFO4("\txpos_msb: %d\n",msg->xpos_msb);	      <
+	QTOUCH_INFO4("\typos_msb: %d\n",msg->ypos_msb);	      <
+	QTOUCH_INFO4("\txypos_lsb: %d\n",msg->xypos_lsb);     <
+	QTOUCH_INFO4("\ttouch_area: %d\n",msg->touch_area);   <
+	QTOUCH_INFO4("\ttouch_amp: %d\n",msg->touch_amp);     <
+	QTOUCH_INFO4("\ttouch_vect: 0x%x\n",msg->touch_vect); <
+							      <
+	QTOUCH_INFO4("\tObject info: report_id_min: %d\n", ob <
+	finger = msg->report_id - obj->report_id_min;			finger = msg->report_id - obj->report_id_min;
+	QTOUCH_INFO4("\tFinger: %d\n", finger);		      <
+	if (finger >= ts->pdata->multi_touch_cfg.num_touch)		if (finger >= ts->pdata->multi_touch_cfg.num_touch)
+		return 0;							return 0;
+
+	/* x/y are 10bit values, with bottom 2 bits inside th |		if (qtouch_tsdebug & 0x10)
+	x = (msg->xpos_msb << 2) | ((msg->xypos_lsb >> 6) & 0 |			pr_info("%s: msgxpos_msb 0x%X msgypos_msb 0x%
+	y = (msg->ypos_msb << 2) | ((msg->xypos_lsb >> 2) & 0 |				__func__, msg->xpos_msb, msg->ypos_ms
+							      >
+							      >		/* x/y are 10bit values(<1024), with bottom 2 bits in
+							      >		/* x/y are 12bit values(>1023), with bottom 4 bits in
+							      >		x = (msg->xpos_msb << ts->xpos_lshift_msb) |
+							      >			((msg->xypos_lsb >> ts->xpos_rshift_lsb) & 0x
+							      >		y = (msg->ypos_msb << ts->ypos_lshift_msb) |
+							      >			((msg->xypos_lsb >> ts->ypos_rshift_lsb) & 0x
+							      >
+	width = msg->touch_area;					width = msg->touch_area;
+	pressure = msg->touch_amp;					pressure = msg->touch_amp;
+	down = !(msg->status & QTM_TOUCH_MULTI_STATUS_RELEASE <
+
+	/*						      |		if (qtouch_tsdebug & 2)
+	 * IC may report old finger 2 as new finger 2 after l |			pr_info("%s: stat=%02x, f=%d x=%d y=%d p=%d w
+	 * finger 1. That is a condition under which we have  |				msg->status, finger, x, y, pressure, 
+	 * liftoff for the finger 2. Some strange bug on IC.  <
+	 */						      <
+	stuckFinger = FALSE;				      <
+	if (need2check4IC_problem)			      <
+	{						      <
+		if (finger == 1 && down  &&		      <
+			ts->finger_data[finger].x_data == x & <
+			ts->finger_data[finger].y_data == y)  <
+		{					      <
+			QTOUCH_ERR("%s: Detected stuck finger <
+					__func__);	      <
+			stuckFinger = TRUE;		      <
+		}					      <
+	}						      <
+	if (ts->pdata->flags & QTOUCH_FLIP_X)		      <
+		x = (ts->pdata->abs_max_x-1)-x;		      <
+							      <
+	if (ts->pdata->flags & QTOUCH_FLIP_Y)		      <
+		y = (ts->pdata->abs_max_y-1)-y;		      <
+
+	if (ts->pdata->flags & QTOUCH_SWAP_XY)		      |		if (finger >= _NUM_FINGERS) {
+		swap(x, y);				      |			pr_err("%s: Invalid finger number %dd\n", __f
+							      <
+							      <
+	if (finger >= _NUM_FINGERS) 			      <
+	{						      <
+		QTOUCH_ERR("%s: Invalid finger number %dd\n", <
+		return 1;							return 1;
+	}								}
+
+	QTOUCH_INFO2("%s: stat=%02x, f=%d x=%d y=%d p=%d w=%d |		down = !(msg->status & (QTM_TOUCH_MULTI_STATUS_RELEAS
+			msg->status, finger, x, y, pressure,  |			 QTM_TOUCH_MULTI_STATUS_SUPPRESS));
+
+							      |		if (down) {
+	/* The chip may report erroneous points way	      <
+	beyond what a user could possibly perform so we filte <
+	these out */					      <
+	if (ts->finger_data[finger].down &&		      <
+		(abs(ts->finger_data[finger].x_data - x) > ts <
+		abs(ts->finger_data[finger].y_data - y) > ts- <
+	{						      <
+		down = 0;				      <
+		QTOUCH_INFO2("%s: x0 %i x1 %i y0 %i y1 %i\n", <
+				__func__,		      <
+				ts->finger_data[finger].x_dat <
+				ts->finger_data[finger].y_dat <
+	} 						      <
+	else 						      <
+	{						      <
+		ts->finger_data[finger].x_data = x;				ts->finger_data[finger].x_data = x;
+		ts->finger_data[finger].y_data = y;				ts->finger_data[finger].y_data = y;
+		ts->finger_data[finger].w_data = width;				ts->finger_data[finger].w_data = width;
+							      >			ts->finger_data[finger].z_data = pressure;
+							      >			ts->finger_data[finger].vector = msg->touch_v
+							      >			ts->finger_data[finger].down = 1;
+							      >		} else {
+							      >			memset(&ts->finger_data[finger], 0,
+							      >				sizeof(struct coordinate_map));
+	}								}
+
+	/* The touch IC will not give back a pressure of zero |		num_fingers_down = 0;
+	   so send a 0 when a liftoff is produced */	      |		for (i = 0; i < ts->pdata->multi_touch_cfg.num_touch;
+	ts->finger_data[finger].down = down;		      |			if (ts->finger_data[i].down == 0)
+	if (!down) 					      |				continue;
+	{						      |			input_report_abs(ts->input_dev, ABS_MT_PRESSU
+		ts->finger_data[finger].z_data = 0;	      |					 ts->finger_data[i].z_data);
+		/* this will cause check to be performed on t |			input_report_abs(ts->input_dev, ABS_MT_TOUCH_
+		if (finger == 0)			      |					 ts->finger_data[i].w_data);
+			need2check4IC_problem = TRUE;	      |			input_report_abs(ts->input_dev, ABS_MT_POSITI
+		else					      |					 ts->finger_data[i].x_data);
+			need2check4IC_problem = FALSE;	      |			input_report_abs(ts->input_dev, ABS_MT_POSITI
+	} 						      |					 ts->finger_data[i].y_data);
+	else 						      |			input_report_abs(ts->input_dev, ABS_MT_ORIENT
+	{						      |					 ts->finger_data[i].vector);
+		ts->finger_data[finger].z_data = msg->touch_a |			input_report_abs(ts->input_dev, ABS_MT_TRACKI
+		/*					      |					 i);
+		 * No need to do check on the next point, sin |			input_mt_sync(ts->input_dev);
+		 * important after a lift		      |			num_fingers_down++;
+		 */					      <
+		need2check4IC_problem = FALSE;		      <
+	}						      <
+							      <
+	/* check to make sure user is not pressing the button <
+	btnFlag = -1;					      <
+	if ( ts->pdata->buttons_count > 0 )		      <
+	{						      <
+		for ( i = 0; i < _NUM_FINGERS && btnFlag < 0; <
+		{					      <
+			/* All buttons have the same Y value  <
+			if ( ts->finger_data[i].y_data > butt <
+				btnFlag = i;		      <
+		}					      <
+		QTOUCH_INFO4("%s: btnFlg = %d\n", __func__, b <
+	}						      <
+	if ( btnFlag < 0 )				      <
+	{						      <
+		if ( ts->multiMode )			      <
+		{					      <
+			for (i = 0;			      <
+				i < ts->pdata->multi_touch_cf <
+				i++)			      <
+			{				      <
+				if ( ts->finger_data[i].down  <
+					&& ts->finger_data[i] <
+					&& ts->finger_data[i] <
+					&& ts->finger_data[i] <
+					&& ts->finger_data[i] <
+					continue;	      <
+				if ( !ts->suspendMode )	      <
+				{			      <
+					input_report_abs(ts-> <
+							 ts-> <
+					input_report_abs(ts-> <
+							 ts-> <
+					input_report_abs(ts-> <
+							 ts-> <
+					input_report_abs(ts-> <
+							 ts-> <
+					input_mt_sync(ts->inp <
+				}			      <
+			}				      <
+			input_sync(ts->input_dev);	      <
+		}					      <
+		else					      <
+		{					      <
+			QTOUCH_INFO4("%s: Single touch: x=%d, <
+					__func__,ts->finger_d <
+			if ( !ts->suspendMode )		      <
+			{				      <
+				/* In single mode, only 1st f <
+				input_report_abs(ts->input_de <
+						 ts->finger_d <
+				input_report_abs(ts->input_de <
+						 ts->finger_d <
+				input_report_abs(ts->input_de <
+						 ts->finger_d <
+				input_report_abs(ts->input_de <
+						 ts->finger_d <
+				if (ts->finger_data[0].down = <
+					input_report_key(ts-> <
+				else			      <
+					input_report_key(ts-> <
+				input_sync(ts->input_dev);    <
+			}				      <
+		}					      <
+	}						      <
+	else						      <
+	{						      <
+/* 							      <
+ * Check if user finger is just moving into the button range  <
+ * If it is, generate a "liftoff" messages first 	      <
+*/							      <
+		int needLiftOff = FALSE;		      <
+		if ( ts->pdata->buttons_count > 0 )	      <
+		{					      <
+			for ( i = 0; i < _NUM_FINGERS && need <
+			{				      <
+				/* is previous point Y less t <
+				if ( ts->prev_finger_data[i]. <
+					needLiftOff = TRUE;   <
+			}				      <
+		}					      <
+		QTOUCH_INFO4("%s: needLiftOff= %s\n", __func_ <
+		if ( needLiftOff )			      <
+		{					      <
+			for (i = 0; i < ts->pdata->multi_touc <
+			{				      <
+				if ( !ts->suspendMode )	      <
+				{			      <
+					input_report_abs(ts-> <
+					input_report_abs(ts-> <
+							 ts-> <
+					input_report_abs(ts-> <
+							 ts-> <
+					input_report_abs(ts-> <
+							 ts-> <
+					input_mt_sync(ts->inp <
+				}			      <
+			}				      <
+			input_sync(ts->input_dev);	      <
+		}					      <
+		/* Generate appropriate key based on the rang <
+		QTOUCH_INFO("%s: Generating button\n", __func <
+		for ( i = 0; i < ts->pdata->buttons_count; i+ <
+		{					      <
+			QTOUCH_INFO("%s: Checking against but <
+			if ( ts->finger_data[btnFlag].x_data  <
+			  ts->finger_data[btnFlag].x_data <=  <
+			{				      <
+				/* If this button was already <
+				QTOUCH_INFO("%s: Button[%d] i <
+					ts->finger_data[btnFl <
+				if ( ts->finger_data[btnFlag] <
+				{			      <
+					/* This is a press */ <
+					if ( buttons[i]->pres <
+					{		      <
+						buttons[i]->p <
+						input_report_ <
+						QTOUCH_INFO(" <
+					}		      <
+				}			      <
+				else			      <
+				{			      <
+					/* This is a release  <
+					if ( buttons[i]->pres <
+					{		      <
+						buttons[i]->p <
+						input_report_ <
+						QTOUCH_INFO(" <
+					}		      <
+				}			      <
+				input_sync(ts->input_dev);    <
+			}				      <
+		}					      <
+	}								}
+	if (stuckFinger)				      |		if (num_fingers_down == 0)
+	{						      |			input_mt_sync(ts->input_dev);
+		if (!ts->suspendMode)			      |		input_sync(ts->input_dev);
+		{					      <
+			input_report_abs(ts->input_dev, ABS_M <
+					 0);		      <
+			input_report_abs(ts->input_dev, ABS_M <
+					 ts->finger_data[1].w <
+			input_report_abs(ts->input_dev, ABS_M <
+					 ts->finger_data[1].x <
+			input_report_abs(ts->input_dev, ABS_M <
+					 ts->finger_data[1].y <
+			input_mt_sync(ts->input_dev);	      <
+			ts->finger_data[1].x_data = 0;	      <
+			ts->finger_data[1].y_data = 0;	      <
+			ts->finger_data[1].w_data = 0;	      <
+		}					      <
+	}						      <
+	if (!down) 					      <
+	{						      <
+		memset(&ts->finger_data[finger],	      <
+				0,			      <
+				sizeof(struct coordinate_map) <
+	}						      <
+							      <
+	for (i = 0; i < ts->pdata->multi_touch_cfg.num_touch; <
+		memcpy(&(ts->prev_finger_data[i]),	      <
+				&(ts->finger_data[i]),	      <
+				sizeof(ts->finger_data[i]));  <
+
+	QTOUCH_INFO("%s: exit...\n", __func__);		      <
+	return 0;							return 0;
+}								}
+
+/* Handles a message from a keyarray object. */			/* Handles a message from a keyarray object. */
+static int do_touch_keyarray_msg(struct qtouch_ts_data *ts,	static int do_touch_keyarray_msg(struct qtouch_ts_data *ts,
+				 struct qtm_object *obj, void					 struct qtm_object *obj, void
+{								{
+	struct qtm_touch_keyarray_msg *msg = _msg;			struct qtm_touch_keyarray_msg *msg = _msg;
+	int i;								int i;
+
+	/* nothing changed.. odd. */					/* nothing changed.. odd. */
+	if (ts->last_keystate == msg->keystate)				if (ts->last_keystate == msg->keystate)
+		return 0;							return 0;
+
+	for (i = 0; i < ts->pdata->key_array.num_keys; ++i) {		for (i = 0; i < ts->pdata->key_array.num_keys; ++i) {
+		struct qtouch_key *key = &ts->pdata->key_arra			struct qtouch_key *key = &ts->pdata->key_arra
+		uint32_t bit = 1 << (key->channel & 0x1f);			uint32_t bit = 1 << (key->channel & 0x1f);
+		if ((msg->keystate & bit) != (ts->last_keysta |			if ((msg->keystate & bit) != (ts->last_keysta
+			if (msg->keystate & bit) {	      |				input_report_key(ts->input_dev, key->
+				if (ignore_keyarray_touches)  |						 msg->keystate & bit)
+					return 0;	      <
+				input_report_abs(ts->input_de <
+			} else {			      <
+				input_report_abs(ts->input_de <
+						 ABS_MT_TOUCH <
+			}				      <
+			input_report_abs(ts->input_dev, ABS_M <
+			input_report_abs(ts->input_dev, ABS_M <
+					 ts->pdata->key_array <
+			input_report_abs(ts->input_dev, ABS_M <
+					 ts->pdata->key_array <
+			input_mt_sync(ts->input_dev);	      <
+			input_sync(ts->input_dev);	      <
+		}					      <
+	}								}
+							      >		input_sync(ts->input_dev);
+
+	QTOUCH_INFO2("%s: key state changed 0x%08x -> 0x%08x\ |		if (qtouch_tsdebug & 2)
+							      >			pr_info("%s: key state changed 0x%08x -> 0x%0
+			ts->last_keystate, msg->keystate);				ts->last_keystate, msg->keystate);
+
+	/* update our internal state */					/* update our internal state */
+	ts->last_keystate = msg->keystate;				ts->last_keystate = msg->keystate;
+
+	return 0;							return 0;
+}								}
+static int do_cmd_gen_msg_t5(struct qtouch_ts_data *ts,	      <
+				 struct qtm_object *obj, void <
+{							      <
+	int ret = 0;					      <
+	struct	qtm_cmd_proc_msg	msg;		      <
+	struct qtm_object *object;			      <
+							      <
+	QTOUCH_INFO("%s: enter...\n", __func__);	      <
+							      <
+	/* Read the T5 message out */			      <
+	object = find_obj(ts, QTM_OBJ_GEN_MSG_PROC);	      <
+	ret = qtouch_read_addr(ts, object->entry.addr, &msg,  <
+	if (!ret)					      <
+	{						      <
+		qtouch_dump_block(__func__, (char *) (&msg),  <
+	}						      <
+	QTOUCH_INFO("%s: exit...\n", __func__);		      <
+							      <
+	return ret;					      <
+}							      <
+
+static int qtouch_handle_msg(struct qtouch_ts_data *ts, struc	static int qtouch_handle_msg(struct qtouch_ts_data *ts, struc
+			     struct qtm_obj_message *msg)				     struct qtm_obj_message *msg)
+{								{
+	int ret = 0;							int ret = 0;
+
+	/* These are all the known objects that we know how t		/* These are all the known objects that we know how t
+	QTOUCH_INFO("%s: the object type = %d\n", __func__, o |		switch (obj->entry.type) {
+	switch (obj->entry.type) 			      <
+	{						      <
+	case QTM_OBJ_GEN_MSG_PROC:			      <
+		ret = do_cmd_gen_msg_t5(ts, obj, msg);	      <
+		break;					      <
+							      <
+	case QTM_OBJ_SPT_SELF_TEST:			      <
+		ret = do_cmd_selftest_msg(ts, obj, msg);      <
+		break;					      <
+							      <
+	case QTM_OBJ_GEN_CMD_PROC:					case QTM_OBJ_GEN_CMD_PROC:
+		ret = do_cmd_proc_msg(ts, obj, msg);				ret = do_cmd_proc_msg(ts, obj, msg);
+		break;								break;
+
+	case QTM_OBJ_TOUCH_MULTI:					case QTM_OBJ_TOUCH_MULTI:
+		ret = do_touch_multi_msg(ts, obj, msg);				ret = do_touch_multi_msg(ts, obj, msg);
+		break;								break;
+
+	case QTM_OBJ_TOUCH_KEYARRAY:					case QTM_OBJ_TOUCH_KEYARRAY:
+		ret = do_touch_keyarray_msg(ts, obj, msg);			ret = do_touch_keyarray_msg(ts, obj, msg);
+		break;								break;
+
+	default:							default:
+		/* probably not fatal? */					/* probably not fatal? */
+		ret = 0;							ret = 0;
+		QTOUCH_INFO("%s: No handler defined for messa |			pr_info("%s: No handler defined for message f
+			"type %d, report_id %d\n", __func__, 				"type %d, report_id %d\n", __func__, 
+			msg->report_id);						msg->report_id);
+	}								}
+
+	return ret;							return ret;
+}								}
+
+static int	qtouch_set_bootloader_mode(struct qtouch_ts_d |	static int qtouch_ts_prep_msg_proc(struct qtouch_ts_data *ts)
+{								{
+	int		ret;				      |		struct qtm_object *obj;
+	char	data[5];				      |		int err;
+							      |
+	/* need to read 1 byte from i2c */		      |		ts->msg_buf = kmalloc(ts->msg_size, GFP_KERNEL);
+	ts->client->addr = XMEGAT_BL_I2C_ADDR;		      |		if (ts->msg_buf == NULL) {
+	ts->i2cBLAddr = XMEGAT_BL_I2C_ADDR;		      |			pr_err("%s: Cannot allocate msg_buf\n", __fun
+	ret = qtouch_read(ts, data, 1);			      |			err = -ENOMEM;
+	if (ret  < 0)					      |			goto err_alloc_msg_buf;
+	{						      <
+		ts->client->addr = XMEGAT_BL_I2C_ADDR_ALT;    <
+		ts->i2cBLAddr = XMEGAT_BL_I2C_ADDR_ALT;	      <
+		ret = qtouch_write(ts, data, 1);	      <
+		if (ret < 0)				      <
+		{					      <
+			QTOUCH_INFO("%s: BT client error %d\n <
+					__func__, ret);	      <
+			QTOUCH_INFO("%s: touch device is prob <
+					__func__);	      <
+			ts->modeOfOperation = QTOUCH_MODE_UNK <
+			return QTOUCH_MODE_UNKNOWN;	      <
+		}					      <
+	}								}
+	else						      |
+	{						      |		/* Point the address pointer to the message processor
+		QTOUCH_INFO("%s: qtouch_write (bootloader cli |		 * Must do this before enabling interrupts */
+				__func__, data[0]);	      |		obj = find_obj(ts, QTM_OBJ_GEN_MSG_PROC);
+		QTOUCH_INFO("%s: entering bootloader mode\n", |		err = qtouch_set_addr(ts, obj->entry.addr);
+		ts->modeOfOperation = QTOUCH_MODE_BOOTLOADER; |		if (err != 0) {
+		/* wait until we get 0x8n */		      |			pr_err("%s: Can't to set addr to msg processo
+		while ( (data[0] & 0xF0) != 0x80 )	      |			goto err_rst_addr_msg_proc;
+		{					      |		}
+			QTOUCH_INFO("%s: Sending Unblock comm |
+			data[0] = 0xDC;			      |		return 0;
+			data[1] = 0xAA;			      |
+			ret = qtouch_write(ts, data, 2);      |	err_rst_addr_msg_proc:
+			if ( ret < 0 )			      |		if (ts->msg_buf)
+			{				      |			kfree(ts->msg_buf);
+				QTOUCH_INFO("%s: BT unlock: 0 |	err_alloc_msg_buf:
+						__func__);    |
+				ts->modeOfOperation = QTOUCH_ |		return err;
+				return QTOUCH_MODE_UNKNOWN;   |	}
+			}				      |
+			msleep(30);			      |	int qtouch_input_open(struct input_dev *input)
+			ret = qtouch_read(ts, data, 1);	      |	{
+			if ( ret < 0 )			      |		int err;
+			{				      |		struct qtouch_ts_data *ts = input_get_drvdata(input);
+				QTOUCH_INFO("%s: error waitin |
+						__func__, ret |		if (!atomic_xchg(&ts->process_open, 0))
+				ts->modeOfOperation = QTOUCH_ |			return 0;
+				return QTOUCH_MODE_UNKNOWN;   |
+							      >		if (ts->touch_fw_image == NULL)
+							      >			goto finish_touch_upgrade;
+							      >
+							      >		err = request_firmware(&fw_entry, ts->pdata->touch_fw
+							      >					 &ts->client->dev);
+							      >
+							      >		if (err == 0) {
+							      >			ts->touch_fw = (uint8_t *)fw_entry->data;
+							      >			ts->touch_fw_size = fw_entry->size;
+							      >			pr_info("firmware name: %s size: %d\n", ts->t
+							      >				 ts->touch_fw_size);
+							      >
+							      >			if ((ts->touch_fw_size != 0) && (ts->touch_fw
+							      >				/* Add 2 because the firmware packet 
+							      >				are not taken into account for the to
+							      >				ts->boot_pkt_size = ((ts->touch_fw[0]
+							      >					ts->touch_fw[1]) + 2;
+							      >
+							      >				pr_info("%s: write first packet \n", 
+							      >				err = qtouch_write(ts, &ts->touch_fw[
+							      >				if (err != ts->boot_pkt_size) {
+							      >					pr_err("%s: Could not write t
+							      >					goto reset_to_normal;
+			}								}
+			msleep(30);			      |				goto finish_touch_upgrade;
+		}								}
+							      >			goto reset_to_cleanup;
+							      >		} else {
+							      >			pr_err("%s: Firmware %s not available : %d\n"
+							      >				 __func__, ts->pdata->touch_fw_cfg.fw
+							      >			ts->touch_fw = NULL;
+							      >			goto reset_to_normal;
+	}								}
+	return QTOUCH_MODE_BOOTLOADER;			      |
+							      >	reset_to_cleanup:
+							      >		release_firmware(fw_entry);
+							      >	reset_to_normal:
+							      >		ts->status = 0xff;
+							      >		qtouch_force_reset(ts, 0);
+							      >	finish_touch_upgrade:
+							      >
+							      >		return 0;
+}								}
+
+static	int	qtouch_reset_read_ptr(struct qtouch_ts_data * |	static int qtouch_ts_register_input(struct qtouch_ts_data *ts
+{								{
+	struct qtm_object *obj;				      <
+	int err;							int err;
+							      >		int i;
+							      >
+							      >		if (ts->input_dev == NULL) {
+							      >			ts->input_dev = input_allocate_device();
+							      >			if (ts->input_dev == NULL) {
+							      >				pr_err("%s: failed to alloc input dev
+							      >				err = -ENOMEM;
+							      >				return err;
+							      >			}
+							      >		}
+							      >
+							      >		ts->input_dev->name = "qtouch-touchscreen";
+							      >		input_set_drvdata(ts->input_dev, ts);
+							      >
+							      >		set_bit(EV_SYN, ts->input_dev->evbit);
+							      >
+							      >		/* register the harwdare assisted virtual keys, if an
+							      >		if (ts->pdata->flags & QTOUCH_USE_KEYARRAY) {
+							      >			for (i = 0; i < ts->pdata->key_array.num_keys
+							      >				input_set_capability(ts->input_dev, E
+							      >				                     ts->pdata->key_a
+							      >		}
+							      >
+							      >		/* register the software virtual keys, if any are pro
+							      >		for (i = 0; i < ts->pdata->vkeys.count; ++i)
+							      >			input_set_capability(ts->input_dev, EV_KEY,
+							      >			                     ts->pdata->vkeys.keys[i]
+							      >
+							      >		if (ts->pdata->flags & QTOUCH_USE_MULTITOUCH) {
+							      >			set_bit(EV_ABS, ts->input_dev->evbit);
+							      >
+							      >			input_set_abs_params(ts->input_dev, ABS_MT_PO
+							      >					     ts->pdata->abs_min_x, ts
+							      >					     ts->pdata->fuzz_x, 0);
+							      >			input_set_abs_params(ts->input_dev, ABS_MT_PO
+							      >					     ts->pdata->abs_min_y, ts
+							      >					     ts->pdata->fuzz_y, 0);
+							      >			input_set_abs_params(ts->input_dev, ABS_MT_PR
+							      >					     ts->pdata->abs_min_p, ts
+							      >					     ts->pdata->fuzz_p, 0);
+							      >			input_set_abs_params(ts->input_dev, ABS_MT_TO
+							      >					     ts->pdata->abs_min_w, ts
+							      >					     ts->pdata->fuzz_w, 0);
+							      >			input_set_abs_params(ts->input_dev, ABS_MT_OR
+							      >					     0, 255, 0, 0);
+							      >			input_set_abs_params(ts->input_dev, ABS_MT_TR
+							      >					     0, ts->pdata->multi_touc
+							      >		}
+							      >
+							      >		memset(&ts->finger_data[0], 0,
+							      >		       (sizeof(struct coordinate_map) *
+							      >		       _NUM_FINGERS));
+							      >
+							      >		ts->input_dev->open = qtouch_input_open;
+							      >
+							      >		err = input_register_device(ts->input_dev);
+							      >		if (err != 0) {
+							      >			pr_err("%s: Cannot register input device \"%s
+							      >			       ts->input_dev->name);
+							      >			goto err_input_register_dev;
+							      >		}
+							      >		return 0;
+							      >
+							      >	err_input_register_dev:
+							      >		input_free_device(ts->input_dev);
+							      >		ts->input_dev = NULL;
+
+	obj = find_obj(ts, QTM_OBJ_GEN_MSG_PROC);	      <
+	err = qtouch_set_addr(ts, obj->entry.addr);	      <
+	return err;							return err;
+}								}
+							      |
+static int qtouch_process_info_block(struct qtouch_ts_data *t	static int qtouch_process_info_block(struct qtouch_ts_data *t
+{								{
+	uint16_t our_csum = 0x0;			      |		struct qtm_id_info qtm_info;
+	uint16_t their_csum = 0x00;			      |		uint32_t our_csum = 0x0;
+	uint8_t	checksum[3];				      |		uint32_t their_csum;
+	uint8_t report_id;						uint8_t report_id;
+	uint16_t addr;							uint16_t addr;
+	int err;							int err;
+	int i;								int i;
+							      >		uint8_t *info_blk_buf, *info_blk_start;
+							      >		uint16_t info_blk_size;
+							      >		struct qtm_obj_entry entry;
+
+	/* query the device and get the info block. */			/* query the device and get the info block. */
+	err = qtouch_read_addr(ts, QTM_OBP_ID_INFO_ADDR, &qtm		err = qtouch_read_addr(ts, QTM_OBP_ID_INFO_ADDR, &qtm
+			       sizeof(qtm_info));					       sizeof(qtm_info));
+	if (0 != err) 					      |		if (err != 0) {
+	{						      |			pr_err("%s: Cannot read info object block\n",
+		QTOUCH_ERR("%s: Cannot read info object block <
+		/* Check if the device is in bootloader mode  <
+		goto err_read_info_block;					goto err_read_info_block;
+	}								}
+	our_csum = calc_csum(our_csum, &qtm_info, sizeof(qtm_ <
+
+	/* TODO: Add a version/family/variant check? */	      |		pr_info("%s: Build version is 0x%x\n", __func__, qtm_
+
+	if (0 == qtm_info.num_objs ) 			      |		if (qtm_info.num_objs == 0) {
+	{						      |			pr_err("%s: Device (0x%x/0x%x/0x%x/0x%x) does
+		QTOUCH_ERR("%s: Device (0x%x/0x%x/0x%x/0x%x)  <
+		       "objects.\n", __func__, qtm_info.famil			       "objects.\n", __func__, qtm_info.famil
+		       qtm_info.variant_id, qtm_info.version,			       qtm_info.variant_id, qtm_info.version,
+		err = -ENODEV;							err = -ENODEV;
+		goto err_no_objects;						goto err_no_objects;
+	}								}
+	else						      |
+	{						      |		info_blk_size = sizeof(qtm_info) + qtm_info.num_objs 
+		qtouch_dump_block(__func__, (char *) (&qtm_in |		info_blk_buf = kzalloc(info_blk_size, GFP_KERNEL);
+		QTOUCH_INFO("%s: Dumping information from Id  |		if (info_blk_buf == NULL) {
+		QTOUCH_INFO("================================ |			pr_err("%s: Can't allocate write buffer (%d)\
+		QTOUCH_INFO("\t Family ID: %d\n", qtm_info.fa |				 __func__, info_blk_size);
+		QTOUCH_INFO("\t Variant ID: %d\n", qtm_info.v |			err = -ENOMEM;
+		QTOUCH_INFO("\t Version: %d\n", qtm_info.vers |			goto err_no_objects;
+		QTOUCH_INFO("\t Build: %d\n", qtm_info.build) <
+		QTOUCH_INFO("\t Matrix X size: %d\n", qtm_inf <
+		QTOUCH_INFO("\t Matrix Y size: %d\n", qtm_inf <
+		QTOUCH_INFO("\t Number of objects to read: %d <
+		QTOUCH_INFO("================================ <
+	}								}
+							      >		info_blk_start = info_blk_buf;
+							      >		memcpy(info_blk_buf, (void *)&qtm_info, sizeof(qtm_in
+							      >		info_blk_buf += sizeof(qtm_info);
+	addr = QTM_OBP_ID_INFO_ADDR + sizeof(qtm_info);			addr = QTM_OBP_ID_INFO_ADDR + sizeof(qtm_info);
+	report_id = 1;							report_id = 1;
+
+	/* Clear the object table */					/* Clear the object table */
+	for (i = 0; i < QTM_OBP_MAX_OBJECT_NUM; ++i) 	      |		for (i = 0; i < QTM_OBP_MAX_OBJECT_NUM; ++i) {
+	{						      <
+		ts->obj_tbl[i].entry.type = 0;					ts->obj_tbl[i].entry.type = 0;
+		ts->obj_tbl[i].entry.addr = 0;					ts->obj_tbl[i].entry.addr = 0;
+		ts->obj_tbl[i].entry.size = 0;					ts->obj_tbl[i].entry.size = 0;
+		ts->obj_tbl[i].entry.num_inst = 0;				ts->obj_tbl[i].entry.num_inst = 0;
+		ts->obj_tbl[i].entry.num_rids = 0;				ts->obj_tbl[i].entry.num_rids = 0;
+		ts->obj_tbl[i].report_id_min = 0;				ts->obj_tbl[i].report_id_min = 0;
+		ts->obj_tbl[i].report_id_max = 0;				ts->obj_tbl[i].report_id_max = 0;
+	}								}
+
+							      >		pr_info("%s: Num obj: %i addr: %i\n", __func__, qtm_i
+	/* read out the object entries table */				/* read out the object entries table */
+	for (i = 0; i < qtm_info.num_objs; ++i) 	      |		for (i = 0; i < qtm_info.num_objs; ++i) {
+	{						      <
+		struct qtm_object *obj;						struct qtm_object *obj;
+		struct qtm_obj_entry entry;		      <
+
+							      >			pr_info("%s: Reading addr: %i\n", __func__,  
+		err = qtouch_read_addr(ts, addr, &entry, size			err = qtouch_read_addr(ts, addr, &entry, size
+		if (err != 0) 				      |			if (err != 0) {
+		{					      |				pr_err("%s: Can't read object (%d) en
+			QTOUCH_ERR("%s: Can't read object (%d |				       __func__, i);
+			err = -EIO;							err = -EIO;
+			goto err_read_entry;						goto err_read_entry;
+		}								}
+		our_csum = calc_csum(our_csum, &entry, sizeof |
+							      >			memcpy(info_blk_buf, (void *)&entry, sizeof(e
+							      >			info_blk_buf += sizeof(entry);
+		addr += sizeof(entry);						addr += sizeof(entry);
+
+		entry.size++;							entry.size++;
+		entry.num_inst++;						entry.num_inst++;
+
+		qtouch_dump_block(__func__, (char *) (&entry) |			pr_info("%s: Object %d @ 0x%04x (%d) insts %d
+		QTOUCH_INFO("%s: Object %d @ 0x%04x (%d) inst <
+			__func__, entry.type, entry.addr, ent				__func__, entry.type, entry.addr, ent
+			entry.num_inst, entry.num_rids);				entry.num_inst, entry.num_rids);
+
+		if (entry.type >= QTM_OBP_MAX_OBJECT_NUM)     |			if (entry.type >= QTM_OBP_MAX_OBJECT_NUM) {
+		{					      |				pr_warning("%s: Unknown object type (
+			QTOUCH_INFO("%s: Unknown object type  |					   __func__, entry.type);
+			/* Not fatal */							/* Not fatal */
+			continue;							continue;
+		}								}
+
+		/* save the message_procesor msg_size for eas			/* save the message_procesor msg_size for eas
+		if (entry.type == QTM_OBJ_GEN_MSG_PROC)	      |			if (entry.type == QTM_OBJ_GEN_MSG_PROC) {
+			ts->msg_size = entry.size;	      |				if (ts->pdata->flags & QTOUCH_USE_MSG
+							      >					ts->msg_size = entry.size;
+							      >					entry.addr |= QTOUCH_USE_MSG_
+							      >				} else {
+							      >					ts->msg_size = entry.size - 1
+							      >				}
+							      >			}
+
+		obj = create_obj(ts, &entry);					obj = create_obj(ts, &entry);
+		/* set the report_id range that the object is			/* set the report_id range that the object is
+		if ((obj->entry.num_rids * obj->entry.num_ins |			if ((obj->entry.num_rids * obj->entry.num_ins
+		{					      <
+			obj->report_id_min = report_id;					obj->report_id_min = report_id;
+			report_id += obj->entry.num_rids * ob				report_id += obj->entry.num_rids * ob
+			obj->report_id_max = report_id - 1;				obj->report_id_max = report_id - 1;
+		}								}
+	}								}
+
+	if (!ts->msg_size) 				      |		if (!ts->msg_size) {
+	{						      |			pr_err("%s: Message processing object not fou
+		QTOUCH_ERR("%s: Message processing object not <
+		       __func__);						       __func__);
+		err = -ENODEV;							err = -ENODEV;
+		goto err_no_msg_proc;						goto err_no_msg_proc;
+	}								}
+
+	/* verify that some basic objects are present. These 		/* verify that some basic objects are present. These 
+	 * assumed to be present by the rest of the driver, s		 * assumed to be present by the rest of the driver, s
+	 * if the firmware is busted. */				 * if the firmware is busted. */
+	if (!find_obj(ts, QTM_OBJ_GEN_PWR_CONF) ||			if (!find_obj(ts, QTM_OBJ_GEN_PWR_CONF) ||
+	    !find_obj(ts, QTM_OBJ_GEN_ACQUIRE_CONF) ||			    !find_obj(ts, QTM_OBJ_GEN_ACQUIRE_CONF) ||
+	    !find_obj(ts, QTM_OBJ_GEN_MSG_PROC) ||			    !find_obj(ts, QTM_OBJ_GEN_MSG_PROC) ||
+	    !find_obj(ts, QTM_OBJ_GEN_CMD_PROC)) 	      |		    !find_obj(ts, QTM_OBJ_GEN_CMD_PROC)) {
+	{						      |			pr_err("%s: Required objects are missing\n", 
+		QTOUCH_ERR("%s: Required objects are missing\ <
+		err = -ENOENT;							err = -ENOENT;
+		goto err_missing_objs;						goto err_missing_objs;
+	}								}
+
+	err = qtouch_read_addr(ts, addr, &checksum, sizeof(ch |		err = qtouch_read_addr(ts, addr, &their_csum, sizeof(
+	if (err != 0) 					      |		if (err != 0) {
+	{						      |			pr_err("%s: Unable to read remote checksum\n"
+		QTOUCH_ERR("%s: Unable to read remote checksu <
+		err = -ENODEV;							err = -ENODEV;
+		goto err_no_checksum;						goto err_no_checksum;
+	}								}
+
+	/* FIXME: The algorithm described in the datasheet do |		our_csum = calc_csum(our_csum, info_blk_start, info_b
+	 * match what the touch firmware is doing on the othe |
+	 * always get mismatches! */			      |		if (our_csum != their_csum) {
+	their_csum = (checksum[0] |			      |			pr_warning("%s: Checksum mismatch (0x%08x != 
+		(checksum[1] << BITS_PER_BYTE) |	      |				   __func__, our_csum, their_csum);
+		(checksum[2] << (BITS_PER_BYTE << 1)));	      <
+							      <
+	their_csum = __le32_to_cpu(their_csum);		      <
+							      <
+	if (our_csum != their_csum) 			      <
+	{						      <
+		QTOUCH_ERR("%s: Checksum mismatch (0x%04x !=  <
+#ifndef IGNORE_CHECKSUM_MISMATCH				#ifndef IGNORE_CHECKSUM_MISMATCH
+		err = -ENODEV;							err = -ENODEV;
+		goto err_bad_checksum;						goto err_bad_checksum;
+#endif								#endif
+	}								}
+
+	QTOUCH_INFO("%s: %s found. family 0x%x, variant 0x%x, |		pr_info("%s: %s found.\n"
+		"build 0x%x, matrix %dx%d, %d objects.\n", __ |			"  family 0x%x, variant 0x%x, ver 0x%x, build
+							      >			"  matrix %dx%d, %d objects, info blk chksum 
+		QTOUCH_TS_NAME, qtm_info.family_id, qtm_info.			QTOUCH_TS_NAME, qtm_info.family_id, qtm_info.
+		qtm_info.version, qtm_info.build, qtm_info.ma			qtm_info.version, qtm_info.build, qtm_info.ma
+		qtm_info.matrix_y_size, qtm_info.num_objs);   |			qtm_info.matrix_y_size, qtm_info.num_objs, ou
+
+	ts->eeprom_checksum = ts->pdata->nv_checksum;			ts->eeprom_checksum = ts->pdata->nv_checksum;
+							      >		ts->family_id = qtm_info.family_id;
+							      >		ts->variant_id = qtm_info.variant_id;
+							      >		ts->fw_version = qtm_info.version;
+							      >		ts->build_version = qtm_info.build;
+							      >		kfree(info_blk_start);
+
+	return 0;							return 0;
+
+							      >	#ifndef IGNORE_CHECKSUM_MISMATCH
+							      >	err_bad_checksum:
+							      >	#endif
+err_no_checksum:						err_no_checksum:
+err_missing_objs:						err_missing_objs:
+err_no_msg_proc:						err_no_msg_proc:
+err_read_entry:							err_read_entry:
+							      >		kfree(info_blk_start);
+err_no_objects:							err_no_objects:
+err_read_info_block:						err_read_info_block:
+	return err;							return err;
+}								}
+
+							      >	static int qtouch_ts_unregister_input(struct qtouch_ts_data *
+							      >	{
+							      >		input_unregister_device(ts->input_dev);
+							      >		ts->input_dev = NULL;
+							      >		return 0;
+							      >	}
+							      >
+							      >	static void qtouch_ts_boot_work_func(struct work_struct *work
+							      >	{
+							      >		int err = 0;
+							      >		struct qtouch_ts_data *ts = container_of(work,
+							      >							 struct qtouc
+							      >							 boot_work);
+							      >		unsigned char boot_msg[3];
+							      >
+							      >		if (ts->status == 0xff) {
+							      >			pr_err("%s: Entered in Wrong Mode\n", __func_
+							      >			goto touch_to_normal_mode;
+							      >		}
+							      >
+							      >		err = qtouch_read(ts, &boot_msg, sizeof(boot_msg));
+							      >		if (err) {
+							      >			pr_err("%s: Cannot read message\n", __func__)
+							      >			goto done;
+							      >		}
+							      >		if (qtouch_tsdebug & 8)
+							      >			pr_err("%s: Message is 0x%X err is %i\n",
+							      >			       __func__, boot_msg[0], err);
+							      >
+							      >		if (boot_msg[0] == QTM_OBP_BOOT_CRC_CHECK) {
+							      >			if (qtouch_tsdebug & 8)
+							      >			    pr_err("%s: CRC Check\n", __func__);
+							      >			goto done;
+							      >		} else if (boot_msg[0] == QTM_OBP_BOOT_CRC_FAIL) {
+							      >			if (qtouch_tsdebug & 8)
+							      >				pr_err("%s: Boot size %i current pkt 
+							      >				__func__, ts->boot_pkt_size, ts->curr
+							      >
+							      >			if (ts->fw_error_count > 3) {
+							      >				pr_err("%s: Resetting the IC fw upgra
+							      >					__func__);
+							      >				goto reset_touch_ic;
+							      >			} else {
+							      >				/* If this is a failure on the first 
+							      >				reset the boot packet size to 0 */
+							      >				if (!ts->fw_error_count) {
+							      >					if (ts->current_pkt_sz == 0) 
+							      >						ts->current_pkt_sz = 
+							      >						ts->boot_pkt_size -= 
+							      >					}
+							      >				}
+							      >				ts->fw_error_count++;
+							      >				pr_err("%s: Frame CRC check failed %i
+							      >					__func__, ts->fw_error_count)
+							      >			}
+							      >			goto done;
+							      >		} else if (boot_msg[0] == QTM_OBP_BOOT_CRC_PASSED) {
+							      >			if (qtouch_tsdebug & 8)
+							      >			    pr_err("%s: Frame CRC check passed\n", __
+							      >
+							      >			ts->status =
+							      >			    (ts->boot_pkt_size * 100) / ts->touch_fw_
+							      >
+							      >			ts->boot_pkt_size += ts->current_pkt_sz;
+							      >			ts->fw_error_count = 0;
+							      >
+							      >			/* Check to see if the update is done if it i
+							      >			   then register the touch with the system */
+							      >			if (ts->boot_pkt_size == ts->touch_fw_size) {
+							      >				pr_info("%s: Touch FW update done\n",
+							      >				ts->status = 100;
+							      >				goto touch_to_normal_mode;
+							      >			}
+							      >			goto done;
+							      >		} else if (boot_msg[0] & QTM_OBP_BOOT_WAIT_FOR_DATA) 
+							      >			if (qtouch_tsdebug & 8)
+							      >				pr_err("%s: Data sent so far %i\n",
+							      >					__func__, ts->boot_pkt_size);
+							      >
+							      >			/* Don't change the packet size if there was 
+							      >			if (!ts->fw_error_count) {
+							      >				ts->current_pkt_sz =
+							      >				    ((ts->touch_fw[ts->boot_pkt_size]
+							      >					ts->touch_fw[ts->boot_pkt_siz
+							      >			}
+							      >			if (qtouch_tsdebug & 8)
+							      >				pr_err("%s: Size of the next packet i
+							      >					__func__, ts->current_pkt_sz)
+							      >
+							      >			err = qtouch_write(ts, &ts->touch_fw[ts->boot
+							      >				ts->current_pkt_sz);
+							      >			if (err != ts->current_pkt_sz) {
+							      >				pr_err("%s: Could not write the packe
+							      >					__func__, err);
+							      >				ts->status = 0xff;
+							      >				goto reset_touch_ic;
+							      >			}
+							      >		} else {
+							      >			pr_err("%s: Message is 0x%X is not handled\n"
+							      >				__func__, boot_msg[0]);
+							      >		}
+							      >
+							      >	done:
+							      >		enable_irq(ts->client->irq);
+							      >		return;
+							      >
+							      >	reset_touch_ic:
+							      >		qtouch_force_reset(ts, 0);
+							      >	touch_to_normal_mode:
+							      >		if (ts->touch_fw)
+							      >			release_firmware(fw_entry);
+							      >		ts->client->addr = ts->org_i2c_addr;
+							      >		ts->mode = 0;
+							      >		/* Wait for the IC to recover */
+							      >		msleep(QTM_OBP_SLEEP_WAIT_FOR_RESET);
+							      >		err = qtouch_process_info_block(ts);
+							      >		if (err != 0) {
+							      >			pr_err("%s:Cannot read info block %i\n", __fu
+							      >			goto err_return;
+							      >		}
+							      >		err = qtouch_ts_prep_msg_proc(ts);
+							      >		if (err != 0) {
+							      >			pr_err("%s: setting message proc failed %i\n"
+							      >			goto err_return;
+							      >		}
+							      >
+							      >		enable_irq(ts->client->irq);
+							      >	err_return:
+							      >		return;
+							      >	}
+							      >
+static void qtouch_ts_work_func(struct work_struct *work)	static void qtouch_ts_work_func(struct work_struct *work)
+{								{
+	struct qtouch_ts_data *ts = container_of(work, struct |		struct qtouch_ts_data *ts =
+							      >			container_of(work, struct qtouch_ts_data, wor
+	struct qtm_obj_message *msg;					struct qtm_obj_message *msg;
+	struct qtm_object *obj;						struct qtm_object *obj;
+	int ret;							int ret;
+	bool	keepGoing = TRUE;			      <
+#ifdef USE_NVODM_STUFF					      <
+    NvU32 pinValue = 0;					      <
+#else							      <
+	unsigned char pinValue = 0;			      <
+#endif							      <
+
+	QTOUCH_INFO("%s: Enter....\n", __func__);	      |		msg = qtouch_read_msg(ts);
+	/* We need to read all the messages from i2c as long  |		if (msg == NULL) {
+	if ( ts->hw_init == TRUE )			      |			pr_err("%s: Cannot read message\n", __func__)
+	{						      |			goto done;
+		/* Hardware is being initialized. Just return |		}
+		QTOUCH_INFO("%s: Hardware is being initalized |
+		return;					      |		obj = find_object_rid(ts, msg->report_id);
+	}						      |		if (!obj) {
+	if ( ts->modeOfOperation == QTOUCH_MODE_BOOTLOADER )  |			pr_err("%s: Unknown object for report_id %d\n
+	{						      |			       msg->report_id);
+		char	buf[5];				      |			goto done;
+		ret = qtouch_read(ts, buf, 1);		      |		}
+		msleep(30);				      |
+		if (ret < 0)				      |		ret = qtouch_handle_msg(ts, obj, msg);
+		{					      |		if (ret != 0) {
+			/* Receive failed. Reset status  */   |			pr_err("%s: Unable to process message for obj
+/* 							      |			       "report_id %d\n", __func__, obj->entry
+ * ASSUMPTION: we fail to read because there is no client on  |			       msg->report_id);
+ * address because IC has finished reset after the firmware.  |			goto done;
+ * So, we can switch the address to 0x11 and to NORMAL mode   <
+ * */							      <
+			QTOUCH_ERR("%s: qtouch_reqd failed(BO <
+					__func__);	      <
+			ts->dlStatus = QTOUCH_BL_WAITING_FOR_ <
+			ts->modeOfOperation = QTOUCH_MODE_NOR <
+			ts->client->addr = ts->i2cNormAddr;   <
+		}					      <
+		else					      <
+		{					      <
+			QTOUCH_INFO("%s: buf[0] = 0x%x\n", __ <
+			/* Determine which code we got and se <
+			if ( (buf[0] & 0xF0) == 0xC0 )	      <
+			{				      <
+				ts->dlStatus = QTOUCH_BL_WAIT <
+			}				      <
+			else if ( (buf[0] & 0xF0) == 0x80 )   <
+			{				      <
+				if ( ts->dlStatus == QTOUCH_B <
+					ts->dlStatus = QTOUCH <
+				else			      <
+					ts->dlStatus = QTOUCH <
+			}				      <
+			else if ( buf[0] == 0x02 )	      <
+			{				      <
+				ts->dlStatus = QTOUCH_BL_WAIT <
+			}				      <
+			else if ( buf[0] == 0x04 )	      <
+			{				      <
+				ts->dlStatus = QTOUCH_BL_WAIT <
+			}				      <
+			else if ( buf[0] == 0x03 )	      <
+			{				      <
+				/* We got bad CRC on the reco <
+				ts->dlStatus = QTOUCH_BL_GOT_ <
+			}				      <
+		}					      <
+	}								}
+							      >
+							      >	done:
+							      >		if (qtouch_disable_touch)
+							      >			pr_err("%s: Not enabling touch\n", __func__);
+	else								else
+	{						      |			enable_irq(ts->client->irq);
+		while (keepGoing)			      |	}
+		{					      <
+			QTOUCH_INFO("%s: interrupt pin is %s\ <
+			QTOUCH_INFO("%s: current i2c address: <
+			msg = qtouch_read_msg(ts);	      <
+			if (msg == NULL) 		      <
+			{				      <
+				QTOUCH_ERR("%s: Cannot read m <
+				keepGoing = FALSE;	      <
+			}				      <
+			else				      <
+			{				      <
+				if ( msg->report_id == 0xff ) <
+				{			      <
+					keepGoing = FALSE;    <
+					clean_i2c(ts);	      <
+				}			      <
+				else			      <
+				{			      <
+					if (ts->cal_check_fla <
+						check_chip_ca <
+							      <
+					obj = find_object_rid <
+					if (!obj) 	      <
+					{		      <
+						QTOUCH_ERR("% <
+							   ms <
+						keepGoing = F <
+						clean_i2c(ts) <
+					}		      <
+					else		      <
+					{		      <
+						ret = qtouch_ <
+						if (ret != 0) <
+						{	      <
+							QTOUC <
+							      <
+							      <
+							keepG <
+						}	      <
+					}		      <
+				}			      <
+			}				      <
+			if ( keepGoing == TRUE )	      <
+			{				      <
+/*							      <
+				NvOdmGpioGetState(ts->NvOdmHa <
+				pinValue = gpio_get_value(ts- <
+*/							      <
+#ifdef USE_NVODM_STUFF					      <
+				NvRmGpioReadPins(s_hGpioGloba <
+							      <
+							      <
+							      <
+#else							      <
+				pinValue = gpio_get_value(tsG <
+#endif							      <
+
+				QTOUCH_INFO("%s:  GPIO is %s" |	static int qtouch_set_boot_mode(struct qtouch_ts_data *ts)
+						(pinValue ==  |	{
+				if ( pinValue )		      |		unsigned char FWupdateInfo[3];
+					keepGoing = FALSE;    |		int err;
+							      >		int try_again = 0;
+							      >
+							      >		err = qtouch_read(ts, FWupdateInfo, 3);
+							      >		if (err)
+							      >			pr_err("%s: Could not read back data\n", __fu
+							      >
+							      >		while ((FWupdateInfo[0] & QTM_OBP_BOOT_CMD_MASK) != Q
+							      >			err = qtouch_read(ts, FWupdateInfo, 3);
+							      >			if (err)
+							      >				pr_err("%s: Could not read back data\
+							      >
+							      >			if ((FWupdateInfo[0] & QTM_OBP_BOOT_CMD_MASK)
+							      >				FWupdateInfo[0] = 0xDC;
+							      >				FWupdateInfo[1] = 0xAA;
+							      >				err = qtouch_write(ts, FWupdateInfo, 
+							      >				if (err != 2) {
+							      >					pr_err("%s: Could not write t
+							      >					       __func__, err);
+							      >					return -EIO;
+			}								}
+							      >			} else if (try_again > 10) {
+							      >					pr_err("%s: Cannot get into b
+							      >						__func__);
+							      >				return -ENODEV;
+							      >			} else {
+							      >				try_again++;
+							      >				msleep(QTM_OBP_SLEEP_WAIT_FOR_BOOT);
+		}								}
+	}								}
+	QTOUCH_INFO("%s: Exit....\n", __func__);	      <
+}							      <
+							      <
+
+							      >		return err;
+							      >	}
+
+static ssize_t qtouch_irq_status(struct device *dev,		static ssize_t qtouch_irq_status(struct device *dev,
+                                 struct device_attribute *att |					 struct device_attribute *att
+{								{
+	struct i2c_client *client = container_of(dev,			struct i2c_client *client = container_of(dev,
+	                                         struct i2c_c		                                         struct i2c_c
+	struct qtouch_ts_data *ts = i2c_get_clientdata(client		struct qtouch_ts_data *ts = i2c_get_clientdata(client
+	return sprintf(buf, "%u\n", ts->irqStatus);	      |		return sprintf(buf, "%u\n", atomic_read(&ts->irq_enab
+}								}
+
+static ssize_t qtouch_irq_enable(struct device *dev,		static ssize_t qtouch_irq_enable(struct device *dev,
+                                 struct device_attribute *att	                                 struct device_attribute *att
+                                 const char *buf, size_t size	                                 const char *buf, size_t size
+{								{
+	struct i2c_client *client = container_of(dev,			struct i2c_client *client = container_of(dev,
+	                                         struct i2c_c		                                         struct i2c_c
+	struct qtouch_ts_data *ts = i2c_get_clientdata(client		struct qtouch_ts_data *ts = i2c_get_clientdata(client
+	int err = 0;							int err = 0;
+	unsigned long value;						unsigned long value;
+							      >		struct qtm_obj_message *msg;
+
+	if (size > 2)							if (size > 2)
+		return -EINVAL;							return -EINVAL;
+
+	err = strict_strtoul(buf, 10, &value);				err = strict_strtoul(buf, 10, &value);
+	if (err != 0)							if (err != 0)
+		return err;							return err;
+
+	switch (value) {						switch (value) {
+	case 0:								case 0:
+		qtouch_disable_irq(ts->irqInt);		      |			if (atomic_cmpxchg(&ts->irq_enabled, 1, 0)) {
+							      >				pr_info("touch irq disabled!\n");
+							      >				disable_irq_nosync(ts->client->irq);
+							      >			}
+		err = size;							err = size;
+		break;								break;
+	case 1:								case 1:
+		qtouch_enable_irq(ts->irqInt);		      |			if (!atomic_cmpxchg(&ts->irq_enabled, 0, 1)) 
+		qtouch_force_reset(ts, FALSE);		      |				pr_info("touch irq enabled!\n");
+		qtouch_force_calibration(ts);		      |				msg = qtouch_read_msg(ts);
+							      >				if (msg == NULL)
+							      >					pr_err("%s: Cannot read messa
+							      >				enable_irq(ts->client->irq);
+							      >			}
+		err = size;							err = size;
+		break;								break;
+	default:							default:
+		pr_info("qtouch_irq_enable failed -> irqStatu |			pr_info("qtouch_irq_enable failed -> irq_enab
+					ts->irqStatus);	      |			atomic_read(&ts->irq_enabled));
+		err = -EINVAL;							err = -EINVAL;
+		break;								break;
+	}								}
+
+	return err;							return err;
+}								}
+
+static DEVICE_ATTR(irqStatus, 0664, qtouch_irq_status, qtouch |	static DEVICE_ATTR(irq_enable, 0644, qtouch_irq_status, qtouc
+
+static ssize_t qtouch_update_i2c_addr(struct device *dev,     |	static ssize_t qtouch_update_status(struct device *dev,
+				    struct device_attribute *					    struct device_attribute *
+{								{
+	struct i2c_client *client = container_of(dev,			struct i2c_client *client = container_of(dev,
+							      |							 struct i2c_c
+	struct qtouch_ts_data *ts = i2c_get_clientdata(client		struct qtouch_ts_data *ts = i2c_get_clientdata(client
+
+	return sprintf(buf, "%02X\n", ts->client->addr);      |		return sprintf(buf, "%u\n", ts->status);
+							      <
+}							      <
+							      <
+static DEVICE_ATTR(i2cAddr, 0444, qtouch_update_i2c_addr, NUL <
+							      <
+static ssize_t qtouch_update_status(struct device *dev,	      <
+				    struct device_attribute * <
+{							      <
+							      <
+	/* means no need for upgrade */			      <
+	return sprintf(buf, "%u\n", 254);		      <
+}								}
+
+static DEVICE_ATTR(update_status, 0444, qtouch_update_status, |	static DEVICE_ATTR(update_status, 0644, qtouch_update_status,
+
+static ssize_t qtouch_fw_version(struct device *dev,		static ssize_t qtouch_fw_version(struct device *dev,
+				 struct device_attribute *att					 struct device_attribute *att
+{								{
+	struct i2c_client *client = container_of(dev,			struct i2c_client *client = container_of(dev,
+						 struct i2c_c							 struct i2c_c
+	struct qtouch_ts_data *ts = i2c_get_clientdata(client		struct qtouch_ts_data *ts = i2c_get_clientdata(client
+	/* Make sure that IC can accept the config informatio |
+	if ( ts->modeOfOperation == QTOUCH_MODE_NORMAL )      |		return sprintf(buf, "0x%X%X\n", ts->fw_version, ts->b
+	{						      <
+		qtouch_process_info_block(ts);		      <
+	}						      <
+	return sprintf(buf, "0x%X%X\n", qtm_info.version, qtm <
+}								}
+
+static DEVICE_ATTR(fw_version, 0444, qtouch_fw_version, NULL) |	static DEVICE_ATTR(fw_version, 0644, qtouch_fw_version, NULL)
+
+static int qtouch_ts_probe(struct i2c_client *client,		static int qtouch_ts_probe(struct i2c_client *client,
+			   const struct i2c_device_id *id)				   const struct i2c_device_id *id)
+{								{
+	struct qtouch_ts_platform_data *pdata = client->dev.p		struct qtouch_ts_platform_data *pdata = client->dev.p
+	struct qtouch_ts_data *ts;					struct qtouch_ts_data *ts;
+	struct qtm_object *obj;				      <
+	int err;							int err;
+	int i;						      |		unsigned char boot_info;
+	int	tmpDbg;					      |		int loop_count;
+
+	tmpDbg = qtouch_tsdebug;			      |		if (pdata == NULL) {
+	qtouch_tsdebug = 0xFF;				      |			pr_err("%s: platform data required\n", __func
+	QTOUCH_INFO("%s: Enter...\n", __func__);	      <
+							      <
+#ifdef CONFIG_XMEGAT_USE_RESET_TO_RESUME		      <
+	QTOUCH_INFO("%s: Using reset on resume\n", __func__); <
+#ifdef CONFIG_XMEGAT_DO_HARD_RESET			      <
+	QTOUCH_INFO("%s: Using HARD reset on resume\n", __fun <
+#endif							      <
+#endif							      <
+/* do hard reset before soft reset */			      <
+/* #define CONFIG_XMEGAT_DO_HARD_RESET */		      <
+							      <
+	need2check4IC_problem = FALSE;			      <
+	if (pdata == NULL) 				      <
+	{						      <
+		QTOUCH_ERR("%s: platform data required\n", __ <
+		qtouch_tsdebug = tmpDbg;		      <
+		return -ENODEV;							return -ENODEV;
+	} 						      |		} else if (!client->irq) {
+	else if (!client->irq) 				      |			pr_err("%s: polling mode currently not suppor
+	{						      <
+		QTOUCH_ERR("%s: polling mode currently not su <
+		qtouch_tsdebug = tmpDbg;		      <
+		return -ENODEV;							return -ENODEV;
+	} 						      |		} else if (!pdata->hw_reset) {
+	else if (!pdata->hw_reset) 			      |			pr_err("%s: Must supply a hw reset function\n
+	{						      <
+		QTOUCH_ERR("%s: Must supply a hw reset functi <
+		qtouch_tsdebug = tmpDbg;		      <
+		return -ENODEV;							return -ENODEV;
+	}								}
+
+	/* Get buttons information from the pdata */	      |		if (!i2c_check_functionality(client->adapter, I2C_FUN
+	QTOUCH_ERR("%s: Initializing %d buttons\n", __func__, |			pr_err("%s: need I2C_FUNC_I2C\n", __func__);
+	for ( i = 0; i < pdata->buttons_count; i++ )	      <
+	{						      <
+		buttons[i] = &(pdata->buttons[i]);	      <
+		QTOUCH_ERR("%s: Button %d: minX: %d, maxX: %d <
+			i, buttons[i]->minX, buttons[i]->maxX <
+	}						      <
+							      <
+	err = misc_register(&qtouch_pf_driver);		      <
+	QTOUCH_ERR("%s: misc_register(pf) returns %d\n", __fu <
+							      <
+	if (!i2c_check_functionality(client->adapter, I2C_FUN <
+	{						      <
+		QTOUCH_ERR("%s: need I2C_FUNC_I2C\n", __func_ <
+		qtouch_tsdebug = tmpDbg;		      <
+		return -ENODEV;							return -ENODEV;
+	}								}
+
+	ts = kzalloc(sizeof(struct qtouch_ts_data), GFP_KERNE		ts = kzalloc(sizeof(struct qtouch_ts_data), GFP_KERNE
+	if (ts == NULL) 				      |		if (ts == NULL) {
+	{						      <
+		err = -ENOMEM;							err = -ENOMEM;
+		goto err_alloc_data_failed;					goto err_alloc_data_failed;
+	}								}
+							      <
+	/* Should only be used by IOCTL functions */	      <
+	tsGl = ts;					      <
+							      <
+	mutex_init(&ts->i2c_lock);			      <
+	qtouch_ts_wq = create_singlethread_workqueue("qtouch_ <
+	if (qtouch_ts_wq == NULL) 			      <
+	{						      <
+		QTOUCH_ERR("%s: No memory for qtouch_ts_wq\n" <
+		return -ENOMEM;				      <
+	}						      <
+							      <
+	INIT_WORK(&ts->work, qtouch_ts_work_func);	      <
+							      <
+	ts->hw_init = FALSE;				      <
+	ts->modeOfOperation = QTOUCH_MODE_NORMAL;	      <
+	ts->dlStatus = OBP_DL_WAITING_FOR_NOTHING;	      <
+	ts->multiMode = TRUE;				      <
+	ts->pdata = pdata;						ts->pdata = pdata;
+	ts->client = client;						ts->client = client;
+	ts->suspendMode = false;			      <
+	ts->XferStatus = QTOUCH_FM_DOWNLOAD_NOT_STARTED | QTO <
+	ts->selfStatus = QTOUCH_CNTRL_UNKNOWN;		      <
+	wake_lock_init(&(ts->wLock), WAKE_LOCK_SUSPEND, QTOUC <
+							      <
+	i2c_set_clientdata(client, ts);					i2c_set_clientdata(client, ts);
+	ts->checksum_cnt = 0;						ts->checksum_cnt = 0;
+							      >		ts->fw_version = 0;
+							      >		ts->build_version = 0;
+							      >		ts->fw_error_count = 0;
+							      >		ts->current_pkt_sz = 0;
+	ts->x_delta = ts->pdata->x_delta;				ts->x_delta = ts->pdata->x_delta;
+	ts->y_delta = ts->pdata->y_delta;				ts->y_delta = ts->pdata->y_delta;
+							      >		atomic_set(&ts->irq_enabled, 1);
+							      >		atomic_set(&ts->process_open, 1);
+							      >		ts->enable_irq_flag = 1;
+							      >		ts->status = 0xfe;
+							      >		ts->touch_fw_size = 0;
+							      >		ts->touch_fw_image = NULL;
+							      >		ts->touch_fw = NULL;
+							      >		ts->base_fw_version = 0;
+							      >
+							      >		ts->xpos_rshift_lsb = 6;
+							      >		ts->xpos_lshift_msb = 2;
+							      >		ts->ypos_rshift_lsb = 2;
+							      >		ts->ypos_lshift_msb = 2;
+							      >
+							      >		if (ts->pdata->multi_touch_cfg.x_res > 1023) {
+							      >			ts->xpos_rshift_lsb = 4;
+							      >			ts->xpos_lshift_msb = 4;
+							      >		}
+							      >		if (ts->pdata->multi_touch_cfg.y_res > 1023) {
+							      >			ts->ypos_rshift_lsb = 0;
+							      >			ts->ypos_lshift_msb = 4;
+							      >		}
+							      >
+							      >		pr_info("%s: xpos_msb %d xpos_lsb %d ypos_msb %d ypos
+							      >				ts->xpos_lshift_msb, ts->xpos_rshift_
+							      >				ts->ypos_lshift_msb, ts->ypos_rshift_
+
+	ts->input_dev = input_allocate_device();	      |		qtouch_force_reset(ts, 0);
+	if (ts->input_dev == NULL) 			      |		msleep(QTM_OBP_SLEEP_WAIT_FOR_HW_RESET);
+	{						      <
+		QTOUCH_ERR("%s: failed to alloc input device\ <
+		err = -ENOMEM;				      <
+		goto err_alloc_input_dev;		      <
+	}						      <
+	ts->input_dev->name = QTOUCH_TS_NAME;		      <
+	input_set_drvdata(ts->input_dev, ts);		      <
+/*							      <
+	ts->msg_buf = kmalloc(ts->msg_size, GFP_KERNEL);      <
+	if (ts->msg_buf == NULL) 			      <
+	{						      <
+		QTOUCH_ERR("%s: Cannot allocate msg_buf\n", _ <
+		err = -ENOMEM;				      <
+		goto err_alloc_msg_buf;			      <
+	}						      <
+	else						      <
+		QTOUCH_ERR("%s: allocated msg_buf @ 0x%X\n",  <
+*/							      <
+							      <
+	ts->client->addr = XMEGAT_I2C_ADDR;		      <
+	ts->i2cNormAddr = XMEGAT_I2C_ADDR;		      <
+							      <
+	qtouch_force_reset(ts, FALSE);			      <
+							      <
+	err = qtouch_process_info_block(ts);				err = qtouch_process_info_block(ts);
+	if (err != 0)					      <
+	{						      <
+/*							      <
+ * Try alternative i2c address				      <
+ * 							      <
+*/							      <
+		ts->client->addr = XMEGAT_I2C_ADDR_ALT;	      <
+		ts->i2cNormAddr = XMEGAT_I2C_ADDR_ALT;	      <
+		err = qtouch_process_info_block(ts);	      <
+		if (err != 0)				      <
+		{					      <
+/* 							      <
+ * Failed reading information block from the IC. See if we ar <
+ * BOOTLOADER mode					      <
+ */							      <
+			if ( qtouch_set_bootloader_mode(ts) ! <
+				goto err_process_info_block;  <
+		}					      <
+	}						      <
+
+	if ( ts->modeOfOperation == QTOUCH_MODE_NORMAL )      |		if (err == 0) {
+	{						      |			pr_info("%s: FW version is 0x%X Build 0x%X\n"
+		/* Point the address pointer to the message p |				   ts->fw_version, ts->build_version)
+		 * Must do this before enabling interrupts */ |
+		QTOUCH_ERR("%s: setting QTM_OBJ_GEN_MSG_PROC\ |			if ((ts->family_id == ts->pdata->touch_fw_cfg
+		err = qtouch_reset_read_ptr(ts);	      |			    && (ts->variant_id == ts->pdata->touch_fw
+		if (err != 0) 				      |				pr_info("%s: Chip type matched\n", __
+		{					      |
+			QTOUCH_ERR("%s: Can't to set addr to  |				if ((ts->fw_version != ts->pdata->tou
+			goto err_rst_addr_msg_proc;	      |				    || (ts->build_version != ts->pdat
+							      >					pr_info("%s: Reflash needed\n
+							      >					ts->touch_fw_image = ts->pdat
+							      >					ts->base_fw_version = ts->pda
+							      >				} else {
+							      >					pr_info("%s: Reflash not need
+							      >				}
+		}								}
+		/* Before enabling interrupt, clean up i2c, j <
+		clean_i2c(ts);				      <
+	}						      <
+	else						      <
+		QTOUCH_ERR("%s: switched into BOOTLOADER mode <
+
+	/* register the harwdare assisted virtual keys, if an |			if (ts->touch_fw_image != NULL) {
+	obj = find_obj(ts, QTM_OBJ_TOUCH_KEYARRAY);	      |				/* Reset the chip into bootloader mod
+	if (obj && (obj->entry.num_inst > 0) &&		      |				if (ts->fw_version >= ts->base_fw_ver
+	    (pdata->flags & QTOUCH_USE_KEYARRAY)) 	      |					qtouch_force_reset(ts, 2);
+	{						      |					msleep(QTM_OBP_SLEEP_WAIT_FOR
+		for (i = 0; i < pdata->key_array.num_keys; ++ <
+			input_set_capability(ts->input_dev, E <
+					     pdata->key_array <
+	}						      <
+
+	set_bit(EV_SYN, ts->input_dev->evbit);		      |					ts->org_i2c_addr = ts->client
+	/* register the software virtual keys, if any are pro |					ts->client->addr = ts->pdata-
+	for (i = 0; i < pdata->vkeys.count; ++i)	      |				} else {
+		input_set_capability(ts->input_dev, EV_KEY,   |					pr_err("%s:FW 0x%X does not s
+		     pdata->vkeys.keys[i].code);	      |					       __func__, ts->fw_versi
+							      >					ts->touch_fw_image = NULL;
+							      >				}
+							      >			}
+							      >		} else {
+							      >			pr_info("%s:Cannot read info block %i, checki
+
+	for ( i=0; i < pdata->buttons_count; i++ )	      |			qtouch_force_reset(ts, 0);
+		input_set_capability(ts->input_dev, EV_KEY,   |			msleep(QTM_OBP_SLEEP_WAIT_FOR_HW_RESET);
+				buttons[i]->key);	      <
+
+	obj = find_obj(ts, QTM_OBJ_TOUCH_MULTI);	      |			ts->org_i2c_addr = ts->client->addr;
+	if (obj && obj->entry.num_inst > 0) 		      |			ts->client->addr = ts->pdata->boot_i2c_addr;
+	{						      |
+		if ( ts->multiMode )			      |			err = qtouch_read(ts, &boot_info, 1);
+		{					      |			if (err) {
+			/* multi touch */		      |				pr_err("%s:Read failed %d\n", __func_
+			QTOUCH_ERR("%s: MultiTouch config X:  |			} else {
+					__func__,	      |				pr_info("%s:Data read 0x%x\n", __func
+					pdata->abs_min_x,pdat |				loop_count = 0;
+					pdata->abs_min_y,pdat |				while ((boot_info & QTM_OBP_BOOT_CMD_
+					pdata->abs_min_p, pda |					err = qtouch_read(ts, &boot_i
+					pdata->abs_min_w, pda |					if (err) {
+			input_set_abs_params(ts->input_dev, A |						pr_err("%s:Read faile
+				pdata->abs_min_x, pdata->abs_ |						break;
+				pdata->fuzz_x, 0);	      |					}
+			input_set_abs_params(ts->input_dev, A |					pr_info("%s:Data read 0x%x\n"
+				pdata->abs_min_y, pdata->abs_ |					loop_count++;
+				pdata->fuzz_y, 0);	      |					if (loop_count == 10) {
+			input_set_abs_params(ts->input_dev, A |						err = 1;
+				pdata->abs_min_p, pdata->abs_ |						break;
+				pdata->fuzz_p, 0);	      |					}
+			input_set_abs_params(ts->input_dev, A |				}
+				pdata->abs_min_w, pdata->abs_ <
+				pdata->fuzz_w, 0);	      <
+			set_bit(EV_ABS, ts->input_dev->evbit) <
+			set_bit(EV_KEY, ts->input_dev->keybit <
+			set_bit(EV_SYN, ts->input_dev->keybit <
+			set_bit(BTN_TOUCH, ts->input_dev->key <
+			set_bit(ABS_X, ts->input_dev->keybit) <
+			set_bit(ABS_Y, ts->input_dev->keybit) <
+		}								}
+		else					      |			if (!err) {
+		{					      |				boot_info &= QTM_OBP_BOOT_VERSION_MAS
+			/* Legacy support for testing only */ |				pr_info("%s:Bootloader version %d\n",
+			QTOUCH_ERR("%s: Single touch config:  |
+					__func__,	      |				if (boot_info == ts->pdata->touch_fw_
+					pdata->abs_min_x,pdat |					pr_info("%s: Chip type matche
+					pdata->abs_min_y,pdat |					ts->touch_fw_image = ts->pdat
+					pdata->abs_min_p, pda |					ts->base_fw_version = ts->pda
+					pdata->abs_min_w, pda |				}
+							      <
+			set_bit(EV_SYN, ts->input_dev->evbit) <
+			set_bit(EV_KEY, ts->input_dev->evbit) <
+			set_bit(BTN_TOUCH, ts->input_dev->key <
+			set_bit(KEY_HOME, ts->input_dev->keyb <
+			set_bit(KEY_BACK, ts->input_dev->keyb <
+			set_bit(KEY_MENU, ts->input_dev->keyb <
+			set_bit(BTN_2, ts->input_dev->keybit) <
+			set_bit(EV_ABS, ts->input_dev->evbit) <
+							      <
+			input_set_capability(ts->input_dev, E <
+			input_set_capability(ts->input_dev, E <
+			input_set_abs_params(ts->input_dev, A <
+				pdata->abs_min_x, pdata->abs_ <
+				pdata->fuzz_x, 0);	      <
+			input_set_abs_params(ts->input_dev, A <
+				pdata->abs_min_x, pdata->abs_ <
+				pdata->fuzz_x, 0);	      <
+			input_set_abs_params(ts->input_dev, A <
+				pdata->abs_min_y, pdata->abs_ <
+				pdata->fuzz_y, 0);	      <
+			input_set_abs_params(ts->input_dev, A <
+				pdata->abs_min_x, pdata->abs_ <
+				pdata->fuzz_x, 0);	      <
+			input_set_abs_params(ts->input_dev, A <
+				pdata->abs_min_p, pdata->abs_ <
+				pdata->fuzz_p, 0);	      <
+			input_set_abs_params(ts->input_dev, A <
+				pdata->abs_min_w, pdata->abs_ <
+				pdata->fuzz_w, 0);	      <
+		}								}
+	}								}
+
+	memset(&ts->finger_data[0], 0,			      |		INIT_WORK(&ts->work, qtouch_ts_work_func);
+		(sizeof(struct coordinate_map) * _NUM_FINGERS |		INIT_WORK(&ts->boot_work, qtouch_ts_boot_work_func);
+							      >
+							      >		if (ts->touch_fw_image != NULL) {
+							      >			err = qtouch_set_boot_mode(ts);
+							      >			if (err < 0) {
+							      >				pr_err("%s: Failed setting IC in boot
+							      >				       __func__, err);
+							      >				/* We must have been in boot mode to 
+							      >				or the IC is not present so just exit
+							      >				if (ts->fw_version == 0) {
+							      >					ts->status = 0xfd;
+							      >					return err;
+							      >				}
+							      >
+							      >				ts->client->addr = ts->org_i2c_addr;
+							      >				qtouch_force_reset(ts, 0);
+							      >				msleep(QTM_OBP_SLEEP_WAIT_FOR_HW_RESE
+							      >				pr_err("%s: I2C address is 0x%X\n",
+							      >					__func__, ts->client->addr);
+							      >				err = qtouch_process_info_block(ts);
+							      >				if (err) {
+							      >					pr_err("%s: Failed reading in
+							      >					       __func__, err);
+							      >					goto err_reading_info_block;
+							      >				}
+							      >				goto err_boot_mode_failure;
+							      >			}
+							      >
+							      >			ts->mode = 1;
+							      >			goto finish_touch_setup;
+
+	err = input_register_device(ts->input_dev);	      <
+	if (err != 0) 					      <
+	{						      <
+		QTOUCH_ERR("%s: Cannot register input device  <
+		       ts->input_dev->name);		      <
+		goto err_input_register_dev;		      <
+	}						      <
+/*							      <
+	QTOUCH_INFO("%s: gpio_request(reset)\n", __func__);   <
+	err = gpio_request(pdata->gpio_reset, QTOUCH_RST_NAME <
+	if ( err )	{				      <
+		pr_err("%s: gpio_request(reset) failed\n", __ <
+		goto err_request_irq;			      <
+	}								}
+
+	QTOUCH_INFO("%s: gpio_direction_output(reset)\n", __f |	/* If the update should fail the touch should still work */
+	err = gpio_direction_output(pdata->gpio_reset, 1);    |	err_boot_mode_failure:
+	if ( err )	{				      |		ts->mode = 0;
+		pr_err("%s: gpio_direction_input(reset) faile |		err = qtouch_ts_prep_msg_proc(ts);
+		goto err_request_irq;			      |		if (err != 0) {
+							      >			pr_err("%s: setting message proc failed %i\n"
+							      >			goto err_set_msg_proc;
+	}								}
+
+	QTOUCH_INFO("%s: gpio_request(interrupt)\n", __func__ |	finish_touch_setup:
+	err = gpio_request(pdata->gpio_intr, QTOUCH_INT_NAME) |		err = qtouch_ts_register_input(ts);
+	if ( err )	{				      |		if (err != 0) {
+		pr_err("%s: gpio_request(interrupt) failed\n" |			pr_err("%s: Registering input failed %i\n", _
+		goto err_request_irq;			      |			goto err_input_register_dev;
+	}								}
+
+	QTOUCH_INFO("%s: gpio_direction_input(interrupt)\n",  |		err = request_irq(ts->client->irq, qtouch_ts_irq_hand
+	err = gpio_direction_input(pdata->gpio_intr);	      |				  pdata->irqflags, "qtouch_ts_int", t
+	if ( err )	{				      |		if (err != 0) {
+		pr_err("%s: gpio_direction_input(interrupt) f |			pr_err("%s: request_irq (%d) failed\n", __fun
+		goto err_request_irq;			      |			       ts->client->irq);
+	}*/						      <
+	ts->irqInt = gpio_to_irq(pdata->gpio_intr);	      <
+	pr_info("%s: INTR irq: %d, current value: %d\n",      <
+			__func__, ts->irqInt, gpio_get_value( <
+							      <
+	err = request_irq(ts->irqInt, 			      <
+						qtouch_ts_irq <
+						IRQF_TRIGGER_ <
+						QTOUCH_INT_NA <
+						ts);	      <
+	if (err != 0) 					      <
+	{						      <
+		QTOUCH_ERR("%s: request_irq (%d) failed\n", _ <
+		       ts->irqInt);			      <
+		goto err_request_irq;						goto err_request_irq;
+	}								}
+							      >		pr_info("%s: request_irq [%d] success.\n", __func__,
+							      >			       ts->client->irq);
+
+#ifdef CONFIG_HAS_EARLYSUSPEND				      |		err = device_create_file(&ts->client->dev, &dev_attr_
+	ts->early_suspend.level = EARLY_SUSPEND_LEVEL_DISABLE <
+	ts->early_suspend.suspend = qtouch_ts_early_suspend;  <
+	ts->early_suspend.resume = qtouch_ts_late_resume;     <
+	register_early_suspend(&ts->early_suspend);	      <
+#endif							      <
+							      <
+	ts->irqStatus = TRUE;				      <
+	qtouch_tsdebug = tmpDbg;			      <
+							      <
+	err = device_create_file(&ts->client->dev, &dev_attr_ <
+	if (err != 0) {							if (err != 0) {
+		pr_err("%s:File device creation failed: %d\n"			pr_err("%s:File device creation failed: %d\n"
+		err = -ENODEV;							err = -ENODEV;
+		goto err_create_file_failed;					goto err_create_file_failed;
+	}								}
+
+	err = device_create_file(&ts->client->dev, &dev_attr_		err = device_create_file(&ts->client->dev, &dev_attr_
+	if (err != 0) {							if (err != 0) {
+		pr_err("%s:File device creation failed: %d\n"			pr_err("%s:File device creation failed: %d\n"
+		err = -ENODEV;							err = -ENODEV;
+		goto err_create_update_status_failed;				goto err_create_update_status_failed;
+	}								}
+
+	err = device_create_file(&ts->client->dev, &dev_attr_		err = device_create_file(&ts->client->dev, &dev_attr_
+	if (err != 0) {							if (err != 0) {
+		pr_err("%s:File device creation failed: %d\n"			pr_err("%s:File device creation failed: %d\n"
+		err = -ENODEV;							err = -ENODEV;
+		goto err_create_fw_version_file_failed;				goto err_create_fw_version_file_failed;
+	}								}
+
+	err = device_create_file(&ts->client->dev, &dev_attr_ |		ts->regulator = regulator_get(&ts->client->dev, "vio"
+	if (err != 0) {					      |		if (!IS_ERR_OR_NULL(ts->regulator))
+		pr_err("%s:File device creation failed: %d\n" |			regulator_enable(ts->regulator);
+		err = -ENODEV;				      <
+		goto err_create_i2cAddr_failed;		      <
+	}						      <
+
+	ts->cal_check_flag = 0;				      |	#ifdef CONFIG_HAS_EARLYSUSPEND
+	ts->cal_timer = 0;				      |		ts->early_suspend.level = EARLY_SUSPEND_LEVEL_DISABLE
+							      >		ts->early_suspend.suspend = qtouch_ts_early_suspend;
+							      >		ts->early_suspend.resume = qtouch_ts_late_resume;
+							      >		register_early_suspend(&ts->early_suspend);
+							      >	#endif
+
+	return 0;							return 0;
+
+err_create_i2cAddr_failed:				      <
+	device_remove_file(&ts->client->dev, &dev_attr_fw_ver <
+err_create_fw_version_file_failed:				err_create_fw_version_file_failed:
+	device_remove_file(&ts->client->dev, &dev_attr_update		device_remove_file(&ts->client->dev, &dev_attr_update
+err_create_update_status_failed:				err_create_update_status_failed:
+	device_remove_file(&ts->client->dev, &dev_attr_irqSta |		device_remove_file(&ts->client->dev, &dev_attr_irq_en
+err_create_file_failed:						err_create_file_failed:
+	free_irq(ts->client->irq, ts);					free_irq(ts->client->irq, ts);
+err_request_irq:						err_request_irq:
+	input_unregister_device(ts->input_dev);		      |		qtouch_ts_unregister_input(ts);
+
+							      >	err_set_msg_proc:
+err_input_register_dev:						err_input_register_dev:
+err_rst_addr_msg_proc:					      |	err_reading_info_block:
+err_process_info_block:					      <
+	input_free_device(ts->input_dev);		      <
+							      <
+err_alloc_input_dev:					      <
+	mutex_destroy(&ts->i2c_lock);			      <
+	i2c_set_clientdata(client, NULL);				i2c_set_clientdata(client, NULL);
+	wake_lock_destroy(&(ts->wLock));		      <
+	kfree(ts);							kfree(ts);
+
+err_alloc_data_failed:						err_alloc_data_failed:
+/*							      <
+	ts->modeOfOperation = QTOUCH_MODE_BOOTLOADER;	      <
+	qtouch_tsdebug = tmpDbg;			      <
+*/							      <
+	return err;							return err;
+}								}
+
+static int qtouch_ts_remove(struct i2c_client *client)		static int qtouch_ts_remove(struct i2c_client *client)
+{								{
+	struct qtouch_ts_data *ts = i2c_get_clientdata(client		struct qtouch_ts_data *ts = i2c_get_clientdata(client
+
+							      >		if (!IS_ERR_OR_NULL(ts->regulator))
+							      >			regulator_put(ts->regulator);
+							      >
+							      >		device_remove_file(&ts->client->dev, &dev_attr_irq_en
+							      >		device_remove_file(&ts->client->dev, &dev_attr_update
+							      >		device_remove_file(&ts->client->dev, &dev_attr_fw_ver
+							      >
+	unregister_early_suspend(&ts->early_suspend);			unregister_early_suspend(&ts->early_suspend);
+	free_irq(ts->irqInt, ts);			      |		free_irq(ts->client->irq, ts);
+	input_unregister_device(ts->input_dev);		      |		qtouch_ts_unregister_input(ts);
+	input_free_device(ts->input_dev);		      <
+	i2c_set_clientdata(client, NULL);				i2c_set_clientdata(client, NULL);
+	wake_lock_destroy(&(ts->wLock));		      <
+	kfree(ts);							kfree(ts);
+	return 0;							return 0;
+}								}
+
+static int qtouch_ts_suspend(struct i2c_client *client, pm_me	static int qtouch_ts_suspend(struct i2c_client *client, pm_me
+{								{
+	struct qtouch_ts_data *ts = i2c_get_clientdata(client		struct qtouch_ts_data *ts = i2c_get_clientdata(client
+	int ret;							int ret;
+							      >		if (qtouch_tsdebug & 4)
+							      >			pr_info("%s: Suspending\n", __func__);
+							      >
+							      >		if (!atomic_read(&ts->irq_enabled))
+							      >			return 0;
+
+	QTOUCH_INFO("%s: Suspending\n", __func__);	      |		if (ts->mode == 1)
+							      >			return -EBUSY;
+
+	/* Note, this may block and suspend timer may expire, |		if (ts->enable_irq_flag)
+	cancel_work_sync(&ts->work);			      |			disable_irq(ts->client->irq);
+							      >		ret = cancel_work_sync(&ts->work);
+							      >		if (ret) { /* if work was pending disable-count is no
+							      >			pr_info("%s: Pending work item\n", __func__);
+							      >			enable_irq(ts->client->irq);
+							      >		}
+
+	ret = qtouch_power_config(ts, FALSE);		      |		ret = qtouch_power_config(ts, 0);
+	if (ret < 0)							if (ret < 0)
+		QTOUCH_ERR("%s: Cannot write power config\n", |			pr_err("%s: Cannot write power config\n", __f
+							      >
+							      >		if (ts->pdata->hw_suspend)
+							      >			ts->pdata->hw_suspend(1);
+							      >
+							      >		if (!IS_ERR_OR_NULL(ts->regulator))
+							      >			regulator_disable(ts->regulator);
+
+	/* Need some delay. Seems that if suspend/resup happe <
+	 * gets locked up and only reset helps		      <
+	 */						      <
+	msleep(10);					      <
+	return 0;							return 0;
+}								}
+
+static int qtouch_ts_resume(struct i2c_client *client)		static int qtouch_ts_resume(struct i2c_client *client)
+{								{
+	struct qtouch_ts_data *ts = i2c_get_clientdata(client		struct qtouch_ts_data *ts = i2c_get_clientdata(client
+	int ret;							int ret;
+	int i;								int i;
+							      >		struct qtm_object *obj;
+							      >
+							      >		if (qtouch_tsdebug & 4)
+							      >			pr_info("%s: Resuming\n", __func__);
+							      >
+							      >		if (!atomic_read(&ts->irq_enabled))
+							      >			return 0;
+
+	QTOUCH_INFO4("%s: Resuming\n", __func__);	      |		if (ts->mode == 1)
+							      >			return -EBUSY;
+
+	/*						      |		if (!IS_ERR_OR_NULL(ts->regulator))
+	* If we were suspended while a touch was happening    |			regulator_enable(ts->regulator);
+	*  we need to tell the upper layers so they do not ha |
+	* waiting on the liftoff that will not come.	      |		if (ts->pdata->hw_suspend)
+	*/						      |			ts->pdata->hw_suspend(0);
+	for (i = 0; i < ts->pdata->multi_touch_cfg.num_touch; |
+	{						      |		/* If we were suspended while a touch was happening
+		QTOUCH_INFO4("%s: Finger %i down state %i\n", |		   we need to tell the upper layers so they do not ha
+			__func__, i, ts->finger_data[i].down) |		   waiting on the liftoff that will not come. */
+							      >		for (i = 0; i < ts->pdata->multi_touch_cfg.num_touch;
+							      >			if (qtouch_tsdebug & 4)
+							      >				pr_info("%s: Finger %i down state %i\
+							      >					__func__, i, ts->finger_data[
+		if (ts->finger_data[i].down == 0)				if (ts->finger_data[i].down == 0)
+			continue;							continue;
+		input_report_abs(ts->input_dev, ABS_MT_TOUCH_ |			memset(&ts->finger_data[i], 0, sizeof(struct 
+		input_mt_sync(ts->input_dev);		      <
+		memset(&ts->finger_data[i], 0,		      <
+			sizeof(struct coordinate_map));	      <
+	}								}
+							      >		input_mt_sync(ts->input_dev);
+	input_sync(ts->input_dev);					input_sync(ts->input_dev);
+
+#ifdef CONFIG_XMEGAT_USE_RESET_TO_RESUME		      |		ret = qtouch_power_config(ts, 1);
+/*							      |		if (ret == -EIO) {
+ * hard reset does not generate reset message, so there	      |			pr_err("%s: Couldn't write power config. Rese
+ * will be no re-calibration after the hard reset.	      |			qtouch_force_reset(ts, 0);
+ * soft reset does, and does not require configuration reload |			ret = qtouch_power_config(ts, 1);
+ * so we prefer to do just soft reset, since it makes resume  |		}
+ * and avoids mucking with interrupts.			      |		if (ret < 0) {
+ * not clear if there is anything that hard reset actually so |			pr_err("%s: Cannot write power config\n", __f
+ */							      |			ts->enable_irq_flag = 0;
+							      <
+#ifdef CONFIG_XMEGAT_DO_HARD_RESET			      <
+	qtouch_force_reset(ts, FALSE);			      <
+	/* fall through here, to do power/calibration */      <
+							      <
+#else /* CONFIG_XMEGAT_DO_HARD_RESET */			      <
+	qtouch_force_reset(ts, TRUE);			      <
+	/*						      <
+	 * nothing more to do, qtouch_hw_init from control ms <
+	 */						      <
+	return 0;					      <
+#endif /* CONFIG_XMEGAT_DO_HARD_RESET */		      <
+#endif /* CONFIG_XMEGAT_USE_RESET_TO_RESUME */		      <
+							      <
+	ret = qtouch_power_config(ts, TRUE);		      <
+	if (ret < 0) 					      <
+	{						      <
+		QTOUCH_ERR("%s: Cannot write power config\n", <
+		return -EIO;							return -EIO;
+	}								}
+							      <
+	ret = qtouch_force_calibration(ts);				ret = qtouch_force_calibration(ts);
+	if (ret != 0) {							if (ret != 0) {
+		pr_err("%s: Unable to write to calibrate\n",  |			pr_err("%s: Unable to recalibrate after power
+							      >			return ret;
+							      >		}
+							      >
+							      >		/* Point the address pointer to the message processor
+							      >		 * Must do this before enabling interrupts */
+							      >		obj = find_obj(ts, QTM_OBJ_GEN_MSG_PROC);
+							      >		ret = qtouch_set_addr(ts, obj->entry.addr);
+							      >		if (ret != 0) {
+							      >			pr_err("%s: Can't to set addr to msg processo
+							      >			ts->enable_irq_flag = 0;
+		return -EIO;							return -EIO;
+	}								}
+
+							      >		enable_irq(ts->client->irq);
+							      >		ts->enable_irq_flag = 1;
+	return 0;							return 0;
+}								}
+
+#ifdef CONFIG_HAS_EARLYSUSPEND					#ifdef CONFIG_HAS_EARLYSUSPEND
+static void qtouch_ts_early_suspend(struct early_suspend *han	static void qtouch_ts_early_suspend(struct early_suspend *han
+{								{
+	struct qtouch_ts_data *ts;					struct qtouch_ts_data *ts;
+
+	ts = container_of(handler, struct qtouch_ts_data, ear		ts = container_of(handler, struct qtouch_ts_data, ear
+	qtouch_ts_suspend(ts->client, PMSG_SUSPEND);			qtouch_ts_suspend(ts->client, PMSG_SUSPEND);
+}								}
+
+static void qtouch_ts_late_resume(struct early_suspend *handl	static void qtouch_ts_late_resume(struct early_suspend *handl
+{								{
+	struct qtouch_ts_data *ts;					struct qtouch_ts_data *ts;
+
+	ts = container_of(handler, struct qtouch_ts_data, ear		ts = container_of(handler, struct qtouch_ts_data, ear
+	qtouch_ts_resume(ts->client);					qtouch_ts_resume(ts->client);
+}								}
+#endif								#endif
+
+/* file operation functions */				      <
+/**							      <
+ * Open device						      <
+ *							      <
+ * @param inode						      <
+ * @param filp						      <
+ * @return 0						      <
+ */							      <
+static	int	qtouch_ioctl_open(struct inode *inode, struct <
+{							      <
+	int	rc;					      <
+	QTOUCH_INFO("%s: entering\n", __func__);	      <
+							      <
+	if ( tsGl->modeOfOperation == QTOUCH_MODE_NORMAL ||   <
+			tsGl->modeOfOperation == QTOUCH_MODE_ <
+		rc = 0;					      <
+	else						      <
+		rc = -1;				      <
+							      <
+	QTOUCH_INFO("%s: exiting\n", __func__);		      <
+	return rc;					      <
+}							      <
+							      <
+unsigned char	kernelBuffer[sizeof(struct qtim_ioctl_data)]; <
+/**							      <
+ * Ioctl implementation					      <
+ *							      <
+ * @param node File in /proc				      <
+ * @param f Kernel level file structure			      <
+ * @param cmd Ioctl command				      <
+ * @param arg Ioctl argument				      <
+ * @return 0 in success, or negative error code		      <
+ */							      <
+static	QTM_ALL_OBJECTS qtmAllObjects;			      <
+static long qtouch_ioctl_ioctl(struct file *filp,	      <
+		unsigned int code, unsigned long arg)	      <
+{							      <
+	IOCTL_DATA	*usrData;			      <
+	struct qtm_object *obj;				      <
+	struct coordinate_map		*pointPtr;	      <
+/*							      <
+	struct qtm_id_info	qtmId;			      <
+*/							      <
+	int	rc = 0;					      <
+	unsigned long	bCount;				      <
+	int	i;					      <
+	uint8_t	*fields;				      <
+	char *raw;					      <
+	char	need2send = FALSE;			      <
+	unsigned int	cmd;				      <
+							      <
+	QTOUCH_INFO("%s: entering\n", __func__);	      <
+	if ( tsGl->modeOfOperation == QTOUCH_MODE_UNKNOWN )   <
+		return -1;				      <
+							      <
+	bCount = copy_from_user(kernelBuffer, (char *)arg,    <
+			(unsigned long)sizeof(IOCTL_DATA));   <
+	if ( bCount == 0 )				      <
+	{						      <
+		usrData = (IOCTL_DATA *)kernelBuffer;	      <
+	}						      <
+	else						      <
+		return -1;				      <
+							      <
+	cmd = usrData->cmd;				      <
+	switch (cmd) 					      <
+	{						      <
+	case QTOUCH_IOCTL_GET_DEBUG:			      <
+		usrData->data.debug = qtouch_tsdebug;	      <
+		break;					      <
+	case QTOUCH_IOCTL_SET_DEBUG:			      <
+		QTOUCH_INFO("%s: Setting debug to %d\n", __fu <
+				usrData->data.debug);	      <
+		qtouch_tsdebug = usrData->data.debug;	      <
+		usrData->data.debug = qtouch_tsdebug;	      <
+		break;					      <
+	case QTOUCH_IOCTL_GET_VERSION:			      <
+		/* Make sure that IC can accept the config in <
+		if ( tsGl->modeOfOperation != QTOUCH_MODE_NOR <
+			return -1;			      <
+		rc = qtouch_process_info_block(tsGl);	      <
+		QTOUCH_INFO("%s: Dumping information from Id  <
+				__func__);		      <
+		QTOUCH_INFO("================================ <
+		QTOUCH_INFO("\t Family ID: %d\n", qtm_info.fa <
+		usrData->data.ioctl_version.FamilyId = qtm_in <
+		QTOUCH_INFO("\t Variant ID: %d\n", qtm_info.v <
+		usrData->data.ioctl_version.VariantId = qtm_i <
+		QTOUCH_INFO("\t Version: %d\n", qtm_info.vers <
+		usrData->data.ioctl_version.Version = qtm_inf <
+		QTOUCH_INFO("\t Build: %d\n", qtm_info.build) <
+		usrData->data.ioctl_version.Build = qtm_info. <
+		usrData->data.ioctl_version.Mode = tsGl->mode <
+		QTOUCH_INFO("\t Mode: %d\n", usrData->data.io <
+		QTOUCH_INFO("================================ <
+		break;					      <
+	case QTOUCH_IOCTL_MODE:				      <
+		QTOUCH_INFO("%s: Doing mode operations\n", __ <
+		switch ( usrData->data.mode.op )	      <
+		{					      <
+		case QTOUCH_MODE_NORMAL:		      <
+			/* Make sure that IC can accept the c <
+			if ( tsGl->modeOfOperation == QTOUCH_ <
+				return -1;		      <
+			QTOUCH_INFO("%s: Setting mode to NORM <
+			if ( tsGl->modeOfOperation != QTOUCH_ <
+			{				      <
+				/* Resetting the hardware sho <
+				tsGl->client->addr = tsGl->i2 <
+				rc = qtouch_force_reset(tsGl, <
+				qtouch_force_calibration(tsGl <
+				tsGl->modeOfOperation = QTOUC <
+			}				      <
+			break;				      <
+		case QTOUCH_MODE_BOOTLOADER:		      <
+			if ( tsGl->modeOfOperation == QTOUCH_ <
+				return -1;		      <
+			QTOUCH_INFO("%s: Setting mode to BOOT <
+					__func__);	      <
+			if ( tsGl->modeOfOperation != QTOUCH_ <
+			{				      <
+				char	data[3];	      <
+							      <
+				/* Need to disable interrupt, <
+				/* Setting device and all nee <
+				/* Make sure power is not 0 * <
+				qtouch_power_config(tsGl, TRU <
+				/* Write 0xA5 to command proc <
+				qtouch_force_bootloaderMode(t <
+				/* artificial delay to make s <
+				msleep(50);		      <
+				/* Make sure the device is in <
+				tsGl->client->addr = tsGl->i2 <
+				rc = qtouch_read(tsGl, data,  <
+				if( (data[0] & 0xC0 ) == 0xC0 <
+				{			      <
+					QTOUCH_INFO("%s: mode <
+					/* unlock the device  <
+					data[0] = 0xDC;	      <
+					data[1] = 0xAA;	      <
+					rc = qtouch_write(tsG <
+					msleep(30);	      <
+					rc = qtouch_read(tsGl <
+					if( (data[0] & 0x80 ) <
+					{		      <
+						/* Device sho <
+						tsGl->dlStatu <
+						tsGl->modeOfO <
+					}		      <
+				}			      <
+				else			      <
+					QTOUCH_INFO("%s: did  <
+			}				      <
+			break;				      <
+		case QTOUCH_MODE_GET:			      <
+			QTOUCH_INFO("%s: Responding to mode q <
+		default:				      <
+			break;				      <
+		}					      <
+		usrData->data.mode.op = tsGl->modeOfOperation <
+		usrData->data.mode.dl = tsGl->dlStatus;	      <
+		break;					      <
+	case QTOUCH_IOCTL_CNTRL:			      <
+		if ( tsGl->modeOfOperation != QTOUCH_MODE_NOR <
+			return -1;			      <
+		switch ( usrData->data.info )		      <
+		{					      <
+		case QTOUCH_CNTRL_RESET:		      <
+			qtouch_force_reset(tsGl, FALSE);      <
+			rc = qtouch_process_info_block(tsGl); <
+			break;				      <
+		case QTOUCH_CNTRL_CALIBRATE:		      <
+			rc = qtouch_force_calibration(tsGl);  <
+			break;				      <
+		case QTOUCH_CNTRL_SELFTEST_ON:		      <
+			rc = qtouch_force_selftest(tsGl, true <
+			memcpy((char *)&(usrData->data.selfts <
+			break;				      <
+		case QTOUCH_CNTRL_SELFTEST_OFF:		      <
+			rc = qtouch_force_selftest(tsGl, fals <
+			memcpy((char *)&(usrData->data.selfts <
+			break;				      <
+		case QTOUCH_CNTRL_SELFTEST_GET:		      <
+			memcpy((char *)&(usrData->data.selfts <
+			break;				      <
+		default:				      <
+			rc = -1;			      <
+			break;				      <
+		}					      <
+		break;					      <
+	case QTOUCH_IOCTL_IRQ:				      <
+		if ( tsGl->modeOfOperation != QTOUCH_MODE_NOR <
+			return -1;			      <
+		switch ( usrData->data.irq )		      <
+		{					      <
+		case QTOUCH_IRQ_ON:			      <
+			qtouch_enable_irq(tsGl->irqInt);      <
+			qtouch_force_reset(tsGl, FALSE);      <
+			qtouch_force_calibration(tsGl);	      <
+			break;				      <
+		case QTOUCH_IRQ_OFF:			      <
+			qtouch_disable_irq(tsGl->irqInt);     <
+			break;				      <
+		case QTOUCH_IRQ_GET:			      <
+			break;				      <
+		default:				      <
+			break;				      <
+		}					      <
+		rc = 0;					      <
+		usrData->data.irq = tsGl->irqStatus;	      <
+		break;					      <
+	case QTOUCH_IOCTL_GET_REGISTER:			      <
+		if ( tsGl->modeOfOperation != QTOUCH_MODE_NOR <
+			return -1;			      <
+		rc = qtouch_read_addr(tsGl, usrData->data.reg <
+		break;					      <
+	case QTOUCH_IOCTL_SET_REGISTER:			      <
+		if ( tsGl->modeOfOperation != QTOUCH_MODE_NOR <
+			return -1;			      <
+		rc = qtouch_write_addr(tsGl, usrData->data.re <
+		break;					      <
+	case QTOUCH_IOCTL_SET_OBJECT:			      <
+		if ( tsGl->modeOfOperation != QTOUCH_MODE_NOR <
+			return -1;			      <
+		fields = (char *) &qtmAllObjects;	      <
+		memset(fields, 0, sizeof(qtmAllObjects));     <
+		need2send = FALSE;			      <
+		switch (usrData->type)			      <
+		{					      <
+		case QTM_OBJ_GEN_PWR_CONF:		      <
+			QTOUCH_INFO("%s: Got QTM_OBJ_GEN_PWR_ <
+			/* Each bit represents a field. Max o <
+			for ( i = 0; i < sizeof(struct qtm_ge <
+			{				      <
+				if ( usrData->data.qtm_t7.cha <
+				{			      <
+					/* This byte has chan <
+					fields[i] = usrData-> <
+					need2send = TRUE;     <
+				}			      <
+			}				      <
+			memcpy((char *)&(tsGl->pdata->power_c <
+							      <
+			QTOUCH_INFO("\tidle_acq_int: %d\n", t <
+			QTOUCH_INFO("\tactive_acq_int: %d\n", <
+			QTOUCH_INFO("\tactive_idle_to: %d\n", <
+			break;				      <
+		case QTM_OBJ_GEN_ACQUIRE_CONF:		      <
+			QTOUCH_INFO("%s: Got QTM_OBJ_GEN_ACQU <
+			/* Each bit represents a field. Max o <
+			for ( i = 0; i < sizeof(struct qtm_ge <
+			{				      <
+				if ( usrData->data.qtm_t8.cha <
+				{			      <
+					/* This byte has chan <
+					fields[i] = usrData-> <
+					need2send = TRUE;     <
+				}			      <
+			}				      <
+			memcpy((char *)&(tsGl->pdata->acquire <
+			break;				      <
+		case QTM_OBJ_TOUCH_MULTI:		      <
+			QTOUCH_INFO("%s: Got QTM_OBJ_TOUCH_MU <
+			/* Each bit represents a field. Max o <
+			for ( i = 0; i < sizeof(struct qtm_to <
+			{				      <
+				if ( usrData->data.qtm_t9.cha <
+				{			      <
+					/* This byte has chan <
+					fields[i] = usrData-> <
+					need2send = TRUE;     <
+				}			      <
+			}				      <
+			memcpy((char *)&(tsGl->pdata->multi_t <
+			break;				      <
+		case QTM_OBJ_TOUCH_KEYARRAY:		      <
+			QTOUCH_INFO("%s: Got QTM_OBJ_TOUCH_KE <
+			/* Each bit represents a field. Max o <
+			for ( i = 0; i < sizeof(struct qtm_to <
+			{				      <
+				if ( usrData->data.qtm_t15.ch <
+				{			      <
+					/* This byte has chan <
+					fields[i] = usrData-> <
+					need2send = TRUE;     <
+				}			      <
+			}				      <
+			memcpy((char *)&(tsGl->pdata->key_arr <
+			break;				      <
+		case QTM_OBJ_SPT_GPIO_PWM:		      <
+			QTOUCH_INFO("%s: Got QTM_OBJ_SPT_GPIO <
+			/* Each bit represents a field. Max o <
+			for ( i = 0; i < sizeof(struct qtm_sp <
+			{				      <
+				if ( usrData->data.qtm_t19.ch <
+				{			      <
+					/* This byte has chan <
+					fields[i] = usrData-> <
+					need2send = TRUE;     <
+				}			      <
+			}				      <
+			memcpy((char *)&(tsGl->pdata->gpio_pw <
+			break;				      <
+		case QTM_OBJ_PROCI_GRIPFACESUPPRESSION:	      <
+			QTOUCH_INFO("%s: Got QTM_OBJ_PROCI_GR <
+			/* Each bit represents a field. Max o <
+			for ( i = 0; i < sizeof(struct qtm_pr <
+			{				      <
+				if ( usrData->data.qtm_t20.ch <
+				{			      <
+					/* This byte has chan <
+					fields[i] = usrData-> <
+					need2send = TRUE;     <
+				}			      <
+			}				      <
+			memcpy((char *)&(tsGl->pdata->grip_su <
+			break;				      <
+		case QTM_OBJ_PROCG_NOISE_SUPPRESSION:	      <
+			QTOUCH_INFO("%s: Got QTM_OBJ_PROCG_NO <
+			/* Each bit represents a field. Max o <
+			for ( i = 0; i < sizeof(struct qtm_pr <
+			{				      <
+				if ( usrData->data.qtm_t22.ch <
+				{			      <
+					/* This byte has chan <
+					fields[i] = usrData-> <
+					need2send = TRUE;     <
+				}			      <
+			}				      <
+			memcpy((char *)&(tsGl->pdata->noise_s <
+			break;				      <
+		case QTM_OBJ_TOUCH_PROXIMITY:		      <
+			QTOUCH_INFO("%s: Got QTM_OBJ_TOUCH_PR <
+			/* Each bit represents a field. Max o <
+			for ( i = 0; i < sizeof(struct qtm_to <
+			{				      <
+				if ( usrData->data.qtm_t23.ch <
+				{			      <
+					/* This byte has chan <
+					fields[i] = usrData-> <
+					need2send = TRUE;     <
+				}			      <
+			}				      <
+			memcpy((char *)&(tsGl->pdata->touch_p <
+			break;				      <
+		case QTM_OBJ_PROCI_ONE_TOUCH_GESTURE_PROC:    <
+			QTOUCH_INFO("%s: Got QTM_OBJ_PROCI_ON <
+			/* Each bit represents a field. Max o <
+			for ( i = 0; i < sizeof(struct qtm_pr <
+			{				      <
+				if ( usrData->data.qtm_t24.ch <
+				{			      <
+					/* This byte has chan <
+					fields[i] = usrData-> <
+					need2send = TRUE;     <
+				}			      <
+			}				      <
+			memcpy((char *)&(tsGl->pdata->one_tou <
+			break;				      <
+		case QTM_OBJ_SPT_SELF_TEST:		      <
+			QTOUCH_INFO("%s: Got QTM_OBJ_SPT_SELF <
+			/* Each bit represents a field. Max o <
+			for ( i = 0; i < sizeof(struct qtm_sp <
+			{				      <
+				if ( usrData->data.qtm_t25.ch <
+				{			      <
+					/* This byte has chan <
+					fields[i] = usrData-> <
+					need2send = TRUE;     <
+				}			      <
+			}				      <
+			memcpy((char *)&(tsGl->pdata->self_te <
+			break;				      <
+		case QTM_OBJ_PROCI_TWO_TOUCH_GESTURE_PROC:    <
+			QTOUCH_INFO("%s: Got QTM_OBJ_PROCI_TW <
+			/* Each bit represents a field. Max o <
+			for ( i = 0; i < sizeof(struct qtm_pr <
+			{				      <
+				if ( usrData->data.qtm_t27.ch <
+				{			      <
+					/* This byte has chan <
+					fields[i] = usrData-> <
+					need2send = TRUE;     <
+				}			      <
+			}				      <
+			memcpy((char *)&(tsGl->pdata->two_tou <
+			break;				      <
+		case QTM_OBJ_SPT_CTE_CONFIG:		      <
+			QTOUCH_INFO("%s: Got QTM_OBJ_SPT_CTE_ <
+			/* Make sure that IC can accept the c <
+			if ( tsGl->modeOfOperation != QTOUCH_ <
+				return -1;		      <
+			/* Each bit represents a field. Max o <
+			for ( i = 0; i < sizeof(struct qtm_sp <
+			{				      <
+				if ( usrData->data.qtm_t28.ch <
+				{			      <
+					/* This byte has chan <
+					fields[i] = usrData-> <
+					need2send = TRUE;     <
+				}			      <
+			}				      <
+			memcpy((char *)&(tsGl->pdata->cte_con <
+			break;				      <
+		default:				      <
+			rc = -4;			      <
+			break;				      <
+		}					      <
+		if ( need2send )			      <
+		{					      <
+			obj = find_obj(tsGl, usrData->type);  <
+			rc = qtouch_write_addr(tsGl, obj->ent <
+			if (rc != 0) 			      <
+			{				      <
+				QTOUCH_ERR("%s: Can't write c <
+				rc = -5;		      <
+			}				      <
+			else				      <
+				QTOUCH_INFO("%s: wrote config <
+		}					      <
+		break;					      <
+	case QTOUCH_IOCTL_PUSH_CONFIG:			      <
+		QTOUCH_INFO("%s: Pushing configuration to the <
+		/* Make sure that IC can accept the config in <
+		if ( tsGl->modeOfOperation != QTOUCH_MODE_NOR <
+			return -1;			      <
+							      <
+		qtouch_force_reset(tsGl, FALSE);	      <
+		qtouch_force_calibration(tsGl);		      <
+		rc = qtouch_process_info_block(tsGl);	      <
+		break;					      <
+	case QTOUCH_IOCTL_GET_CONFIG:			      <
+		QTOUCH_INFO("%s: Getting configuration elemen <
+		/* Make sure that IC can accept the config in <
+		if ( tsGl->modeOfOperation != QTOUCH_MODE_NOR <
+			return -1;			      <
+		raw = (char *)&(usrData->data);		      <
+		rc = qtouch_read_addr(tsGl, 		      <
+						tsGl->obj_tbl <
+						(void *)raw,  <
+						tsGl->obj_tbl <
+		break;					      <
+	case QTOUCH_IOCTL_DL_GET_STATUS:		      <
+		QTOUCH_INFO("%s: current download status: %d\ <
+		/* Make sure that IC can accept the config in <
+		if ( tsGl->modeOfOperation != QTOUCH_MODE_NOR <
+			return -1;			      <
+		rc = tsGl->dlStatus;			      <
+		break;					      <
+	case QTOUCH_IOCTL_SUSPEND:			      <
+		/* Make sure that IC can accept the config in <
+		if ( tsGl->modeOfOperation != QTOUCH_MODE_NOR <
+			return -1;			      <
+		switch ( usrData->data.suspend )	      <
+		{					      <
+		case QTOUCH_SUSPEND_ON:			      <
+			if ( tsGl->suspendMode != true )      <
+			{				      <
+				qtouch_ts_suspend(tsGl->clien <
+				tsGl->suspendMode = true;     <
+			}				      <
+			break;				      <
+		case QTOUCH_SUSPEND_OFF:		      <
+			if ( tsGl->suspendMode != false )     <
+			{				      <
+				qtouch_ts_resume(tsGl->client <
+				tsGl->suspendMode = false;    <
+			}				      <
+			break;				      <
+		case QTOUCH_SUSPEND_GET:		      <
+			break;				      <
+		default:				      <
+			break;				      <
+		}					      <
+		rc = 0;					      <
+		usrData->data.suspend = tsGl->suspendMode;    <
+		QTOUCH_INFO("%s: current suspend status: %d\n <
+		break;					      <
+	case QTOUCH_IOCTL_GET_POINT:			      <
+		/* Make sure that IC can accept the config in <
+		if ( tsGl->modeOfOperation != QTOUCH_MODE_NOR <
+			return -1;			      <
+		QTOUCH_INFO("%s: X: %d, Y: %d, W: %d, Z: %d\n <
+			tsGl->finger_data[0].x_data,	      <
+			tsGl->finger_data[0].y_data,	      <
+			tsGl->finger_data[0].w_data,	      <
+			tsGl->finger_data[0].z_data );	      <
+							      <
+		pointPtr = &(tsGl->finger_data[0]);	      <
+		usrData->data.currPoints[0].x_data = pointPtr <
+		usrData->data.currPoints[0].y_data = pointPtr <
+		usrData->data.currPoints[0].w_data = pointPtr <
+		usrData->data.currPoints[0].z_data = pointPtr <
+		break;					      <
+	case QTOUCH_IOCTL_SET_CMD_STATUS:		      <
+		tsGl->XferStatus = usrData->data.info;	      <
+	case QTOUCH_IOCTL_GET_CMD_STATUS:		      <
+		usrData->data.info = tsGl->XferStatus;	      <
+		break;					      <
+	case QTOUCH_IOCTL_GET_SENS:			      <
+		/* Make sure that IC can accept the config in <
+		if ( tsGl->modeOfOperation != QTOUCH_MODE_NOR <
+			return -1;			      <
+		switch ( usrData->data.info )		      <
+		{					      <
+		case QTOUCH_SENSITIVITY_CHCOUNT:	      <
+			usrData->data.info = qtouch_get_chann <
+			QTOUCH_INFO("%s: SENS->CHCOUNT = %d c <
+			break;				      <
+		case QTOUCH_SENSITIVITY_GETREF:		      <
+			QTOUCH_INFO("%s: got SENS->GETREF req <
+			rc = qtouch_get_sens_data(tsGl, &(usr <
+			break;				      <
+		case QTOUCH_SENSITIVITY_NEXTPAGE:	      <
+			QTOUCH_INFO("%s: got SENS->NEXTPAGE r <
+			rc = qtouch_get_sens_data(tsGl, &(usr <
+			break;				      <
+		case QTOUCH_SENSITIVITY_UNKNOWN:	      <
+		default:				      <
+			rc = -1;			      <
+			QTOUCH_INFO("%s: got unknown sensitiv <
+			break;				      <
+		}					      <
+		break;					      <
+	default:					      <
+		rc = -1;				      <
+		break;					      <
+	}						      <
+							      <
+	/* Local space should be populated with requested inf <
+	if ( rc >= 0 )					      <
+	{						      <
+		bCount = copy_to_user((char *)arg, (char *)us <
+		if ( bCount != 0 )			      <
+			rc = -EFAULT;			      <
+		else					      <
+		{					      <
+			rc = 0;				      <
+			QTOUCH_INFO("%s: Copied %d bytes to u <
+		}					      <
+	}						      <
+	rc = qtouch_reset_read_ptr(tsGl);		      <
+	if (rc != 0) 					      <
+	{						      <
+		QTOUCH_ERR("%s: Can't to set addr to msg proc <
+	}						      <
+	QTOUCH_INFO("%s: exiting. RC = %d\n", __func__, rc);  <
+	return rc;					      <
+}							      <
+							      <
+/**							      <
+ * Write to device					      <
+ *							      <
+ * @param flip						      <
+ * @param buf						      <
+ * @param size						      <
+ * @param pos						      <
+ * @return number of bytes written to the device	      <
+ */							      <
+							      <
+							      <
+static int qtouch_ioctl_write(struct file *flip, const char _ <
+{							      <
+	unsigned long	bCount;				      <
+	int	retval = 0;				      <
+	int	i;					      <
+							      <
+	QTOUCH_INFO("%s: Enter....\n",__func__);	      <
+	if ( tsGl->modeOfOperation == QTOUCH_MODE_BOOTLOADER  <
+	{						      <
+		tsGl->dlStatus = QTOUCH_BL_WAITING_FOR_COMMAN <
+		bCount = copy_from_user(kernelBuffer, buf, (u <
+		QTOUCH_INFO("%s: copy_from_user() returned %d <
+		tsGl->client->addr = XMEGAT_BL_I2C_ADDR;      <
+		do					      <
+		{					      <
+			QTOUCH_INFO("%s: record to IC: size=% <
+			for ( i = 0; i < count; i++)	      <
+			{				      <
+				if ( !(i%20) )		      <
+					QTOUCH_INFO("\n%s: ", <
+				QTOUCH_INFO("%02x ", kernelBu <
+			}				      <
+			QTOUCH_INFO("\n");		      <
+			retval = qtouch_write(tsGl, kernelBuf <
+							      <
+			if (retval < 0)			      <
+			{				      <
+				QTOUCH_ERR("%s: write failed: <
+				tsGl->dlStatus = QTOUCH_BL_WA <
+			}				      <
+			else				      <
+			{				      <
+				QTOUCH_INFO("%s: qtouch_write <
+						__func__, ret <
+				tsGl->dlStatus = QTOUCH_BL_WA <
+				retval = count;		      <
+			}				      <
+			msleep(30);			      <
+		}					      <
+		while (retval < 0);			      <
+	}						      <
+	else						      <
+	{						      <
+		QTOUCH_INFO("%s: Device is not in BOOTLOADER  <
+		retval = -1;				      <
+	}						      <
+	return retval;					      <
+}							      <
+							      <
+static uint8_t calibrate_chip(struct qtouch_ts_data *ts)      <
+{							      <
+	uint8_t atchcalst, atchcalsthr, tchautocal;	      <
+	struct qtm_object *obj;				      <
+	int ret;					      <
+							      <
+	ts->cal_timer = 0;				      <
+							      <
+	atchcalst = ts->pdata->acquire_cfg.atch_cal_suspend_t <
+	atchcalsthr = ts->pdata->acquire_cfg.atch_cal_suspend <
+	tchautocal = ts->pdata->acquire_cfg.touch_autocal;    <
+	ts->pdata->acquire_cfg.atch_cal_suspend_time = 0;     <
+	ts->pdata->acquire_cfg.atch_cal_suspend_thres = 0;    <
+	ts->pdata->acquire_cfg.touch_autocal = 5;	      <
+							      <
+	if (qtouch_tsdebug & 16)			      <
+		pr_info("%s: issue cal. calst=%d, calsthr=%d\ <
+			__func__, atchcalst, atchcalsthr);    <
+							      <
+	/* configure the acquisition object. */		      <
+	obj = find_obj(ts, QTM_OBJ_GEN_ACQUIRE_CONF);	      <
+	ret = qtouch_write_addr(ts, obj->entry.addr, &ts->pda <
+				min(sizeof(ts->pdata->acquire <
+				    obj->entry.size));	      <
+	if (ret != 0) {					      <
+		pr_err("%s: Can't write acquisition config\n" <
+		return ret;				      <
+	}						      <
+							      <
+	ts->pdata->acquire_cfg.atch_cal_suspend_time = atchca <
+	ts->pdata->acquire_cfg.atch_cal_suspend_thres = atchc <
+	ts->pdata->acquire_cfg.touch_autocal = tchautocal;    <
+							      <
+	ret = qtouch_force_calibration(ts);		      <
+	if (ret != 0) {					      <
+		pr_err("%s: Unable to write to calibrate\n",  <
+		return ret;				      <
+	}						      <
+							      <
+	/* Reset the address pointer after forcing a calibrat <
+	ret = qtouch_set_addr(ts, ts->obj_tbl[QTM_OBJ_GEN_MSG <
+	if (ret != 0) {					      <
+		pr_err("%s: Unable to reset addr pointer afte <
+		       __func__);			      <
+		return ret;				      <
+	}						      <
+							      <
+	return 0;					      <
+}							      <
+							      <
+static uint8_t check_chip_calibration(struct qtouch_ts_data * <
+{							      <
+	uint8_t val, num_x_lines, num_y_lines;		      <
+	uint16_t bytes_to_read, maskl, maskh;		      <
+	struct qtm_object *obj;				      <
+	int ret, try_ctr = 0;				      <
+	uint8_t *data_buffer = NULL;			      <
+	uint8_t i;					      <
+	uint8_t *diag_ptr = NULL;			      <
+	int touch = 0;					      <
+	int atouch = 0;					      <
+	uint16_t addr;					      <
+	unsigned long current_jiffies;			      <
+							      <
+	obj = find_obj(ts, QTM_OBJ_GEN_CMD_PROC);	      <
+	addr = obj->entry.addr + offsetof(struct qtm_gen_cmd_ <
+	val = 0xF3;					      <
+	ret = qtouch_write_addr(ts, addr, &val, 1);	      <
+	if (ret) {					      <
+		pr_err("%s: Unable to send the diagnostic mes <
+		goto err_diag_data;			      <
+	}						      <
+							      <
+	data_buffer = kmalloc(QTM_OBP_DIAG_BUFFER_SIZE, GFP_K <
+	if (data_buffer == NULL) {			      <
+		pr_err("%s: Unable to allocate memory for dia <
+			 __func__);			      <
+		goto err_diag_data;			      <
+	}						      <
+							      <
+	msleep(QTM_OBP_SLEEP_WAIT_FOR_DIAG_DATA);	      <
+	memset(data_buffer, 0xFF, QTM_OBP_DIAG_BUFFER_SIZE);  <
+							      <
+	obj = find_obj(ts, QTM_OBJ_DEBUG_DIAGNOSTICS_T37);    <
+	while (!((*data_buffer == 0xF3) && (*(data_buffer + 1 <
+		if (try_ctr > QTM_OBP_NUM_DIAG_READ_RETRIES)  <
+			pr_err("%s: Failed to get Diag block  <
+				__func__);		      <
+			ret = -1;			      <
+			goto err_diag_data;		      <
+		}					      <
+							      <
+		try_ctr++;				      <
+		msleep(QTM_OBP_SLEEP_WAIT_FOR_DIAG_DATA);     <
+		ret = qtouch_read_addr(ts, obj->entry.addr, d <
+							      <
+		if (ret != 0) {				      <
+			pr_err("%s: Cannot read diag block he <
+			goto err_diag_data;		      <
+		}					      <
+	}						      <
+							      <
+	/* Always read 82 bytes; (20 * 2 * 2) + 2 */	      <
+	num_x_lines = ts->pdata->multi_touch_cfg.x_size;      <
+	num_y_lines = ts->pdata->multi_touch_cfg.y_size;      <
+	bytes_to_read = (QTM_OBP_DIAG_NUM_X_LINES * 2 * 2) +  <
+							      <
+	if (bytes_to_read > QTM_OBP_DIAG_BUFFER_SIZE) {	      <
+		pr_err("%s: data_buffer not enough\n", __func <
+		ret = -1;				      <
+		goto err_diag_data;			      <
+	}						      <
+							      <
+	if (qtouch_tsdebug & 16)			      <
+		pr_info("%s: Reading diag info. xsize=%d, \   <
+			ysize=%d, read_size = %d\n",	      <
+			__func__, num_x_lines, num_y_lines, b <
+							      <
+	ret = qtouch_read_addr(ts, obj->entry.addr, data_buff <
+		bytes_to_read);				      <
+							      <
+	if (ret != 0) {					      <
+		pr_err("%s: Cannot read diag block data\n", _ <
+		goto err_diag_data;			      <
+	}						      <
+							      <
+	if (qtouch_tsdebug & 32) {			      <
+		int msg_bytes;				      <
+		int msg_location;			      <
+		char *msg;				      <
+		int index;				      <
+							      <
+		msg = kmalloc(1024, GFP_KERNEL);	      <
+		if (msg != NULL) {			      <
+			msg_location = sprintf(msg, "%s: Diag <
+				__func__);		      <
+			for (index = 0; index < QTM_OBP_DIAG_ <
+				index++) {		      <
+				msg_bytes = snprintf((msg + m <
+					(1024 - msg_location) <
+					" 0x%02x",	      <
+					*(data_buffer + index <
+				msg_location += msg_bytes;    <
+				if (msg_location >= 1024)     <
+					break;		      <
+			}				      <
+			if (msg_location < 1024) {	      <
+				pr_info("%s\n", msg);	      <
+			} else {			      <
+				pr_info("%s:  Diag data: Stri <
+				__func__);		      <
+			}				      <
+							      <
+			kfree(msg);			      <
+		}					      <
+	}						      <
+							      <
+	diag_ptr = data_buffer + 2;			      <
+	maskl = ((1 << num_y_lines) - 1) & (0x00FF);	      <
+	maskh = (((1 << num_y_lines) - 1) & (0xFF00)) >> 8;   <
+							      <
+	if ((*data_buffer == 0xF3) && (*(data_buffer + 1) ==  <
+		for (i = 0; i < num_x_lines; i++) {	      <
+			touch += hweight8((uint8_t)(*diag_ptr <
+			touch += hweight8((uint8_t)(*(diag_pt <
+			atouch += hweight8(		      <
+				(uint8_t)(*(diag_ptr	      <
+				+ (QTM_OBP_DIAG_NUM_X_LINES<< <
+			atouch += hweight8(		      <
+				(uint8_t)(*(diag_ptr	      <
+				+ (QTM_OBP_DIAG_NUM_X_LINES<< <
+			diag_ptr += 2;			      <
+		}					      <
+	} else {					      <
+		pr_err("%s: Diag block header not correct\n", <
+		ret = -1;				      <
+		goto err_diag_data;			      <
+	}						      <
+							      <
+	if (qtouch_tsdebug & 16)			      <
+		pr_info("%s: Processed diag data. touch=%d, a <
+			__func__, touch, atouch);	      <
+							      <
+	obj = find_obj(ts, QTM_OBJ_GEN_CMD_PROC);	      <
+	addr = obj->entry.addr + offsetof(struct qtm_gen_cmd_ <
+	val = 0x01;					      <
+	ret = qtouch_write_addr(ts, addr, &val, 1);	      <
+	if (ret) {					      <
+		pr_err("%s: Unable to send pageup diagnostic  <
+			__func__);			      <
+		goto err_diag_data;			      <
+	}						      <
+							      <
+	if (touch && (atouch == 0)) {			      <
+		current_jiffies = jiffies;		      <
+							      <
+		if (qtouch_tsdebug & 16)		      <
+			pr_info("%s: cal_timer=%lu curr_jiffi <
+				__func__, ts->cal_timer, curr <
+							      <
+		if (ts->cal_timer == 0) {		      <
+			ts->cal_timer = current_jiffies;      <
+		} else if ((((long)current_jiffies -	      <
+				(long)ts->cal_timer) * 1000 / <
+				QTM_OBP_DIAG_CALIB_WAIT_MS) { <
+							      <
+			ts->cal_check_flag = 0;		      <
+			ts->cal_timer = 0;		      <
+			obj = find_obj(ts, QTM_OBJ_GEN_ACQUIR <
+			ret = qtouch_write_addr(ts, obj->entr <
+						&ts->pdata->a <
+						min(sizeof(   <
+							ts->p <
+						obj->entry.si <
+			if (ret != 0) {			      <
+				pr_err("%s: Can't write acqui <
+					__func__);	      <
+				goto err_diag_data;	      <
+			}				      <
+		}					      <
+	} else if (0 < atouch) {			      <
+		calibrate_chip(ts);			      <
+	} else {					      <
+		if (qtouch_tsdebug & 16)		      <
+			pr_info("%s: cannot decide.  Wait for <
+				__func__);		      <
+	}						      <
+							      <
+err_diag_data:						      <
+	if (data_buffer != NULL)			      <
+		kfree(data_buffer);			      <
+							      <
+	ret = qtouch_set_addr(ts, ts->obj_tbl[QTM_OBJ_GEN_MSG <
+	if (ret != 0) {					      <
+		pr_err("%s: Unable to reset address pointer t <
+		       __func__);			      <
+	}						      <
+							      <
+	return ret;					      <
+}							      <
+							      <
+/******** init ********/					/******** init ********/
+static const struct i2c_device_id qtouch_ts_id[] = 	      |	static const struct i2c_device_id qtouch_ts_id[] = {
+{							      <
+	{ QTOUCH_TS_NAME, 0 },						{ QTOUCH_TS_NAME, 0 },
+	{ }								{ }
+};								};
+
+static struct i2c_driver qtouch_ts_driver = 		      |	static struct i2c_driver qtouch_ts_driver = {
+{							      <
+	.probe		= qtouch_ts_probe,				.probe		= qtouch_ts_probe,
+	.remove		= qtouch_ts_remove,				.remove		= qtouch_ts_remove,
+#ifndef CONFIG_HAS_EARLYSUSPEND					#ifndef CONFIG_HAS_EARLYSUSPEND
+	.suspend	= qtouch_ts_suspend,				.suspend	= qtouch_ts_suspend,
+	.resume		= qtouch_ts_resume,				.resume		= qtouch_ts_resume,
+#endif								#endif
+	.id_table	= qtouch_ts_id,					.id_table	= qtouch_ts_id,
+	.driver = 					      |		.driver = {
+	{						      <
+		.name	= QTOUCH_TS_NAME,					.name	= QTOUCH_TS_NAME,
+		.owner	= THIS_MODULE,						.owner	= THIS_MODULE,
+	},								},
+};								};
+
+static int __devinit qtouch_ts_init(void)			static int __devinit qtouch_ts_init(void)
+{								{
+	qtouch_ts_wq = NULL;				      <
+/*							      <
+	qtouch_ts_wq = create_singlethread_workqueue("qtouch_		qtouch_ts_wq = create_singlethread_workqueue("qtouch_
+	if (qtouch_ts_wq == NULL) 			      |		if (qtouch_ts_wq == NULL) {
+	{						      |			pr_err("%s: No memory for qtouch_ts_wq\n", __
+		QTOUCH_ERR("%s: No memory for qtouch_ts_wq\n" <
+		return -ENOMEM;							return -ENOMEM;
+	}								}
+*/							      <
+	qtouch_tsdebug = 0x04;				      <
+	return i2c_add_driver(&qtouch_ts_driver);			return i2c_add_driver(&qtouch_ts_driver);
+}								}
+
+static void __exit qtouch_ts_exit(void)				static void __exit qtouch_ts_exit(void)
+{								{
+	i2c_del_driver(&qtouch_ts_driver);				i2c_del_driver(&qtouch_ts_driver);
+	if (qtouch_ts_wq)						if (qtouch_ts_wq)
+		destroy_workqueue(qtouch_ts_wq);				destroy_workqueue(qtouch_ts_wq);
+}								}
+
+/*!							      <
+ * @brief Logs data					      <
+ *							      <
+ * This function is called as a replacement to printk	      <
+ *							      <
+ * @param fmt Text of message to log			      <
+ */							      <
+							      <
+static void qtouch_printk (int dbg, char *fmt, ...)	      <
+{							      <
+	if ( dbg )					      <
+	{						      <
+		static va_list args;			      <
+		va_start(args, fmt);			      <
+		vprintk(fmt, args);			      <
+		va_end(args);				      <
+	}						      <
+}							      <
+							      <
+module_init(qtouch_ts_init);					module_init(qtouch_ts_init);
+module_exit(qtouch_ts_exit);					module_exit(qtouch_ts_exit);
+
+MODULE_AUTHOR("Dima Zavin <dima@android.com>");			MODULE_AUTHOR("Dima Zavin <dima@android.com>");
+MODULE_DESCRIPTION("Quantum OBP Touchscreen Driver");		MODULE_DESCRIPTION("Quantum OBP Touchscreen Driver");
+MODULE_LICENSE("GPL");						MODULE_LICENSE("GPL");
+MODULE_VERSION("2.0");					      <

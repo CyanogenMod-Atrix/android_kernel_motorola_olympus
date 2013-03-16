@@ -18,6 +18,7 @@
 
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
+#include <mach/sec_linux.h>
 #include <asm/setup.h>
 #include <asm/bootinfo.h>
 
@@ -410,7 +411,6 @@ static int __init parse_tag_nvidia(const struct tag *tag)
 }
 __tagtable(ATAG_NVIDIA, parse_tag_nvidia);
 
-#if 0
 /*
  * Security
  */
@@ -430,7 +430,6 @@ void mot_sec_init(void)
     	platform_device_register(&mot_sec_platform_device);
 }
 
-#endif
 
 /*
  * TCMD
@@ -553,7 +552,7 @@ __tagtable(ATAG_BLDEBUG, parse_tag_bldebug);
 /*
  *   UTS tool needs to emulate numbers keys and send/end keys. Add them to tegra kbc driver keymap 
  */
-#if 0
+
 static int keymap_update_connect(struct input_handler *handler, struct input_dev *dev,
 					  const struct input_device_id *id)
  {
@@ -597,8 +596,9 @@ static struct input_handler keymap_update_handler = {
 };
 
 
-void mot_keymap_update_init(void)
+int mot_keymap_update_init(void)
 {
-	input_register_handler(&keymap_update_handler);
+	int ret;
+	ret = input_register_handler(&keymap_update_handler);
+	return ret;
 }
-#endif

@@ -13,8 +13,6 @@ extern void __init olympus_keypad_init(void);
 extern void __init olympus_i2c_init(void);
 extern void __init olympus_audio_init(void);
 extern void __init olympus_usb_gadget_init(void);
-extern void mot_setup_lights(struct i2c_board_info *info);
-extern void mot_setup_touch(struct i2c_board_info *info);
 
 extern int mot_mdm_ctrl_shutdown(void);
 extern int mot_mdm_ctrl_peer_register(void (*)(void*),
@@ -36,7 +34,7 @@ extern void mot_tcmd_init(void);
 extern void tegra_otg_set_mode(int);
 extern void sdhci_tegra_wlan_detect(void);
 
-extern void mot_keymap_update_init(void);
+extern int mot_keymap_update_init(void);
 
 extern void cpcap_set_dock_switch(int state);
 
@@ -54,7 +52,7 @@ extern void cpcap_set_dock_switch(int state);
 //#define MPU_GYRO_ADDR           0x68
 //#define MPU_GYRO_BUS_NUM        3
 //#define MPU_GYRO_ORIENTATION    { 1, 0, 0, 0, 1, 0, 0, 0, 1 }
-
+/*
 #define MPU_ACCEL_NAME		"kxtf9"
 #define MPU_ACCEL_IRQ_GPIO	TEGRA_GPIO_PV3
 #define MPU_ACCEL_ADDR		0x0F
@@ -80,6 +78,6 @@ extern void cpcap_set_dock_switch(int state);
 #define TEGRA_HF_KICKSTAND_GPIO			TEGRA_GPIO_PW3
 #define TEGRA_VIBRATOR_GPIO			TEGRA_GPIO_PD0
 #define TEGRA_L3G4200D_IRQ_GPIO			TEGRA_GPIO_PH2
-
+*/
 #endif
 

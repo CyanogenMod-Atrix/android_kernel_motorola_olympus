@@ -46,15 +46,16 @@ static const u32 olympus_keymap[] = {
 	KEY(3, 0, KEY_RESERVED),
 	KEY(3, 1, KEY_RESERVED),*/
 
-	KEY(0, 0, 0x73),
-	KEY(0, 1, 0xd3),
-	KEY(0, 2, 0x8b),
-	KEY(1, 0, 0x72),
-	KEY(1, 1, 0xd4),
-	KEY(1, 2, 0x66),
-	KEY(2, 0, 0x00),
-	KEY(2, 1, 0xd9),
-	KEY(2, 2, 0x9e),
+	KEY(0, 0, 115), //KEY_VOLUMEUP
+//	KEY(0, 1, 211), //KEY_HP
+//	KEY(0, 1, 116), //KEY_POWER
+//	KEY(0, 2, 139), //KEY_MENU
+	KEY(1, 0, 114), //KEY_VOLUMEDOWN
+//	KEY(1, 1, 212), //KEY_CAMERA
+//	KEY(1, 2, 102), //KEY_HOME
+//	KEY(2, 0, 000), //KEY_RESERVED
+//	KEY(2, 1, 217), //KEY_SEARCH
+//	KEY(2, 2, 158), //KEY_BACK
 };
 
 static const struct matrix_keymap_data olympus_keymap_data = {
@@ -86,7 +87,7 @@ static struct tegra_kbc_wake_key olympus_wake_cfg[] = {
 };
 
 static struct tegra_kbc_platform_data olympus_kbc_platform_data = {
-	.debounce_cnt = 20,
+	.debounce_cnt = 5,
 	.repeat_cnt = 1024,
 	.wake_cnt = 5,
 	.wake_cfg = &olympus_wake_cfg[0],

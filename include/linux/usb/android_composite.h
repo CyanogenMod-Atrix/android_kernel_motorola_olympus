@@ -146,6 +146,7 @@ extern u8 in_usb_tethering;
 extern void android_register_function(struct android_usb_function *f);
 extern int android_enable_function(struct usb_function *f, int enable);
 #endif
+extern void android_usb_set_connected(int on, unsigned int accy);
 
 
 #endif	/* __LINUX_USB_ANDROID_H */

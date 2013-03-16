@@ -2627,9 +2627,15 @@ struct snd_soc_dai_driver cpcap_dai[] = {
 		.channels_max = 4,
 		.rates = SNDRV_PCM_RATE_8000_48000,
 		.formats = SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FORMAT_S24_LE,},
+	.capture = {
+		.stream_name = "Capture",
+		.channels_min = 1,
+		.channels_max = 2,
+		.rates = SNDRV_PCM_RATE_8000_48000,
+		.formats = SNDRV_PCM_FMTBIT_S16_LE,},
 	.ops = &cpcap_dai_mm_ops,
 },
-/*{
+{
 	.name = "cpcap codec",
 	.playback = {
 		.stream_name = "Voice Playback",
@@ -2661,7 +2667,7 @@ struct snd_soc_dai_driver cpcap_dai[] = {
 		.formats = SNDRV_PCM_FMTBIT_S16_LE,},
 	.ops = &cpcap_dai_incall_ops,
 },
-{
+/*{
 	.name = "cpcap in-call second",
 	.playback = {
 		.stream_name = "InCall DL",
@@ -2676,7 +2682,7 @@ struct snd_soc_dai_driver cpcap_dai[] = {
 		.rates = SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_16000,
 		.formats = SNDRV_PCM_FMTBIT_S16_LE,},
 	.ops = &cpcap_dai_incall_second_ops,
-},
+},*/
 {
 	.name = "cpcap bt-call",
 	.playback = {
@@ -2693,7 +2699,7 @@ struct snd_soc_dai_driver cpcap_dai[] = {
 		.formats = SNDRV_PCM_FMTBIT_S16_LE,},
 	.ops = &cpcap_dai_btcall_ops,
 },
-{
+/*{
 	.name = "cpcap bt-call second",
 	.playback = {
 		.stream_name = "BTCall DL",
@@ -2708,7 +2714,7 @@ struct snd_soc_dai_driver cpcap_dai[] = {
 		.rates = SNDRV_PCM_RATE_8000,
 		.formats = SNDRV_PCM_FMTBIT_S16_LE,},
 	.ops = &cpcap_dai_btcall_second_ops,
-},
+},*/
 {
 	.name = "cpcap bt",
 	.playback = {
@@ -2725,7 +2731,7 @@ struct snd_soc_dai_driver cpcap_dai[] = {
 		.formats = SNDRV_PCM_FMTBIT_S16_LE,},
 	.ops = &cpcap_dai_btvoice_ops,
 },
-{
+/*{
 	.name = "BPVoice",
 	.playback = {
 		.stream_name = "incall-playback",

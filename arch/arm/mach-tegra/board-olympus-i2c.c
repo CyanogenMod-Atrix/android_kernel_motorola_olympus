@@ -63,7 +63,7 @@ static int disp_backlight_init(void)
             __func__, ret);
         return ret;
     }
-	if ((ret = gpio_request(TEGRA_KEY_BACKLIGHT_EN_GPIO,
+/*	if ((ret = gpio_request(TEGRA_KEY_BACKLIGHT_EN_GPIO,
 			"key_backlight_en"))) {
 		pr_err("%s: gpio_request(%d, key_backlight_en) failed: %d\n",
 			__func__, TEGRA_KEY_BACKLIGHT_EN_GPIO, ret);
@@ -76,7 +76,7 @@ static int disp_backlight_init(void)
 		pr_err("%s: gpio_direction_output(key_backlight_en) failed: %d\n",
 			__func__, ret);
 		return ret;
-	}
+	}*/
 
     return 0;
 }
@@ -85,6 +85,7 @@ static int disp_backlight_power_on(void)
 {
     pr_info("%s: display backlight is powered on\n", __func__);
     gpio_set_value(TEGRA_BACKLIGHT_EN_GPIO, 1);
+    gpio_set_value(TEGRA_KEY_BACKLIGHT_EN_GPIO, 1);
     return 0;
 }
 
@@ -92,6 +93,7 @@ static int disp_backlight_power_off(void)
 {
     pr_info("%s: display backlight is powered off\n", __func__);
     gpio_set_value(TEGRA_BACKLIGHT_EN_GPIO, 0);
+    gpio_set_value(TEGRA_KEY_BACKLIGHT_EN_GPIO, 0);
     return 0;
 }
 
@@ -1029,24 +1031,41 @@ static struct tegra_i2c_platform_data olympus_i2c1_platform_data = {
 	.adapter_nr	= 0,
 	.bus_count	= 1,
 	.bus_clk_rate	= { 400000, 0 },
-//	.scl_gpio	= {TEGRA_GPIO_PC4, 0},
-//	.sda_gpio	= {TEGRA_GPIO_PC5, 0},
-//	.arb_recovery = arb_lost_recovery,
+	.scl_gpio	= {TEGRA_GPIO_PC4, 0},
+	.sda_gpio	= {TEGRA_GPIO_PC5, 0},
+	.arb_recovery = arb_lost_recovery,
 //	.slave_addr = 0xFC,
+};
+
+static const struct tegra_pingroup_config i2c2_ddc = {
+	.pingroup	= TEGRA_PINGROUP_DDC,
+	.func		= TEGRA_MUX_I2C2,
+};
+
+static const struct tegra_pingroup_config i2c2_gen2 = {
+	.pingroup	= TEGRA_PINGROUP_PTA,
+	.func		= TEGRA_MUX_I2C2,
 };
 
 static struct tegra_i2c_platform_data olympus_i2c2_platform_data = {
 	.adapter_nr	= 1,
 	.bus_count	= 1,
+	.bus_clk_rate	= { 10000, 100000 },
+	.bus_mux	= { &i2c2_ddc, &i2c2_gen2 },
+	.bus_mux_len	= { 1, 1 },
+	.scl_gpio		= {0, TEGRA_GPIO_PT5},
+	.sda_gpio		= {0, TEGRA_GPIO_PT6},
+	.arb_recovery = arb_lost_recovery,
+	.slave_addr = 0xFC,
 };
 
 static struct tegra_i2c_platform_data olympus_i2c3_platform_data = {
 	.adapter_nr	= 2,
 	.bus_count	= 1,
 	.bus_clk_rate	= { 400000, 0 },
-//	.scl_gpio	= {TEGRA_GPIO_PBB2, 0},
-//	.sda_gpio	= {TEGRA_GPIO_PBB3, 0},
-//	.arb_recovery = arb_lost_recovery,
+	.scl_gpio	= {TEGRA_GPIO_PBB2, 0},
+	.sda_gpio	= {TEGRA_GPIO_PBB3, 0},
+	.arb_recovery = arb_lost_recovery,
 //	.slave_addr = 0xFC,
 };
 
@@ -1055,8 +1074,8 @@ static struct tegra_i2c_platform_data olympus_dvc_platform_data = {
 	.bus_count	= 1,
 	.bus_clk_rate	= { 400000, 0 },
 	.is_dvc		= true,
-//	.scl_gpio	= {TEGRA_GPIO_PZ6, 0},
-//	.sda_gpio	= {TEGRA_GPIO_PZ7, 0},
+	.scl_gpio	= {TEGRA_GPIO_PZ6, 0},
+	.sda_gpio	= {TEGRA_GPIO_PZ7, 0},
 //	.arb_recovery = arb_lost_recovery,
 };
 
@@ -1067,10 +1086,10 @@ void olympus_i2c_reg(void)
 	tegra_i2c_device3.dev.platform_data = &olympus_i2c3_platform_data;
 	tegra_i2c_device4.dev.platform_data = &olympus_dvc_platform_data;
 
-	platform_device_register(&tegra_i2c_device1);
-	platform_device_register(&tegra_i2c_device2);
-	platform_device_register(&tegra_i2c_device3);
 	platform_device_register(&tegra_i2c_device4);
+	platform_device_register(&tegra_i2c_device3);
+	platform_device_register(&tegra_i2c_device2);
+	platform_device_register(&tegra_i2c_device1);
 }
 
 /* center: x: home: 55, menu: 185, back: 305, search 425, y: 835 */

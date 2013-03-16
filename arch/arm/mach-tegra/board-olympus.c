@@ -30,6 +30,7 @@
 #include <linux/i2c.h>
 #include <linux/memblock.h>
 #include <linux/console.h>
+#include <linux/mdm_ctrl.h>
 
 #include <asm/bootinfo.h>
 #include <asm/mach-types.h>
@@ -42,6 +43,7 @@
 #include <linux/regulator/consumer.h>
 #include <linux/regulator/driver.h>
 #include <linux/regulator/machine.h>
+#include <linux/usb/android_composite.h>
 #include <linux/gpio.h>
 #include <linux/cpcap-accy.h>
 #include <linux/reboot.h>
@@ -403,6 +405,72 @@ static struct platform_device tegra_w1_device = {
     .id            = -1,
 };
 
+static int cpcap_usb_connected_probe(struct platform_device *pdev)
+{
+/*	struct cpcap_accy_platform_data *pdata = pdev->dev.platform_data;*/
+
+	int nr_gpio;
+	int ret;
+
+	nr_gpio = 174;
+
+	tegra_gpio_enable(nr_gpio);
+    	ret = gpio_request(nr_gpio, "usb_data_en");
+
+    	printk(KERN_INFO "pICS_%s: gpio_request(nr_gpio=%i, 'usb_data_en');\n",__func__, nr_gpio);
+
+	gpio_direction_output(nr_gpio, 0);	
+	gpio_set_value(nr_gpio, 1);
+#if 0
+	platform_set_drvdata(pdev, pdata);
+
+	/* when the phone is the host do not start the gadget driver */
+	if((pdata->accy == CPCAP_ACCY_USB) || (pdata->accy == CPCAP_ACCY_FACTORY)) {
+		tegra_otg_set_mode(0);
+		android_usb_set_connected(1, pdata->accy);
+	}
+	if(pdata->accy == CPCAP_ACCY_USB_DEVICE) {
+		tegra_otg_set_mode(1);
+	}
+
+//	mdm_ctrl_set_usb_ipc(true);
+#endif
+	return 0;
+}
+
+static int cpcap_usb_connected_remove(struct platform_device *pdev)
+{
+/*	struct cpcap_accy_platform_data *pdata = pdev->dev.platform_data;*/
+
+	int nr_gpio;
+
+//	mdm_ctrl_set_usb_ipc(false);
+	
+	nr_gpio = 174;
+	gpio_set_value(nr_gpio, 0);
+printk(KERN_INFO "pICS_%s: nr_gpio=%i, 'usb_data_en';\n",__func__, nr_gpio);
+	gpio_free(nr_gpio);
+	
+	tegra_gpio_disable(nr_gpio);
+/*
+	if((pdata->accy == CPCAP_ACCY_USB) || (pdata->accy == CPCAP_ACCY_FACTORY))
+		android_usb_set_connected(0, pdata->accy);
+
+	tegra_otg_set_mode(2);
+*/
+        return 0;
+}
+
+struct platform_driver cpcap_usb_connected_driver = {
+        .probe          = cpcap_usb_connected_probe,
+        .remove         = cpcap_usb_connected_remove,
+        .driver         = {
+                .name   = "cpcap_usb_connected",
+                .owner  = THIS_MODULE,
+    },
+};
+
+
 static int config_unused_pins(char *pins, int num)
 {
         int i, ret = 0;
@@ -426,104 +494,6 @@ static int config_unused_pins(char *pins, int num)
         return ret;
 }
 
-#define GPIO_BANK(x)		((x) >> 5)
-#define GPIO_PORT(x)		(((x) >> 3) & 0x3)
-#define GPIO_BIT(x)		((x) & 0x7)
-
-#define GPIO_REG(x)		(IO_TO_VIRT(TEGRA_GPIO_BASE) +	\
-				 GPIO_BANK(x) * 0x80 +		\
-				 GPIO_PORT(x) * 4)
-
-#define GPIO_CNF(x)		(GPIO_REG(x) + 0x00)
-#define GPIO_OE(x)		(GPIO_REG(x) + 0x10)
-#define GPIO_OUT(x)		(GPIO_REG(x) + 0X20)
-#define GPIO_IN(x)		(GPIO_REG(x) + 0x30)
-#define GPIO_INT_STA(x)		(GPIO_REG(x) + 0x40)
-#define GPIO_INT_ENB(x)		(GPIO_REG(x) + 0x50)
-#define GPIO_INT_LVL(x)		(GPIO_REG(x) + 0x60)
-#define GPIO_INT_CLR(x)		(GPIO_REG(x) + 0x70)
-
-#define GPIO_MSK_CNF(x)		(GPIO_REG(x) + 0x800)
-#define GPIO_MSK_OE(x)		(GPIO_REG(x) + 0x810)
-#define GPIO_MSK_OUT(x)		(GPIO_REG(x) + 0X820)
-#define GPIO_MSK_INT_STA(x)	(GPIO_REG(x) + 0x840)
-#define GPIO_MSK_INT_ENB(x)	(GPIO_REG(x) + 0x850)
-#define GPIO_MSK_INT_LVL(x)	(GPIO_REG(x) + 0x860)
-
-#define GPIO_INT_LVL_MASK		0x010101
-#define GPIO_INT_LVL_EDGE_RISING	0x000101
-#define GPIO_INT_LVL_EDGE_FALLING	0x000100
-#define GPIO_INT_LVL_EDGE_BOTH		0x010100
-#define GPIO_INT_LVL_LEVEL_HIGH		0x000001
-#define GPIO_INT_LVL_LEVEL_LOW		0x000000
-#if 0
-struct tegra_gpio_bank {
-	int bank;
-	int irq;
-	spinlock_t lvl_lock[4];
-#ifdef CONFIG_PM
-	u32 cnf[4];
-	u32 out[4];
-	u32 oe[4];
-	u32 int_enb[4];
-	u32 int_lvl[4];
-#endif
-};
-
-static struct tegra_gpio_bank tegra_gpio_banks[] = {
-	{.bank = 0, .irq = INT_GPIO1, .cnf = {0x01,0x08,0x82,0xfe}, .oe = {0x01,0x08,0x82,0xfc}, .out = {0x00,0x08,0x82,0xc8}},
-	{.bank = 1, .irq = INT_GPIO2, .cnf = {0xe9,0xcb,0xff,0x0f}, .oe = {0xe9,0xcb,0xff,0x0f}, .out = {0xe9,0x81,0xff,0x0f}},
-	{.bank = 2, .irq = INT_GPIO3, .cnf = {0xb1,0x0d,0x5c,0xe9}, .oe = {0x91,0x0d,0x5c,0xe9}, .out = {0x91,0x0d,0x5c,0xe9}},
-	{.bank = 3, .irq = INT_GPIO4, .cnf = {0xc7,0x60,0xff,0x00}, .oe = {0xc4,0x60,0xff,0x00}, .out = {0xc0,0x60,0xff,0x00}},
-	{.bank = 4, .irq = INT_GPIO5, .cnf = {0x38,0xf8,0x07,0x7d}, .oe = {0x38,0xf8,0x07,0x7c}, .out = {0x38,0xf8,0x07,0x74}},
-	{.bank = 5, .irq = INT_GPIO6, .cnf = {0x00,0xc5,0x22,0x00}, .oe = {0x00,0xc1,0x22,0x00}, .out = {0x00,0x80,0x22,0x00}},
-	{.bank = 6, .irq = INT_GPIO7, .cnf = {0x0f,0x20,0x00,0x03}, .oe = {0x0f,0x20,0x00,0x0f}, .out = {0x0f,0x20,0x00,0x0f}},
-};
-#endif
-static int tegra_gpio_compose(int bank, int port, int bit)
-{
-	return (bank << 5) | ((port & 0x3) << 3) | (bit & 0x7);
-}
-
-static void read_gpio(void)
-{
-	int i,j;
-	for (i = 0; i < 7; i++) {
-		for (j = 0; j < 4; j++) {
-			int gpio = tegra_gpio_compose(i, j, 0);
-			printk(KERN_INFO "pICS_%s: %d:%d %02x %02x %02x %02x %02x %02x %06x\n",__func__,
-			       i, j,
-			       __raw_readl(GPIO_CNF(gpio)),
-			       __raw_readl(GPIO_OE(gpio)),
-			       __raw_readl(GPIO_OUT(gpio)),
-			       __raw_readl(GPIO_IN(gpio)),
-			       __raw_readl(GPIO_INT_STA(gpio)),
-			       __raw_readl(GPIO_INT_ENB(gpio)),
-			       __raw_readl(GPIO_INT_LVL(gpio)));
-		}
-	}
-}
-#if 0
-static void write_gpio(void)
-{
-	int i,j;
-	for (i = 0; i < 7; i++) {
-		for (j = 0; j < 4; j++) {
-			int gpio = tegra_gpio_compose(i, j, 0);
-			printk(KERN_INFO "pICS_%s: %d:%d %02x %02x %02x %02x %02x %02x %06x\n",__func__,
-			       i, j,
-			       __raw_readl(GPIO_CNF(gpio)),
-			       __raw_readl(GPIO_OE(gpio)),
-			       __raw_readl(GPIO_OUT(gpio)),
-			       __raw_readl(GPIO_IN(gpio)),
-			       __raw_readl(GPIO_INT_STA(gpio)),
-			       __raw_readl(GPIO_INT_ENB(gpio)),
-			       __raw_readl(GPIO_INT_LVL(gpio)));
-		}
-	}
-}
-#endif
-
 static void __init tegra_mot_init(void)
 {
 /*	struct clk *clk;*/
@@ -542,7 +512,11 @@ static void __init tegra_mot_init(void)
 	
 	mot_tcmd_init();
 
+	mot_sec_init();
+
 	olympus_panel_init();
+
+	mot_keymap_update_init();
 
 	//olympus_keypad_init();
 
@@ -561,13 +535,15 @@ if (1==0) olympus_emc_init();
 
 	platform_device_register(&tegra_w1_device);
 	
-	mot_modem_init();
-	olympus_wlan_init();
+	//mot_modem_init();
+	//olympus_wlan_init();
+
+	platform_driver_register(&cpcap_usb_connected_driver);
 
 	mot_sensors_init();
 
 	pm_power_off = mot_system_power_off;
-	if (1==0) tegra_setup_bluesleep();
+	tegra_setup_bluesleep();
 
 	/* Configure SPDIF_OUT as GPIO by default, it can be later controlled
 	   as needed. When SPDIF_OUT is enabled and if HDMI is connected, it
@@ -598,8 +574,7 @@ if (1==0) olympus_emc_init();
 			}
 		}
 	
-	tegra_release_bootloader_fb();
-	if (1==0) read_gpio();	
+	tegra_release_bootloader_fb();	
 }
 
 static void __init mot_fixup(struct machine_desc *desc, struct tag *tags,

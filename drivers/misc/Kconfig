@@ -551,6 +551,14 @@ config APANIC_PLABEL
 	 If your platform uses a different flash partition label for storing
  	 crashdumps, enter it here.
 
+config LBEE9QMB_RFKILL
+	tristate "Bluetooth power control driver for Murata lbee9qmbc"
+	depends on RFKILL
+	default n
+	---help---
+	 Creates an rfkill entry in sysfs for power control of
+	 Murata lbee9qmbc Bluetooth+WiFi chips.
+
 config BCM4329_RFKILL
 	bool "Enable BCM4329 RFKILL driver"
 	default n

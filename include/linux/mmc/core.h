@@ -11,6 +11,10 @@
 #include <linux/interrupt.h>
 #include <linux/device.h>
 
+#define MMC_SLOW_WRITE_TIME	500000	/* time (us) */
+#define MMC_REFRESH_INTERVAL	60	/* time (s) */
+#define MMC_BKOPS_INTERVAL	20	/* time (s) */
+
 struct request;
 struct mmc_data;
 struct mmc_request;
@@ -92,7 +96,7 @@ struct mmc_command {
  *              actively failing requests
  */
 
-	unsigned int		erase_timeout;	/* in milliseconds */
+	unsigned int		cmd_timeout_ms;	/* in milliseconds */
 
 	struct mmc_data		*data;		/* data segment associated with cmd */
 	struct mmc_request	*mrq;		/* associated request */
@@ -117,28 +121,35 @@ struct mmc_data {
 
 	unsigned int		sg_len;		/* size of scatter list */
 	struct scatterlist	*sg;		/* I/O scatter list */
+	s32			host_cookie;	/* host private data */
 };
 
 struct mmc_request {
+	struct mmc_command	*sbc;		/* SET_BLOCK_COUNT for multiblock */
 	struct mmc_command	*cmd;
 	struct mmc_data		*data;
 	struct mmc_command	*stop;
 
-	void			*done_data;	/* completion data */
+	struct completion	completion;
 	void			(*done)(struct mmc_request *);/* completion function */
 };
 
 struct mmc_host;
 struct mmc_card;
+struct mmc_async_req;
 
+extern struct mmc_async_req *mmc_start_req(struct mmc_host *,
+					   struct mmc_async_req *, int *);
 extern int mmc_interrupt_hpi(struct mmc_card *);
 extern int mmc_bkops_start(struct mmc_card *card, bool is_synchronous);
+extern void mmc_refresh(unsigned long data);
 
 extern void mmc_wait_for_req(struct mmc_host *, struct mmc_request *);
 extern int mmc_wait_for_cmd(struct mmc_host *, struct mmc_command *, int);
+extern int mmc_app_cmd(struct mmc_host *, struct mmc_card *);
 extern int mmc_wait_for_app_cmd(struct mmc_host *, struct mmc_card *,
 	struct mmc_command *, int);
-extern int mmc_switch(struct mmc_card *, u8, u8, u8);
+extern int mmc_switch(struct mmc_card *, u8, u8, u8, unsigned int);
 
 #define MMC_ERASE_ARG		0x00000000
 #define MMC_SECURE_ERASE_ARG	0x80000000
@@ -156,6 +167,7 @@ extern int mmc_can_trim(struct mmc_card *card);
 extern int mmc_can_secure_erase_trim(struct mmc_card *card);
 extern int mmc_erase_group_aligned(struct mmc_card *card, unsigned int from,
 				   unsigned int nr);
+extern unsigned int mmc_calc_max_discard(struct mmc_card *card);
 
 extern int mmc_set_blocklen(struct mmc_card *card, unsigned int blocklen);
 
@@ -180,4 +192,4 @@ static inline void mmc_claim_host(struct mmc_host *host)
 
 extern u32 mmc_vddrange_to_ocrmask(int vdd_min, int vdd_max);
 
-#endif
+#endif /* LINUX_MMC_CORE_H */

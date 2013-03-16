@@ -67,6 +67,54 @@ struct tegra_otg_data {
 
 static struct tegra_otg_data *tegra_clone;
 
+#ifdef CONFIG_MACH_OLYMPUS
+extern void tegra_ehci_enable_host (struct usb_hcd *);
+
+#define HCD_FLAG_HW_ACCESSIBLE	0x00000001
+
+void tegra_otg_set_mode(int mode)
+{
+#if 0
+	struct usb_hcd *hcd = (struct usb_hcd *)tegra_clone->otg.host;
+	unsigned long flags;
+
+	/* FIXME: get rid of the magic numbers */
+	if(mode == 1) {
+		printk(KERN_DEBUG "%s setting OTG_STATE_A_HOST\n", __func__);
+		if(tegra_clone->otg.host) {
+			spin_lock_irqsave(&tegra_clone->lock, flags);
+			tegra_clone->otg.state = OTG_STATE_A_HOST;
+			set_bit(HCD_FLAG_HW_ACCESSIBLE, &hcd->flags);
+			spin_unlock_irqrestore(&tegra_clone->lock, flags);
+			tegra_ehci_enable_host(hcd);
+		}
+	}
+	else if (mode == 0) {
+		printk(KERN_DEBUG "%s setting OTG_STATE_B_PERIPHERAL\n", __func__);
+		if(tegra_clone->otg.gadget) {
+			spin_lock_irqsave(&tegra_clone->lock, flags);
+			tegra_clone->otg.state = OTG_STATE_B_PERIPHERAL;
+			spin_unlock_irqrestore(&tegra_clone->lock, flags);
+		}
+	} else {
+		printk(KERN_DEBUG "%s setting OTG_STATE_A_SUSPEND\n", __func__);
+		spin_lock_irqsave(&tegra_clone->lock, flags);
+		if(tegra_clone->otg.state == OTG_STATE_A_HOST) {
+			tegra_clone->otg.state = OTG_STATE_A_SUSPEND;
+			spin_unlock_irqrestore(&tegra_clone->lock, flags);
+			tegra_ehci_enable_host(hcd);
+		}
+		else {
+			tegra_clone->otg.state = OTG_STATE_A_SUSPEND;
+			spin_unlock_irqrestore(&tegra_clone->lock, flags);
+		}
+	}
+#endif
+	printk(KERN_DEBUG "%s TO DO\n", __func__);
+	return;
+}
+#endif
+
 static inline unsigned long otg_readl(struct tegra_otg_data *tegra,
 				      unsigned int offset)
 {

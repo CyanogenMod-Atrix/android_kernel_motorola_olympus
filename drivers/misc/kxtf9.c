@@ -100,11 +100,11 @@ unsigned trace_ioctl = 1;
 module_param(trace_ioctl, uint, 0664);
 unsigned trace_irq = 1;
 module_param(trace_irq, uint, 0664);
-unsigned trace_xyz = 0;
+unsigned trace_xyz = 1;
 module_param(trace_xyz, uint, 0664);
-unsigned trace_raw = 0;
+unsigned trace_raw = 1;
 module_param(trace_raw, uint, 0664);
-unsigned trace_orient = 0;
+unsigned trace_orient = 1;
 module_param(trace_orient, uint, 0664);
 unsigned is_polling = 0;
 module_param(is_polling, uint, 0444);
@@ -719,7 +719,7 @@ static int kxtf9_enable(struct kxtf9_data *tf9)
 	if (!atomic_read(&tf9->req_enabled))
 		return 0;
 
-	pr_debug("%s\n", __func__);
+	pr_info("%s\n", __func__);
 	if (!atomic_cmpxchg(&tf9->enabled, 0, 1)) {
 		is_enabled = atomic_read(&tf9->enabled);
 		err = kxtf9_device_power_on(tf9);
@@ -740,7 +740,7 @@ static int kxtf9_enable(struct kxtf9_data *tf9)
 
 static int kxtf9_disable(struct kxtf9_data *tf9)
 {
-	pr_debug("%s\n", __func__);
+	pr_info("%s\n", __func__);
 	if (atomic_cmpxchg(&tf9->enabled, 1, 0)) {
 		is_enabled = atomic_read(&tf9->enabled);
 		cancel_delayed_work_sync(&tf9->force_tilt);
@@ -1351,7 +1351,7 @@ static int kxtf9_resume(struct i2c_client *client)
 {
 	struct kxtf9_data *tf9 = i2c_get_clientdata(client);
 
-	pr_debug("%s\n", __func__);
+	pr_info("%s\n", __func__);
 	atomic_set(&tf9->is_suspended, 0);
 	return kxtf9_enable(tf9);
 }
@@ -1360,7 +1360,7 @@ static int kxtf9_suspend(struct i2c_client *client, pm_message_t mesg)
 {
 	struct kxtf9_data *tf9 = i2c_get_clientdata(client);
 
-	pr_debug("%s\n", __func__);
+	pr_info("%s\n", __func__);
 	atomic_set(&tf9->is_suspended, 1);
 	return kxtf9_disable(tf9);
 }

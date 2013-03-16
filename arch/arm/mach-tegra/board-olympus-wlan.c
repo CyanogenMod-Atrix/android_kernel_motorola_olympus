@@ -268,7 +268,7 @@ static struct resource mot_wifi_resources[] = {
 	return 0;
  }
 
- int __init mot_wlan_init(void)
+ int __init olympus_wlan_init(void)
  {
 	int ret;
 	pr_debug("%s: start\n", __func__);

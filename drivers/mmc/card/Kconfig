@@ -76,3 +76,13 @@ config MMC_TEST
 
 	  This driver is only of interest to those developing or
 	  testing a host driver. Most people should say N here.
+
+config MMC_BKOPS
+	bool "Enable background ops"
+	default n
+	help
+	  Say Y here to enable background ops in driver. This will result
+	  in issuing of MMC_SWITCH command to write byte 164 of EXT_CSD,
+	  in order to trigger background ops in the MMC device's
+	  firmware, whenever URGENT_BKOPS flag is found to be set in a
+	  read/write command's response.

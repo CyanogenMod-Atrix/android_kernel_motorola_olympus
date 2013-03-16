@@ -666,12 +666,12 @@ struct cpcap_mode_value *cpcap_regulator_off_mode_values[] = {
 
 struct regulator_consumer_supply cpcap_sw1_consumers[] = {
 	REGULATOR_CONSUMER("sw1", NULL /* core */),
-//	REGULATOR_CONSUMER("vdd_cpu", NULL),
+	REGULATOR_CONSUMER("vdd_cpu", NULL),
 };
 
 struct regulator_consumer_supply cpcap_sw2_consumers[] = {
 	REGULATOR_CONSUMER("sw2", NULL /* core */),
-//	REGULATOR_CONSUMER("vdd_core", NULL),
+	REGULATOR_CONSUMER("vdd_core", NULL),
 };
 
 struct regulator_consumer_supply cpcap_sw3_consumers[] = {
@@ -680,7 +680,7 @@ struct regulator_consumer_supply cpcap_sw3_consumers[] = {
 
 struct regulator_consumer_supply cpcap_sw4_consumers[] = {
 	REGULATOR_CONSUMER("sw4", NULL /* core */),
-//	REGULATOR_CONSUMER("vdd_aon", NULL),
+	REGULATOR_CONSUMER("vdd_aon", NULL),
 };
 
 struct regulator_consumer_supply cpcap_sw5_consumers[] = {
@@ -696,13 +696,11 @@ struct regulator_consumer_supply cpcap_vcam_consumers[] = {
 struct regulator_consumer_supply cpcap_vhvio_consumers[] = {
 	REGULATOR_CONSUMER("vhvio", NULL /* lighting_driver */),
 	REGULATOR_CONSUMER("vcc", NULL /* compass_driver */),
-#if 0
-	REGULATOR_CONSUMER("vhvio", NULL /* lighting_driver */),
-	REGULATOR_CONSUMER("vhvio", NULL /* magnetometer */),
-	REGULATOR_CONSUMER("vhvio", NULL /* light sensor */),
-	REGULATOR_CONSUMER("vhvio", NULL /* accelerometer */),
-	REGULATOR_CONSUMER("vhvio", NULL /* display */),
-#endif
+//	REGULATOR_CONSUMER("vhvio", NULL /* lighting_driver */),
+//	REGULATOR_CONSUMER("vhvio", NULL /* magnetometer */),
+//	REGULATOR_CONSUMER("vhvio", NULL /* light sensor */),
+	REGULATOR_CONSUMER("vhvio_kxtf9", NULL /* accelerometer */),
+//	REGULATOR_CONSUMER("vhvio", NULL /* display */),
 };
 
 struct regulator_consumer_supply cpcap_vsdio_consumers[] = {
@@ -1099,7 +1097,7 @@ static struct platform_device cpcap_reg_virt_sw5 =
 static struct tegra_suspend_platform_data olympus_suspend_data = {
 	.cpu_timer 	= 800,
 	.cpu_off_timer	= 600,
-	.suspend_mode	= TEGRA_SUSPEND_LP1,
+	.suspend_mode	= TEGRA_SUSPEND_LP0,
 	.core_timer	= 1842,
 	.core_off_timer = 31,
 	.corereq_high	= true,
@@ -1129,24 +1127,7 @@ void __init olympus_suspend_init(void)
 //	tegra_pm_irq_set_wake(tegra_wake_to_irq(TEGRA_WAKE_GPIO_PU6), 1);
 	tegra_pm_irq_set_wake_type(tegra_wake_to_irq(TEGRA_WAKE_GPIO_PV2), WAKE_ANY);
 //	tegra_pm_irq_set_wake(tegra_wake_to_irq(TEGRA_WAKE_GPIO_PV2), 1);
-
-
-/*
-	.wake_enb	= TEGRA_WAKE_GPIO_PL1 \
-				| TEGRA_WAKE_GPIO_PA0 \
-				| TEGRA_WAKE_GPIO_PU5 \
-				| TEGRA_WAKE_GPIO_PU6 \
-				| TEGRA_WAKE_KBC_EVENT \
-				| TEGRA_WAKE_PWR_INT \
-				| TEGRA_WAKE_GPIO_PV2,
-	.wake_high	= TEGRA_WAKE_GPIO_PA0 \
-				| TEGRA_WAKE_KBC_EVENT \
-				| TEGRA_WAKE_PWR_INT,
-
-	.wake_any	= TEGRA_WAKE_GPIO_PU5 \
-				| TEGRA_WAKE_GPIO_PU6 \
-				| TEGRA_WAKE_GPIO_PV2,
-*/	
+	
 	tegra_init_suspend(&olympus_suspend_data);
 }
 
@@ -1160,11 +1141,6 @@ void __init olympus_power_init(void)
 	tegra_gpio_enable(154);
 	gpio_request(154, "usb_host_pwr_en");
 	gpio_direction_output(154,0);
-
-	tegra_gpio_enable(174);
-	gpio_request(174, "usb_data_en");
-	gpio_direction_output(174, 0);	
-	gpio_set_value(174, 1);
 
 	/* CPCAP standby lines connected to CPCAP GPIOs on Etna P1B & Olympus P2 */
 	if ( HWREV_TYPE_IS_FINAL(system_rev) ||
