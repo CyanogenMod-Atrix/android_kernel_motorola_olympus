@@ -98,13 +98,13 @@
 
 unsigned trace_ioctl = 1;
 module_param(trace_ioctl, uint, 0664);
-unsigned trace_irq = 1;
+unsigned trace_irq = 0;
 module_param(trace_irq, uint, 0664);
-unsigned trace_xyz = 1;
+unsigned trace_xyz = 0;
 module_param(trace_xyz, uint, 0664);
-unsigned trace_raw = 1;
+unsigned trace_raw = 0;
 module_param(trace_raw, uint, 0664);
-unsigned trace_orient = 1;
+unsigned trace_orient = 0;
 module_param(trace_orient, uint, 0664);
 unsigned is_polling = 0;
 module_param(is_polling, uint, 0444);
@@ -780,7 +780,26 @@ static long kxtf9_misc_ioctl(struct file *file,
 	u8 reg_val;
 	u8 ctrl_reg1_val;
 	int xyz[3] = { 0 };
+/*
+	printk(KERN_INFO "%s: cmd = 0x%08X", __func__, cmd);
+	printk(KERN_INFO "%s: arg = 0x%lX", __func__, arg);
 
+	printk(KERN_INFO "%s: KXTF9_IOCTL_SET_DELAY = 0x%08X", __func__, KXTF9_IOCTL_SET_DELAY);	
+	printk(KERN_INFO "%s: KXTF9_IOCTL_GET_DELAY = 0x%08X", __func__, KXTF9_IOCTL_GET_DELAY);
+	printk(KERN_INFO "%s: KXTF9_IOCTL_SET_ENABLE = 0x%08X", __func__, KXTF9_IOCTL_SET_ENABLE);	
+	printk(KERN_INFO "%s: KXTF9_IOCTL_GET_ENABLE = 0x%08X", __func__, KXTF9_IOCTL_GET_ENABLE);	
+	printk(KERN_INFO "%s: KXTF9_IOCTL_SET_G_RANGE = 0x%08X", __func__, KXTF9_IOCTL_SET_G_RANGE);	
+	printk(KERN_INFO "%s: KXTF9_IOCTL_SET_TILT_ENABLE = 0x%08X", __func__, KXTF9_IOCTL_SET_TILT_ENABLE);
+	printk(KERN_INFO "%s: KXTF9_IOCTL_SET_TAP_ENABLE = 0x%08X", __func__, KXTF9_IOCTL_SET_TAP_ENABLE);
+	printk(KERN_INFO "%s: KXTF9_IOCTL_SET_WAKE_ENABLE = 0x%08X", __func__, KXTF9_IOCTL_SET_WAKE_ENABLE);
+	printk(KERN_INFO "%s: KXTF9_IOCTL_SET_PM_MODE = 0x%08X", __func__, KXTF9_IOCTL_SET_PM_MODE);
+	printk(KERN_INFO "%s: KXTF9_IOCTL_SET_SELF_TEST	= 0x%08X", __func__, KXTF9_IOCTL_SET_SELF_TEST);
+	printk(KERN_INFO "%s: KXTF9_IOCTL_SET_SENSITIVITY = 0x%08X", __func__, KXTF9_IOCTL_SET_SENSITIVITY);
+	printk(KERN_INFO "%s: KXTF9_IOCTL_SET_FUZZ = 0x%08X", __func__, KXTF9_IOCTL_SET_FUZZ);
+	printk(KERN_INFO "%s: KXTF9_IOCTL_SET_XYZ_HISTORY = 0x%08X", __func__, KXTF9_IOCTL_SET_XYZ_HISTORY);
+	printk(KERN_INFO "%s: KXTF9_IOCTL_INTERRUPT_TEST = 0x%08X", __func__, KXTF9_IOCTL_INTERRUPT_TEST);
+	printk(KERN_INFO "%s: KXTF9_IOCTL_QUERY = 0x%08X", __func__, KXTF9_IOCTL_QUERY);
+*/
 	switch (cmd) {
 	case KXTF9_IOCTL_QUERY:
 		printk_ioctl("%s: QUERY\n", __func__);

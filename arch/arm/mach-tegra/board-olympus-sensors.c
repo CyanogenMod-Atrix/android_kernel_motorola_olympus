@@ -292,7 +292,7 @@ static int akm8975_init(void)
 
 	gpio_set_value(TEGRA_AKM8975_RESET_GPIO, 1);
 
-	gpio_request(TEGRA_AKM8975_IRQ_GPIO, "akm8975_DRDY");
+	gpio_request(TEGRA_AKM8975_IRQ_GPIO, "akm8975_irq");
 	gpio_direction_input(TEGRA_AKM8975_IRQ_GPIO);
 
 	return err;
@@ -339,7 +339,6 @@ struct platform_device akm8975_platform_device = {
 		.platform_data = &akm8975_data,
 	},
 };
-
 
 /*
  * Hall Effect Sensor
@@ -516,12 +515,6 @@ struct adt7461_platform_data olympus_adt7461_pdata = {
 
 static struct i2c_board_info __initdata olympus_i2c_bus4_board_info[] = {
 	{
-		I2C_BOARD_INFO("adt7461", 0x4C),
-		//.irq = 229;
-		.irq = TEGRA_GPIO_TO_IRQ(TEGRA_ADT7461_IRQ_GPIO),
-		.platform_data = &olympus_adt7461_pdata,
-	},
-	{
 		I2C_BOARD_INFO("akm8975", 0x0C),
 		.platform_data = &akm8975_data,
 		.irq = TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PE2),
@@ -535,17 +528,17 @@ static struct i2c_board_info __initdata olympus_i2c_bus4_board_info[] = {
 void __init mot_sensors_init(void)
 {
 	kxtf9_init();
-	tegra_akm8975_init();
-
+	//tegra_akm8975_init();
+/*
 	tegra_gpio_enable(TEGRA_GPIO_PE5); 
 	if( gpio_request(TEGRA_GPIO_PE5, "adt7461") < 0) {
 		printk (KERN_INFO "%s: Error requesting gpio 'adt7461' %u\n", __func__, TEGRA_GPIO_PE5);
 	};
-	gpio_direction_input(TEGRA_GPIO_PE5);
+	gpio_direction_input(TEGRA_GPIO_PE5);*/
 
 	tegra_vibrator_init();
 
-	isl29030_init();
+	//isl29030_init();
 	
 	platform_add_devices(tegra_sensors, ARRAY_SIZE(tegra_sensors));
 

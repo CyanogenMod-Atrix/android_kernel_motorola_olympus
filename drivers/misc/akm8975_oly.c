@@ -314,6 +314,12 @@ static int akmd_open(struct inode *inode, struct file *file)
 	int err = 0;
 
 	FUNCDBG("called");
+/* added */
+	if (atomic_cmpxchg(&open_flag, 0, 1) == 0) {
+		wake_up(&open_wq);
+		ret = 0;
+	}
+/* added */
 	err = nonseekable_open(inode, file);
 	if (err)
 		return err;

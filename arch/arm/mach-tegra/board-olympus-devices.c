@@ -36,6 +36,8 @@
 #include <linux/regulator/machine.h>
 #include <linux/reboot.h>
 #include <linux/serial_8250.h>
+#include <linux/i2c.h>
+#include <linux/i2c-tegra.h>
 #include <linux/spi-tegra.h>
 #include <linux/spi/spi.h>
 #include <linux/spi/cpcap.h>
@@ -598,6 +600,55 @@ static void __init olympus_spi_init(void)
 }
 #endif
 
+static struct tegra_i2c_platform_data olympus_i2c1_platform_data = {
+	.adapter_nr	= 0,
+	.bus_count	= 1,
+	.bus_clk_rate	= { 400000, 0 },
+	.scl_gpio	= {TEGRA_GPIO_PC4, 0},
+	.sda_gpio	= {TEGRA_GPIO_PC5, 0},
+	.arb_recovery = arb_lost_recovery,
+	.slave_addr = 0xFC,
+};
+
+static struct tegra_i2c_platform_data olympus_i2c2_platform_data = {
+	.adapter_nr	= 1,
+	.bus_count	= 1,
+	.bus_clk_rate	= { 400000, 0 },
+};
+
+static struct tegra_i2c_platform_data olympus_i2c3_platform_data = {
+	.adapter_nr	= 2,
+	.bus_count	= 1,
+	.bus_clk_rate	= { 400000, 0 },
+	.scl_gpio	= {TEGRA_GPIO_PBB2, 0},
+	.sda_gpio	= {TEGRA_GPIO_PBB3, 0},
+	.arb_recovery = arb_lost_recovery,
+	.slave_addr = 0xFC,
+};
+
+static struct tegra_i2c_platform_data olympus_dvc_platform_data = {
+	.adapter_nr	= 3,
+	.bus_count	= 1,
+	.bus_clk_rate	= { 100000, 0 },
+	.is_dvc		= true,
+	.scl_gpio	= {TEGRA_GPIO_PZ6, 0},
+	.sda_gpio	= {TEGRA_GPIO_PZ7, 0},
+	.arb_recovery = arb_lost_recovery,
+};
+
+void olympus_i2c_reg(void)
+{
+	tegra_i2c_device1.dev.platform_data = &olympus_i2c1_platform_data;
+	tegra_i2c_device2.dev.platform_data = &olympus_i2c2_platform_data;
+	tegra_i2c_device3.dev.platform_data = &olympus_i2c3_platform_data;
+	tegra_i2c_device4.dev.platform_data = &olympus_dvc_platform_data;
+
+	platform_device_register(&tegra_i2c_device1);
+	platform_device_register(&tegra_i2c_device2);
+	platform_device_register(&tegra_i2c_device3);
+	platform_device_register(&tegra_i2c_device4);
+}
+
 static struct platform_device tegra_camera = {
 	.name = "tegra_camera",
 	.id = -1,
@@ -685,6 +736,8 @@ void __init olympus_devices_init()
 	printk(KERN_INFO "pICS_%s: olympus_sdhci_init();\n",__func__);
 	olympus_sdhci_init();
 	olympus_usb_init();
+	
+	olympus_i2c_reg();
 
 	pm_power_off = tegra_system_power_off;
 	
