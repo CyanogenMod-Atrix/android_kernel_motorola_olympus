@@ -10,6 +10,8 @@
 #include <linux/isl29030.h>
 #include <linux/bu52014hfv.h>
 #include <linux/kxtf9.h>
+#include <media/ov5650.h>
+#include <media/soc380.h>
 #include <linux/delay.h>
 #include <linux/regulator/consumer.h>
 #include <linux/gpio.h>
@@ -33,7 +35,196 @@
 #define TEGRA_ADT7461_IRQ_GPIO		TEGRA_GPIO_PE5
 #define PWRUP_BAREBOARD            	0x00100000 /* Bit 20 */
 
+#define CAMERA1_PWDN_GPIO		TEGRA_GPIO_PBB1
+#define CAMERA1_RESET_GPIO		TEGRA_GPIO_PD2
+#define CAMERA2_PWDN_GPIO		TEGRA_GPIO_PBB5
+#define CAMERA2_RESET_GPIO		TEGRA_GPIO_PL4
+#define CAMERA_AF_PD_GPIO		TEGRA_GPIO_PT3
+#define CAMERA_FLASH_EN1_GPIO		TEGRA_GPIO_PBB4
+//#define CAMERA_FLASH_EN2_GPIO		TEGRA_GPIO_PA0
 
+static struct regulator *reg_avdd_cam1;
+static struct regulator *reg_vdd_af; 
+static struct regulator *reg_vdd_mipi;
+static struct regulator *reg_vddio_vi;
+
+static int olympus_camera_init(void)
+{
+	gpio_request(CAMERA1_PWDN_GPIO, "camera1_powerdown");
+	gpio_direction_output(CAMERA1_PWDN_GPIO, 0);
+	gpio_export(CAMERA1_PWDN_GPIO, false);
+
+	gpio_request(CAMERA1_RESET_GPIO, "camera1_reset");
+	gpio_direction_output(CAMERA1_RESET_GPIO, 0);
+	gpio_export(CAMERA1_RESET_GPIO, false);
+
+	gpio_request(CAMERA2_PWDN_GPIO, "camera2_powerdown");
+	gpio_direction_output(CAMERA2_PWDN_GPIO, 0);
+	gpio_export(CAMERA2_PWDN_GPIO, false);
+
+	gpio_request(CAMERA2_RESET_GPIO, "camera2_reset");
+	gpio_direction_output(CAMERA2_RESET_GPIO, 0);
+	gpio_export(CAMERA2_RESET_GPIO, false);
+
+	gpio_request(CAMERA_AF_PD_GPIO, "camera_autofocus");
+	gpio_direction_output(CAMERA_AF_PD_GPIO, 0);
+	gpio_export(CAMERA_AF_PD_GPIO, false);
+
+	gpio_request(CAMERA_FLASH_EN1_GPIO, "camera_flash_en1");
+	gpio_direction_output(CAMERA_FLASH_EN1_GPIO, 0);
+	gpio_export(CAMERA_FLASH_EN1_GPIO, false);
+
+/*	gpio_request(CAMERA_FLASH_EN2_GPIO, "camera_flash_en2");
+	gpio_direction_output(CAMERA_FLASH_EN2_GPIO, 0);
+	gpio_export(CAMERA_FLASH_EN2_GPIO, false);*/
+
+	gpio_set_value(CAMERA1_PWDN_GPIO, 1);
+	mdelay(5);
+
+	return 0;
+}
+
+static int olympus_ov5650_power_on(void)
+{
+	gpio_set_value(CAMERA1_PWDN_GPIO, 0);
+
+	if (!reg_avdd_cam1) {
+		reg_avdd_cam1 = regulator_get(NULL, "vio");
+		if (IS_ERR_OR_NULL(reg_avdd_cam1)) {
+			pr_err("olympus_ov5650_power_on: reg_avdd_cam1 failed\n");
+			reg_avdd_cam1 = NULL;
+			return PTR_ERR(reg_avdd_cam1);
+		}
+		regulator_enable(reg_avdd_cam1);
+	}
+	mdelay(5);
+
+	if (!reg_vdd_mipi) {
+		reg_vdd_mipi = regulator_get(NULL, "vhvio");
+		if (IS_ERR_OR_NULL(reg_vdd_mipi)) {
+			pr_err("olympus_ov5650_power_on: vddio_mipi failed\n");
+			reg_vdd_mipi = NULL;
+			return PTR_ERR(reg_vdd_mipi);
+		}
+		regulator_enable(reg_vdd_mipi);
+	}
+	mdelay(5);
+
+	if (!reg_vdd_af) {
+		reg_vdd_af = regulator_get(NULL, "v28_af_baf");
+		if (IS_ERR_OR_NULL(reg_vdd_af)) {
+			pr_err("olympus_ov5650_power_on: vdd_vcore_af failed\n");
+			reg_vdd_af = NULL;
+			return PTR_ERR(reg_vdd_af);
+		}
+		regulator_enable(reg_vdd_af);
+	}
+	mdelay(5);
+
+	gpio_set_value(CAMERA1_RESET_GPIO, 1);
+	mdelay(10);
+	gpio_set_value(CAMERA1_RESET_GPIO, 0);
+	mdelay(5);
+	gpio_set_value(CAMERA1_RESET_GPIO, 1);
+	mdelay(20);
+	gpio_set_value(CAMERA_AF_PD_GPIO, 1);
+
+	return 0;
+}
+
+static int olympus_ov5650_power_off(void)
+{
+	gpio_set_value(CAMERA_AF_PD_GPIO, 0);
+	gpio_set_value(CAMERA1_PWDN_GPIO, 1);
+	gpio_set_value(CAMERA1_RESET_GPIO, 0);
+
+	if (reg_avdd_cam1) {
+		regulator_disable(reg_avdd_cam1);
+		regulator_put(reg_avdd_cam1);
+		reg_avdd_cam1 = NULL;
+	}
+
+	if (reg_vdd_mipi) {
+		regulator_disable(reg_vdd_mipi);
+		regulator_put(reg_vdd_mipi);
+		reg_vdd_mipi = NULL;
+	}
+
+	if (reg_vdd_af) {
+		regulator_disable(reg_vdd_af);
+		regulator_put(reg_vdd_af);
+		reg_vdd_af = NULL;
+	}
+
+	return 0;
+}
+
+static int olympus_soc380_power_on(void)
+{
+	gpio_set_value(CAMERA2_PWDN_GPIO, 0);
+
+	if (!reg_vddio_vi) {
+		reg_vddio_vi = regulator_get(NULL, "vio");
+		if (IS_ERR_OR_NULL(reg_vddio_vi)) {
+			pr_err("olympus_soc380_power_on: vddio_vi failed\n");
+			reg_vddio_vi = NULL;
+			return PTR_ERR(reg_vddio_vi);
+		}
+		regulator_set_voltage(reg_vddio_vi, 1800*1000, 1800*1000);
+		mdelay(5);
+		regulator_enable(reg_vddio_vi);
+	}
+
+	if (!reg_avdd_cam1) {
+		reg_avdd_cam1 = regulator_get(NULL, "vhvio");
+		if (IS_ERR_OR_NULL(reg_avdd_cam1)) {
+			pr_err("olympus_soc380_power_on: vdd_cam1 failed\n");
+			reg_avdd_cam1 = NULL;
+			return PTR_ERR(reg_avdd_cam1);
+		}
+		regulator_enable(reg_avdd_cam1);
+	}
+	mdelay(5);
+
+	gpio_set_value(CAMERA2_RESET_GPIO, 1);
+	mdelay(10);
+	gpio_set_value(CAMERA2_RESET_GPIO, 0);
+	mdelay(5);
+	gpio_set_value(CAMERA2_RESET_GPIO, 1);
+	mdelay(20);
+
+	return 0;
+
+}
+
+static int olympus_soc380_power_off(void)
+{
+	gpio_set_value(CAMERA2_PWDN_GPIO, 1);
+	gpio_set_value(CAMERA2_RESET_GPIO, 0);
+
+	if (reg_avdd_cam1) {
+		regulator_disable(reg_avdd_cam1);
+		regulator_put(reg_avdd_cam1);
+		reg_avdd_cam1 = NULL;
+	}
+	if (reg_vddio_vi) {
+		regulator_disable(reg_vddio_vi);
+		regulator_put(reg_vddio_vi);
+		reg_vddio_vi = NULL;
+	}
+
+	return 0;
+}
+
+struct ov5650_platform_data olympus_ov5650_data = {
+	.power_on = olympus_ov5650_power_on,
+	.power_off = olympus_ov5650_power_off,
+};
+
+struct soc380_platform_data olympus_soc380_data = {
+	.power_on = olympus_soc380_power_on,
+	.power_off = olympus_soc380_power_off,
+};
 /*
  * Vibrator
  */
@@ -513,6 +704,17 @@ struct adt7461_platform_data olympus_adt7461_pdata = {
 	.irq_gpio = TEGRA_ADT7461_IRQ_GPIO,
 };
 
+static struct i2c_board_info olympus_i2c3_board_info[] = {
+	{
+		I2C_BOARD_INFO("ov5650", 0x36),
+		.platform_data = &olympus_ov5650_data,
+	},
+	{
+		I2C_BOARD_INFO("soc380", 0x3C),
+		.platform_data = &olympus_soc380_data,
+	},
+};
+
 static struct i2c_board_info __initdata olympus_i2c_bus4_board_info[] = {
 	{
 		I2C_BOARD_INFO("akm8975", 0x0C),
@@ -527,26 +729,33 @@ static struct i2c_board_info __initdata olympus_i2c_bus4_board_info[] = {
 
 void __init mot_sensors_init(void)
 {
+
+	olympus_camera_init();
 	kxtf9_init();
-	//tegra_akm8975_init();
-/*
+	tegra_akm8975_init();
+
 	tegra_gpio_enable(TEGRA_GPIO_PE5); 
 	if( gpio_request(TEGRA_GPIO_PE5, "adt7461") < 0) {
 		printk (KERN_INFO "%s: Error requesting gpio 'adt7461' %u\n", __func__, TEGRA_GPIO_PE5);
 	};
-	gpio_direction_input(TEGRA_GPIO_PE5);*/
+	gpio_direction_input(TEGRA_GPIO_PE5);
 
 	tegra_vibrator_init();
 
-	//isl29030_init();
+	isl29030_init();
 	
 	platform_add_devices(tegra_sensors, ARRAY_SIZE(tegra_sensors));
 
         aes1750_spi_device.irq = gpio_to_irq(aes1750_interrupt);
         spi_register_board_info(&aes1750_spi_device,sizeof(aes1750_spi_device));
-	
+
+	printk("bus 2: %d devices\n", ARRAY_SIZE(olympus_i2c_bus4_board_info));
 	printk("bus 3: %d devices\n", ARRAY_SIZE(olympus_i2c_bus4_board_info));
+
 	i2c_register_board_info(3, olympus_i2c_bus4_board_info, 
 				ARRAY_SIZE(olympus_i2c_bus4_board_info));
+
+	i2c_register_board_info(2, olympus_i2c3_board_info,
+		ARRAY_SIZE(olympus_i2c3_board_info));
 }
 

@@ -34,14 +34,14 @@
 #include <linux/akm8975.h>
 #include <linux/earlysuspend.h>
 
-#define AK8975DRV_CALL_DBG 1
+#define AK8975DRV_CALL_DBG 0
 #if AK8975DRV_CALL_DBG
 #define FUNCDBG(msg)	pr_err("%s:%s\n", __func__, msg);
 #else
 #define FUNCDBG(msg)
 #endif
 
-#define AK8975DRV_DATA_DBG 1
+#define AK8975DRV_DATA_DBG 0
 #define MAX_FAILURE_COUNT 10
 
 struct akm8975_data {
@@ -346,7 +346,7 @@ static long akmd_ioctl(struct file *file, unsigned int cmd,
 	struct akm8975_data *akm = file->private_data;
 
 	FUNCDBG("called");
-	printk(KERN_INFO "%s: cmd = 0x%08X", __func__, cmd);
+/*	printk(KERN_INFO "%s: cmd = 0x%08X", __func__, cmd);
 	printk(KERN_INFO "%s: arg = 0x%lX", __func__, arg);
 
 	printk(KERN_INFO "%s: ECS_IOCTL_READ = 0x%08X", __func__, ECS_IOCTL_READ);
@@ -355,7 +355,7 @@ static long akmd_ioctl(struct file *file, unsigned int cmd,
 	printk(KERN_INFO "%s: ECS_IOCTL_SET_YPR = 0x%08X", __func__, ECS_IOCTL_SET_YPR);
 	printk(KERN_INFO "%s: ECS_IOCTL_GET_OPEN_STATUS = 0x%08X", __func__, ECS_IOCTL_GET_OPEN_STATUS);
 	printk(KERN_INFO "%s: ECS_IOCTL_GET_CLOSE_STATUS = 0x%08X", __func__, ECS_IOCTL_GET_CLOSE_STATUS);
-	printk(KERN_INFO "%s: ECS_IOCTL_GET_DELAY = 0x%08X", __func__, ECS_IOCTL_GET_DELAY);
+	printk(KERN_INFO "%s: ECS_IOCTL_GET_DELAY = 0x%08X", __func__, ECS_IOCTL_GET_DELAY);*/
 
 	switch (cmd) {
 	case ECS_IOCTL_READ:

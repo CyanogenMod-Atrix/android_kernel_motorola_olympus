@@ -161,7 +161,7 @@ static struct resource mot_wifi_resources[] = {
  {
 	pr_debug("%s: %d\n", __func__, val);
 	mot_wifi_cd = val;
-	sdhci_tegra_wlan_detect();
+	//sdhci_tegra_wlan_detect();
 	if (wifi_status_cb)
 		wifi_status_cb(val, wifi_status_cb_devid);
 	else
