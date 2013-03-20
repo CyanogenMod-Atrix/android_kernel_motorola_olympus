@@ -274,7 +274,7 @@ static ssize_t adb_read(struct file *fp, char __user *buf,
 	int r = count, xfer;
 	int ret;
 
-	pr_debug("adb_read(%d)\n", count);
+	//pr_debug("adb_read(%d)\n", count);
 	if (!_adb_dev)
 		return -ENODEV;
 
@@ -286,7 +286,7 @@ static ssize_t adb_read(struct file *fp, char __user *buf,
 
 	/* we will block until we're online */
 	while (!(dev->online || dev->error)) {
-		pr_debug("adb_read: waiting for online state\n");
+		//pr_debug("adb_read: waiting for online state\n");
 		ret = wait_event_interruptible(dev->read_wq,
 				(dev->online || dev->error));
 		if (ret < 0) {
@@ -310,9 +310,9 @@ requeue_req:
 		r = -EIO;
 		dev->error = 1;
 		goto done;
-	} else {
-		pr_debug("rx %p queue\n", req);
-	}
+	} //else {
+		//pr_debug("rx %p queue\n", req);
+	//}
 
 	/* wait for a request to complete */
 	ret = wait_event_interruptible(dev->read_wq, dev->rx_done);
@@ -327,7 +327,7 @@ requeue_req:
 		if (req->actual == 0)
 			goto requeue_req;
 
-		pr_debug("rx %p %d\n", req, req->actual);
+		//pr_debug("rx %p %d\n", req, req->actual);
 		xfer = (req->actual < count) ? req->actual : count;
 		if (copy_to_user(buf, req->buf, xfer))
 			r = -EFAULT;
@@ -337,7 +337,7 @@ requeue_req:
 
 done:
 	adb_unlock(&dev->read_excl);
-	pr_debug("adb_read returning %d\n", r);
+	//pr_debug("adb_read returning %d\n", r);
 	return r;
 }
 
@@ -351,7 +351,7 @@ static ssize_t adb_write(struct file *fp, const char __user *buf,
 
 	if (!_adb_dev)
 		return -ENODEV;
-	pr_debug("adb_write(%d)\n", count);
+	//pr_debug("adb_write(%d)\n", count);
 
 	if (adb_lock(&dev->write_excl))
 		return -EBUSY;
@@ -404,7 +404,7 @@ static ssize_t adb_write(struct file *fp, const char __user *buf,
 		adb_req_put(dev, &dev->tx_idle, req);
 
 	adb_unlock(&dev->write_excl);
-	pr_debug("adb_write returning %d\n", r);
+	//pr_debug("adb_write returning %d\n", r);
 	return r;
 }
 
