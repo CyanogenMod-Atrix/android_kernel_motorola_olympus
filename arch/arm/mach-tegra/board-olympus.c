@@ -40,6 +40,7 @@
 
 #include <mach/iomap.h>
 #include <mach/irqs.h>
+#include <mach/w1.h>
 #include <linux/regulator/consumer.h>
 #include <linux/regulator/driver.h>
 #include <linux/regulator/machine.h>
@@ -288,67 +289,12 @@ static char oly_unused_pins_p1[] = {
 
 static __initdata struct tegra_clk_init_table olympus_clk_init_table[] = {
 	/* name		parent		rate		enabled */  
-#if 0
-	{ "usb3",	"clk_m",	26000000,	false},
-{ "dvc",	"clk_m",	2888888,	true},
-{ "i2c3",	"clk_m",	2888888,	true},
-{ "i2c2",	"clk_m",	787878,		true},
-{ "i2c1",	"clk_m",	2888888,	true},
-{ "owr",	"clk_m",	1000000,	false},
-{ "kfuse",	"clk_m",	26000000,	true},
-{ "i2s2",	"clk_m",	26000000,	false},
-{ "timer",	"clk_m",	26000000,	true},
-{ "pll_u",	"clk_m",	480000000,	true},
-{ "pll_d",	"clk_m",	459000000,	true},
-{ "pll_d_out0",	"pll_d",	229500000,	true},
-{ "disp1",	"pll_d_out0",	229500000,	true},
-{ "pll_p",	"clk_m",	216000000,	true},
-{ "host1x",	"pll_p",	108000000,	true},
-{ "uartb",	"pll_p",	216000000,	true},
-{ "uartd",	"pll_p",	216000000,	true},
-{ "csite",	"pll_p",	144000000,	true},
-{ "sdmmc3",	"pll_p",	48000000,	false},
-{ "sdmmc2",	"pll_p",	24000000,	false},
-{ "sdmmc1",	"pll_p",	48000000,	false},
-{ "pll_p_out3",	"pll_p",	72000000,	true},
-{ "pll_p_out1",	"pll_p",	28800000,	true},
-{ "pll_a",	"pll_p_out1",	56448000,	false},
-{ "pll_a_out0",	"pll_a",	11289600,	false},
-{ "pll_c",	"clk_m",	600000000,	true},
-{ "mpe",	"pll_c",	300000000,	true},
-{ "epp",	"pll_c",	300000000,	true},
-{ "vi",		"pll_c",	100000000,	true},
-{ "2d",		"pll_c",	300000000,	true},
-{ "3d",		"pll_c",	300000000,	true},
-{ "cop",	"sclk",		80000000,	true},
-{ "pll_m",	"clk_m",	600000000,	true},
-{ "emc",	"pll_m",	600000000,	true},
-{ "uartc",	"pll_m",	600000000,	true},
-{ "rtc",	"clk_32k",	32768,	true},
-	{ "pll_p_out4",	"pll_p",	108000000,	true},	
-	{ "sdmmc4",	"pll_p",	48000000,	true},
-	{ "pll_c_out1",	"pll_c",	80000000,	true},
-	{ "sclk",	"pll_c_out1",	80000000,	true},
-	{ "hclk",	"sclk",		80000000,	true},
-	{ "pclk",	"hclk",		40000000,	true},
-	{ "apbdma",	"pclk",		40000000,	true},
-	{ "blink",	"clk_32k",	32768,		false},
-	{ "pwm",	"clk_32k",	32768,		false},
-	{ "kbc",	"clk_32k",	32768,		true},
-	{ "sdmmc2",	"pll_p",	25000000,	false},
-	{ "i2s2",	"pll_a_out0",	0,		false},
-	{ "spi",	"clk_m",	26000000,	true},
-#endif
-//	{"usbd",	"clk_m",	26000000,	true},
 	{"sbc1",	"pll_c",	60000000,	true},
 	{"sbc2",	"pll_c",	60000000,	true},
-//	{"pwm",		"clk_32k",	32768,		true},
 	{"pwm",		"clk_32k",	32768,		false},
 	{"kbc",		"clk_32k",	32768,		true},
 	{"sdmmc2",	"pll_p",	25000000,	false},
-//	{"i2s1",	"pll_a_out0",	0,		true},
 	{"i2s1",	"pll_a_out0",	0,		false},
-//	{"pll_a_out0",	"pll_a",	11289600,	true}, //added
 	{"spdif_out",	"pll_a_out0",	0,		false},
 	{ NULL,		NULL,		0,		0},
 };
@@ -400,9 +346,34 @@ fail:
                return;
 }
 
+static struct tegra_w1_timings tegra_w1_platform_timings = {
+        .tsu = 0x1,
+        .trelease = 0xf,
+        .trdv = 0xf,
+        .tlow0 = 0x3c,
+        .tlow1 = 0x1,
+        .tslot = 0x77,
+
+        .tpdl = 0x3c,
+        .tpdh = 0x1e,
+        .trstl = 0x1df,
+        .trsth = 0x1df,
+
+        .rdsclk = 0x7,
+        .psclk = 0x50,
+};
+
+static struct tegra_w1_platform_data tegra_w1_pdata = {
+        .clk_id = NULL,
+        .timings = &tegra_w1_platform_timings,
+};
+
 static struct platform_device tegra_w1_device = {
-    .name          = "tegra_w1",
-    .id            = -1,
+	.name          = "tegra_w1",
+	.id            = -1,
+	.dev	   =  {
+	.platform_data = &tegra_w1_pdata,
+	},
 };
 
 static int cpcap_usb_connected_probe(struct platform_device *pdev)
@@ -506,7 +477,7 @@ static void __init tegra_mot_init(void)
 
 	olympus_devices_init();
 
-	olympus_audio_init();
+//	olympus_audio_init();
 
 	olympus_power_init();
 	
@@ -516,7 +487,7 @@ static void __init tegra_mot_init(void)
 
 	olympus_panel_init();
 
-	mot_keymap_update_init();
+//	mot_keymap_update_init();
 
 	//olympus_keypad_init();
 
@@ -543,7 +514,7 @@ if (1==0) olympus_emc_init();
 	mot_sensors_init();
 
 	pm_power_off = mot_system_power_off;
-	tegra_setup_bluesleep();
+	//tegra_setup_bluesleep();
 
 	/* Configure SPDIF_OUT as GPIO by default, it can be later controlled
 	   as needed. When SPDIF_OUT is enabled and if HDMI is connected, it
@@ -633,7 +604,7 @@ static void __init mot_fixup(struct machine_desc *desc, struct tag *tags,
 
 int __init olympus_protected_aperture_init(void)
 {
-	tegra_protected_aperture_init(tegra_grhost_aperture);
+	//tegra_protected_aperture_init(tegra_grhost_aperture);
 	return 0;
 }
 late_initcall(olympus_protected_aperture_init);

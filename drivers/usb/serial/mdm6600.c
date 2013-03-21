@@ -60,6 +60,7 @@ static bool debug_data = false;
 
 static const struct usb_device_id mdm6600_id_table[] = {
 	{ USB_DEVICE_AND_INTERFACE_INFO(0x22b8, 0x2a70, 0xff, 0xff, 0xff) },
+	{ USB_DEVICE_AND_INTERFACE_INFO(0x22b8, 0x2e0a, 0xff, 0xff, 0xff) },
 	{ USB_DEVICE_AND_INTERFACE_INFO(0x22b8, 0x900e, 0xff, 0xff, 0xff) },
 	{ },
 };
@@ -119,6 +120,8 @@ static void mdm6600_release(struct usb_serial *serial);
 
 static void mdm6600_wake_work(struct work_struct *work)
 {
+	struct delayed_work *dwork = container_of(work, struct delayed_work,
+						work);
 	struct mdm6600_port *modem = container_of(work, struct mdm6600_port,
 		wake_work);
 	struct usb_interface *intf = modem->serial->interface;
@@ -129,7 +132,7 @@ static void mdm6600_wake_work(struct work_struct *work)
 	device_lock(dev);
 
 	/* Don't proceed during device state transitions. */
-	if (dev->power.is_prepared) {
+/*	if (dev->power.is_prepared) {
 		device_unlock(dev);
 		if (!wait_for_completion_timeout(&dev->power.completion, HZ))
 			dev_err(dev, "%s: wait timed out\n", __func__);
@@ -139,14 +142,16 @@ static void mdm6600_wake_work(struct work_struct *work)
 	if (dev->power.is_suspended) {
 		device_unlock(dev);
 		return;
-	}
+	}*/
 
+	usb_mark_last_busy(modem->serial->dev);
 	/* let usbcore auto-resume the modem */
 	if (usb_autopm_get_interface(intf) == 0)
 		/* set usage count back to 0 */
 		usb_autopm_put_interface_async(intf);
 
 	device_unlock(dev);
+	wake_lock_timeout(&modem->readlock, HZ/4);
 }
 
 static irqreturn_t mdm6600_irq_handler(int irq, void *ptr)
@@ -165,6 +170,22 @@ static irqreturn_t mdm6600_irq_handler(int irq, void *ptr)
 	queue_work(system_nrt_wq, &modem->wake_work);
 
 	return IRQ_HANDLED;
+}
+
+static int mdm6600_submit_int_urb(struct mdm6600_port *modem)
+{
+	int rc = 0;
+	if (modem->number == MODEM_INTERFACE_NUM) {
+		dbg("submit: int URB is %p\n", modem->port->interrupt_in_urb);
+		WARN_ON(interrupt_in_urb);
+		rc = usb_submit_urb(modem->port->interrupt_in_urb, GFP_KERNEL);
+		if (rc)
+			pr_err("%s: failed to submit interrupt urb, error %d\n",
+			    __func__, rc);
+		else
+			interrupt_in_urb = modem->port->interrupt_in_urb;
+	}
+	return rc;
 }
 
 /* called after probe for each of 5 usb_serial interfaces */

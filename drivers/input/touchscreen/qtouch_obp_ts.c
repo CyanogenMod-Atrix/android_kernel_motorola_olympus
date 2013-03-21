@@ -29,20 +29,62 @@
 #include <linux/miscdevice.h>
 #include <linux/mutex.h>
 #include <linux/qtouch_obp_ts.h>
-#include <linux/wakelock.h>
 #include <linux/slab.h>
+#include <linux/wakelock.h>
 #include <asm/io.h>
 #include <asm/uaccess.h>
 
 /* Alternative resume methods */
 /* use soft reset instead of power config */
-//#define CONFIG_XMEGAT_USE_RESET_TO_RESUME 1
+/* #define CONFIG_XMEGAT_USE_RESET_TO_RESUME */
 /* do hard reset before soft reset */
-//#define CONFIG_XMEGAT_DO_HARD_RESET  1
+/* #define CONFIG_XMEGAT_DO_HARD_RESET */
 
 /*
 #define	USE_NVODM_STUFF	1
 */
+
+#ifdef USE_NVODM_STUFF
+
+#define	NV_DEBUG	1
+
+#include "nvcommon.h"
+#include "nvrm_init.h"
+#include "nvrm_module.h"
+#include "nvrm_interrupt.h"
+#include "nvrm_pinmux.h"
+#include "nvrm_power.h"
+#include "nvrm_pmu.h"
+#include "nvodm_query.h"
+#include "nvodm_services.h"
+#include "nvodm_sdio.h"
+#include "nvodm_pmu.h"
+#include "nvrm_gpio.h"
+#include "mach/nvrm_linux.h"
+#include "nvassert.h"
+#include "nvodm_query_discovery.h"
+
+
+
+struct NvOdmStuff
+{
+	NvOdmServicesGpioHandle		hGpio;
+	NvOdmServicesPmuHandle		hPmu;
+	NvOdmServicesGpioIntrHandle	hGpioIntr;
+	NvOdmGpioPinHandle			hPinReset;
+	NvOdmServicesI2cHandle		hOdmI2c;
+	bool						isOpen;
+	NvRmGpioPinHandle			hPinIntr;
+};
+
+#endif
+
+#ifndef for_each_bit
+#define for_each_bit(bit, addr, size) \
+		for ((bit) = find_first_bit((addr), (size)); \
+			(bit) < (size); \
+			(bit) = find_next_bit((addr), (size), (bit) + 1))
+#endif
 
 #define IGNORE_CHECKSUM_MISMATCH
 
@@ -78,7 +120,10 @@ struct qtouch_ts_data
 	char	selfStatus;
 	struct  selftest	selfStatusReport;
 	bool	multiMode;
-
+#ifdef USE_NVODM_STUFF
+	struct		NvOdmStuff		NvOdmHandles;
+#endif
+	bool		useNvOdm;
 	unsigned long			obj_map[_BITMAP_LEN];
 
 	uint32_t			last_keystate;
@@ -98,6 +143,7 @@ struct qtouch_ts_data
 	int					i2cBLAddr;
 
 	uint8_t				cal_check_flag;
+	uint8_t				resume_full_reload_flag;
 	unsigned long		cal_timer;
 };
 
@@ -111,7 +157,6 @@ static void qtouch_ts_early_suspend(struct early_suspend *handler);
 static void qtouch_ts_late_resume(struct early_suspend *handler);
 #endif
 
-static int qtouch_hw_init(struct qtouch_ts_data *ts);
 
 extern unsigned int	MotorolaBootDispArgGet(int *);
 
@@ -144,7 +189,7 @@ struct	file_operations	qtouch_fops =
 {
 	.owner		= THIS_MODULE,
 	.open		= qtouch_ioctl_open,
-	.unlocked_ioctl	= qtouch_ioctl_ioctl,
+	.unlocked_ioctl		= qtouch_ioctl_ioctl,
 	.write		= qtouch_ioctl_write,
 };
 
@@ -402,7 +447,7 @@ static struct qtm_object *find_object_rid(struct qtouch_ts_data *ts, int rid)
 {
 	int i;
 
-	for_each_set_bit(i, ts->obj_map, QTM_OBP_MAX_OBJECT_NUM) {
+	for_each_bit(i, ts->obj_map, QTM_OBP_MAX_OBJECT_NUM) {
 		struct qtm_object *obj = &ts->obj_tbl[i];
 
 		if ((rid >= obj->report_id_min) && (rid <= obj->report_id_max))
@@ -422,9 +467,47 @@ static int qtouch_force_reset(struct qtouch_ts_data *ts, uint8_t sw_reset)
 	if (ts->pdata->hw_reset && !sw_reset) 
 	{
 		QTOUCH_INFO("%s: Forcing HW reset\n", __func__);
-		QTOUCH_INFO("%s: Taking device out of reset\n", __func__);
-		ts->pdata->hw_reset();
-	}
+		if ( !ts->useNvOdm )
+		{
+			QTOUCH_INFO("%s: Taking device out of reset\n", __func__);
+			ts->pdata->hw_reset();
+		}
+		else
+		{
+#ifdef USE_NVODM_STUFF
+			QTOUCH_INFO("%s: Taking device out of reset (using NVODM)\n", __func__);
+			/* Setup ISR using NvOdm API */
+			if ( !ts->NvOdmHandles.isOpen )
+			{
+				ts->NvOdmHandles.hGpio = NvOdmGpioOpen();
+				if ( !ts->NvOdmHandles.hGpio )
+				{
+					QTOUCH_INFO("%s: NvOdmGpioOpen() - !!!FAILED!!!.\n", __func__);
+					return -1;
+				}
+				QTOUCH_INFO("%s: NvOdmGpioOpen() - Success.\n", __func__);
+				/* Setup reset pin to HIGH */
+				ts->NvOdmHandles.hPinReset = NvOdmGpioAcquirePinHandle(ts->NvOdmHandles.hGpio, XMEGAT_GPIO_PORT_RESET, XMEGAT_GPIO_PIN_RESET );
+				if ( !ts->NvOdmHandles.hPinReset )
+				{
+					QTOUCH_INFO("%s: NvOdmAcquirePinHandle() couldn't get GPIO pin for RESET.\n", __func__);
+					return -2;
+				}
+				QTOUCH_INFO("%s: NvOdmAcquirePinHandle() acquired GPIO pin for RESET. Value: 0x%08X\n", __func__,
+																(int)ts->NvOdmHandles.hPinReset );
+				NvOdmGpioConfig(ts->NvOdmHandles.hGpio, ts->NvOdmHandles.hPinReset, NvOdmGpioPinMode_Output);
+				ts->NvOdmHandles.isOpen = TRUE;
+			}
+			QTOUCH_INFO("%s: Reset --> 0\n", __func__);
+			NvOdmGpioSetState(ts->NvOdmHandles.hGpio, ts->NvOdmHandles.hPinReset, 0);
+			msleep(1);
+			QTOUCH_INFO("%s: Reset --> 1\n", __func__);
+			NvOdmGpioSetState(ts->NvOdmHandles.hGpio, ts->NvOdmHandles.hPinReset, 1);
+			/* Try to guess why */
+			msleep(41);
+#endif
+		}
+	} 
 	else if (sw_reset) 
 	{
 		QTOUCH_INFO("%s: Forcing SW reset\n", __func__);
@@ -457,7 +540,6 @@ static int qtouch_force_calibration(struct qtouch_ts_data *ts)
 	return ret;
 }
 
-#if 0
 static int qtouch_force_backupnv(struct qtouch_ts_data *ts)
 {
 	struct qtm_object *obj;
@@ -477,7 +559,6 @@ static int qtouch_force_backupnv(struct qtouch_ts_data *ts)
 					__func__);
 	return ret;
 }
-#endif
 
 static int	mode_codes[5] = 
 {	
@@ -1102,6 +1183,32 @@ static int do_cmd_proc_msg(struct qtouch_ts_data *ts, struct qtm_object *obj, vo
 				if (!hw_reset) 
 				{
 					qtouch_force_reset(ts, FALSE);
+					if (ts->resume_full_reload_flag == TRUE)
+					{
+						/*
+						 * Unfortunately, this means
+						 * that we failed to save config
+						 * into nvram. But for the good
+						 * news, we can re-load it again
+						 * and try saving it to nvram.
+						 * Since we are sending the full
+						 * config, trying to save it to
+						 * nvram adds very little
+						 * overhead
+						 */
+						ret = qtouch_hw_init(ts);
+						if (ret != 0)
+						{
+							QTOUCH_ERR("%s: Cannot reload IC config\n",
+								__func__);
+							return -EIO;
+						}
+#ifdef CONFIG_XMEGAT_DO_HARD_RESET
+						/* try saving to nvram */
+						if (!qtouch_force_backupnv(ts))
+							ts->resume_full_reload_flag = FALSE;
+#endif
+					}
 					ts->checksum_cnt++;
 				}
 			}
@@ -1124,7 +1231,7 @@ static int do_touch_multi_msg(struct qtouch_ts_data *ts, struct qtm_object *obj,
 	int down;
 	int btnFlag;
 	int stuckFinger;
-	int num_fingers_down;
+	bool active_touch = false;
 
 	QTOUCH_INFO4("%s: dump of arrived multitouch message: \n", __func__);
 	QTOUCH_INFO4("\treport_id: %d\n",msg->report_id);
@@ -1147,9 +1254,7 @@ static int do_touch_multi_msg(struct qtouch_ts_data *ts, struct qtm_object *obj,
 	y = (msg->ypos_msb << 2) | ((msg->xypos_lsb >> 2) & 0x3);
 	width = msg->touch_area;
 	pressure = msg->touch_amp;
-
-	down = !(msg->status & (QTM_TOUCH_MULTI_STATUS_RELEASE |
-		 QTM_TOUCH_MULTI_STATUS_SUPPRESS));
+	down = !(msg->status & QTM_TOUCH_MULTI_STATUS_RELEASE);
 
 	/*
 	 * IC may report old finger 2 as new finger 2 after lift and down of a
@@ -1168,7 +1273,6 @@ static int do_touch_multi_msg(struct qtouch_ts_data *ts, struct qtm_object *obj,
 			stuckFinger = TRUE;
 		}
 	}
-
 	if (ts->pdata->flags & QTOUCH_FLIP_X)
 		x = (ts->pdata->abs_max_x-1)-x;
 
@@ -1188,6 +1292,7 @@ static int do_touch_multi_msg(struct qtouch_ts_data *ts, struct qtm_object *obj,
 	QTOUCH_INFO2("%s: stat=%02x, f=%d x=%d y=%d p=%d w=%d, down=%d\n", __func__,
 			msg->status, finger, x, y, pressure, width, down);
 
+
 	/* The chip may report erroneous points way
 	beyond what a user could possibly perform so we filter
 	these out */
@@ -1206,8 +1311,6 @@ static int do_touch_multi_msg(struct qtouch_ts_data *ts, struct qtm_object *obj,
 		ts->finger_data[finger].x_data = x;
 		ts->finger_data[finger].y_data = y;
 		ts->finger_data[finger].w_data = width;
-		ts->finger_data[finger].vector = msg->touch_vect;
-		ts->finger_data[finger].down = 1;
 	}
 
 	/* The touch IC will not give back a pressure of zero
@@ -1216,6 +1319,7 @@ static int do_touch_multi_msg(struct qtouch_ts_data *ts, struct qtm_object *obj,
 	if (!down) 
 	{
 		ts->finger_data[finger].z_data = 0;
+		ts->finger_data[finger].down = 0;
 		/* this will cause check to be performed on the next point */
 		if (finger == 0)
 			need2check4IC_problem = TRUE;
@@ -1244,7 +1348,6 @@ static int do_touch_multi_msg(struct qtouch_ts_data *ts, struct qtm_object *obj,
 		}
 		QTOUCH_INFO4("%s: btnFlg = %d\n", __func__, btnFlag);
 	}
-#if 0
 	if ( btnFlag < 0 )
 	{
 		if ( ts->multiMode )
@@ -1253,29 +1356,32 @@ static int do_touch_multi_msg(struct qtouch_ts_data *ts, struct qtm_object *obj,
 				i < ts->pdata->multi_touch_cfg.num_touch;
 				i++)
 			{
-				if ( ts->finger_data[i].down == 0
-					&& ts->finger_data[i].z_data == 0
-					&& ts->finger_data[i].w_data == 0
-					&& ts->finger_data[i].x_data == 0
-					&& ts->finger_data[i].y_data == 0  )
+				if (ts->finger_data[i].down == 0)
 					continue;
 				if ( !ts->suspendMode )
 				{
-					input_report_abs(ts->input_dev, ABS_MT_PRESSURE,
-							ts->finger_data[i].z_data);
 					input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR,
 							 ts->finger_data[i].w_data);
 					input_report_abs(ts->input_dev, ABS_MT_POSITION_X,
 							 ts->finger_data[i].x_data);
 					input_report_abs(ts->input_dev, ABS_MT_POSITION_Y,
 							 ts->finger_data[i].y_data);
-					input_report_abs(ts->input_dev, ABS_MT_ORIENTATION,
-							 ts->finger_data[i].vector);
-					input_report_abs(ts->input_dev, ABS_MT_TRACKING_ID,
-							 i);
+					input_report_abs(ts->input_dev,
+						ABS_MT_PRESSURE,
+						ts->finger_data[i].z_data);
+					input_report_abs(ts->input_dev,
+						ABS_MT_TRACKING_ID, i);
+
 					input_mt_sync(ts->input_dev);
+					active_touch = true;
 				}
 			}
+
+		/* If no touches are still active,need an empty input_mt_sync()
+		to release any previous touches. */
+			if (!active_touch)
+				input_mt_sync(ts->input_dev);
+
 			input_sync(ts->input_dev);
 		}
 		else
@@ -1331,6 +1437,12 @@ static int do_touch_multi_msg(struct qtouch_ts_data *ts, struct qtm_object *obj,
 							 ts->prev_finger_data[i].x_data);
 					input_report_abs(ts->input_dev, ABS_MT_POSITION_Y,
 							 ts->prev_finger_data[i].y_data);
+					input_report_abs(ts->input_dev, ABS_PRESSURE,
+							 ts->prev_finger_data[i].z_data);
+					if (ts->finger_data[i].down == 0)
+						input_report_key(ts->input_dev, BTN_TOUCH, 0 );
+					else
+						input_report_key(ts->input_dev, BTN_TOUCH, 1 );
 					input_mt_sync(ts->input_dev);
 				}
 			}
@@ -1371,31 +1483,20 @@ static int do_touch_multi_msg(struct qtouch_ts_data *ts, struct qtm_object *obj,
 			}
 		}
 	}
-#endif
 	if (stuckFinger)
 	{
 		if (!ts->suspendMode)
 		{
-			input_report_abs(ts->input_dev, ABS_MT_PRESSURE,
-				 ts->finger_data[i].z_data);
-			input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR,
-				 ts->finger_data[i].w_data);
-			input_report_abs(ts->input_dev, ABS_MT_POSITION_X,
-				 ts->finger_data[i].x_data);
-			input_report_abs(ts->input_dev, ABS_MT_POSITION_Y,
-				 ts->finger_data[i].y_data);
-			input_report_abs(ts->input_dev, ABS_MT_ORIENTATION,
-				 ts->finger_data[i].vector);
-			input_report_abs(ts->input_dev, ABS_MT_TRACKING_ID,
-				 i);
 			input_mt_sync(ts->input_dev);
+			input_sync(ts->input_dev);
+
 			ts->finger_data[1].x_data = 0;
 			ts->finger_data[1].y_data = 0;
 			ts->finger_data[1].w_data = 0;
+			ts->finger_data[1].down = 0;
 		}
 	}
-#if 0
-	if (!down) 
+	if (!down)
 	{
 		memset(&ts->finger_data[finger],
 				0,
@@ -1406,41 +1507,6 @@ static int do_touch_multi_msg(struct qtouch_ts_data *ts, struct qtm_object *obj,
 		memcpy(&(ts->prev_finger_data[i]),
 				&(ts->finger_data[i]),
 				sizeof(ts->finger_data[i]));
-#endif
-	if (down) {
-		ts->finger_data[finger].x_data = x;
-		ts->finger_data[finger].y_data = y;
-		ts->finger_data[finger].w_data = width;
-		ts->finger_data[finger].z_data = pressure;
-		ts->finger_data[finger].vector = msg->touch_vect;
-		ts->finger_data[finger].down = 1;
-	} else {
-		memset(&ts->finger_data[finger], 0,
-			sizeof(struct coordinate_map));
-	}
-
-	num_fingers_down = 0;
-	for (i = 0; i < ts->pdata->multi_touch_cfg.num_touch; i++) {
-		if (ts->finger_data[i].down == 0)
-			continue;
-		input_report_abs(ts->input_dev, ABS_MT_PRESSURE,
-				 ts->finger_data[i].z_data);
-		input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR,
-				 ts->finger_data[i].w_data);
-		input_report_abs(ts->input_dev, ABS_MT_POSITION_X,
-				 ts->finger_data[i].x_data);
-		input_report_abs(ts->input_dev, ABS_MT_POSITION_Y,
-				 ts->finger_data[i].y_data);
-		input_report_abs(ts->input_dev, ABS_MT_ORIENTATION,
-				 ts->finger_data[i].vector);
-		input_report_abs(ts->input_dev, ABS_MT_TRACKING_ID,
-				 i);
-		input_mt_sync(ts->input_dev);
-		num_fingers_down++;
-	}
-	if (num_fingers_down == 0)
-		input_mt_sync(ts->input_dev);
-	input_sync(ts->input_dev);
 
 	QTOUCH_INFO("%s: exit...\n", __func__);
 	return 0;
@@ -1464,16 +1530,19 @@ static int do_touch_keyarray_msg(struct qtouch_ts_data *ts,
 			if (msg->keystate & bit) {
 				if (ignore_keyarray_touches)
 					return 0;
-				input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR, 4);
+				input_report_abs(ts->input_dev,
+						ABS_MT_PRESSURE, 4);
 			} else {
 				input_report_abs(ts->input_dev,
-						 ABS_MT_TOUCH_MAJOR, 0);
+						 ABS_MT_PRESSURE, 0);
 			}
-			input_report_abs(ts->input_dev, ABS_MT_WIDTH_MAJOR, 4);
+			input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR, 4);
 			input_report_abs(ts->input_dev, ABS_MT_POSITION_X,
 					 ts->pdata->key_array.keys[i].x_coord);
 			input_report_abs(ts->input_dev, ABS_MT_POSITION_Y,
 					 ts->pdata->key_array.keys[i].y_coord);
+			input_report_abs(ts->input_dev, ABS_MT_TRACKING_ID, i);
+
 			input_mt_sync(ts->input_dev);
 			input_sync(ts->input_dev);
 		}
@@ -1905,8 +1974,18 @@ static void qtouch_ts_work_func(struct work_struct *work)
 			}
 			if ( keepGoing == TRUE )
 			{
-
+/*
+				NvOdmGpioGetState(ts->NvOdmHandles.hGpio, ts->NvOdmHandles.hPinIntr, &pinValue);
+				pinValue = gpio_get_value(ts->irqInt);
+*/
+#ifdef USE_NVODM_STUFF
+				NvRmGpioReadPins(s_hGpioGlobal, 
+										&(ts->NvOdmHandles.hPinIntr), 
+										(NvRmGpioPinState *)&pinValue,
+										(NvU32) 1);
+#else
 				pinValue = gpio_get_value(tsGl->pdata->gpio_intr);
+#endif
 
 				QTOUCH_INFO("%s:  GPIO is %s", __func__, 
 						(pinValue == 1) ? "HIGH\n":"LOW\n" );
@@ -2090,6 +2169,12 @@ static int qtouch_ts_probe(struct i2c_client *client,
 
 	INIT_WORK(&ts->work, qtouch_ts_work_func);
 
+#ifdef USE_NVODM_STUFF
+	ts->useNvOdm = TRUE;
+	ts->NvOdmHandles.isOpen = FALSE;
+#else
+	ts->useNvOdm = FALSE;
+#endif
 	ts->hw_init = FALSE;
 	ts->modeOfOperation = QTOUCH_MODE_NORMAL;
 	ts->dlStatus = OBP_DL_WAITING_FOR_NOTHING;
@@ -2106,6 +2191,11 @@ static int qtouch_ts_probe(struct i2c_client *client,
 	ts->x_delta = ts->pdata->x_delta;
 	ts->y_delta = ts->pdata->y_delta;
 
+	ts->irqInt = gpio_to_irq(pdata->gpio_intr);
+	QTOUCH_INFO("%s: INTR irq: %d, current value: %d\n",
+		__func__, ts->irqInt, 
+		gpio_get_value(pdata->gpio_intr));
+
 	ts->input_dev = input_allocate_device();
 	if (ts->input_dev == NULL) 
 	{
@@ -2115,6 +2205,7 @@ static int qtouch_ts_probe(struct i2c_client *client,
 	}
 	ts->input_dev->name = QTOUCH_TS_NAME;
 	input_set_drvdata(ts->input_dev, ts);
+
 /*
 	ts->msg_buf = kmalloc(ts->msg_size, GFP_KERNEL);
 	if (ts->msg_buf == NULL) 
@@ -2130,6 +2221,7 @@ static int qtouch_ts_probe(struct i2c_client *client,
 	ts->client->addr = XMEGAT_I2C_ADDR;
 	ts->i2cNormAddr = XMEGAT_I2C_ADDR;
 
+	/* GPIOs must be configured in board file */
 	qtouch_force_reset(ts, FALSE);
 
 	err = qtouch_process_info_block(ts);
@@ -2209,17 +2301,25 @@ static int qtouch_ts_probe(struct i2c_client *client,
 				pdata->abs_min_y, pdata->abs_max_y,
 				pdata->fuzz_y, 0);
 			input_set_abs_params(ts->input_dev, ABS_MT_TOUCH_MAJOR,
-				pdata->abs_min_p, pdata->abs_max_p,
-				pdata->fuzz_p, 0);
-			input_set_abs_params(ts->input_dev, ABS_MT_WIDTH_MAJOR,
 				pdata->abs_min_w, pdata->abs_max_w,
 				pdata->fuzz_w, 0);
+			input_set_abs_params(ts->input_dev, ABS_MT_PRESSURE,
+				pdata->abs_min_p, pdata->abs_max_p,
+				pdata->fuzz_p, 0);
+			input_set_abs_params(ts->input_dev,
+				ABS_MT_TRACKING_ID, 0,
+				ts->pdata->multi_touch_cfg.num_touch - 1,
+				0, 0);
+
 			set_bit(EV_ABS, ts->input_dev->evbit);
 			set_bit(EV_KEY, ts->input_dev->keybit);
 			set_bit(EV_SYN, ts->input_dev->keybit);
-			set_bit(BTN_TOUCH, ts->input_dev->keybit);
 			set_bit(ABS_X, ts->input_dev->keybit);
 			set_bit(ABS_Y, ts->input_dev->keybit);
+
+			/* Use a 1024 event evdev buffer to minimize overflow */
+			input_set_events_per_packet(ts->input_dev, 128);
+
 		}
 		else
 		{
@@ -2274,36 +2374,6 @@ static int qtouch_ts_probe(struct i2c_client *client,
 		goto err_input_register_dev;
 	}
 
-	QTOUCH_INFO("%s: gpio_request(reset)\n", __func__);
-	err = gpio_request(pdata->gpio_reset, QTOUCH_RST_NAME);
-	if ( err )	{
-		pr_err("%s: gpio_request(reset) failed\n", __func__);
-		goto err_request_irq;
-	}
-
-	QTOUCH_INFO("%s: gpio_direction_output(reset)\n", __func__);
-	err = gpio_direction_output(pdata->gpio_reset, 1);
-	if ( err )	{
-		pr_err("%s: gpio_direction_input(reset) failed\n", __func__);
-		goto err_request_irq;
-	}
-
-	QTOUCH_INFO("%s: gpio_request(interrupt)\n", __func__);
-	err = gpio_request(pdata->gpio_intr, QTOUCH_INT_NAME);
-	if ( err )	{
-		pr_err("%s: gpio_request(interrupt) failed\n", __func__);
-		goto err_request_irq;
-	}
-
-	QTOUCH_INFO("%s: gpio_direction_input(interrupt)\n", __func__);
-	err = gpio_direction_input(pdata->gpio_intr);
-	if ( err )	{
-		pr_err("%s: gpio_direction_input(interrupt) failed\n", __func__);
-		goto err_request_irq;
-	}
-	ts->irqInt = gpio_to_irq(pdata->gpio_intr);
-	pr_info("%s: INTR irq: %d, current value: %d\n",
-			__func__, ts->irqInt, gpio_get_value(pdata->gpio_intr));
 
 	err = request_irq(ts->irqInt, 
 						qtouch_ts_irq_handler,
@@ -2357,6 +2427,10 @@ static int qtouch_ts_probe(struct i2c_client *client,
 
 	ts->cal_check_flag = 0;
 	ts->cal_timer = 0;
+	/* Assume at this point that nvram has configuration and there is no
+	 * need to do full reload on resume.
+	 */
+	ts->resume_full_reload_flag = FALSE;
 
 	return 0;
 
@@ -2444,11 +2518,11 @@ static int qtouch_ts_resume(struct i2c_client *client)
 			__func__, i, ts->finger_data[i].down);
 		if (ts->finger_data[i].down == 0)
 			continue;
-		input_report_abs(ts->input_dev, ABS_MT_TOUCH_MAJOR, 0);
-		input_mt_sync(ts->input_dev);
 		memset(&ts->finger_data[i], 0,
 			sizeof(struct coordinate_map));
 	}
+
+	input_mt_sync(ts->input_dev);
 	input_sync(ts->input_dev);
 
 #ifdef CONFIG_XMEGAT_USE_RESET_TO_RESUME
@@ -2463,6 +2537,30 @@ static int qtouch_ts_resume(struct i2c_client *client)
 
 #ifdef CONFIG_XMEGAT_DO_HARD_RESET
 	qtouch_force_reset(ts, FALSE);
+	if (ts->resume_full_reload_flag == TRUE)
+	{
+		/*
+		 * Unfortunately, this means that we failed to save config
+		 * into nvram. But for the good news, we can re-load it again
+		 * and try saving it to nvram. Since we are sending the full
+		 * config, trying to save it to nvram adds very little
+		 * overhead
+		 */
+		ret = qtouch_hw_init(ts);
+		if (ret != 0)
+		{
+			QTOUCH_ERR("%s: Cannot reload IC configuration\n",
+					__func__);
+			return -EIO;
+		}
+#ifdef CONFIG_XMEGAT_DO_HARD_RESET
+		/* try saving to nvram */
+		if (!qtouch_force_backupnv(ts))
+			ts->resume_full_reload_flag = FALSE;
+#endif
+		/* nothing more to do, qtouch_hw_init did the rest */
+		return 0;
+	}
 	/* fall through here, to do power/calibration */
 
 #else /* CONFIG_XMEGAT_DO_HARD_RESET */
@@ -2551,7 +2649,7 @@ static long qtouch_ioctl_ioctl(struct file *filp,
 /*
 	struct qtm_id_info	qtmId;
 */
-	int	rc = 0;
+	long	rc = 0;
 	unsigned long	bCount;
 	int	i;
 	uint8_t	*fields;
@@ -2588,7 +2686,7 @@ static long qtouch_ioctl_ioctl(struct file *filp,
 		/* Make sure that IC can accept the config information */
 		if ( tsGl->modeOfOperation != QTOUCH_MODE_NORMAL )
 			return -1;
-		rc = qtouch_process_info_block(tsGl);
+		rc = (long)qtouch_process_info_block(tsGl);
 		QTOUCH_INFO("%s: Dumping information from Id info block:\n",
 				__func__);
 		QTOUCH_INFO("================================\n");
@@ -2617,7 +2715,7 @@ static long qtouch_ioctl_ioctl(struct file *filp,
 			{
 				/* Resetting the hardware should put the device into normal mode */
 				tsGl->client->addr = tsGl->i2cNormAddr;
-				rc = qtouch_force_reset(tsGl, FALSE);
+				rc =(long) qtouch_force_reset(tsGl, FALSE);
 				qtouch_force_calibration(tsGl);
 				tsGl->modeOfOperation = QTOUCH_MODE_NORMAL;
 			}
@@ -2641,16 +2739,16 @@ static long qtouch_ioctl_ioctl(struct file *filp,
 				msleep(50);
 				/* Make sure the device is in bootloader mode */
 				tsGl->client->addr = tsGl->i2cBLAddr;
-				rc = qtouch_read(tsGl, data, 1);
+				rc = (long)qtouch_read(tsGl, data, 1);
 				if( (data[0] & 0xC0 ) == 0xC0 )
 				{
 					QTOUCH_INFO("%s: mode is BOOTLOADER. Ready to unlock to device for firmware download.\n", __func__);
 					/* unlock the device */
 					data[0] = 0xDC;
 					data[1] = 0xAA;
-					rc = qtouch_write(tsGl, data, 2);
+					rc = (long)qtouch_write(tsGl, data, 2);
 					msleep(30);
-					rc = qtouch_read(tsGl, data, 1);
+					rc = (long)qtouch_read(tsGl, data, 1);
 					if( (data[0] & 0x80 ) == 0x80 )
 					{
 						/* Device should be in the right state waiting for the data */
@@ -2677,17 +2775,17 @@ static long qtouch_ioctl_ioctl(struct file *filp,
 		{
 		case QTOUCH_CNTRL_RESET:
 			qtouch_force_reset(tsGl, FALSE);
-			rc = qtouch_process_info_block(tsGl);
+			rc = (long)qtouch_process_info_block(tsGl);
 			break;
 		case QTOUCH_CNTRL_CALIBRATE:
-			rc = qtouch_force_calibration(tsGl);
+			rc = (long)qtouch_force_calibration(tsGl);
 			break;
 		case QTOUCH_CNTRL_SELFTEST_ON:
-			rc = qtouch_force_selftest(tsGl, true);
+			rc = (long)qtouch_force_selftest(tsGl, true);
 			memcpy((char *)&(usrData->data.selftst), (char *) &(tsGl->selfStatusReport), sizeof(struct selftest));
 			break;
 		case QTOUCH_CNTRL_SELFTEST_OFF:
-			rc = qtouch_force_selftest(tsGl, false);
+			rc = (long)qtouch_force_selftest(tsGl, false);
 			memcpy((char *)&(usrData->data.selftst), (char *) &(tsGl->selfStatusReport), sizeof(struct selftest));
 			break;
 		case QTOUCH_CNTRL_SELFTEST_GET:
@@ -2722,12 +2820,12 @@ static long qtouch_ioctl_ioctl(struct file *filp,
 	case QTOUCH_IOCTL_GET_REGISTER:
 		if ( tsGl->modeOfOperation != QTOUCH_MODE_NORMAL )
 			return -1;
-		rc = qtouch_read_addr(tsGl, usrData->data.reg.reg, &(usrData->data.reg.vals[0]),sizeof(usrData->data.reg.vals[0]));
+		rc = (long)qtouch_read_addr(tsGl, usrData->data.reg.reg, &(usrData->data.reg.vals[0]),sizeof(usrData->data.reg.vals[0]));
 		break;
 	case QTOUCH_IOCTL_SET_REGISTER:
 		if ( tsGl->modeOfOperation != QTOUCH_MODE_NORMAL )
 			return -1;
-		rc = qtouch_write_addr(tsGl, usrData->data.reg.reg, &(usrData->data.reg.value), 1);
+		rc = (long)qtouch_write_addr(tsGl, usrData->data.reg.reg, &(usrData->data.reg.value), 1);
 		break;
 	case QTOUCH_IOCTL_SET_OBJECT:
 		if ( tsGl->modeOfOperation != QTOUCH_MODE_NORMAL )
@@ -2919,7 +3017,7 @@ static long qtouch_ioctl_ioctl(struct file *filp,
 		if ( need2send )
 		{
 			obj = find_obj(tsGl, usrData->type);
-			rc = qtouch_write_addr(tsGl, obj->entry.addr, fields, i);
+			rc = (long)qtouch_write_addr(tsGl, obj->entry.addr, fields, i);
 			if (rc != 0) 
 			{
 				QTOUCH_ERR("%s: Can't write config object\n", __func__);
@@ -2934,10 +3032,18 @@ static long qtouch_ioctl_ioctl(struct file *filp,
 		/* Make sure that IC can accept the config information */
 		if ( tsGl->modeOfOperation != QTOUCH_MODE_NORMAL )
 			return -1;
+#ifdef CONFIG_XMEGAT_DO_HARD_RESET
+		/*
+		 * At this point all the objects have been sent to the IC
+		 * This is perfect time to backup the data to nv
+		 */
+		if (qtouch_force_backupnv(tsGl))
+			tsGl->resume_full_reload_flag = TRUE;
+#endif
 
 		qtouch_force_reset(tsGl, FALSE);
 		qtouch_force_calibration(tsGl);
-		rc = qtouch_process_info_block(tsGl);
+		rc = (long)qtouch_process_info_block(tsGl);
 		break;
 	case QTOUCH_IOCTL_GET_CONFIG:
 		QTOUCH_INFO("%s: Getting configuration element %d\n", __func__, usrData->data.objId);
@@ -2945,7 +3051,7 @@ static long qtouch_ioctl_ioctl(struct file *filp,
 		if ( tsGl->modeOfOperation != QTOUCH_MODE_NORMAL )
 			return -1;
 		raw = (char *)&(usrData->data);
-		rc = qtouch_read_addr(tsGl, 
+		rc = (long)qtouch_read_addr(tsGl, 
 						tsGl->obj_tbl[usrData->data.objId].entry.addr, 
 						(void *)raw, 
 						tsGl->obj_tbl[usrData->data.objId].entry.size);
@@ -2955,7 +3061,7 @@ static long qtouch_ioctl_ioctl(struct file *filp,
 		/* Make sure that IC can accept the config information */
 		if ( tsGl->modeOfOperation != QTOUCH_MODE_NORMAL )
 			return -1;
-		rc = tsGl->dlStatus;
+		rc = (long)tsGl->dlStatus;
 		break;
 	case QTOUCH_IOCTL_SUSPEND:
 		/* Make sure that IC can accept the config information */
@@ -3019,11 +3125,11 @@ static long qtouch_ioctl_ioctl(struct file *filp,
 			break;
 		case QTOUCH_SENSITIVITY_GETREF:
 			QTOUCH_INFO("%s: got SENS->GETREF request!\n", __func__);
-			rc = qtouch_get_sens_data(tsGl, &(usrData->data.sens), 0 );
+			rc = (long)qtouch_get_sens_data(tsGl, &(usrData->data.sens), 0 );
 			break;
 		case QTOUCH_SENSITIVITY_NEXTPAGE:
 			QTOUCH_INFO("%s: got SENS->NEXTPAGE request!\n", __func__);
-			rc = qtouch_get_sens_data(tsGl, &(usrData->data.sens), 1 );
+			rc = (long)qtouch_get_sens_data(tsGl, &(usrData->data.sens), 1 );
 			break;
 		case QTOUCH_SENSITIVITY_UNKNOWN:
 		default:
@@ -3049,7 +3155,7 @@ static long qtouch_ioctl_ioctl(struct file *filp,
 			QTOUCH_INFO("%s: Copied %d bytes to user space\n",__func__, sizeof(*usrData));
 		}
 	}
-	rc = qtouch_reset_read_ptr(tsGl);
+	rc = (long)qtouch_reset_read_ptr(tsGl);
 	if (rc != 0) 
 	{
 		QTOUCH_ERR("%s: Can't to set addr to msg processor\n", __func__);

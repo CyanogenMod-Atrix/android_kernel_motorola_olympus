@@ -181,6 +181,19 @@ static void tegra_dma_stop(struct tegra_dma_channel *ch)
 		writel(status, ch->addr + APB_DMA_CHAN_STA);
 }
 
+void tegra_dma_dequeue(struct tegra_dma_channel *ch)
+{
+	struct tegra_dma_req *req;
+
+	if (tegra_dma_is_empty(ch))
+		return;
+
+	req = list_entry(ch->list.next, typeof(*req), node);
+
+	tegra_dma_dequeue_req(ch, req);
+	return;
+}
+
 static void pause_dma(bool wait_for_burst_complete)
 {
 	spin_lock(&enable_lock);

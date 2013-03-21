@@ -13,9 +13,8 @@
 #include <linux/delay.h>
 #include <asm/uaccess.h>
 #include <linux/spi/spi.h>
-#include <linux/spi-tegra.h>
-#include <linux/spi/mdm6600_spi.h>
 #include <linux/mdm_ctrl.h>
+#include "spi_tty.h"
 #include "spi_dbg.h"
 #include "spi_msg.h"
 
@@ -46,6 +45,7 @@
 #define MAX(x,y) (x > y ? x : y)
 // 2s wakelock timeout, because everything is done in kthread, we give it a little bit more time
 #define SPI_TTY_WAKE_LOCK_TIMEOUT (2*HZ)
+#define SPI_TTY_FORCE_FULL_TRANSACTION 1
 
 struct spi_tty_s {
 	struct tty_struct			*tty;
@@ -59,7 +59,6 @@ struct spi_tty_s {
 	// when need read, null data packet will be created if no data to send
 	// this is for DTR change and MRDY request case
 	u8					tx_null;
-	struct mdm6600_spi_device		*spi_slave_dev;
 	struct mutex 				work_lock;
 	struct work_struct 			write_work;
 	struct workqueue_struct			*work_queue;
@@ -67,8 +66,8 @@ struct spi_tty_s {
 };
 
 #if SPI_IPC_DEBUG
-unsigned int debug_mask = 0;
-module_param(debug_mask, uint, S_IRUGO|S_IWUSR);
+unsigned int spi_tty_debug_mask = 0;
+module_param(spi_tty_debug_mask, uint, S_IRUGO|S_IWUSR);
 #endif
 unsigned long tx_size;
 module_param(tx_size, ulong, S_IRUGO|S_IWUSR);
@@ -81,8 +80,8 @@ module_param(write_count, ulong, S_IRUGO|S_IWUSR);
 
 struct spi_message spi_big_msg;
 struct spi_transfer spi_big_trans;
-extern struct mdm6600_spi_device mdm6600_spi_dev;
-static struct spi_tty_s *spi_tty_gbl;
+static struct spi_tty_s *spi_tty_gbl = NULL;
+static struct spi_tty_device *spi_tty_dev = NULL;
 
 void spi_ipc_buf_dump1(const char *header, const u8 *buf, int len, int in_ascii)
 {
@@ -228,7 +227,7 @@ static int spi_tty_buf_get(struct circ_buf *cb, char *buf, int count)
 	return ret;
 }
 
-void spi_tty_write_worker(struct work_struct *work)
+static void spi_tty_write_worker(struct work_struct *work)
 {
 	int c;
 	int crc;
@@ -239,28 +238,29 @@ void spi_tty_write_worker(struct work_struct *work)
 		container_of(work, struct spi_tty_s, write_work);
 
 	start_t = jiffies;
-	SPI_IPC_INFO("%s Enter\n", __func__);
+	SPI_IPC_INFO("%s\n", __func__);
 
 	mutex_lock(&(spi_tty->work_lock));
 	spin_lock_irqsave(&(spi_tty->port_lock), flags);
 
-	while(
-		((c = spi_tty_buf_data_avail(spi_tty->write_buf))
-			|| (spi_tty->tx_null))
+	while(((c = spi_tty_buf_data_avail(spi_tty->write_buf))
+		|| (spi_tty->tx_null))
 		&& (!spi_tty->throttle)
-		&& (!spi_tty->spi_slave_dev->peer_is_dead))
+		&& (!(spi_tty_dev && spi_tty_dev->peer_is_dead)))
 	{
+		SPI_IPC_INFO("%s: %d outgoing bytes\n", __func__, c);
 		if (spi_tty->tx_null)
 			spi_tty->tx_null = 0;
 
 		// initiate spi_big_trans
-		memset(spi_big_trans.tx_buf, 0x0, SPI_TRANSACTION_LEN*2);
+		memset((char*)spi_big_trans.tx_buf, 0x0,
+			SPI_TRANSACTION_LEN * 2);
 		spi_big_msg.actual_length = 0;
 
 		c = MIN(c, SPI_MTU);
 		spi_tty_buf_get(spi_tty->write_buf,
-				spi_big_trans.tx_buf+SPI_MSG_HEADER_LEN,
-				c);
+			(char*)spi_big_trans.tx_buf + SPI_MSG_HEADER_LEN,
+			c);
 
 		if (spi_tty->tty && spi_tty->open_count)
 			tty_wakeup(spi_tty->tty);
@@ -271,18 +271,28 @@ void spi_tty_write_worker(struct work_struct *work)
 		header.dtr = spi_tty->dtr;
 		crc = spi_msg_cal_crc(&header);
 		header.fcs = crc;
-		spi_msg_set_header(spi_big_trans.tx_buf, &header);
+		spi_msg_set_header((u8*)spi_big_trans.tx_buf, &header);
+#if SPI_TTY_FORCE_FULL_TRANSACTION
+		spi_big_trans.len = SPI_TRANSACTION_LEN;
+#else
 		spi_big_trans.len = c + SPI_MSG_HEADER_LEN;
+#endif
+		spi_big_trans.speed_hz = SPI_SPEED_HZ;
+		spi_big_trans.bits_per_word = 32;
 		spi_ipc_buf_dump("tx header: ", spi_big_trans.tx_buf, SPI_MSG_HEADER_LEN);
 		spi_ipc_buf_dump_ascii("tx data: ", spi_big_trans.tx_buf + SPI_MSG_HEADER_LEN, (c>16?16:c));
-		spi_sync(mdm6600_spi_dev.spi, &spi_big_msg);
+		if (spi_tty_dev)
+			spi_sync(spi_tty_dev->spi, &spi_big_msg);
+		else
+			pr_warning("%s: dropping data: no spi device "
+				   "registered", __func__);
 
 		if (spi_big_msg.actual_length == SPI_TRANSACTION_LEN) {
 			tx_count++;
 			tx_size += spi_big_trans.len - SPI_MSG_HEADER_LEN;
 			spi_tty_handle_data(spi_tty, spi_big_trans.rx_buf, SPI_TRANSACTION_LEN);
 		}else {
-			pr_err("%s: spi_slave_sync() failed to transfer data!\n", __func__);
+			pr_err("%s: spi data transfer failed\n", __func__);
 		}
 
 		// wake up writes wait on queue
@@ -293,11 +303,11 @@ void spi_tty_write_worker(struct work_struct *work)
 
 	spin_unlock_irqrestore(&(spi_tty->port_lock), flags);
 	mutex_unlock(&(spi_tty->work_lock));
-	SPI_IPC_INFO("%s Exit\n", __func__);
+	SPI_IPC_INFO("%s: done\n", __func__);
 	tx_time += jiffies_to_msecs(jiffies - start_t);
 }
 
-int spi_tty_write_cache(struct tty_struct *tty,
+static int spi_tty_write_cache(struct tty_struct *tty,
 		      const unsigned char *buffer, int count)
 {
 	unsigned long flags;
@@ -354,8 +364,8 @@ static void spi_tty_handle_mrdy(void *context)
 	queue_work(spi_tty->work_queue, &spi_tty->write_work);
 }
 
-static int spi_tty_tiocmset(struct tty_struct *tty,
-                         unsigned int set, unsigned int clear)
+static int spi_tty_tiocmset(struct tty_struct *tty, unsigned int set,
+			    unsigned int clear)
 {
 	unsigned long flags;
 	struct spi_tty_s *spi_tty = tty->driver_data;
@@ -405,14 +415,14 @@ static int spi_tty_write_room(struct tty_struct *tty)
 	return room;
 }
 
-static int spi_tty_write(struct tty_struct *tty,
-		      const unsigned char *buffer, int count)
+static int spi_tty_write(struct tty_struct *tty, const unsigned char *buffer,
+			 int count)
 {
 	unsigned long flags;
 	struct spi_tty_s *spi_tty = tty->driver_data;
 	int retval = 0;
 
-	if (!spi_tty || spi_tty->spi_slave_dev->peer_is_dead)
+	if (!spi_tty || (spi_tty_dev && spi_tty_dev->peer_is_dead))
 		return -ENODEV;
 
 	//spi_slave_dump_hex(buffer, count);
@@ -438,7 +448,8 @@ static int spi_tty_write(struct tty_struct *tty,
 	return retval;
 }
 
-static void spi_tty_set_termios(struct tty_struct *tty, struct ktermios *old_termios)
+static void spi_tty_set_termios(struct tty_struct *tty,
+				struct ktermios *old_termios)
 {
 }
 
@@ -447,12 +458,13 @@ static int spi_tty_tiocmget(struct tty_struct *tty)
 	return 0;
 }
 
-static int spi_tty_ioctl(struct tty_struct *tty, unsigned int cmd, unsigned long arg)
+static int spi_tty_ioctl(struct tty_struct *tty,
+			 unsigned int cmd, unsigned long arg)
 {
 	return -ENOIOCTLCMD;
 }
 
-// Our API will be called by PPP from irq, so that only spinlock can be used
+/* will be called by PPP from irq, so that only spinlock can be used */
 static int spi_tty_open(struct tty_struct *tty, struct file *file)
 {
 	unsigned long flags;
@@ -518,6 +530,23 @@ static struct tty_operations serial_ops = {
 	.unthrottle = NULL,
 };
 
+/* It's safe to call this before or after spi_tty_init() */
+int spi_tty_register_device(struct spi_tty_device *device)
+{
+	if (spi_tty_dev)
+		return -EBUSY;
+
+	/* Populate the caller's callbacks */
+	device->callback_context = spi_tty_gbl;
+	device->data_callback = spi_tty_handle_data;
+	device->mrdy_callback = spi_tty_handle_mrdy;
+
+	spi_tty_dev = device;
+	SPI_IPC_INFO("%s: registered device 0x%p\n", __func__, device);
+	
+	return 0;
+}
+
 static struct tty_driver *spi_tty_driver;
 
 static int __init spi_tty_init(void)
@@ -540,7 +569,6 @@ static int __init spi_tty_init(void)
 
 	memset(spi_tty_gbl, 0x0, sizeof(*spi_tty));
 	spi_tty = spi_tty_gbl;
-	SPI_IPC_INFO("spi_tty=%p\n", spi_tty);
 
 	spi_tty->write_buf = spi_tty_buf_alloc();
 	if (!spi_tty->write_buf) {
@@ -577,7 +605,8 @@ static int __init spi_tty_init(void)
 		return -ENOMEM;
 	}
 
-	spi_big_trans.rx_buf = spi_big_trans.tx_buf + SPI_TRANSACTION_LEN;
+	spi_big_trans.rx_buf =
+			(char*)spi_big_trans.tx_buf + SPI_TRANSACTION_LEN;
 	spi_message_add_tail(&spi_big_trans, &spi_big_msg);
 
 	spi_tty_driver = alloc_tty_driver(SPI_TTY_MINORS);
@@ -592,7 +621,8 @@ static int __init spi_tty_init(void)
 	spi_tty_driver->subtype = SERIAL_TYPE_NORMAL;
 	spi_tty_driver->flags = TTY_DRIVER_REAL_RAW | TTY_DRIVER_DYNAMIC_DEV;
 	spi_tty_driver->init_termios = tty_std_termios;
-	spi_tty_driver->init_termios.c_cflag = B9600 | CS8 | CREAD | HUPCL | CLOCAL;
+	spi_tty_driver->init_termios.c_cflag =
+		B9600 | CS8 | CREAD | HUPCL | CLOCAL;
 	tty_set_operations(spi_tty_driver, &serial_ops);
 
 	retval = tty_register_driver(spi_tty_driver);
@@ -604,12 +634,12 @@ static int __init spi_tty_init(void)
 
 	tty_register_device(spi_tty_driver, 0, NULL);
 
-	// Depends on module_init() call sequence, mdm6600_dev_probe may
-	mdm6600_spi_dev.cb_context = spi_tty;
-	//mdm6600_spi_dev.callback = spi_tty_handle_data;
-	mdm6600_spi_dev.callback = NULL;
-	mdm6600_spi_dev.handle_master_mrdy = spi_tty_handle_mrdy;
-	spi_tty->spi_slave_dev = &mdm6600_spi_dev;
+	/* 
+	 * If spi_tty_register_device() was called before spi_tty_init(), fill
+	 * in the blanks.  Yeah, it's ugly.
+	 */
+	if (spi_tty_dev)
+		spi_tty_dev->callback_context = spi_tty;
 
 	return retval;
 }

@@ -3,16 +3,24 @@
 #include <linux/platform_device.h>
 #include <linux/leds-ld-cpcap.h>
 #include <linux/clk.h>
+#include <linux/cpcap-accy.h>
+#include <linux/cpcap_audio_platform_data.h>
 #include <linux/dma-mapping.h>
-#include <linux/pda_power.h>
+#include <linux/delay.h>
+#include <linux/gpio.h>
 #include <linux/io.h>
+#include <linux/mdm_ctrl.h>
+#include <linux/pda_power.h>
+#include <linux/regulator/consumer.h>
+#include <linux/regulator/driver.h>
+#include <linux/regulator/fixed.h>
+#include <linux/regulator/machine.h>
+#include <linux/reboot.h>
+#include <linux/rtc.h>
 #include <linux/spi/cpcap.h>
 #include <linux/spi/cpcap-regbits.h>
 #include <linux/spi/spi.h>
-#include <linux/delay.h>
-#include <linux/reboot.h>
-#include <linux/rtc.h>
-#include <linux/gpio.h>
+#include <linux/spi-tegra.h>
 
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
@@ -22,13 +30,6 @@
 
 #include <mach/iomap.h>
 #include <mach/irqs.h>
-#include <linux/regulator/consumer.h>
-#include <linux/regulator/driver.h>
-#include <linux/regulator/fixed.h>
-#include <linux/regulator/machine.h>
-#include <linux/gpio.h>
-#include <linux/cpcap-accy.h>
-#include <linux/mdm_ctrl.h>
 
 #include "gpio-names.h"
 #include "board.h"
@@ -274,6 +275,14 @@ static struct cpcap_whisper_pdata usb_det_pdata = {
 //	.uartmux   = 1,
 };
 
+static struct platform_device cpcap_audio_device = {
+	.name   = "cpcap_audio",
+	.id     = -1,
+	.dev    = {
+		.platform_data = NULL,
+	},
+};
+
 static struct platform_device cpcap_usb_det_device = {
 	.name           = "cpcap_usb_det",
 	.id             = -1,
@@ -294,6 +303,7 @@ static struct platform_device *cpcap_devices[] = {
 	&cpcap_usb_det_device,
 	&cpcap_batt_device,
 	&cpcap_wdt_device,
+	&cpcap_audio_device,
 };
 
 static int is_olympus_ge_p0(struct cpcap_device *cpcap)
@@ -686,16 +696,19 @@ struct regulator_consumer_supply cpcap_sw4_consumers[] = {
 struct regulator_consumer_supply cpcap_sw5_consumers[] = {
 	REGULATOR_SUPPLY("sw5", "button-backlight"),
 	REGULATOR_SUPPLY("sw5", "notification-led"),
+//	REGULATOR_CONSUMER("odm-kit-sw5", NULL),
 	REGULATOR_SUPPLY("sw5", NULL),
 };
 
 struct regulator_consumer_supply cpcap_vcam_consumers[] = {
-	REGULATOR_CONSUMER("vccam", NULL /* cpcap_cam_device */),
+	REGULATOR_CONSUMER("vcam", NULL /* cpcap_cam_device */),
+	REGULATOR_CONSUMER("vdd_cam1", NULL),
 };
 
 struct regulator_consumer_supply cpcap_vhvio_consumers[] = {
 	REGULATOR_CONSUMER("vhvio", NULL /* lighting_driver */),
-	REGULATOR_CONSUMER("vcc", NULL /* compass_driver */),
+//	REGULATOR_CONSUMER("vcc", NULL /* compass_driver */),
+	REGULATOR_CONSUMER("vddio_mipi", NULL /* Camera */),
 //	REGULATOR_CONSUMER("vhvio", NULL /* lighting_driver */),
 //	REGULATOR_CONSUMER("vhvio", NULL /* magnetometer */),
 //	REGULATOR_CONSUMER("vhvio", NULL /* light sensor */),
@@ -733,6 +746,7 @@ struct regulator_consumer_supply cpcap_vwlan2_consumers[] = {
 	REGULATOR_CONSUMER("vusb_modem_flash", NULL),
 	REGULATOR_CONSUMER("vusb_modem_ipc", NULL),
 	REGULATOR_CONSUMER("vhdmi", NULL),
+	REGULATOR_CONSUMER("vdd_vcore_temp", NULL),
 };
 
 struct regulator_consumer_supply cpcap_vsimcard_consumers[] = {
@@ -995,6 +1009,7 @@ struct cpcap_platform_data tegra_cpcap_data =
 	.regulator_init = cpcap_regulator,
 	.adc_ato = &cpcap_adc_ato,
 	.wdt_disable = 0,
+	.usb_changed = NULL,
 	.hwcfg = {
 		(CPCAP_HWCFG0_SEC_STBY_SW3 |
 		 CPCAP_HWCFG0_SEC_STBY_SW4 |
@@ -1006,11 +1021,13 @@ struct cpcap_platform_data tegra_cpcap_data =
 		 CPCAP_HWCFG0_SEC_STBY_VSDIO),
 		(CPCAP_HWCFG1_SEC_STBY_VWLAN1 |    /* WLAN1 may be reset in mot_setup_power(). */
 		 CPCAP_HWCFG1_SEC_STBY_VSIMCARD)},
-	.spdif_gpio = TEGRA_GPIO_PD4
+	.spdif_gpio = TEGRA_GPIO_PD4,
+//	.uartmux = 1,
+//	.usbmux_gpio = TEGRA_GPIO_PV6,
 };
 
 struct regulator_consumer_supply fixed_sdio_en_consumers[] = {
-	REGULATOR_SUPPLY("vsdio_ext", NULL),
+	REGULATOR_SUPPLY("vddio_sdmmc", "sdhci-tegra.2"),
 };
 
 static struct regulator_init_data fixed_sdio_regulator = {
@@ -1042,6 +1059,14 @@ static struct platform_device fixed_regulator_devices[] = {
 	},
 };
 
+struct tegra_spi_device_controller_data olympus_spi_tegra_data = {
+	.is_hw_based_cs = 0,
+/*
+	.cs_setup_clk_count = 7,
+	.cs_hold_clk_count = 0x1F,
+*/
+};
+
 struct spi_board_info tegra_spi_devices[] __initdata = {
     {
         .modalias = "cpcap",
@@ -1050,6 +1075,8 @@ struct spi_board_info tegra_spi_devices[] __initdata = {
         .mode = SPI_MODE_0 | SPI_CS_HIGH,
         .max_speed_hz = 8000000,
         .controller_data = &tegra_cpcap_data,
+//	.platform_data = &tegra_cpcap_data,
+//	.controller_data = &olympus_spi_tegra_data,
         .irq = INT_EXTERNAL_PMU,
     },
 
@@ -1131,12 +1158,36 @@ void __init olympus_suspend_init(void)
 	tegra_init_suspend(&olympus_suspend_data);
 }
 
+static void get_cpcap_audio_data(void)
+{
+        static struct cpcap_audio_pdata data;
+        cpcap_audio_device.dev.platform_data = (void *)&data;
+
+        /* read modem-type from device tree to setup data.voice_type */
+        printk("CPCAP audio  init \n");
+        data.voice_type = VOICE_TYPE_QC;
+        data.stereo_loudspeaker = 0;
+	data.mic3 = 1;
+}
+
+static int disable_rtc_alarms(struct device *dev, void *data)
+{
+	return (rtc_alarm_irq_enable((struct rtc_device *)dev, 0));
+}
+
 void __init olympus_power_init(void)
 {
 	unsigned int i;
 	int error;
+	unsigned long pmc_cntrl_0;
 
 	//printk(KERN_INFO "pICS_%s: step in...\n",__func__);
+
+	/* Enable CORE_PWR_REQ signal from T20. The signal must be enabled
+	 * before the CPCAP uC firmware is started. */
+	pmc_cntrl_0 = readl(IO_ADDRESS(TEGRA_PMC_BASE));
+	pmc_cntrl_0 |= 0x00000200;
+	writel(pmc_cntrl_0, IO_ADDRESS(TEGRA_PMC_BASE));
 
 	tegra_gpio_enable(154);
 	gpio_request(154, "usb_host_pwr_en");
@@ -1188,6 +1239,8 @@ void __init olympus_power_init(void)
 
 	spi_register_board_info(tegra_spi_devices, ARRAY_SIZE(tegra_spi_devices));
 
+	get_cpcap_audio_data();
+
 	for (i = 0; i < ARRAY_SIZE(cpcap_devices); i++)
 		cpcap_device_register(cpcap_devices[i]);
 
@@ -1197,7 +1250,7 @@ void __init olympus_power_init(void)
 		error = platform_device_register(&fixed_regulator_devices[i]);
 		pr_info("Registered reg-fixed-voltage: %d result: %d\n", i, error);
 	}
-	
+
 	(void) platform_driver_register(&cpcap_validity_driver);
 #ifdef CONFIG_REGULATOR_VIRTUAL_CONSUMER
 	(void) platform_device_register(&cpcap_reg_virt_vcam);
@@ -1207,9 +1260,4 @@ void __init olympus_power_init(void)
 #endif
 	regulator_has_full_constraints();
 	olympus_suspend_init();
-}
-
-static int disable_rtc_alarms(struct device *dev, void *data)
-{
-	return (rtc_alarm_irq_enable((struct rtc_device *)dev, 0));
 }

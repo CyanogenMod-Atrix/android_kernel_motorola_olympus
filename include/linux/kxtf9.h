@@ -27,8 +27,7 @@
 /** This define controls compilation of the master device interface */
 /*#define KXTF9_MASTER_DEVICE*/
 
-#define KXTF9_IOCTL_BASE 77 /*original*/
-//#define KXTF9_IOCTL_BASE 187
+#define KXTF9_IOCTL_BASE 0xBB
 /** The following define the IOCTL command values via the ioctl macros */
 #define KXTF9_IOCTL_SET_DELAY		_IOW(KXTF9_IOCTL_BASE, 0, int)
 #define KXTF9_IOCTL_GET_DELAY		_IOR(KXTF9_IOCTL_BASE, 1, int)
@@ -42,10 +41,8 @@
 #define KXTF9_IOCTL_SET_PM_MODE		_IOW(KXTF9_IOCTL_BASE, 8, int)
 #define KXTF9_IOCTL_SET_SELF_TEST	_IOW(KXTF9_IOCTL_BASE, 9, int)
 #define KXTF9_IOCTL_SET_SENSITIVITY	_IOW(KXTF9_IOCTL_BASE, 10, int)
-#define KXTF9_IOCTL_SET_FUZZ		_IOW(KXTF9_IOCTL_BASE, 11, int)
-#define KXTF9_IOCTL_SET_XYZ_HISTORY	_IOW(KXTF9_IOCTL_BASE, 12, int)
 #define KXTF9_IOCTL_INTERRUPT_TEST	_IO(KXTF9_IOCTL_BASE, 13)
-#define KXTF9_IOCTL_QUERY		_IOR(KXTF9_IOCTL_BASE, 14, int *)
+#define KXTF9_IOCTL_QUERY			_IOR(KXTF9_IOCTL_BASE, 14, int *)
 
 /* CONTROL REGISTER 1 BITS */
 #define RES_12BIT		0x40

@@ -4,6 +4,7 @@
 #define SPI_TRANSACTION_LEN 16256
 #define SPI_MSG_HEADER_LEN 16
 #define SPI_MTU (SPI_TRANSACTION_LEN - SPI_MSG_HEADER_LEN)
+#define SPI_SPEED_HZ 26000000
 
 typedef struct spi_msg_header_s
 {

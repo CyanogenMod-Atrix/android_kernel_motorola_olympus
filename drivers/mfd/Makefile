@@ -122,7 +122,5 @@ cpcap-objs			:= cpcap-core.o \
 				   cpcap-adc.o \
 				   cpcap-uc.o \
 				   cpcap-3mm5.o 
-#				   tegra-cpcap-audio.o \
-#				   cpcap-audio-core.o
 
 obj-$(CONFIG_MFD_CPCAP)		+= cpcap.o

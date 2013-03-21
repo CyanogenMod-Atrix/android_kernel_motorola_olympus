@@ -22,6 +22,7 @@
 #include <linux/errno.h>
 #include <linux/fs.h>
 #include <linux/gpio.h>
+#include <linux/slab.h>
 #include <linux/i2c.h>
 #include <linux/input.h>
 #include <linux/input-polldev.h>
@@ -29,7 +30,6 @@
 #include <linux/irq.h>
 #include <linux/miscdevice.h>
 #include <linux/uaccess.h>
-#include <linux/slab.h>
 
 #include <linux/workqueue.h>
 
@@ -96,9 +96,7 @@
 
 #define TILT_REPORT_DELAY	500
 
-unsigned trace_ioctl = 0;
-module_param(trace_ioctl, uint, 0664);
-unsigned trace_irq = 0;
+unsigned trace_irq = 1;
 module_param(trace_irq, uint, 0664);
 unsigned trace_xyz = 0;
 module_param(trace_xyz, uint, 0664);
@@ -113,7 +111,6 @@ module_param(is_enabled, uint, 0444);
 unsigned poll_interval = 0;
 module_param(poll_interval, uint, 0444);
 
-#define printk_ioctl(fmt,args...) if (trace_ioctl) printk(KERN_INFO fmt, ##args)
 #define printk_irq(fmt,args...) if (trace_irq) printk(KERN_INFO fmt, ##args)
 #define printk_xyz(fmt,args...) if (trace_xyz) printk(KERN_INFO fmt, ##args)
 #define printk_raw(fmt,args...) if (trace_raw) printk(KERN_INFO fmt, ##args)
@@ -719,7 +716,7 @@ static int kxtf9_enable(struct kxtf9_data *tf9)
 	if (!atomic_read(&tf9->req_enabled))
 		return 0;
 
-	pr_info("%s\n", __func__);
+	pr_debug("%s\n", __func__);
 	if (!atomic_cmpxchg(&tf9->enabled, 0, 1)) {
 		is_enabled = atomic_read(&tf9->enabled);
 		err = kxtf9_device_power_on(tf9);
@@ -740,7 +737,7 @@ static int kxtf9_enable(struct kxtf9_data *tf9)
 
 static int kxtf9_disable(struct kxtf9_data *tf9)
 {
-	pr_info("%s\n", __func__);
+	pr_debug("%s\n", __func__);
 	if (atomic_cmpxchg(&tf9->enabled, 1, 0)) {
 		is_enabled = atomic_read(&tf9->enabled);
 		cancel_delayed_work_sync(&tf9->force_tilt);
@@ -770,7 +767,6 @@ static long kxtf9_misc_ioctl(struct file *file,
 {
 	void __user *argp = (void __user *)arg;
 	struct kxtf9_data *tf9 = file->private_data;
-	unsigned long flags;
 	int io_int;
 	u8  io_u8;
 	/* Initial value used to move IC to stand-by */
@@ -780,36 +776,17 @@ static long kxtf9_misc_ioctl(struct file *file,
 	u8 reg_val;
 	u8 ctrl_reg1_val;
 	int xyz[3] = { 0 };
-/*
-	printk(KERN_INFO "%s: cmd = 0x%08X", __func__, cmd);
-	printk(KERN_INFO "%s: arg = 0x%lX", __func__, arg);
 
-	printk(KERN_INFO "%s: KXTF9_IOCTL_SET_DELAY = 0x%08X", __func__, KXTF9_IOCTL_SET_DELAY);	
-	printk(KERN_INFO "%s: KXTF9_IOCTL_GET_DELAY = 0x%08X", __func__, KXTF9_IOCTL_GET_DELAY);
-	printk(KERN_INFO "%s: KXTF9_IOCTL_SET_ENABLE = 0x%08X", __func__, KXTF9_IOCTL_SET_ENABLE);	
-	printk(KERN_INFO "%s: KXTF9_IOCTL_GET_ENABLE = 0x%08X", __func__, KXTF9_IOCTL_GET_ENABLE);	
-	printk(KERN_INFO "%s: KXTF9_IOCTL_SET_G_RANGE = 0x%08X", __func__, KXTF9_IOCTL_SET_G_RANGE);	
-	printk(KERN_INFO "%s: KXTF9_IOCTL_SET_TILT_ENABLE = 0x%08X", __func__, KXTF9_IOCTL_SET_TILT_ENABLE);
-	printk(KERN_INFO "%s: KXTF9_IOCTL_SET_TAP_ENABLE = 0x%08X", __func__, KXTF9_IOCTL_SET_TAP_ENABLE);
-	printk(KERN_INFO "%s: KXTF9_IOCTL_SET_WAKE_ENABLE = 0x%08X", __func__, KXTF9_IOCTL_SET_WAKE_ENABLE);
-	printk(KERN_INFO "%s: KXTF9_IOCTL_SET_PM_MODE = 0x%08X", __func__, KXTF9_IOCTL_SET_PM_MODE);
-	printk(KERN_INFO "%s: KXTF9_IOCTL_SET_SELF_TEST	= 0x%08X", __func__, KXTF9_IOCTL_SET_SELF_TEST);
-	printk(KERN_INFO "%s: KXTF9_IOCTL_SET_SENSITIVITY = 0x%08X", __func__, KXTF9_IOCTL_SET_SENSITIVITY);
-	printk(KERN_INFO "%s: KXTF9_IOCTL_SET_FUZZ = 0x%08X", __func__, KXTF9_IOCTL_SET_FUZZ);
-	printk(KERN_INFO "%s: KXTF9_IOCTL_SET_XYZ_HISTORY = 0x%08X", __func__, KXTF9_IOCTL_SET_XYZ_HISTORY);
-	printk(KERN_INFO "%s: KXTF9_IOCTL_INTERRUPT_TEST = 0x%08X", __func__, KXTF9_IOCTL_INTERRUPT_TEST);
-	printk(KERN_INFO "%s: KXTF9_IOCTL_QUERY = 0x%08X", __func__, KXTF9_IOCTL_QUERY);
-*/
 	switch (cmd) {
 	case KXTF9_IOCTL_QUERY:
-		printk_ioctl("%s: QUERY\n", __func__);
+		pr_info("%s: QUERY\n", __func__);
 		if (!atomic_read(&tf9->enabled))
 			return -EFAULT;
 
 		if (kxtf9_get_acceleration_data(tf9, xyz) == 0) {
-			printk_ioctl("%s: QUERY %d %d %d\n",
-				__func__, xyz[0], xyz[1], xyz[2]);
-			copy_to_user(argp, xyz, sizeof(xyz));
+			pr_info("%s: QUERY %d %d %d\n", __func__, xyz[0], xyz[1], xyz[2]);
+			if (copy_to_user(argp, xyz, sizeof(xyz)))
+				return -EFAULT;
 		} else {
 			return -EFAULT;
 		}
@@ -827,7 +804,7 @@ static long kxtf9_misc_ioctl(struct file *file,
 		else
 			tf9->pdata->poll_interval = tf9->pdata->min_interval;
 		poll_interval = tf9->pdata->poll_interval;
-		printk_ioctl("%s: SET_DELAY %d\n",
+		pr_info("%s: SET_DELAY %d\n",
 		             __func__, tf9->pdata->poll_interval);
 		err = kxtf9_update_odr(tf9, tf9->pdata->poll_interval);
 		if (err < 0) {
@@ -840,8 +817,7 @@ static long kxtf9_misc_ioctl(struct file *file,
 			return -EFAULT;
 		if (io_int < 0 || io_int > 1)
 			return -EINVAL;
-		printk_ioctl("%s: SET_ENABLE %d\n",
-		             __func__, io_int);
+		pr_info("%s: SET_ENABLE %d\n", __func__, io_int);
 		if (io_int) {
 			atomic_set(&tf9->req_enabled, 1);
 			kxtf9_enable(tf9);
@@ -858,8 +834,7 @@ static long kxtf9_misc_ioctl(struct file *file,
 	case KXTF9_IOCTL_SET_G_RANGE:
 		if (copy_from_user(&io_u8, argp, sizeof(io_u8)))
 			return -EFAULT;
-		printk_ioctl("%s: SET_G_RANGE %u\n",
-		             __func__, io_u8);
+		pr_info("%s: SET_G_RANGE %u\n", __func__, io_u8);
 		err = kxtf9_update_g_range(tf9, io_u8);
 		if (err < 0) {
 			pr_err("%s: SET_G_RANGE error %d\n", __func__, err);
@@ -868,18 +843,15 @@ static long kxtf9_misc_ioctl(struct file *file,
 		break;
 	case KXTF9_IOCTL_SET_TILT_ENABLE: /* Overlapped set functionality */
 		io_u8 = TPE;
-		printk_ioctl("%s: SET_TILT_ENABLE %u\n",
-		             __func__, io_u8);
+		pr_info("%s: SET_TILT_ENABLE %u\n", __func__, io_u8);
 		goto process_set_x;
 	case KXTF9_IOCTL_SET_TAP_ENABLE:  /* Overlapped set functionality */
 		io_u8 = TDTE;
-		printk_ioctl("%s: SET_TAP_ENABLE %u\n",
-		             __func__, io_u8);
+		pr_info("%s: SET_TAP_ENABLE %u\n", __func__, io_u8);
 		goto process_set_x;
 	case KXTF9_IOCTL_SET_WAKE_ENABLE: /* Overlapped set functionality */
 		io_u8 = WUFE;
-		printk_ioctl("%s: SET_WAKE_ENABLE %u\n",
-		             __func__, io_u8);
+		pr_info("%s: SET_WAKE_ENABLE %u\n", __func__, io_u8);
 process_set_x:
 		if (copy_from_user(&io_int, argp, sizeof(io_int)))
 			return -EFAULT;
@@ -918,7 +890,7 @@ set_x_error:
 			return -EFAULT;
 		if (io_int < 0 || io_int > 1)
 			return -EINVAL;
-		printk_ioctl("%s: SET_SELF_TEST %d\n", __func__, io_int);
+		pr_info("%s: SET_SELF_TEST %d\n", __func__, io_int);
 		err = 0;
 		if (io_int) {
 			/* activate self-test function */
@@ -938,7 +910,7 @@ set_x_error:
 		}
 		break;
 	case KXTF9_IOCTL_INTERRUPT_TEST:
-		printk_ioctl("%s: IOCTL_INTERRUPT_TEST\n", __func__);
+		pr_info("%s: IOCTL_INTERRUPT_TEST\n", __func__);
 		reg_val = CTRL_REG1;
 		kxtf9_i2c_read(tf9, &reg_val, 1);
 		ctrl[0] = CTRL_REG1;
@@ -1003,35 +975,13 @@ set_x_error:
 	case KXTF9_IOCTL_SET_SENSITIVITY:
 		if (copy_from_user(&io_int, argp, sizeof(io_int)))
 			return -EFAULT;
-		printk_ioctl("%s: SET_SENSITIVITY %d\n", __func__, io_int);
+		pr_info("%s: SET_SENSITIVITY %d\n", __func__, io_int);
 		err = kxtf9_update_gesture_sensitivity(tf9, io_int - 1);
 		if (err < 0) {
 			pr_err("%s: SET_SENSITIVITY %d error %d\n",
 			       __func__, io_int, err);
 			return err;
 		}
-		break;
-	case KXTF9_IOCTL_SET_FUZZ:
-		if (copy_from_user(&io_int, argp, sizeof(io_int)))
-			return -EFAULT;
-		if (io_int < 0)
-			return -EINVAL;
-		printk_ioctl("%s: SET_FUZZ %d\n", __func__, io_int);
-		spin_lock_irqsave(&tf9->input_dev->event_lock, flags);
-		tf9->input_dev->absinfo[ABS_X].fuzz = io_int;
-		tf9->input_dev->absinfo[ABS_Y].fuzz = io_int;
-		tf9->input_dev->absinfo[ABS_Z].fuzz = io_int;
-		spin_unlock_irqrestore(&tf9->input_dev->event_lock, flags);
-		break;
-	case KXTF9_IOCTL_SET_XYZ_HISTORY:
-		if (copy_from_user(&io_int, argp, sizeof(io_int)))
-			return -EFAULT;
-		printk_ioctl("%s: SET_XYZ_HISTORY %d\n", __func__, io_int);
-		spin_lock_irqsave(&tf9->input_dev->event_lock, flags);
-		tf9->input_dev->absinfo[ABS_X].value = io_int;
-		tf9->input_dev->absinfo[ABS_Y].value = io_int;
-		tf9->input_dev->absinfo[ABS_Y].value = io_int;
-		spin_unlock_irqrestore(&tf9->input_dev->event_lock, flags);
 		break;
 	default:
 		return -EINVAL;
@@ -1370,7 +1320,7 @@ static int kxtf9_resume(struct i2c_client *client)
 {
 	struct kxtf9_data *tf9 = i2c_get_clientdata(client);
 
-	pr_info("%s\n", __func__);
+	pr_debug("%s\n", __func__);
 	atomic_set(&tf9->is_suspended, 0);
 	return kxtf9_enable(tf9);
 }
@@ -1379,7 +1329,7 @@ static int kxtf9_suspend(struct i2c_client *client, pm_message_t mesg)
 {
 	struct kxtf9_data *tf9 = i2c_get_clientdata(client);
 
-	pr_info("%s\n", __func__);
+	pr_debug("%s\n", __func__);
 	atomic_set(&tf9->is_suspended, 1);
 	return kxtf9_disable(tf9);
 }
