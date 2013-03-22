@@ -7,25 +7,25 @@
 #include <linux/sched.h>
 #include <linux/ctype.h>
 
-extern unsigned int debug_mask;
+extern unsigned int spi_tty_debug_mask;
 
 #define SPI_IPC_INFO(fmt, args...) do { \
-        if (debug_mask == 1) \
+        if (spi_tty_debug_mask == 1) \
                 printk(KERN_INFO "[%d] "fmt, current->pid, ## args); \
         }while(0)
 
 #define SPI_IPC_ERROR(fmt, args...) do { \
-        if (debug_mask == 1) \
+        if (spi_tty_debug_mask == 1) \
                 pr_err("[%d] "fmt, current->pid, ## args); \
         }while(0)
 
 #define spi_ipc_buf_dump(header, buf, len) do { \
-	if(debug_mask) \
+	if(spi_tty_debug_mask) \
 		spi_ipc_buf_dump1(header, buf, len, 0); \
 	}while(0)
 
 #define spi_ipc_buf_dump_ascii(header, buf, len) do { \
-	if(debug_mask) \
+	if(spi_tty_debug_mask) \
 		spi_ipc_buf_dump1(header, buf, len, 1); \
 	}while(0)
 

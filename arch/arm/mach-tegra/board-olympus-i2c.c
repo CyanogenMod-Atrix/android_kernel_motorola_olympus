@@ -133,7 +133,7 @@ static int touch_reset(void)
 
 	return 0;
 }
-/*
+
 static struct vkey touch_vkeys[] = {
 	{
 		.code		= KEY_BACK,
@@ -147,7 +147,7 @@ static struct vkey touch_vkeys[] = {
 	{
 		.code		= KEY_SEARCH,
 	},
-};*/
+};
 
 struct qtouch_ts_platform_data ts_platform_olympus_p_1_37 = 
 {
@@ -179,7 +179,7 @@ struct qtouch_ts_platform_data ts_platform_olympus_p_1_37 =
 		.keys		= NULL,
 		.num_keys	= 0,
 	},
-	.buttons_count	= 4,
+/*	.buttons_count	= 4,
 	.buttons[0] =
 	{	
 		.minX = 64, 
@@ -230,6 +230,7 @@ struct qtouch_ts_platform_data ts_platform_olympus_p_1_37 =
 		.exists = 0,
 		.pressed = 0,
 	},
+*/
 	.power_cfg	= 
 	{
 		.idle_acq_int	= 0xff,
@@ -1097,6 +1098,7 @@ static void olympus_touch_init(void)
 {
 	int ret = 0;
 	struct kobject *properties_kobj = NULL;
+	struct 	qtouch_ts_platform_data *pdata;
 	struct i2c_board_info *info = &olympus_i2c_bus1_board_info[TOUCHSCREEN];	
 
 	printk("\n%s: Updating i2c_bus_board_info with correct setup info for TS\n", __func__);
@@ -1134,8 +1136,36 @@ static void olympus_touch_init(void)
 		}
 	}
 
-	tegra_gpio_enable(OLYMPUS_TOUCH_RESET_GPIO);
-	tegra_gpio_enable(OLYMPUS_TOUCH_IRQ_GPIO);
+	/* Initialize GPIOs (reset and interrupt) */
+	pr_info("%s: gpio_request(reset)\n", __func__);
+	pdata = (struct qtouch_ts_platform_data *) info->platform_data;
+	tegra_gpio_enable(pdata->gpio_reset);
+	ret = gpio_request(pdata->gpio_reset, QTOUCH_RST_NAME);
+	if ( ret ) {
+		pr_err("%s: gpio_request(reset) failed\n", __func__);
+		goto err_request_irq;
+	}
+	pr_info("%s: gpio_direction_input(reset)\n", __func__);
+	ret = gpio_direction_output(pdata->gpio_reset, 1);
+	if ( ret ) {
+		pr_err("%s: gpio_direction_input(reset) failed\n", __func__);
+		goto err_request_irq;
+	}
+	pr_info("%s: gpio_request(interrupt)\n", __func__);
+	tegra_gpio_enable(pdata->gpio_intr);
+	ret = gpio_request(pdata->gpio_intr, QTOUCH_INT_NAME);
+	if ( ret ) {
+		pr_err("%s: gpio_request(interrupt) failed\n", __func__);
+		goto err_request_irq;
+	}
+	pr_info("%s: gpio_direction_input(interrupt)\n", __func__);
+	ret = gpio_direction_input(pdata->gpio_intr);
+	if ( ret ) {
+		pr_err("%s: gpio_direction_input(interrupt) failed\n",__func__);
+		goto err_request_irq;
+	}
+err_request_irq:
+	pr_info("%s: finished\n", __func__ );
 }
 
 static void olympus_lights_init(void)

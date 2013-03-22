@@ -217,7 +217,7 @@ static int olympus_panel_enable(void)
 	//printk(KERN_INFO "pICS_%s: level 1...",__func__);
 
 	gpio_set_value(47,1);
-	udelay(1000);
+	mdelay(5);
 	gpio_set_value(35, 1);	
 
 	if (olympus_dsi_reg == NULL) {
@@ -290,8 +290,10 @@ static struct tegra_dsi_out olympus_dsi_out = {
 	.n_data_lanes = 2,
 	.pixel_format = TEGRA_DSI_PIXEL_FORMAT_24BIT_P, // 3
 	.refresh_rate = 60,
+//	.refresh_rate = 64, //nn
 	.rated_refresh_rate = 0,
 	.panel_reset = 0,
+//	.panel_reset = 1, //nn
 	.virtual_channel = TEGRA_DSI_VIRTUAL_CHANNEL_0, // 0
 	.dsi_instance = 0,
 	.chip_id = 0,
@@ -307,9 +309,19 @@ static struct tegra_dsi_out olympus_dsi_out = {
 	.video_data_type = TEGRA_DSI_VIDEO_TYPE_COMMAND_MODE,
 //	.video_clock_mode = TEGRA_DSI_VIDEO_CLOCK_TX_ONLY,
 	.video_clock_mode = TEGRA_DSI_VIDEO_CLOCK_CONTINUOUS,
-
+//	.power_saving_suspend = 1, //nn
+/*	.phy_timing = { //nn
+		.t_hsdexit_ns = 6,
+		.t_hstrail_ns = 7,
+		.t_hsprepare_ns = 4,
+		.t_datzero_ns = 9,
+		.t_clktrail_ns = 4,
+		.t_clkpost_ns = 10,
+		.t_clkzero_ns = 13,
+		.t_tlpx_ns =  3,
+	},*/
 	.lp_cmd_mode_freq_khz = 10000, 
-
+//	.lp_cmd_mode_freq_khz = 229500, //nn
 	/* TODO: Get the vender recommended freq */
 	.lp_read_cmd_mode_freq_khz = 230000,
  	.te_polarity_low = true,
@@ -336,8 +348,8 @@ static struct tegra_dc_out olympus_disp1_out = {
 static struct tegra_fb_data olympus_fb_data = {
 	.win		= 0,
 	.xres		= 540,
-	.yres		= 940,
-	.bits_per_pixel	= -1,
+	.yres		= 960,
+	.bits_per_pixel	= 32,
 	.flags		= TEGRA_FB_FLIP_ON_PROBE,
 };
 
