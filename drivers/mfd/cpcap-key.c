@@ -23,6 +23,7 @@
 #include <linux/slab.h>
 #include <linux/spi/cpcap.h>
 #include <linux/spi/cpcap-regbits.h>
+#include <linux/spi/spi.h>
 
 #define DUMP_WAKELOCK_WHILE_POWERKEY 1
 
@@ -97,11 +98,19 @@ void cpcap_broadcast_key_event(struct cpcap_device *cpcap,
 	struct cpcap_key_data *key = cpcap_get_keydata(cpcap);
 
 	// Dump wakelock state before LCD turn off
-	if (DUMP_WAKELOCK_WHILE_POWERKEY && code == KEY_END
+/*	
+if (DUMP_WAKELOCK_WHILE_POWERKEY && code == KEY_END
 		&& value == 1)
 		dump_active_lock_static();
-	if (key && key->input_dev)
+*/
+	if (key && key->input_dev) {
+		if (code == KEY_END)
+			dev_info(&cpcap->spi->dev,
+				"Power key press, value = %d\n",
+					value);
 		input_report_key(key->input_dev, code, value);
+		input_sync(key->input_dev);
+	}
 }
 EXPORT_SYMBOL(cpcap_broadcast_key_event);
 

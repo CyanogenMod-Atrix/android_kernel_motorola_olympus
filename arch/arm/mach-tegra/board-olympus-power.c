@@ -268,13 +268,6 @@ static struct platform_device cpcap_usb_device = {
 	.dev.platform_data = NULL,
 };
 
-static struct cpcap_whisper_pdata usb_det_pdata = {
-//	.data_gpio = TEGRA_GPIO_PV6,
-//	.pwr_gpio  = TEGRA_GPIO_PT2,
-//	.pwr_gpio  = TEGRA_GPIO_PF3,
-//	.uartmux   = 1,
-};
-
 static struct platform_device cpcap_audio_device = {
 	.name   = "cpcap_audio",
 	.id     = -1,
@@ -287,7 +280,7 @@ static struct platform_device cpcap_usb_det_device = {
 	.name           = "cpcap_usb_det",
 	.id             = -1,
 	.dev    = {
-		.platform_data  = &usb_det_pdata,
+		.platform_data  = NULL,
 	},
 };
 
@@ -297,13 +290,32 @@ static struct platform_device cpcap_wdt_device = {
 	.dev.platform_data = NULL,
 };
 
+struct platform_device cpcap_disp_button_led = {
+	.name = LD_DISP_BUTTON_DEV,
+	.id	= -1,
+	.dev = {
+		.platform_data  = NULL,
+	},
+};
+
+struct platform_device cpcap_rgb_led = {
+	.name = LD_MSG_IND_DEV,
+	.id	= -1,
+	.dev = {
+		.platform_data  = NULL,
+	},
+};
+
 static struct platform_device *cpcap_devices[] = {
+	&cpcap_validity_device,
+	&cpcap_rgb_led,
+	&cpcap_disp_button_led,
 	&cpcap_3mm5_device,
+	&cpcap_audio_device,
 	&cpcap_usb_device,
 	&cpcap_usb_det_device,
 	&cpcap_batt_device,
-	&cpcap_wdt_device,
-	&cpcap_audio_device,
+//	&cpcap_wdt_device,
 };
 
 static int is_olympus_ge_p0(struct cpcap_device *cpcap)
@@ -437,7 +449,7 @@ struct cpcap_leds tegra_cpcap_leds = {
 	.rgb_led = {
 		.rgb_on = 0x0053,
 		.regulator = "sw5",  /* set to NULL below for products with RGB LED on B+ */
-		.regulator_macro_controlled = false,
+		.regulator_macro_controlled = true,
 	},
 };
 
@@ -707,12 +719,10 @@ struct regulator_consumer_supply cpcap_vcam_consumers[] = {
 
 struct regulator_consumer_supply cpcap_vhvio_consumers[] = {
 	REGULATOR_CONSUMER("vhvio", NULL /* lighting_driver */),
-//	REGULATOR_CONSUMER("vcc", NULL /* compass_driver */),
 	REGULATOR_CONSUMER("vddio_mipi", NULL /* Camera */),
 //	REGULATOR_CONSUMER("vhvio", NULL /* lighting_driver */),
 //	REGULATOR_CONSUMER("vhvio", NULL /* magnetometer */),
 //	REGULATOR_CONSUMER("vhvio", NULL /* light sensor */),
-	REGULATOR_CONSUMER("vhvio_kxtf9", NULL /* accelerometer */),
 //	REGULATOR_CONSUMER("vhvio", NULL /* display */),
 };
 
@@ -1074,9 +1084,9 @@ struct spi_board_info tegra_spi_devices[] __initdata = {
         .chip_select = 0,
         .mode = SPI_MODE_0 | SPI_CS_HIGH,
         .max_speed_hz = 8000000,
-        .controller_data = &tegra_cpcap_data,
-//	.platform_data = &tegra_cpcap_data,
-//	.controller_data = &olympus_spi_tegra_data,
+//        .controller_data = &tegra_cpcap_data,
+	.platform_data = &tegra_cpcap_data,
+	.controller_data = &olympus_spi_tegra_data,
         .irq = INT_EXTERNAL_PMU,
     },
 
@@ -1193,6 +1203,11 @@ void __init olympus_power_init(void)
 	gpio_request(154, "usb_host_pwr_en");
 	gpio_direction_output(154,0);
 
+	tegra_gpio_enable(174);
+	gpio_request(174, "usb_host_pwr_en");
+	gpio_direction_output(174,0);
+	gpio_set_value(174,1);
+
 	/* CPCAP standby lines connected to CPCAP GPIOs on Etna P1B & Olympus P2 */
 	if ( HWREV_TYPE_IS_FINAL(system_rev) ||
 	     (machine_is_etna() &&
@@ -1225,17 +1240,11 @@ void __init olympus_power_init(void)
 		gpio_direction_output(43,1);
 	}
 
-
-	/* Indicate the macro controls SW5. */
-	tegra_cpcap_leds.rgb_led.regulator_macro_controlled = true;
-
 	/* For all machine types, disable watchdog when HWREV is debug, brassboard or mortable */
 	//if (HWREV_TYPE_IS_DEBUG(system_rev) || HWREV_TYPE_IS_BRASSBOARD(system_rev) ||
 	   // HWREV_TYPE_IS_MORTABLE(system_rev) ){
 		tegra_cpcap_data.wdt_disable = 1;
 	//}
-
-	//printk(KERN_INFO "pICS_%s: step in 2...\n",__func__);
 
 	spi_register_board_info(tegra_spi_devices, ARRAY_SIZE(tegra_spi_devices));
 
@@ -1243,8 +1252,6 @@ void __init olympus_power_init(void)
 
 	for (i = 0; i < ARRAY_SIZE(cpcap_devices); i++)
 		cpcap_device_register(cpcap_devices[i]);
-
-	cpcap_device_register(&cpcap_validity_device);
 
 	for (i = 0; i < sizeof(fixed_regulator_devices)/sizeof(fixed_regulator_devices[0]); i++) {
 		error = platform_device_register(&fixed_regulator_devices[i]);

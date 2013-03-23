@@ -104,23 +104,21 @@ static int cpcap_wdt_set_timeout(struct cpcap_wdt *wdt, unsigned short int timeo
 
 	if ((timeout < 0) || (timeout > CPCAP_WDT_MAX_TIMER))
 		return -EINVAL;
-	//printk(KERN_INFO "pICS_%s: step 1\n", __func__);
+
 	for(i=0; i<CPCAP_WDT_RAMWRITE_RETRIES; i++){
-	//	printk(KERN_INFO "pICS_%s: step 2 (%d) \n", __func__, i);
 		cpcap_uc_set_wdt_timeout(wdt->cpcap, timeout);
-	//	//printk(KERN_INFO "pICS_%s: step 3 (%d) \n", __func__, i);
 		cpcap_uc_get_wdt_timeout(wdt->cpcap, &readval);
 		if (readval == timeout){
 			retval=0;
 			break;
 		}
-		dev_err(wdt->dev, "Failure to set timeout; retrying\n");
+		dev_err(wdt->dev, "failure to set timeout; retrying\n");
 		msleep(1);
 	}
-	//printk(KERN_INFO "pICS_%s: step 4 \n", __func__);
+
 	/* Ping needed for change to take effect */
 	cpcap_wdt_ping(wdt);
-	//printk(KERN_INFO "pICS_%s: step 5 \n", __func__);
+
 	return retval;
 }
 
@@ -156,17 +154,12 @@ static int cpcap_wdt_start(struct cpcap_wdt *wdt)
 	int retval;
 	static bool first_run=true;
 
-	dev_info (wdt->dev, "%s()\n", __func__);
 	if (!wdt)
 		return -EINVAL;
-
-	//printk(KERN_INFO "pICS_%s: step 0.5\n", __func__);
 
 	/* only 1 client allowed */
 	if (test_and_set_bit(0, &wdt->is_active))
 		return -EBUSY;
-
-	//printk(KERN_INFO "pICS_%s: step 1\n", __func__);
 
 	if (first_run)
 	{
@@ -175,23 +168,25 @@ static int cpcap_wdt_start(struct cpcap_wdt *wdt)
 			return retval;
 		first_run=false;
 	}
-	//printk(KERN_INFO "pICS_%s: step 2\n", __func__);
+
 #ifdef CONFIG_CPCAP_WATCHDOG_KERNEL_SPACE
+	dev_info(wdt->dev, "%s: starting kernel watchdog timer\n", __func__);
 	if (timer_pending(&wdt->kick_timer))
 		del_timer(&wdt->kick_timer);
 
 	(wdt->kick_timer).expires = jiffies + wdt->kick_interval;
 	add_timer(&wdt->kick_timer);
 #endif
-	//printk(KERN_INFO "pICS_%s: step 3\n", __func__);
 	/* Pinging wdog before it's started is safe and ensures
 	   that the timeout value is reset to full value */
 	cpcap_wdt_ping(wdt);
-	//printk(KERN_INFO "pICS_%s: step 4\n", __func__);
+
 	/* primary macro14 is the main watchdog process */
 	retval = cpcap_uc_start(wdt->cpcap, CPCAP_BANK_PRIMARY, CPCAP_MACRO_14);
-	dev_notice(wdt->dev, "%s(): %d\n", __func__, retval);
-	//printk(KERN_INFO "pICS_%s: step 5\n", __func__);
+	if (retval)
+		dev_err(wdt->dev, "%s: failed to start macro: %d\n",
+			__func__, retval);
+
 	return (retval);
 }
 
@@ -199,18 +194,20 @@ static int cpcap_wdt_stop(struct cpcap_wdt *wdt)
 {
 	int retval;
 
-	dev_info (wdt->dev, "%s()\n", __func__);
-
 	if (!wdt)
 		return -EINVAL;
 
 #ifdef CONFIG_CPCAP_WATCHDOG_KERNEL_SPACE
+	dev_info(wdt->dev, "%s: stopping kernel watchdog timer\n", __func__);
+
 	del_timer(&wdt->kick_timer);
 #endif
 	clear_bit(0, &wdt->is_active);
 
 	retval = cpcap_uc_stop(wdt->cpcap, CPCAP_BANK_PRIMARY, CPCAP_MACRO_14);
-	dev_notice(wdt->dev, "%s(): %d\n", __func__, retval);
+	if (retval)
+		dev_err(wdt->dev, "%s: failed to stop macro: %d\n",
+			__func__, retval);
 	return (cpcap_uc_stop(wdt->cpcap, CPCAP_BANK_PRIMARY, CPCAP_MACRO_14));
 }
 
@@ -244,9 +241,9 @@ static int cpcap_wdt_release(struct inode *inode, struct file *file)
 	 *  Shut off the timer unless NOWAYOUT is defined.
 	 */
 #ifndef CONFIG_WATCHDOG_NOWAYOUT
- 	cpcap_wdt_stop(wdt);
+	cpcap_wdt_stop(wdt);
 #else
-	dev_err(wdt->dev, "Unexpected close, not stopping!\n");
+	dev_err(wdt->dev, "unexpected close, not stopping!\n");
 #endif
         return 0;
 }
@@ -358,7 +355,7 @@ static void kick_wdt_work(struct work_struct *work)
 
 	if (cpcap_wdt_ping(wdt))
 	{
-		dev_err(wdt->dev, "Unable to kick watchdog\n");
+		dev_err(wdt->dev, "unable to kick watchdog\n");
 	}
 }
 
@@ -369,7 +366,7 @@ static void cpcap_wdt_panic(enum cpcap_irqs irq, void *data)
 	/* Clearing IRQ within 500ms delays CPCAP restart by 1 timeout period */
 	cpcap_irq_clear(wdt->cpcap, CPCAP_IRQ_UC_PRIMACRO_14);
 
-	dev_err(wdt->dev, "Host watchdog timeout.  Panicing\n");
+	dev_err(wdt->dev, "host watchdog timeout.  PANIC!\n");
 
 	/* now panic and reboot the system */
 	BUG();
@@ -383,7 +380,7 @@ static int __devinit cpcap_wdt_probe(struct platform_device *pdev)
 	int ret = 0;
 
 	if (pdev->dev.platform_data == NULL) {
-		dev_err(&pdev->dev, "No platform_data\n");
+		dev_err(&pdev->dev, "no platform_data\n");
 		return -EINVAL;
 	}
 
@@ -398,7 +395,7 @@ static int __devinit cpcap_wdt_probe(struct platform_device *pdev)
 	wdt->cpcap = pdev->dev.platform_data;
 	data = wdt->cpcap->spi->controller_data;
 	if (data->wdt_disable == 1){
-		dev_err(&pdev->dev, "Disabling watchdog for debugging\n");
+		dev_err(&pdev->dev, "watchdog disabled for debugging\n");
 		ret=-ECANCELED;
 		goto err_mem;
 	}
@@ -421,7 +418,7 @@ static int __devinit cpcap_wdt_probe(struct platform_device *pdev)
 	wdt->working_queue = create_singlethread_workqueue("cpcap_wdog_wq");
 	if (!wdt->working_queue)
 	{
-		dev_err(wdt->dev, "Cannot create work queue\n");
+		dev_err(wdt->dev, "cannot create work queue\n");
 		ret = -ENOMEM;
 		goto err_mem;
 	}
@@ -432,7 +429,7 @@ static int __devinit cpcap_wdt_probe(struct platform_device *pdev)
 	ret |= cpcap_irq_register(wdt->cpcap, CPCAP_IRQ_UC_PRIMACRO_14, cpcap_wdt_panic, wdt);
 	if (ret)
 	{
-		dev_err(wdt->dev, "Cannot register MACRO 14 IRQ\n");
+		dev_err(wdt->dev, "cannot register MACRO 14 IRQ\n");
 		goto err_wq;
 	}
 #endif
@@ -452,9 +449,9 @@ static int __devinit cpcap_wdt_probe(struct platform_device *pdev)
 		dev_err(wdt->dev, "cannot start watchdog task\n");
 		goto err_reg;
 	}
-	dev_notice(&pdev->dev, "Watchdog started from kernel\n");
+	dev_info(&pdev->dev, "watchdog started from kernel\n");
 #else
-	dev_notice(&pdev->dev, "Watchdog framework started for user space control\n");
+	dev_info(&pdev->dev, "watchdog framework started for user space control\n");
 #endif
 
 	return 0;
@@ -498,7 +495,7 @@ static int cpcap_wdt_suspend(struct platform_device *pdev, pm_message_t message)
 {
 #ifdef CONFIG_CPCAP_WATCHDOG_KERNEL_SPACE
 	struct cpcap_wdt *wdt = platform_get_drvdata(pdev);
-	dev_dbg (wdt->dev, "suspend: disabling wdt\n");
+	dev_dbg(wdt->dev, "suspend\n");
 	return (cpcap_wdt_stop(wdt));
 #else
 	return 0;
@@ -509,8 +506,7 @@ static int cpcap_wdt_resume(struct platform_device *pdev)
 {
 #ifdef CONFIG_CPCAP_WATCHDOG_KERNEL_SPACE
 	struct cpcap_wdt *wdt = platform_get_drvdata(pdev);
-	dev_dbg (wdt->dev, "resume: restarting wdt\n");
-
+	dev_dbg(wdt->dev, "resume\n");
 	return (cpcap_wdt_start(wdt));
 #else
 	return 0;

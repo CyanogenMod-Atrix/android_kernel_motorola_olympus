@@ -157,39 +157,36 @@ static struct usb_configuration android_config_driver = {
 	.bConfigurationValue = 1,
 };
 
+static enum cpcap_accy cable_type = CPCAP_ACCY_NONE;
+
 void android_usb_set_connected(int connected, unsigned int accy)
 {
 	struct android_dev *dev = _android_dev;
 
-	if (!dev)
-		return;
+	printk(KERN_INFO "%s - connected = %d, accy = %d\n",
+	       __func__, connected, accy);
 
-	printk(KERN_INFO "%s - connected = %d, accy = %d \n",
-		__func__, connected, accy);
 	switch (accy) {
 	case CPCAP_ACCY_USB:
 		if (connected)
-//			switch_set_state(&dev->sdev, CABLE_USB);
-			printk(KERN_INFO "%s should do switch_set_state(&dev->sdev, CABLE_USB);\n",__func__);
-		else
-//			switch_set_state(&dev->sdev, CABLE_NONE);
-			printk(KERN_INFO "%s should do switch_set_state(&dev->sdev, CABLE_NONE);\n",__func__);
+			cable_type = CPCAP_ACCY_USB;
+		else {
+			cable_type = CPCAP_ACCY_NONE;
+			dev->connected = 0;
+			schedule_work(&dev->work);
+		}
 		break;
+
 	case CPCAP_ACCY_FACTORY:
 		if (connected)
-//			switch_set_state(&dev->sdev, CABLE_FACTORY);
-			printk(KERN_INFO "%s should do switch_set_state(&dev->sdev, CABLE_FACTORY);\n",__func__);
+			cable_type = CPCAP_ACCY_FACTORY;
 		else
-//			switch_set_state(&dev->sdev, CABLE_NONE);
-			printk(KERN_INFO "%s should do switch_set_state(&dev->sdev, CABLE_NONE);\n",__func__);
+			cable_type = CPCAP_ACCY_NONE;
 		break;
+
 	default:
 		return;
 	}
-
-	if (connected && dev->cdev && dev->cdev->gadget)
-		usb_gadget_vbus_connect(dev->cdev->gadget);
-
 }
 
 static void android_work(struct work_struct *data)

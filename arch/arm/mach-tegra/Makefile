@@ -126,14 +126,15 @@ obj-${CONFIG_MACH_OLYMPUS}             += board-olympus.o
 obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-devices.o
 obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-pinmux.o
 obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-panel.o
-#obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-audio.o
+obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-backlight.o
+obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-touch.o
 obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-misc.o
 obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-keypad.o
 obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-kbc.o
 obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-modem.o
-obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-i2c.o
 obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-wlan.o
 obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-sensors.o
+obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-cameras.o
 obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-power.o
 #obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-bluetooth.o
 #obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-gps.o
@@ -191,7 +192,7 @@ obj-${CONFIG_MACH_CARDHU}               += board-cardhu-memory.o
 obj-${CONFIG_MACH_CARDHU}               += board-cardhu-powermon.o
 
 obj-${CONFIG_MACH_KAI}                  += board-touch-kai-synaptics-spi.o
-obj-y                                   += board-touch-raydium_spi.o
+#obj-y                                   += board-touch-raydium_spi.o
 
 obj-${CONFIG_MACH_P1852}               += board-p1852.o
 obj-${CONFIG_MACH_P1852}               += board-p1852-panel.o

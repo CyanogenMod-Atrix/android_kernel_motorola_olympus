@@ -5,13 +5,12 @@
 #include <linux/input.h>
 #include <linux/i2c.h>
 #include <linux/spi/spi.h>
+#include <linux/spi-tegra.h>
 #include <linux/akm8975.h>
 #include <linux/adt7461.h>
 #include <linux/isl29030.h>
 #include <linux/bu52014hfv.h>
 #include <linux/kxtf9.h>
-#include <media/ov5650.h>
-#include <media/soc380.h>
 #include <linux/delay.h>
 #include <linux/regulator/consumer.h>
 #include <linux/gpio.h>
@@ -35,219 +34,6 @@
 #define TEGRA_ADT7461_IRQ_GPIO		TEGRA_GPIO_PE5
 #define PWRUP_BAREBOARD            	0x00100000 /* Bit 20 */
 
-#define CAMERA1_PWDN_GPIO		TEGRA_GPIO_PBB1
-#define CAMERA1_RESET_GPIO		TEGRA_GPIO_PD2
-#define CAMERA2_PWDN_GPIO		TEGRA_GPIO_PBB5
-#define CAMERA2_RESET_GPIO		TEGRA_GPIO_PL4
-//#define CAMERA_AF_PD_GPIO		TEGRA_GPIO_PT3
-#define CAMERA_FLASH_EN1_GPIO		TEGRA_GPIO_PT3
-//#define CAMERA_FLASH_EN2_GPIO		TEGRA_GPIO_PA0
-
-static struct regulator *reg_avdd_cam1;
-static struct regulator *reg_vdd_af; 
-static struct regulator *reg_vdd_mipi;
-static struct regulator *reg_vddio_vi;
-
-static struct mutex cam1_pwr_lock;
-static struct mutex cam2_pwr_lock;
-
-static int olympus_camera_init(void)
-{
-	gpio_request(CAMERA1_PWDN_GPIO, "camera1_powerdown");
-	gpio_direction_output(CAMERA1_PWDN_GPIO, 0);
-	gpio_export(CAMERA1_PWDN_GPIO, false);
-
-	gpio_request(CAMERA1_RESET_GPIO, "camera1_reset");
-	gpio_direction_output(CAMERA1_RESET_GPIO, 0);
-	gpio_export(CAMERA1_RESET_GPIO, false);
-
-	gpio_request(CAMERA2_PWDN_GPIO, "camera2_powerdown");
-	gpio_direction_output(CAMERA2_PWDN_GPIO, 0);
-	gpio_export(CAMERA2_PWDN_GPIO, false);
-
-	gpio_request(CAMERA2_RESET_GPIO, "camera2_reset");
-	gpio_direction_output(CAMERA2_RESET_GPIO, 0);
-	gpio_export(CAMERA2_RESET_GPIO, false);
-
-/*	gpio_request(CAMERA_AF_PD_GPIO, "camera_autofocus");
-	gpio_direction_output(CAMERA_AF_PD_GPIO, 0);
-	gpio_export(CAMERA_AF_PD_GPIO, false);*/
-
-	gpio_request(CAMERA_FLASH_EN1_GPIO, "camera_flash_en1");
-	gpio_direction_output(CAMERA_FLASH_EN1_GPIO, 0);
-	gpio_export(CAMERA_FLASH_EN1_GPIO, false);
-
-/*	gpio_request(CAMERA_FLASH_EN2_GPIO, "camera_flash_en2");
-	gpio_direction_output(CAMERA_FLASH_EN2_GPIO, 0);
-	gpio_export(CAMERA_FLASH_EN2_GPIO, false);*/
-
-	gpio_set_value(CAMERA1_PWDN_GPIO, 1);
-	mdelay(5);
-
-	mutex_init(&cam1_pwr_lock);
-	mutex_init(&cam2_pwr_lock);
-
-	return 0;
-}
-
-static int olympus_ov5650_power_on(void)
-{
-
-	mutex_lock(&cam1_pwr_lock);
-
-	gpio_set_value(CAMERA1_PWDN_GPIO, 0);
-
-	if (!reg_avdd_cam1) {
-		reg_avdd_cam1 = regulator_get(NULL, "vcsi");
-		if (IS_ERR_OR_NULL(reg_avdd_cam1)) {
-			pr_err("olympus_ov5650_power_on: reg_avdd_cam1 failed\n");
-			reg_avdd_cam1 = NULL;
-			return PTR_ERR(reg_avdd_cam1);
-		}
-		regulator_enable(reg_avdd_cam1);
-	}
-	mdelay(5);
-
-	if (!reg_vdd_mipi) {
-		reg_vdd_mipi = regulator_get(NULL, "vcam");
-		if (IS_ERR_OR_NULL(reg_vdd_mipi)) {
-			pr_err("olympus_ov5650_power_on: vddio_mipi failed\n");
-			reg_vdd_mipi = NULL;
-			return PTR_ERR(reg_vdd_mipi);
-		}
-		regulator_enable(reg_vdd_mipi);
-	}
-	mdelay(5);
-
-/*	if (!reg_vdd_af) {
-		reg_vdd_af = regulator_get(NULL, "v28_af_baf");
-		if (IS_ERR_OR_NULL(reg_vdd_af)) {
-			pr_err("olympus_ov5650_power_on: vdd_vcore_af failed\n");
-			reg_vdd_af = NULL;
-			return PTR_ERR(reg_vdd_af);
-		}
-		regulator_enable(reg_vdd_af);
-	}
-	mdelay(5);*/
-
-	gpio_set_value(CAMERA1_PWDN_GPIO, 1);
-	mdelay(5);
-	gpio_set_value(CAMERA1_RESET_GPIO, 1);
-	mdelay(10);
-	gpio_set_value(CAMERA1_RESET_GPIO, 0);
-	mdelay(5);
-	gpio_set_value(CAMERA1_RESET_GPIO, 1);
-	mdelay(20);
-//	gpio_set_value(CAMERA_AF_PD_GPIO, 1);
-
-	mutex_unlock(&cam1_pwr_lock);
-	return 0;
-}
-
-static int olympus_ov5650_power_off(void)
-{
-	mutex_lock(&cam1_pwr_lock);
-
-//	gpio_set_value(CAMERA_AF_PD_GPIO, 0);
-	gpio_set_value(CAMERA1_PWDN_GPIO, 1);
-	gpio_set_value(CAMERA1_RESET_GPIO, 0);
-
-	if (reg_avdd_cam1) {
-		regulator_disable(reg_avdd_cam1);
-		regulator_put(reg_avdd_cam1);
-		reg_avdd_cam1 = NULL;
-	}
-
-	if (reg_vdd_mipi) {
-		regulator_disable(reg_vdd_mipi);
-		regulator_put(reg_vdd_mipi);
-		reg_vdd_mipi = NULL;
-	}
-
-/*	if (reg_vdd_af) {
-		regulator_disable(reg_vdd_af);
-		regulator_put(reg_vdd_af);
-		reg_vdd_af = NULL;
-	}*/
-
-	mutex_unlock(&cam1_pwr_lock);
-
-	return 0;
-}
-
-static int olympus_soc380_power_on(void)
-{
-	mutex_lock(&cam2_pwr_lock);
-
-	gpio_set_value(CAMERA2_PWDN_GPIO, 0);
-
-	if (!reg_vddio_vi) {
-		reg_vddio_vi = regulator_get(NULL, "vdd_cam1");
-		if (IS_ERR_OR_NULL(reg_vddio_vi)) {
-			pr_err("olympus_soc380_power_on: vddio_vi failed\n");
-			reg_vddio_vi = NULL;
-			return PTR_ERR(reg_vddio_vi);
-		}
-		regulator_set_voltage(reg_vddio_vi, 1800*1000, 1800*1000);
-		mdelay(5);
-		regulator_enable(reg_vddio_vi);
-	}
-
-	if (!reg_avdd_cam1) {
-		reg_avdd_cam1 = regulator_get(NULL, "vcam");
-		if (IS_ERR_OR_NULL(reg_avdd_cam1)) {
-			pr_err("olympus_soc380_power_on: vdd_cam1 failed\n");
-			reg_avdd_cam1 = NULL;
-			return PTR_ERR(reg_avdd_cam1);
-		}
-		regulator_enable(reg_avdd_cam1);
-	}
-	mdelay(5);
-
-	gpio_set_value(CAMERA2_RESET_GPIO, 1);
-	mdelay(10);
-	gpio_set_value(CAMERA2_RESET_GPIO, 0);
-	mdelay(5);
-	gpio_set_value(CAMERA2_RESET_GPIO, 1);
-	mdelay(20);
-
-	mutex_unlock(&cam2_pwr_lock);
-	return 0;
-
-}
-
-static int olympus_soc380_power_off(void)
-{
-	mutex_lock(&cam2_pwr_lock);
-
-	gpio_set_value(CAMERA2_PWDN_GPIO, 1);
-	gpio_set_value(CAMERA2_RESET_GPIO, 0);
-
-	if (reg_avdd_cam1) {
-		regulator_disable(reg_avdd_cam1);
-		regulator_put(reg_avdd_cam1);
-		reg_avdd_cam1 = NULL;
-	}
-	if (reg_vddio_vi) {
-		regulator_disable(reg_vddio_vi);
-		regulator_put(reg_vddio_vi);
-		reg_vddio_vi = NULL;
-	}
-
-	mutex_unlock(&cam2_pwr_lock);
-
-	return 0;
-}
-
-struct ov5650_platform_data olympus_ov5650_data = {
-	.power_on = olympus_ov5650_power_on,
-	.power_off = olympus_ov5650_power_off,
-};
-
-struct soc380_platform_data olympus_soc380_data = {
-	.power_on = olympus_soc380_power_on,
-	.power_off = olympus_soc380_power_off,
-};
 /*
  * Vibrator
  */
@@ -285,14 +71,6 @@ static int tegra_vibrator_power_off(void)
 	return 0;
 }
 
-static int isl29030_getIrqStatus(void)
-{
-	int	status = -1;
-
-	status = gpio_get_value(TEGRA_PROX_INT_GPIO);
-	return status;
-}
-
 static struct vib_gpio_platform_data tegra_vib_gpio_data = {
 	.gpio = TEGRA_VIBRATOR_GPIO,
 	.max_timeout = 15000,
@@ -318,14 +96,39 @@ static struct platform_device tegra_tmon = {
 	.id             = -1,
 };
 
-static struct bu52014hfv_platform_data bu52014hfv_platform_data = {
-	.docked_north_gpio = TEGRA_HF_NORTH_GPIO,
-	.docked_south_gpio = TEGRA_HF_SOUTH_GPIO,
-	.kickstand_gpio = TEGRA_HF_KICKSTAND_GPIO,
-	.north_is_desk = 1,
-	.set_switch_func = cpcap_set_dock_switch,
-};
+static void olympus_vibrator_init(void)
+{
+	tegra_gpio_enable(tegra_vib_gpio_data.gpio);
+        if( gpio_request(tegra_vib_gpio_data.gpio, "vib_en") < 0) {
+		printk (KERN_INFO "%s: Error requesting gpio 'vib_en' %u\n", __func__, tegra_vib_gpio_data.gpio);
+	};
+        gpio_direction_output(tegra_vib_gpio_data.gpio, 0);
+}
 
+/*
+ * Temp sensor
+ */
+
+static void olympus_adt7461_init(void)
+{
+	tegra_gpio_enable(TEGRA_ADT7461_IRQ_GPIO);
+	gpio_request(TEGRA_ADT7461_IRQ_GPIO, "adt7461");
+	gpio_direction_input(TEGRA_ADT7461_IRQ_GPIO);
+}
+
+struct adt7461_platform_data olympus_adt7461_pdata = {
+	.supported_hwrev = true,
+	.ext_range = false,
+	.therm2 = true,
+	.conv_rate = 5,
+	.offset = 0,
+	.hysteresis = 0,
+	.shutdown_ext_limit = 115,
+	.shutdown_local_limit = 120,
+	.throttling_ext_limit = 90,
+	.alarm_fn = tegra_throttling_enable,
+	//.irq_gpio = TEGRA_ADT7461_IRQ_GPIO,
+};
 
 /*
  * Accelerometer
@@ -334,7 +137,7 @@ static struct regulator *kxtf9_regulator;
 static int kxtf9_initialization(void)
 {
 	struct regulator *reg;
-	reg = regulator_get(NULL, "vhvio_kxtf9");
+	reg = regulator_get(NULL, "vhvio");
 	if (IS_ERR(reg))
 		return PTR_ERR(reg);
 	kxtf9_regulator = reg;
@@ -369,13 +172,13 @@ struct kxtf9_platform_data kxtf9_data = {
 
 	.g_range	= KXTF9_G_8G,
 
-	.axis_map_x	= 0,
-	.axis_map_y	= 1,
+	.axis_map_x	= 1,
+	.axis_map_y	= 0,
 	.axis_map_z	= 2,
 
 	.negate_x	= 1,
 	.negate_y	= 1,
-	.negate_z	= 0,
+	.negate_z	= 1,
 
 	.data_odr_init		= ODR25,
 	.ctrl_reg1_init		= RES_12BIT | KXTF9_G_2G | TPE | WUFE | TDTE,
@@ -405,7 +208,7 @@ struct kxtf9_platform_data kxtf9_data = {
 	},
 };
 
-static void __init kxtf9_init(void)
+static void __init olympus_kxtf9_init(void)
 {
 #ifdef CONFIG_ARM_OF
 	struct device_node *node;
@@ -469,12 +272,11 @@ struct platform_device kxtf9_platform_device = {
 	},
 };
 
-
 /*
  * Compass
  */
 
-static void __init tegra_akm8975_init(void)
+static void __init olympus_akm8975_init(void)
 {
 	tegra_gpio_enable(TEGRA_AKM8975_IRQ_GPIO);
 
@@ -494,7 +296,6 @@ static int akm8975_init(void)
 
 	if (!akm8975_regulator) {
 		reg = regulator_get(NULL, "vhvio");
-//		reg = regulator_get(NULL, "vcc");
 		if (IS_ERR(reg)) {
 			printk (KERN_INFO "%s: Regulator error\n", __func__);
 			err = PTR_ERR(reg); 
@@ -504,8 +305,6 @@ static int akm8975_init(void)
 		}
 	}
 
-	gpio_set_value(TEGRA_AKM8975_RESET_GPIO, 1);
-
 	gpio_request(TEGRA_AKM8975_IRQ_GPIO, "akm8975_irq");
 	gpio_direction_input(TEGRA_AKM8975_IRQ_GPIO);
 
@@ -514,7 +313,7 @@ static int akm8975_init(void)
 
 static void akm8975_exit(void)
 {
-	gpio_set_value(TEGRA_AKM8975_RESET_GPIO, 0);
+	return;
 }
 
 static int akm8975_power_on(void)
@@ -558,6 +357,14 @@ struct platform_device akm8975_platform_device = {
  * Hall Effect Sensor
  */
 
+static struct bu52014hfv_platform_data bu52014hfv_platform_data = {
+	.docked_north_gpio = TEGRA_HF_NORTH_GPIO,
+	.docked_south_gpio = TEGRA_HF_SOUTH_GPIO,
+	.kickstand_gpio = TEGRA_HF_KICKSTAND_GPIO,
+	.north_is_desk = 1,
+	.set_switch_func = cpcap_set_dock_switch,
+};
+
 static struct platform_device ap20_hall_effect_dock = {
 	.name	= BU52014HFV_MODULE_NAME,
 	.id	= -1,
@@ -566,35 +373,11 @@ static struct platform_device ap20_hall_effect_dock = {
 	},
 };
 
-static void tegra_vibrator_init(void)
-{
-	tegra_gpio_enable(tegra_vib_gpio_data.gpio);
-        if( gpio_request(tegra_vib_gpio_data.gpio, "vib_en") < 0) {
-		printk (KERN_INFO "%s: Error requesting gpio 'vib_en' %u\n", __func__, tegra_vib_gpio_data.gpio);
-	};
-        gpio_direction_output(tegra_vib_gpio_data.gpio, 0);
-}
-
-
 /*
  * ALS/Proximity Sensor
  */
-struct isl29030_platform_data isl29030_als_ir_data_Olympus = {
-/*
-	NOTE: Original values
-	.configure = 0x6c,
-	.interrupt_cntrl = 0x40,
-	.prox_lower_threshold = 0x1e,
-	.prox_higher_threshold = 0x32,
-	.als_ir_low_threshold = 0x00,
-	.als_ir_high_low_threshold = 0x00,
-	.als_ir_high_threshold = 0x45,
-	.lens_percent_t = 100,
-*/
-	.init = NULL,
-	.exit = NULL,
-	.power_on = NULL,
-	.power_off = NULL,
+
+struct isl29030_platform_data olympus_isl29030_pdata = {
 	.configure = 0x66,
 	.interrupt_cntrl = 0x20,
 	.prox_lower_threshold = 0x0A,
@@ -604,19 +387,19 @@ struct isl29030_platform_data isl29030_als_ir_data_Olympus = {
 	.num_samples_for_noise_floor = 0x05,
 	.lens_percent_t = 10,
 	.irq = 0,
-	.getIrqStatus = isl29030_getIrqStatus,
-	.gpio_intr = TEGRA_PROX_INT_GPIO,
 };
 
 static struct platform_device isl29030_als_ir = {
 	.name	= LD_ISL29030_NAME,
 	.id	= -1,
 };
-static void __init isl29030_init(void)
+static void __init olympus_isl29030_init(void)
 {
 	tegra_gpio_enable(TEGRA_PROX_INT_GPIO); 
-	isl29030_als_ir_data_Olympus.irq = gpio_to_irq(TEGRA_PROX_INT_GPIO);
-	isl29030_als_ir.dev.platform_data = &(isl29030_als_ir_data_Olympus);
+
+	olympus_isl29030_pdata.irq = gpio_to_irq(TEGRA_PROX_INT_GPIO);
+	isl29030_als_ir.dev.platform_data = &(olympus_isl29030_pdata);
+
 	if( gpio_request(TEGRA_PROX_INT_GPIO, "isl29030_proximity_int") < 0) {
 		printk (KERN_INFO "%s: Error requesting gpio 'isl29030_proximity_int' %u\n", __func__, TEGRA_PROX_INT_GPIO);
 	};
@@ -632,9 +415,9 @@ static int isl29030_power_on(void)
 static int isl29030_power_off(void)
 {
 	return 0;
-}*/
-
-static struct platform_device *tegra_sensors[] __initdata = {
+}
+*/
+static struct platform_device *olympus_sensors[] __initdata = {
 	&isl29030_als_ir,
 	&kxtf9_platform_device,
 	&akm8975_platform_device,
@@ -645,100 +428,41 @@ static struct platform_device *tegra_sensors[] __initdata = {
 
 static int aes1750_interrupt = TEGRA_GPIO_PM5;
 
+static struct tegra_spi_platform_data aes1750_spi_slave_platform_data = {
+    .is_dma_based = true,
+    .is_clkon_always = false,
+};
+
+static struct tegra_spi_device_controller_data aes1750_spi_controller_data = {
+    .is_hw_based_cs = 0,
+};
+
 static struct spi_board_info aes1750_spi_device __initdata = {
-    .modalias = "aes1750",
-    .bus_num = 1,
-    .chip_select = 2,
-    .mode = SPI_MODE_1 | SPI_CS_HIGH,
-    .max_speed_hz = 15000000,
-    .controller_data = NULL,
-    .platform_data = &aes1750_interrupt,
-    .irq = 0,
-};
-/*
-static struct regulator *tegra_l3g4200d_regulator=NULL;
-
-static void tegra_l3g4200d_exit(void)
-{
-        if (tegra_l3g4200d_regulator)
-                regulator_put(tegra_l3g4200d_regulator);
-
-        gpio_free(TEGRA_L3G4200D_IRQ_GPIO);
-}
-static int tegra_l3g4200d_power_on(void)
-{
-        if (tegra_l3g4200d_regulator)
-                return regulator_enable(tegra_l3g4200d_regulator);
-        return 0;
-}
-static int tegra_l3g4200d_power_off(void)
-{
-        if (tegra_l3g4200d_regulator)
-                return regulator_disable(tegra_l3g4200d_regulator);
-        return 0;
-}
-struct l3g4200d_platform_data tegra_gyro_pdata = {
-        .poll_interval = 200,
-        .min_interval = 0,
-
-        .g_range = 0,
-
-        .ctrl_reg_1 = 0xbf,
-        .ctrl_reg_2 = 0x00,
-        .ctrl_reg_3 = 0x00,
-        .ctrl_reg_4 = 0x00,
-        .ctrl_reg_5 = 0x00,
-        .int_config = 0x00,
-        .int_source = 0x00,
-        .int_th_x_h = 0x00,
-        .int_th_x_l = 0x00,
-        .int_th_y_h = 0x00,
-        .int_th_y_l = 0x00,
-        .int_th_z_h = 0x00,
-        .int_th_z_l = 0x00,
-        .int_duration = 0x00,
-
-        .axis_map_x = 0,
-        .axis_map_y = 0,
-        .axis_map_z = 0,
-
-        .negate_x = 0,
-        .negate_y = 0,
-        .negate_z = 0,
-
-        .exit = tegra_l3g4200d_exit,
-        .power_on = tegra_l3g4200d_power_on,
-        .power_off = tegra_l3g4200d_power_off,
-
-};
-*/
-
-struct adt7461_platform_data olympus_adt7461_pdata = {
-	.supported_hwrev = true,
-	.ext_range = false,
-	.therm2 = true,
-	.conv_rate = 5,
-	.offset = 0,
-	.hysteresis = 0,
-	.shutdown_ext_limit = 115,
-	.shutdown_local_limit = 120,
-	.throttling_ext_limit = 90,
-	.alarm_fn = tegra_throttling_enable,
-	.irq_gpio = TEGRA_ADT7461_IRQ_GPIO,
+		.modalias = "aes1750",
+		.bus_num = 1,
+		.chip_select = 2,
+		.mode = SPI_MODE_1,
+		.max_speed_hz = 15000000,
+		.controller_data = &aes1750_spi_controller_data,
+		.platform_data = &aes1750_spi_slave_platform_data,
+		.irq = 0,
 };
 
-static struct i2c_board_info olympus_i2c3_board_info[] = {
+static struct i2c_board_info olympus_i2c1_board_info[] = {
 	{
-		I2C_BOARD_INFO("ov5650", 0x36),
-		.platform_data = &olympus_ov5650_data,
-	},
-	{
-		I2C_BOARD_INFO("soc380", 0x3D),   //0x3c
-		.platform_data = &olympus_soc380_data,
+		/*  ISL 29030 (prox/ALS) driver */
+		I2C_BOARD_INFO(LD_ISL29030_NAME, 0x44),
+		.platform_data = &olympus_isl29030_pdata,
+		.irq = 180,
 	},
 };
 
-static struct i2c_board_info __initdata olympus_i2c_bus4_board_info[] = {
+static struct i2c_board_info olympus_i2c4_board_info[] = {
+	{
+		I2C_BOARD_INFO("adt7461", 0x4C),
+		.irq = TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PE5),
+		.platform_data = &olympus_adt7461_pdata,
+	},
 	{
 		I2C_BOARD_INFO("akm8975", 0x0C),
 		.platform_data = &akm8975_data,
@@ -750,36 +474,32 @@ static struct i2c_board_info __initdata olympus_i2c_bus4_board_info[] = {
 	},
 };
 
-void __init mot_sensors_init(void)
+void __init olympus_sensors_init(void)
 {
+	olympus_kxtf9_init();
 
-	olympus_camera_init();
+	olympus_adt7461_init();	
 
-	kxtf9_init();
-	tegra_akm8975_init();
+	olympus_akm8975_init();
 
-	tegra_gpio_enable(TEGRA_GPIO_PE5); 
-	if( gpio_request(TEGRA_GPIO_PE5, "adt7461") < 0) {
-		printk (KERN_INFO "%s: Error requesting gpio 'adt7461' %u\n", __func__, TEGRA_GPIO_PE5);
-	};
-	gpio_direction_input(TEGRA_GPIO_PE5);
+	olympus_vibrator_init();
 
-	tegra_vibrator_init();
-
-	isl29030_init();
+	olympus_isl29030_init();
 	
-	platform_add_devices(tegra_sensors, ARRAY_SIZE(tegra_sensors));
+	platform_add_devices(olympus_sensors, ARRAY_SIZE(olympus_sensors));
+
+	printk("bus 0: %d device\n", 1);
+	printk("bus 3: %d devices\n", ARRAY_SIZE(olympus_i2c4_board_info));
+
+	i2c_register_board_info(0, olympus_i2c1_board_info, 
+				ARRAY_SIZE(olympus_i2c1_board_info));
+
+	i2c_register_board_info(3, olympus_i2c4_board_info, 
+				ARRAY_SIZE(olympus_i2c4_board_info));
 
         aes1750_spi_device.irq = gpio_to_irq(aes1750_interrupt);
-        spi_register_board_info(&aes1750_spi_device,sizeof(aes1750_spi_device));
+        spi_register_board_info(&aes1750_spi_device,
+					sizeof(aes1750_spi_device));
 
-	printk("bus 2: %d devices\n", ARRAY_SIZE(olympus_i2c_bus4_board_info));
-	printk("bus 3: %d devices\n", ARRAY_SIZE(olympus_i2c_bus4_board_info));
-
-	i2c_register_board_info(3, olympus_i2c_bus4_board_info, 
-				ARRAY_SIZE(olympus_i2c_bus4_board_info));
-
-	i2c_register_board_info(2, olympus_i2c3_board_info,
-		ARRAY_SIZE(olympus_i2c3_board_info));
 }
 

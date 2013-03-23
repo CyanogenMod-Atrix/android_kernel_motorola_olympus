@@ -16,20 +16,8 @@
  * 02111-1307, USA
  */
 
-#include <linux/init.h>
-#include <linux/irq.h>
-#include <linux/interrupt.h>
-#include <linux/delay.h>
-
-#include <linux/io.h>
-#include <linux/regulator/consumer.h>
-
-#include <mach/iomap.h>
-#include <mach/pinmux.h>
-
 #include <linux/fs.h>
 #include <linux/miscdevice.h>
-#include <linux/leds-ld-cpcap.h>
 #include <linux/platform_device.h>
 #include <linux/regulator/machine.h>
 #include <linux/spi/spi.h>
@@ -40,9 +28,6 @@
 #include <linux/notifier.h>
 #include <linux/delay.h>
 #include <linux/pm.h>
-#ifdef CONFIG_BOOTINFO
-#include <asm/bootinfo.h>
-#endif
 
 struct cpcap_driver_info {
 	struct list_head list;
@@ -52,7 +37,6 @@ struct cpcap_driver_info {
 static long ioctl(struct file *file, unsigned int cmd, unsigned long arg);
 static int __devinit cpcap_probe(struct spi_device *spi);
 static int __devexit cpcap_remove(struct spi_device *spi);
-static void cpcap_standby_macro_init(void);
 
 #ifdef CONFIG_PM
 static int cpcap_suspend(struct spi_device *spi, pm_message_t mesg);
@@ -90,6 +74,7 @@ static struct platform_device cpcap_adc_device = {
 	.dev.platform_data = NULL,
 };
 
+
 static struct platform_device cpcap_key_device = {
 	.name           = "cpcap_key",
 	.id             = -1,
@@ -108,127 +93,28 @@ static struct platform_device cpcap_rtc_device = {
 	.dev.platform_data = NULL,
 };
 
-static struct platform_device cpcap_batt_device = {
-	.name           = "cpcap_battery",
-	.id             = -1,
-	.dev.platform_data = NULL,
-};
-
-struct platform_device cpcap_disp_button_led = {
-	.name		= LD_DISP_BUTTON_DEV,
-	.id		= -1,
-	.dev		= {
-		.platform_data  = NULL,
-	},
-};
-
-struct platform_device cpcap_rgb_led = {
-	.name		= LD_MSG_IND_DEV,
-	.id		= -1,
-	.dev		= {
-		.platform_data  = NULL,
-	},
-};
-#ifdef CONFIG_CPCAP_USB
-static struct platform_device cpcap_usb_device = {
-	.name           = "cpcap_usb",
-	.id             = -1,
-	.dev.platform_data = NULL,
-};
-
-static struct cpcap_whisper_pdata usb_det_pdata = {
-	.data_gpio = 174, // TEGRA_GPIO_PV6,
-	.pwr_gpio  = 154, //TEGRA_GPIO_PT2,
-//	.pwr_gpio  = TEGRA_GPIO_PF3,
-//	.uartmux   = 1,
-};
-
-static struct platform_device cpcap_usb_det_device = {
-	.name           = "cpcap_usb_det",
-	.id             = -1,
-//	.dev.platform_data = NULL,
-	.dev    = {
-		.platform_data  = &usb_det_pdata,
-	},
-};
-#endif
-
-#if defined(CONFIG_SOUND_CPCAP_OMAP) ||  defined(CONFIG_SOUND_CPCAP_AP20)
-static struct platform_device cpcap_audio_device = {
-	.name           = "cpcap_audio",
-	.id             = -1,
-	.dev.platform_data  = NULL,
-};
-#endif
-
-static struct platform_device cpcap_3mm5_device = {
-	.name           = "cpcap_3mm5",
-	.id             = -1,
-	.dev.platform_data = NULL,
-};
-
-#ifdef CONFIG_CPCAP_WATCHDOG
-static struct platform_device cpcap_wdt_device = {
-	.name           = "cpcap_wdt",
-	.id             = -1,
-	.dev.platform_data = NULL,
-};
-#endif
-
-#ifdef CONFIG_TTA_CHARGER
-static struct platform_device cpcap_tta_det_device = {
-  .name           = "cpcap_tta_charger",
-  .id             = -1,
-  .dev.platform_data = NULL,
-};
-#endif
-
-#ifdef CONFIG_LEDS_AF_LED
-struct platform_device cpcap_af_led = {
-	.name		= LD_AF_LED_DEV,
-	.id		= -1,
-	.dev		= {
-		.platform_data  = NULL,
-	},
-};
-#endif
-
+/* List of required CPCAP devices that will ALWAYS be present.
+ *
+ * DO NOT ADD NEW DEVICES TO THIS LIST! You must use cpcap_driver_register()
+ * for any new drivers for non-core functionality of CPCAP.
+ */
 static struct platform_device *cpcap_devices[] = {
 	&cpcap_uc_device,
 	&cpcap_adc_device,
 	&cpcap_key_device,
 	&cpcap_rtc_device,
-//	&cpcap_batt_device,
-	&cpcap_rgb_led,
-	&cpcap_disp_button_led,
-//#ifdef CONFIG_CPCAP_USB
-//	&cpcap_usb_device,
-//	&cpcap_usb_det_device,
-//#endif
-//#if defined(CONFIG_SOUND_CPCAP_OMAP) ||  defined(CONFIG_SOUND_CPCAP_AP20)
-//	&cpcap_audio_device,
-//#endif
-//	&cpcap_3mm5_device,
-#ifdef CONFIG_CPCAP_WATCHDOG
-//	&cpcap_wdt_device,
-#endif
-#ifdef CONFIG_TTA_CHARGER
-	&cpcap_tta_det_device,
-#endif
-#ifdef CONFIG_LEDS_AF_LED
-	&cpcap_af_led,
-#endif
-
 };
 
 static struct cpcap_device *misc_cpcap;
+
+static LIST_HEAD(cpcap_device_list);
+static DEFINE_MUTEX(cpcap_driver_lock);
 
 static int cpcap_reboot(struct notifier_block *this, unsigned long code,
 			void *cmd)
 {
 	int ret = -1;
 	int result = NOTIFY_DONE;
-	char *mode = cmd;
 
 	/* Disable the USB transceiver */
 	ret = cpcap_regacc_write(misc_cpcap, CPCAP_REG_USBC2, 0,
@@ -240,163 +126,17 @@ static int cpcap_reboot(struct notifier_block *this, unsigned long code,
 		result = NOTIFY_BAD;
 	}
 
-	if (code == SYS_RESTART) {
-		/* Set the soft reset bit in the cpcap */
-		cpcap_regacc_write(misc_cpcap, CPCAP_REG_VAL1,
-			CPCAP_BIT_SOFT_RESET,
-			CPCAP_BIT_SOFT_RESET);
-		if (mode != NULL && !strncmp("outofcharge", mode, 12)) {
-			/* Set the outofcharge bit in the cpcap */
-			ret = cpcap_regacc_write(misc_cpcap, CPCAP_REG_VAL1,
-				CPCAP_BIT_OUT_CHARGE_ONLY,
-				CPCAP_BIT_OUT_CHARGE_ONLY);
-			if (ret) {
-				dev_err(&(misc_cpcap->spi->dev),
-					"outofcharge cpcap set failure.\n");
-				result = NOTIFY_BAD;
-			}
-			if (ret) {
-				dev_err(&(misc_cpcap->spi->dev),
-					"reset cpcap set failure.\n");
-				result = NOTIFY_BAD;
-			}
-		}
-
-		/* Check if we are starting recovery mode */
-		if (mode != NULL && !strncmp("fota", mode, 5)) {
-			/* Set the fota (recovery mode) bit in the cpcap */
-			ret = cpcap_regacc_write(misc_cpcap, CPCAP_REG_VAL1,
-				CPCAP_BIT_FOTA_MODE, CPCAP_BIT_FOTA_MODE);
-			if (ret) {
-				dev_err(&(misc_cpcap->spi->dev),
-					"Recovery cpcap set failure.\n");
-				result = NOTIFY_BAD;
-			}
-		} else {
-			/* Set the fota (recovery mode) bit in the cpcap */
-			ret = cpcap_regacc_write(misc_cpcap, CPCAP_REG_VAL1, 0,
-						CPCAP_BIT_FOTA_MODE);
-			if (ret) {
-				dev_err(&(misc_cpcap->spi->dev),
-					"Recovery cpcap clear failure.\n");
-				result = NOTIFY_BAD;
-			}
-		}
-		/* Check if we are going into fast boot mode */
-		if (mode != NULL && ( !strncmp("bootloader", mode, 11) ||
-							  !strncmp("fastboot", mode, 9) ) ) {
-
-			/* Set the bootmode bit in the cpcap */
-			ret = cpcap_regacc_write(misc_cpcap, CPCAP_REG_VAL1,
-				CPCAP_BIT_FASTBOOT_MODE, CPCAP_BIT_FASTBOOT_MODE);
-
-			if (ret) {
-				dev_err(&(misc_cpcap->spi->dev),
-					"Boot (fastboot) mode cpcap set failure.\n");
-				result = NOTIFY_BAD;
-			}
-		}
-
-		/* Check if we are going into rsd (mot-flash) mode */
-		if (mode != NULL && !strncmp("rsd", mode, 4)) {
-			/* Set the bootmode bit in the cpcap */
-
-			ret = cpcap_regacc_write(misc_cpcap, CPCAP_REG_VAL1,
-				CPCAP_BIT_FLASH_MODE, CPCAP_BIT_FLASH_MODE);
-
-			if (ret) {
-				dev_err(&(misc_cpcap->spi->dev),
-					"RSD (mot-flash) mode cpcap set failure.\n");
-				result = NOTIFY_BAD;
-			}
-		}
-
-		/* Check if we are going into rsd (mot-flash) mode */
-		if (mode != NULL && !strncmp("nv", mode, 3)) {
-			/* Set the bootmode bit in the cpcap */
-
-			ret = cpcap_regacc_write(misc_cpcap, CPCAP_REG_VAL1,
-				CPCAP_BIT_NVFLASH_MODE, CPCAP_BIT_NVFLASH_MODE );
-
-			if (ret) {
-				dev_err(&(misc_cpcap->spi->dev),
-					"RSD (mot-flash) mode cpcap set failure.\n");
-				result = NOTIFY_BAD;
-			}
-		}
-
-		/* Check if we are going into rsd (mot-flash) mode */
-		if (mode != NULL && !strncmp("recovery", mode, 9)) {
-			/* Set the bootmode bit in the cpcap */
-
-			ret = cpcap_regacc_write(misc_cpcap, CPCAP_REG_VAL1,
-				CPCAP_BIT_RECOVERY_MODE, CPCAP_BIT_RECOVERY_MODE );
-
-			if (ret) {
-				dev_err(&(misc_cpcap->spi->dev),
-					"RSD (mot-flash) mode cpcap set failure.\n");
-				result = NOTIFY_BAD;
-			}
-		}
-
-		/* Check if we are going into bponly mode */
-		if (mode != NULL && !strncmp("bponly", mode, 7)) {
-			/* Set the bootmode bit in the cpcap */
-
-			ret = cpcap_regacc_write(misc_cpcap, CPCAP_REG_VAL1,
-				CPCAP_BIT_BP_ONLY_FLASH, CPCAP_BIT_BP_ONLY_FLASH );
-
-			if (ret) {
-				dev_err(&(misc_cpcap->spi->dev),
-					"BP only mode cpcap set failure.\n");
-				result = NOTIFY_BAD;
-			}
-		}
-
-
-
+	if (code == SYS_RESTART)
 		cpcap_regacc_write(misc_cpcap, CPCAP_REG_MI2, 0, 0xFFFF);
-	} else {
-		ret = cpcap_regacc_write(misc_cpcap, CPCAP_REG_VAL1,
-					 0,
-					 CPCAP_BIT_OUT_CHARGE_ONLY);
-		if (ret) {
-			dev_err(&(misc_cpcap->spi->dev),
-				"outofcharge cpcap set failure.\n");
-			result = NOTIFY_BAD;
-		}
-
-		/* Clear the soft reset bit in the cpcap */
-		ret = cpcap_regacc_write(misc_cpcap, CPCAP_REG_VAL1, 0,
-					CPCAP_BIT_SOFT_RESET);
-		if (ret) {
-			dev_err(&(misc_cpcap->spi->dev),
-				"SW Reset cpcap set failure.\n");
-			result = NOTIFY_BAD;
-		}
-		/* Clear the fota (recovery mode) bit in the cpcap */
-		ret = cpcap_regacc_write(misc_cpcap, CPCAP_REG_VAL1, 0,
-					CPCAP_BIT_FOTA_MODE);
-		if (ret) {
-			dev_err(&(misc_cpcap->spi->dev),
-				"Recovery cpcap clear failure.\n");
-			result = NOTIFY_BAD;
-		}
-	}
-
-	/* Always clear the kpanic bit */
-	ret = cpcap_regacc_write(misc_cpcap, CPCAP_REG_VAL1,
-		0, CPCAP_BIT_AP_KERNEL_PANIC);
-	if (ret) {
-		dev_err(&(misc_cpcap->spi->dev),
-			"Clear kernel panic bit failure.\n");
-		result = NOTIFY_BAD;
-	}
 
 	/* Always clear the power cut bit on SW Shutdown*/
-	ret = cpcap_disable_powercut();
-	if (ret)
+	ret = cpcap_regacc_write(misc_cpcap, CPCAP_REG_PC1,
+		0, CPCAP_BIT_PC1_PCEN);
+	if (ret) {
+		dev_err(&(misc_cpcap->spi->dev),
+			"Clear Power Cut bit failure.\n");
 		result = NOTIFY_BAD;
+	}
 
 	/* Clear the charger and charge path settings to avoid a false turn on
 	 * event in caused by CPCAP. After clearing these settings, 100ms is
@@ -416,14 +156,7 @@ static int __init cpcap_init(void)
 {
 	return spi_register_driver(&cpcap_driver);
 }
-#if 0
-#ifdef CONFIG_CPCAP_USB
-static struct regulator_consumer_supply cpcap_vusb_consumers = {
-	.supply = "vusb",
-	.dev = &cpcap_usb_det_device.dev,
-};
-#endif
-#endif
+
 static void cpcap_vendor_read(struct cpcap_device *cpcap)
 {
 	unsigned short value;
@@ -433,12 +166,15 @@ static void cpcap_vendor_read(struct cpcap_device *cpcap)
 	cpcap->vendor = (enum cpcap_vendor)((value >> 6) & 0x0007);
 	cpcap->revision = (enum cpcap_revision)(((value >> 3) & 0x0007) |
 						((value << 3) & 0x0038));
-	//printk("CPCAP : cpcap_vendor_read value 0x%x", value);
-	printk("CPCAP : cpcap_vendor_read vendor 0x%x rev 0x%x\n", cpcap->vendor, cpcap->revision);
+	printk ("CPCAP : cpcap_vendor_read vendor 0x%x rev 0x%x\n",cpcap->vendor,cpcap->revision);
 }
 
-static LIST_HEAD(cpcap_device_list);
-static DEFINE_MUTEX(cpcap_driver_lock);
+static void cpcap_standby_macro_init(void)
+{
+	/* enable standby macros */
+	cpcap_uc_start(misc_cpcap, CPCAP_BANK_SECONDARY, CPCAP_MACRO_4);
+	cpcap_uc_start(misc_cpcap, CPCAP_BANK_SECONDARY, CPCAP_MACRO_5);
+}
 
 int cpcap_device_unregister(struct platform_device *pdev)
 {
@@ -529,32 +265,22 @@ static int __devinit cpcap_probe(struct spi_device *spi)
 	cpcap = kzalloc(sizeof(*cpcap), GFP_KERNEL);
 	if (cpcap == NULL)
 		return -ENOMEM;
-	//printk(KERN_INFO "%s : probing\n", __func__);
-	cpcap->spi = spi;
-	data = spi->controller_data;
-//	dev_set_drvdata(&spi->dev, cpcap);
 
-	misc_cpcap = cpcap;  /* kept for misc device */
+	cpcap->spi = spi;
+	data = spi->dev.platform_data;
 	spi_set_drvdata(spi, cpcap);
 
 	cpcap->spdif_gpio = data->spdif_gpio;
+	cpcap->uartmux = data->uartmux;
+	cpcap->usbmux_gpio = data->usbmux_gpio;
 
 	retval = cpcap_regacc_init(cpcap);
 	if (retval < 0)
 		goto free_mem;
-
 	retval = cpcap_irq_init(cpcap);
 	if (retval < 0)
 		goto free_cpcap_irq;
-//#if 0
-#ifdef CONFIG_BOOTINFO
-	if (bi_powerup_reason() != PU_REASON_CHARGER) {
-		/* Set Kpanic bit, which will be cleared at normal reboot */
-		cpcap_regacc_write(cpcap, CPCAP_REG_VAL1,
-			CPCAP_BIT_AP_KERNEL_PANIC, CPCAP_BIT_AP_KERNEL_PANIC);
-	}
-#endif
-//#endif
+
 	cpcap_vendor_read(cpcap);
 
 	for (i = 0; i < ARRAY_SIZE(cpcap_devices); i++)
@@ -563,15 +289,7 @@ static int __devinit cpcap_probe(struct spi_device *spi)
 	retval = misc_register(&cpcap_dev);
 	if (retval < 0)
 		goto free_cpcap_irq;
-#if 0
-#ifdef CONFIG_CPCAP_USB
-	/* the cpcap usb_detection device is a consumer of the
-	 * vusb regulator */
-	data->regulator_init[CPCAP_VUSB].num_consumer_supplies = 1;
-	data->regulator_init[CPCAP_VUSB].consumer_supplies =
-		&cpcap_vusb_consumers;
-#endif
-#endif
+
 	/* loop twice becuase cpcap_regulator_probe may refer to other devices
 	 * in this list to handle dependencies between regulators.  Create them
 	 * all and then add them */
@@ -583,23 +301,15 @@ static int __devinit cpcap_probe(struct spi_device *spi)
 			dev_err(&(spi->dev), "Cannot create regulator\n");
 			continue;
 		}
-		
+
 		pdev->dev.parent = &(spi->dev);
 		pdev->dev.platform_data = &data->regulator_init[i];
-		dev_set_drvdata(&pdev->dev, cpcap);
+		platform_set_drvdata(pdev, cpcap);
 		cpcap->regulator_pdev[i] = pdev;
-		/*printk(KERN_INFO "CPCAP: creating %d (%s) regulator\n", i, 
-				pdev->name);*/
 	}
 
-	for (i = 0; i < CPCAP_NUM_REGULATORS; i++) {
-		/* vusb has to be added after sw5 so skip it for now,
-		 * it will be added from probe of sw5 */
-		//if (i == CPCAP_VUSB)
-		//	continue;
+	for (i = 0; i < CPCAP_NUM_REGULATORS; i++)
 		platform_device_add(cpcap->regulator_pdev[i]);
-		/*printk(KERN_INFO "CPCAP: adding regulator device %d \n", i);*/
-	}	
 
 	platform_add_devices(cpcap_devices, ARRAY_SIZE(cpcap_devices));
 
@@ -633,9 +343,19 @@ free_mem:
 static int __devexit cpcap_remove(struct spi_device *spi)
 {
 	struct cpcap_device *cpcap = spi_get_drvdata(spi);
+	struct cpcap_driver_info *info;
 	int i;
 
 	unregister_reboot_notifier(&cpcap_reboot_notifier);
+
+	mutex_lock(&cpcap_driver_lock);
+	list_for_each_entry(info, &cpcap_device_list, list) {
+		dev_info(&(spi->dev), "Removing CPCAP device %s\n",
+			 info->pdev->name);
+		platform_device_unregister(info->pdev);
+	}
+	misc_cpcap = NULL;
+	mutex_unlock(&cpcap_driver_lock);
 
 	for (i = ARRAY_SIZE(cpcap_devices); i > 0; i--)
 		platform_device_unregister(cpcap_devices[i-1]);
@@ -649,14 +369,8 @@ static int __devexit cpcap_remove(struct spi_device *spi)
 	return 0;
 }
 
-static void cpcap_standby_macro_init(void)
-{
-	/* enable standby macros */
-	cpcap_uc_start(misc_cpcap, CPCAP_BANK_SECONDARY, CPCAP_MACRO_4);
-	cpcap_uc_start(misc_cpcap, CPCAP_BANK_SECONDARY, CPCAP_MACRO_5);
-}
 
-static int test_ioctl(unsigned int cmd, unsigned long arg)
+static long test_ioctl(unsigned int cmd, unsigned long arg)
 {
 	int retval = -EINVAL;
 	struct cpcap_regacc read_data;
@@ -664,16 +378,11 @@ static int test_ioctl(unsigned int cmd, unsigned long arg)
 
 	switch (cmd) {
 	case CPCAP_IOCTL_TEST_READ_REG:
-	case CPCAP_IOCTL_TEST_SEC_READ_REG:
 		if (copy_from_user((void *)&read_data, (void *)arg,
 				   sizeof(read_data)))
 			return -EFAULT;
-		if (cmd == CPCAP_IOCTL_TEST_SEC_READ_REG)
-			retval = cpcap_regacc_read_secondary(misc_cpcap, read_data.reg,
-												 &read_data.value);
-		else
-			retval = cpcap_regacc_read(misc_cpcap, read_data.reg,
-									   &read_data.value);
+		retval = cpcap_regacc_read(misc_cpcap, read_data.reg,
+					   &read_data.value);
 		if (retval < 0)
 			return retval;
 		if (copy_to_user((void *)arg, (void *)&read_data,
@@ -683,19 +392,12 @@ static int test_ioctl(unsigned int cmd, unsigned long arg)
 	break;
 
 	case CPCAP_IOCTL_TEST_WRITE_REG:
-	case CPCAP_IOCTL_TEST_SEC_WRITE_REG:
 		if (copy_from_user((void *) &write_data,
 				   (void *) arg,
 				   sizeof(write_data)))
 			return -EFAULT;
-		if (cmd == CPCAP_IOCTL_TEST_SEC_WRITE_REG)
-			retval = cpcap_regacc_write_secondary(misc_cpcap,
-												  write_data.reg,
-												  write_data.value,
-												  write_data.mask);
-		else
-			retval = cpcap_regacc_write(misc_cpcap, write_data.reg,
-										write_data.value, write_data.mask);
+		retval = cpcap_regacc_write(misc_cpcap, write_data.reg,
+					    write_data.value, write_data.mask);
 	break;
 
 	default:
@@ -706,7 +408,7 @@ static int test_ioctl(unsigned int cmd, unsigned long arg)
 	return retval;
 }
 
-static int adc_ioctl(unsigned int cmd, unsigned long arg)
+static long adc_ioctl(unsigned int cmd, unsigned long arg)
 {
 	int retval = -EINVAL;
 	struct cpcap_adc_phase phase;
@@ -729,48 +431,19 @@ static int adc_ioctl(unsigned int cmd, unsigned long arg)
 	return retval;
 }
 
-#if defined(CONFIG_LEDS_FLASH_RESET)
-int cpcap_direct_misc_write(unsigned short reg, unsigned short value,\
-						unsigned short mask)
+static long accy_ioctl(unsigned int cmd, unsigned long arg)
 {
 	int retval = -EINVAL;
-
-	retval = cpcap_regacc_write(misc_cpcap, reg, value, mask);
-
-	return retval;
-}
-#endif
-
-void cpcap_misc_set_curr(unsigned int curr)
-{
-#ifdef CONFIG_BATTERY_CPCAP
-	cpcap_batt_set_usb_prop_curr(misc_cpcap, curr);
-#endif
-}
-
-void cpcap_misc_clear_power_handoff_info(void)
-{
-	/* Clear the kpanic bit, and any other bits that may be present. */
-	/* This forces Bootloader to evaluate any power-up reason as new */
-	cpcap_regacc_write(misc_cpcap, CPCAP_REG_VAL1, 0, 0xFFFF);
-}
-
-bool cpcap_misc_is_ext_power(void)
-{
-	unsigned short value;
-
-	/* Return true if there is valid external power. */
-	cpcap_regacc_read(misc_cpcap, CPCAP_REG_INTS2, &value);
-	return (value&CPCAP_BIT_VBUSVLD_S) && (value&CPCAP_BIT_CHRGCURR1_S);
-}
-
-static int accy_ioctl(unsigned int cmd, unsigned long arg)
-{
-	int retval = -EINVAL;
+	struct cpcap_whisper_request read_data;
 
 	switch (cmd) {
 	case CPCAP_IOCTL_ACCY_WHISPER:
-		retval = cpcap_accy_whisper(misc_cpcap, arg);
+		if (copy_from_user((void *) &read_data, (void *) arg,
+				   sizeof(read_data)))
+			return -EFAULT;
+		read_data.dock_id[CPCAP_WHISPER_ID_SIZE - 1] = '\0';
+		read_data.dock_prop[CPCAP_WHISPER_PROP_SIZE - 1] = '\0';
+		retval = cpcap_accy_whisper(misc_cpcap, &read_data);
 	break;
 
 	default:
@@ -780,33 +453,35 @@ static int accy_ioctl(unsigned int cmd, unsigned long arg)
 
 	return retval;
 }
-/* for cpcap-audio-core.c testing */
-#if 0
-struct regulator *audio_reg=NULL;
 
-static int audio_pwr_ioctl(unsigned int cmd, unsigned long arg)
+struct regulator *audio_reg;
+
+static long audio_pwr_ioctl(unsigned int cmd, unsigned long arg)
 {
-	int retval = -EINVAL;
-	if(!audio_reg) {
-            audio_reg = regulator_get(NULL, "vaudio");
-	    if (IS_ERR( audio_reg)) {
-		dev_err(&(misc_cpcap->spi->dev), "Cannot open audio regulator\n");
-		 return -ENOTTY;
-                }
-	     }
+	long retval = -EINVAL;
+	if (!audio_reg) {
+		audio_reg = regulator_get(NULL, "vaudio");
+		if (IS_ERR(audio_reg)) {
+			dev_err(&(misc_cpcap->spi->dev),
+			"Cannot open audio regulator\n");
+			return -ENOTTY;
+		}
+	}
 	switch (cmd) {
 	case CPCAP_IOCTL_AUDIO_PWR_MODE:
-		  retval = regulator_set_mode(audio_reg,(unsigned int) arg);
+		  retval = regulator_set_mode(audio_reg, (unsigned int) arg);
 	break;
 	case CPCAP_IOCTL_AUDIO_PWR_ENABLE:
-                        if( arg )
-                         {/* Enable vaudio  regulator */
-			   retval = regulator_enable(audio_reg);
-			   retval = regulator_set_mode(audio_reg, REGULATOR_MODE_NORMAL);
-                         }else {
-			   retval = regulator_set_mode(audio_reg, REGULATOR_MODE_STANDBY);
-			   retval = regulator_disable(audio_reg);
-                         }
+		if (arg) {
+			/* Enable vaudio  regulator */
+			retval = regulator_enable(audio_reg);
+			retval = regulator_set_mode(audio_reg,
+						    REGULATOR_MODE_NORMAL);
+		} else {
+			retval = regulator_set_mode(audio_reg,
+						    REGULATOR_MODE_STANDBY);
+			retval = regulator_disable(audio_reg);
+		}
 	break;
 	default:
 		retval = -ENOTTY;
@@ -815,7 +490,7 @@ static int audio_pwr_ioctl(unsigned int cmd, unsigned long arg)
 
 	return retval;
 }
-#endif
+
 static long ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
 	int retval = -ENOTTY;
@@ -824,13 +499,23 @@ static long ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	static const struct {
 		unsigned int low_cmd;
 		unsigned int high_cmd;
-		int (*handler)(unsigned int, unsigned long);
+		long (*handler)(unsigned int, unsigned long);
 	} ioctl_fcn_tb[] = {
-		{ CPCAP_IOCTL_NUM_TEST__START,      CPCAP_IOCTL_NUM_TEST__END,      test_ioctl      },
-		{ CPCAP_IOCTL_NUM_ADC__START,       CPCAP_IOCTL_NUM_ADC__END,       adc_ioctl       },
-		{ CPCAP_IOCTL_NUM_ACCY__START,      CPCAP_IOCTL_NUM_ACCY__END,      accy_ioctl      },
-/*		{ CPCAP_IOCTL_NUM_AUDIO_PWR__START, CPCAP_IOCTL_NUM_AUDIO_PWR__END, audio_pwr_ioctl },*/
-		{ CPCAP_IOCTL_NUM_TEST_SEC__START,  CPCAP_IOCTL_NUM_TEST_SEC__END,  test_ioctl      },
+		{ CPCAP_IOCTL_NUM_TEST__START,
+		  CPCAP_IOCTL_NUM_TEST__END,
+		  test_ioctl      },
+		{ CPCAP_IOCTL_NUM_ADC__START,
+		  CPCAP_IOCTL_NUM_ADC__END,
+		  adc_ioctl       },
+		{ CPCAP_IOCTL_NUM_ACCY__START,
+		  CPCAP_IOCTL_NUM_ACCY__END,
+		  accy_ioctl      },
+		{ CPCAP_IOCTL_NUM_AUDIO_PWR__START,
+		  CPCAP_IOCTL_NUM_AUDIO_PWR__END,
+		  audio_pwr_ioctl },
+		{ CPCAP_IOCTL_NUM_TEST_SEC__START,
+		  CPCAP_IOCTL_NUM_TEST_SEC__END,
+		  test_ioctl      },
 	};
 
 	cmd_num = _IOC_NR(cmd);
@@ -859,9 +544,37 @@ EXPORT_SYMBOL_GPL(cpcap_accy_whisper_audio_switch_spdif_state);
 extern void cpcap_accy_set_dock_switch(struct cpcap_device *cpcap, int state, bool is_hall_effect);
 void cpcap_set_dock_switch(int state)
 {
+/*cvk011c: bringup */
 	cpcap_accy_set_dock_switch(misc_cpcap, state, true);
 }
 EXPORT_SYMBOL_GPL(cpcap_set_dock_switch);
+
+void cpcap_misc_set_curr(unsigned int curr)
+{
+#ifdef CONFIG_BATTERY_CPCAP
+	cpcap_batt_set_usb_prop_curr(misc_cpcap, curr);
+#endif
+}
+EXPORT_SYMBOL_GPL(cpcap_misc_set_curr);
+
+void cpcap_misc_clear_power_handoff_info(void)
+{
+	/* Clear the kpanic bit, and any other bits that may be present. */
+	/* This forces Bootloader to evaluate any power-up reason as new */
+	cpcap_regacc_write(misc_cpcap, CPCAP_REG_VAL1, 0, 0xFFFF);
+}
+EXPORT_SYMBOL_GPL(cpcap_misc_clear_power_handoff_info);
+
+bool cpcap_misc_is_ext_power(void)
+{
+	unsigned short value;
+
+	/* Return true if there is valid external power. */
+	cpcap_regacc_read(misc_cpcap, CPCAP_REG_INTS2, &value);
+	return (value&CPCAP_BIT_VBUSVLD_S) && (value&CPCAP_BIT_CHRGCURR1_S);
+}
+EXPORT_SYMBOL_GPL(cpcap_misc_is_ext_power);
+
 /*
  * GPIO4 on CPCAP is used as a gate for WDI
  */
@@ -881,7 +594,8 @@ int cpcap_set_wdigate(short value)
 }
 EXPORT_SYMBOL_GPL(cpcap_set_wdigate);
 
-int cpcap_disable_powercut(void){
+int cpcap_disable_powercut(void)
+{
 
 	int ret;
 
@@ -902,8 +616,6 @@ static int cpcap_suspend(struct spi_device *spi, pm_message_t mesg)
 
 	struct cpcap_device *cpcap = spi_get_drvdata(spi);
 
-	cpcap_regacc_dump(cpcap, "Suspend");
-
 	return cpcap_irq_suspend(cpcap);
 }
 
@@ -915,19 +627,8 @@ static int cpcap_resume(struct spi_device *spi)
 }
 #endif
 
-extern struct kparam_string cpcap_regacc_debug_str;
-extern int cpcap_regacc_set_debug(const char *kmessage,
-								  struct kernel_param *kp);
-
 subsys_initcall(cpcap_init);
 module_exit(cpcap_shutdown);
-module_param_call(cpcap_regacc_debug,
-				  cpcap_regacc_set_debug,
-				  param_get_string,
-				  &cpcap_regacc_debug_str,
-				  0644);
-MODULE_PARM_DESC(cpcap_regacc_debug, \
-	"[low_reg_name-high_reg_name,single_reg]=[DUMP_PRI|DUMP_SEC|LOG_PRI_W|LOG_PRI_R|LOG_SEC_W|LOG_SEC_R]");
 
 MODULE_ALIAS("platform:cpcap");
 MODULE_DESCRIPTION("CPCAP driver");

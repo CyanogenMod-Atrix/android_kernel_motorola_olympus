@@ -1,5 +1,6 @@
 #ifndef _LINUX_SPI_CPCAP_H
 #define _LINUX_SPI_CPCAP_H
+
 /*
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -16,11 +17,13 @@
  * 02111-1307, USA
  *
  */
+
 #include <linux/ioctl.h>
 #ifdef __KERNEL__
 #include <linux/workqueue.h>
 #include <linux/completion.h>
 #include <linux/power_supply.h>
+#include <linux/platform_device.h>
 #endif
 
 #ifdef CONFIG_RTC_INTF_SECCLKD
@@ -61,12 +64,17 @@
 #define CPCAP_HWCFG1_SEC_STBY_VWLAN2    0x0002
 #define CPCAP_HWCFG1_SEC_STBY_VSIM      0x0004
 #define CPCAP_HWCFG1_SEC_STBY_VSIMCARD  0x0008
+#define CPCAP_HWCFG1_SOFT_RESET_HOST    0x0010
 #define CPCAP_HWCFG1_SEC_STBY_VUSB      0x0010
 /* Enable mapping of the PRI_STANDBY and SEC_STANDBY lines onto CPCAP GPIO. */
 #define CPCAP_HWCFG1_STBY_GPIO          0x1000
 
-#define CPCAP_WHISPER_MODE_PU 			0x00000001
-#define CPCAP_WHISPER_ENABLE_UART		0x00000002
+#define CPCAP_WHISPER_MODE_PU       0x00000001
+#define CPCAP_WHISPER_ENABLE_UART   0x00000002
+#define CPCAP_WHISPER_ACCY_MASK     0xF8000000
+#define CPCAP_WHISPER_ACCY_SHFT     27
+#define CPCAP_WHISPER_ID_SIZE       16
+#define CPCAP_WHISPER_PROP_SIZE     7
 
 /* When set in the regulator mode, the regulator assignment will be changed
    to secondary when the regulator is disabled.  The mode will be set back to
@@ -97,7 +105,6 @@ enum cpcap_regulator_id {
 	CPCAP_VVIB,
 	CPCAP_VUSB,
 	CPCAP_VAUDIO,
-
 	CPCAP_NUM_REGULATORS
 };
 
@@ -106,7 +113,6 @@ enum cpcap_regulator_id {
  * numbers on the CPCAP IC are not contiguous. The values of the enums below
  * are not the actual register numbers.
  */
-
 enum cpcap_reg {
 	CPCAP_REG_START,        /* Start of CPCAP registers. */
 
@@ -310,9 +316,9 @@ enum cpcap_reg {
 	CPCAP_REG_LGDET,	/* LMR GCAI Detach Detect */
 	CPCAP_REG_LMISC,	/* LMR Misc Bits */
 	CPCAP_REG_LMACE,	/* LMR Mace IC Support */
+
 	CPCAP_REG_TEST,		/* Test */
 	CPCAP_REG_ST_TEST1,	/* ST Test 1 */
-	CPCAP_REG_UNUSED,
 
 	CPCAP_REG_END = CPCAP_REG_ST_TEST1, /* End of CPCAP registers. */
 
@@ -320,6 +326,7 @@ enum cpcap_reg {
 	= CPCAP_REG_END,
 
 	CPCAP_REG_SIZE = CPCAP_REG_MAX + 1,
+	CPCAP_REG_UNUSED = CPCAP_REG_MAX + 2,
 };
 
 enum {
@@ -346,9 +353,11 @@ enum {
 	CPCAP_IOCTL_NUM_UC_SET_TURBO_MODE,
 	CPCAP_IOCTL_NUM_UC__END,
 
+#ifdef CONFIG_RTC_INTF_SECCLKD
 	CPCAP_IOCTL_NUM_RTC__START,
 	CPCAP_IOCTL_NUM_RTC_COUNT,
 	CPCAP_IOCTL_NUM_RTC__END,
+#endif
 
 	CPCAP_IOCTL_NUM_ACCY__START,
 	CPCAP_IOCTL_NUM_ACCY_WHISPER,
@@ -658,12 +667,8 @@ struct cpcap_platform_data {
 	unsigned short wdt_disable;
 	u16 hwcfg[CPCAP_HWCFG_NUM];
 	int spdif_gpio;
-};
-
-struct cpcap_whisper_pdata {
-	unsigned int data_gpio;
-	unsigned int pwr_gpio;
-//	unsigned char uartmux;
+	int uartmux;
+	int usbmux_gpio;
 };
 
 struct cpcap_adc_request {
@@ -707,6 +712,12 @@ struct cpcap_regacc {
 	unsigned short reg;
 	unsigned short value;
 	unsigned short mask;
+};
+
+struct cpcap_whisper_request {
+	unsigned int cmd;
+	char dock_id[CPCAP_WHISPER_ID_SIZE];
+	char dock_prop[CPCAP_WHISPER_PROP_SIZE];
 };
 
 /*
@@ -775,7 +786,7 @@ struct cpcap_regacc {
 	_IOW(0, CPCAP_IOCTL_NUM_UC_SET_TURBO_MODE, unsigned short)
 
 #define CPCAP_IOCTL_ACCY_WHISPER \
-	_IOW(0, CPCAP_IOCTL_NUM_ACCY_WHISPER, unsigned long)
+	_IOW(0, CPCAP_IOCTL_NUM_ACCY_WHISPER, struct cpcap_whisper_request*)
 
 #define CPCAP_IOCTL_AUDIO_PWR_MODE \
 	_IOW(0, CPCAP_IOCTL_NUM_AUDIO_PWR_MODE,  unsigned short)
@@ -784,6 +795,7 @@ struct cpcap_regacc {
 	_IOW(0, CPCAP_IOCTL_NUM_AUDIO_PWR_ENABLE,  unsigned short)
 
 #ifdef __KERNEL__
+struct cpcap_device;
 struct cpcap_device {
 	struct spi_device	*spi;
 	enum cpcap_vendor       vendor;
@@ -798,6 +810,8 @@ struct cpcap_device {
 	void			*h2w_new_state_data;
 	void			(*h2w_new_state)(struct cpcap_device*, int);
 	int			spdif_gpio;
+	int			uartmux;
+	int			usbmux_gpio;
 };
 
 static inline void cpcap_set_keydata(struct cpcap_device *cpcap, void *data)
@@ -885,21 +899,20 @@ int cpcap_uc_get_wdt_timer(struct cpcap_device *cpcap, unsigned short *timeout )
 unsigned char cpcap_uc_status(struct cpcap_device *cpcap, enum cpcap_bank bank,
 			      enum cpcap_macro macro);
 
-int cpcap_accy_whisper(struct cpcap_device *cpcap, unsigned long cmd);
+int cpcap_accy_whisper(struct cpcap_device *cpcap,
+		       struct cpcap_whisper_request *req);
 
 void cpcap_accy_whisper_audio_switch_spdif_state(bool state);
-
-void cpcap_set_dock_switch(int state);
-
-int cpcap_set_wdigate(short value);
-
-int cpcap_disable_powercut(void);
 
 #define  cpcap_driver_register platform_driver_register
 #define  cpcap_driver_unregister platform_driver_unregister
 
 int cpcap_device_register(struct platform_device *pdev);
 int cpcap_device_unregister(struct platform_device *pdev);
+
+int cpcap_set_wdigate(short value);
+
+int cpcap_disable_powercut(void);
 
 #if defined(CONFIG_LEDS_FLASH_RESET)
 int cpcap_direct_misc_write(unsigned short reg, unsigned short value,\

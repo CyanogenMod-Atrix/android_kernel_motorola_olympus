@@ -31,7 +31,7 @@
 #include <asm/prom.h>
 #endif
 
-struct button_led{
+struct button_led {
 	struct cpcap_device *cpcap;
 	struct led_classdev cpcap_button_dev;
 	struct led_classdev cpcap_button_dev_tcmd;
@@ -49,6 +49,7 @@ static void cpcap_button_led_set(struct led_classdev *led_cdev,
 	unsigned is_tcmd = 0;
 	struct button_led *button_led;
 
+	pr_debug("%s: %s, value %d\n", __func__, led_cdev->name, value);
 	is_tcmd = strstr(led_cdev->name, "tcmd") ? 1 : 0;
 	if (is_tcmd)
 		button_led = container_of(led_cdev, struct button_led,
@@ -57,7 +58,7 @@ static void cpcap_button_led_set(struct led_classdev *led_cdev,
 		button_led = container_of(led_cdev, struct button_led,
 			 cpcap_button_dev);
 	spi = button_led->cpcap->spi;
-	data = (struct cpcap_platform_data *)spi->controller_data;
+	data = (struct cpcap_platform_data *)spi->dev.platform_data;
 	leds = data->leds;
 
 	if (value > LED_OFF) {
@@ -113,7 +114,7 @@ static int cpcap_button_led_probe(struct platform_device *pdev)
 
 	led->cpcap = pdev->dev.platform_data;
 	platform_set_drvdata(pdev, led);
-	platdata_leds = ((struct cpcap_platform_data *)led->cpcap->spi->controller_data)->leds;
+	platdata_leds = ((struct cpcap_platform_data *)led->cpcap->spi->dev.platform_data)->leds;
 
 	if (platdata_leds->button_led.regulator){
 		led->regulator = regulator_get(&pdev->dev, platdata_leds->button_led.regulator);

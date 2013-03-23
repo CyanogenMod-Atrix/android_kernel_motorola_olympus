@@ -729,16 +729,14 @@ void __init olympus_devices_init()
 {
 //	struct clk *clk;
 
+	olympus_i2c_reg();
+
 	olympus_uart_init();
-	//olympus_spi_init();
 
 	platform_add_devices(olympus_devices, ARRAY_SIZE(olympus_devices));
 
-	printk(KERN_INFO "pICS_%s: olympus_sdhci_init();\n",__func__);
 	olympus_sdhci_init();
 	olympus_usb_init();
-	
-	olympus_i2c_reg();
 
 	pm_power_off = tegra_system_power_off;
 	

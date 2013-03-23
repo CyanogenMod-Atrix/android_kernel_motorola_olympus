@@ -51,7 +51,6 @@ struct msg_ind_led_data {
 	struct led_classdev msg_ind_red_class_dev;
 	struct led_classdev msg_ind_green_class_dev;
 	struct led_classdev msg_ind_blue_class_dev;
-	struct led_classdev msg_ind_white_class_dev;
 	struct cpcap_device *cpcap;
 	struct cpcap_leds *cpcap_leds;
 	struct regulator *regulator;
@@ -78,6 +77,7 @@ static void msg_ind_set_regulator(struct msg_ind_led_data *msg_ind_data,
 		if (enable && !msg_ind_reg_enabled) {
 			if (!((msg_ind_data->cpcap_leds->rgb_led.regulator_macro_controlled) &&
 				  (blinking))) {
+				pr_info("%s: calling regulator_enable\n", __func__);
 				regulator_enable(msg_ind_data->regulator);
 				msg_ind_reg_enabled = true;
 			}
@@ -85,6 +85,7 @@ static void msg_ind_set_regulator(struct msg_ind_led_data *msg_ind_data,
 		}
 
 		if (!enable && msg_ind_reg_enabled) {
+			pr_info("%s: calling regulator_disable\n", __func__);
 			regulator_disable(msg_ind_data->regulator);
 			msg_ind_reg_enabled = false;
 			return;
@@ -92,13 +93,14 @@ static void msg_ind_set_regulator(struct msg_ind_led_data *msg_ind_data,
 	}
 }
 
-static void msg_ind_set_blink(struct msg_ind_led_data *msg_ind_data, bool enable)
+static void msg_ind_set_blink(struct msg_ind_led_data *msg_ind_data,
+	bool enable)
 {
 	unsigned short led_reg;
 	unsigned int i;
 
 	if (enable) {
-		if (!(msg_ind_data->regulator_state&LD_LED_BLINK)) {
+		if (!(msg_ind_data->regulator_state & LD_LED_BLINK)) {
 			cpcap_uc_start(msg_ind_data->cpcap, CPCAP_BANK_PRIMARY, CPCAP_MACRO_6);
 			printk_cpcap("%s: cpcap_uc_start(CPCAP_MACRO_6)\n", __func__);
 			if (msg_ind_data->cpcap_leds->rgb_led.regulator_macro_controlled) {
@@ -113,16 +115,15 @@ static void msg_ind_set_blink(struct msg_ind_led_data *msg_ind_data, bool enable
 					cpcap_regacc_read(msg_ind_data->cpcap, CPCAP_REG_REDC, &led_reg);
 				}
 				if (i == 0)
-					printk(KERN_ERR "%s: Unable to sync CPCAP blink on macro.\n", __func__);
-				printk_cpcap("%s: Blink macro started.\n", __func__);
+					printk(KERN_ERR "%s: unable to sync CPCAP blink on macro.\n", __func__);
+				printk_cpcap("%s: blink macro started.\n", __func__);
 				/* Shutdown the regulator since the macro handles the regulator. */
 				msg_ind_set_regulator(msg_ind_data, false, true);
 			}
 			msg_ind_data->regulator_state |= LD_LED_BLINK;
 		}
-	}
-	else {
-		if (msg_ind_data->regulator_state&LD_LED_BLINK) {
+	} else {
+		if (msg_ind_data->regulator_state & LD_LED_BLINK) {
 			cpcap_uc_stop(msg_ind_data->cpcap, CPCAP_BANK_PRIMARY,
 						  CPCAP_MACRO_6);
 			printk_cpcap("%s: cpcap_uc_stop(CPCAP_MACRO_6)\n", __func__);
@@ -243,21 +244,6 @@ static void msg_ind_set_rgb_brightness(struct msg_ind_led_data *msg_ind_data,
 	return;
 }
 
-static void msg_ind_white_set(struct led_classdev *led_cdev,
-			    enum led_brightness value)
-{
-	struct msg_ind_led_data *msg_ind_data =
-	    container_of(led_cdev, struct msg_ind_led_data,
-			 msg_ind_white_class_dev);
-
-    mutex_lock(&msg_ind_mutex);
-    printk_request ("%s: value = %d\n", __func__, value);
-	msg_ind_set_rgb_brightness(msg_ind_data, LD_LED_RED, value);
-	msg_ind_set_rgb_brightness(msg_ind_data, LD_LED_BLUE, value);
-	msg_ind_set_rgb_brightness(msg_ind_data, LD_LED_GREEN, value);
-    mutex_unlock(&msg_ind_mutex);
-}
-
 static void msg_ind_red_set(struct led_classdev *led_cdev,
 			    enum led_brightness value)
 {
@@ -308,7 +294,7 @@ msg_ind_blink(struct device *dev, struct device_attribute *attr,
 	ret = strict_strtoul(buf, 10, &led_blink);
 	if (ret != 0) {
 		pr_err("%s: Invalid parameter sent\n", __func__);
-		return -1;
+		return -EINVAL;
 	}
     mutex_lock(&msg_ind_mutex);
     printk_request ("%s: %ld\n", __func__, led_blink);
@@ -328,7 +314,7 @@ msg_ind_blink(struct device *dev, struct device_attribute *attr,
     }
     mutex_unlock(&msg_ind_mutex);
 
-	return 0;
+	return strlen(buf);
 }
 
 static DEVICE_ATTR(blink, 0664, NULL, msg_ind_blink);
@@ -342,13 +328,24 @@ static int msg_ind_rgb_probe(struct platform_device *pdev)
 		pr_err("%s: platform data required\n", __func__);
 		return -ENODEV;
 	}
+
 	info = kzalloc(sizeof(struct msg_ind_led_data), GFP_KERNEL);
 	if (info == NULL)
 		return -ENOMEM;
 
 	info->cpcap = pdev->dev.platform_data;
-	info->cpcap_leds = ((struct cpcap_platform_data *)info->cpcap->spi->controller_data)->leds;
-	printk_cpcap("%s: rgb_on: %04x regulator_macro_controlled: %d.\n",
+	if (info->cpcap == NULL) {
+		pr_err("%s: cpcap is NULL\n", __func__);
+		return -ENODEV;
+	}
+
+	info->cpcap_leds = ((struct cpcap_platform_data *)info->cpcap->spi->dev.platform_data)->leds;
+	if (info->cpcap_leds == NULL) {
+		pr_err("%s: cpcap_leds is NULL\n", __func__);
+		return -ENODEV;
+	}
+
+	pr_info("%s: rgb_on: %04x regulator_macro_controlled: %d.\n",
 				 __func__, info->cpcap_leds->rgb_led.rgb_on,
 				 info->cpcap_leds->rgb_led.regulator_macro_controlled);
 	platform_set_drvdata(pdev, info);
@@ -356,7 +353,7 @@ static int msg_ind_rgb_probe(struct platform_device *pdev)
 	if (info->cpcap_leds->rgb_led.regulator){
 		info->regulator = regulator_get(&pdev->dev, info->cpcap_leds->rgb_led.regulator);
 		if (IS_ERR(info->regulator)) {
-			pr_err("%s: Cannot get %s regulator\n", __func__, info->cpcap_leds->rgb_led.regulator);
+			pr_err("%s: cannot get %s regulator\n", __func__, info->cpcap_leds->rgb_led.regulator);
 			ret = PTR_ERR(info->regulator);
 			goto exit_request_reg_failed;
 		}
@@ -366,26 +363,18 @@ static int msg_ind_rgb_probe(struct platform_device *pdev)
 
 	info->regulator_state = 0;
 
-	info->msg_ind_white_class_dev.name = "white";
-	info->msg_ind_white_class_dev.brightness_set = msg_ind_white_set;
-	ret = led_classdev_register(&pdev->dev, &info->msg_ind_white_class_dev);
-	if (ret < 0) {
-		pr_err("%s:Register White LED class failed\n", __func__);
-		goto err_reg_white_class_failed;
-	}
-
 	info->msg_ind_red_class_dev.name = "red";
 	info->msg_ind_red_class_dev.brightness_set = msg_ind_red_set;
 	ret = led_classdev_register(&pdev->dev, &info->msg_ind_red_class_dev);
 	if (ret < 0) {
-		pr_err("%s:Register Red LED class failed\n", __func__);
+		pr_err("%s: failed to register \'red\' LED class\n", __func__);
 		goto err_reg_red_class_failed;
 	}
 
 	ret = device_create_file(info->msg_ind_red_class_dev.dev,
 				 &dev_attr_blink);
 	if (ret < 0) {
-		pr_err("%s: File device creation failed: %d\n", __func__, ret);
+		pr_err("%s: file device creation failed: %d\n", __func__, ret);
 		goto err_create_blink_failed;
 	}
 
@@ -393,7 +382,7 @@ static int msg_ind_rgb_probe(struct platform_device *pdev)
 	info->msg_ind_green_class_dev.brightness_set = msg_ind_green_set;
 	ret = led_classdev_register(&pdev->dev, &info->msg_ind_green_class_dev);
 	if (ret < 0) {
-		pr_err("%s: Register Green LED class failed\n", __func__);
+		pr_err("%s: failed to register \'green\' LED class\n", __func__);
 		goto err_reg_green_class_failed;
 	}
 
@@ -401,7 +390,7 @@ static int msg_ind_rgb_probe(struct platform_device *pdev)
 	info->msg_ind_blue_class_dev.brightness_set = msg_ind_blue_set;
 	ret = led_classdev_register(&pdev->dev, &info->msg_ind_blue_class_dev);
 	if (ret < 0) {
-		pr_err("%s: Register blue LED class failed\n", __func__);
+		pr_err("%s: failed to register \'blue\' LED class\n", __func__);
 		goto err_reg_blue_class_failed;
 	}
 
@@ -414,8 +403,6 @@ err_reg_green_class_failed:
 err_create_blink_failed:
 	led_classdev_unregister(&info->msg_ind_red_class_dev);
 err_reg_red_class_failed:
-	led_classdev_unregister(&info->msg_ind_white_class_dev);
-err_reg_white_class_failed:
 	if (info->regulator)
 		regulator_put(info->regulator);
 exit_request_reg_failed:
@@ -442,8 +429,8 @@ static struct platform_driver ld_msg_ind_rgb_driver = {
 	.probe = msg_ind_rgb_probe,
 	.remove = msg_ind_rgb_remove,
 	.driver = {
-		   .name = LD_MSG_IND_DEV,
-		   },
+		.name = LD_MSG_IND_DEV,
+	},
 };
 
 #ifdef CONFIG_ARM_OF
@@ -474,7 +461,7 @@ static int lights_of_init(void)
 }
 #endif
 
-static int __init ld_msg_ind_rgb_init(void)
+static int __init msg_ind_rgb_init(void)
 {
     int ret;
 #ifdef CONFIG_ARM_OF
@@ -484,6 +471,7 @@ static int __init ld_msg_ind_rgb_init(void)
 		return err;
 	}
 #endif
+	pr_info("%s: registering msg ind platform driver\n", __func__);
     ret = platform_driver_register(&ld_msg_ind_rgb_driver);
     if (ret < 0) {
         printk (KERN_ERR "%s: platform_driver_register failure: %d\n",
@@ -492,13 +480,13 @@ static int __init ld_msg_ind_rgb_init(void)
     return ret;
 }
 
-static void __exit ld_msg_ind_rgb_exit(void)
+static void __exit msg_ind_rgb_exit(void)
 {
 	platform_driver_unregister(&ld_msg_ind_rgb_driver);
 }
 
-module_init(ld_msg_ind_rgb_init);
-module_exit(ld_msg_ind_rgb_exit);
+module_init(msg_ind_rgb_init);
+module_exit(msg_ind_rgb_exit);
 
 MODULE_DESCRIPTION("Message Indicator Lighting driver");
 MODULE_AUTHOR("Motorola");

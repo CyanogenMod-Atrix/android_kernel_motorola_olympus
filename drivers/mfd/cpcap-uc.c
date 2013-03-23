@@ -25,7 +25,6 @@
 #include <linux/mutex.h>
 #include <linux/platform_device.h>
 #include <linux/uaccess.h>
-#include <linux/delay.h>
 
 #include <linux/spi/cpcap.h>
 #include <linux/spi/cpcap-regbits.h>
@@ -80,8 +79,7 @@ struct cpcap_uc_data {
 static struct cpcap_uc_data *cpcap_uc_info;
 
 static int fops_open(struct inode *inode, struct file *file);
-static long fops_ioctl(struct file *file,
-		      unsigned int cmd, unsigned long arg);
+static long fops_ioctl(struct file *file, unsigned int cmd, unsigned long arg);
 static ssize_t fops_write(struct file *file, const char *buf,
 			  size_t count, loff_t *ppos);
 static ssize_t fops_read(struct file *file, char *buf,
@@ -94,6 +92,7 @@ static const struct file_operations fops = {
 	.open = fops_open,
 	.read = fops_read,
 	.write = fops_write,
+	.llseek = generic_file_llseek,
 };
 
 static struct miscdevice uc_dev = {
@@ -124,7 +123,7 @@ static void ram_read_state_machine(enum cpcap_irqs irq, void *data)
 
 	if (irq != CPCAP_IRQ_UC_PRIRAMR)
 		return;
-	//printk(KERN_INFO "%s: Start",__func__);
+
 	switch (uc_data->state) {
 	case READ_STATE_1:
 		cpcap_regacc_write(uc_data->cpcap, CPCAP_REG_MT1,
@@ -222,10 +221,9 @@ static void ram_write_state_machine(enum cpcap_irqs irq, void *data)
 
 	if (irq != CPCAP_IRQ_UC_PRIRAMW)
 		return;
-	//printk(KERN_INFO "%s: Start",__func__);
+
 	switch (uc_data->state) {
 	case WRITE_STATE_1:
-		//printk(KERN_INFO "%s READ_STATE_1\n", __func__);
 		cpcap_regacc_write(uc_data->cpcap, CPCAP_REG_MT1,
 				   uc_data->req.address, 0xFFFF);
 		cpcap_regacc_write(uc_data->cpcap, CPCAP_REG_MT2,
@@ -237,7 +235,6 @@ static void ram_write_state_machine(enum cpcap_irqs irq, void *data)
 		break;
 
 	case WRITE_STATE_2:
-		//printk(KERN_INFO "%s READ_STATE_2\n", __func__);
 		cpcap_regacc_read(uc_data->cpcap, CPCAP_REG_MT1, &error_check);
 
 		if (error_check == ERROR_MACRO_WRITE) {
@@ -256,7 +253,6 @@ static void ram_write_state_machine(enum cpcap_irqs irq, void *data)
 		/* No error has occured, fall through */
 
 	case WRITE_STATE_3:
-		//printk(KERN_INFO "%s READ_STATE_3\n", __func__);
 		cpcap_regacc_write(uc_data->cpcap, CPCAP_REG_MT1,
 				   *(uc_data->req.data + uc_data->state_cntr),
 				   0xFFFF);
@@ -291,7 +287,6 @@ static void ram_write_state_machine(enum cpcap_irqs irq, void *data)
 		break;
 
 	case WRITE_STATE_4:
-		//printk(KERN_INFO "%s READ_STATE_4\n", __func__);
 		cpcap_regacc_read(uc_data->cpcap, CPCAP_REG_MT1, &error_check);
 
 		if (error_check != ERROR_MACRO_WRITE)
@@ -317,7 +312,7 @@ static void reset_handler(enum cpcap_irqs irq, void *data)
 	int i;
 	unsigned short regval;
 	struct cpcap_uc_data *uc_data = data;
-	//printk(KERN_INFO "%s: Start",__func__);
+
 	if (irq != CPCAP_IRQ_UCRESET)
 		return;
 
@@ -359,7 +354,7 @@ static int ram_write(struct cpcap_uc_data *uc_data, unsigned short address,
 		     unsigned short num_words, unsigned short *data)
 {
 	int retval = -EFAULT;
-	//printk(KERN_INFO "%s: Start",__func__);
+
 	mutex_lock(&uc_data->lock);
 
 	if ((uc_data->cpcap->vendor == CPCAP_VENDOR_ST) &&
@@ -391,6 +386,7 @@ static int ram_write(struct cpcap_uc_data *uc_data, unsigned short address,
 		retval = cpcap_irq_unmask(uc_data->cpcap, CPCAP_IRQ_UC_PRIRAMW);
 		if (retval)
 			goto err;
+
 		wait_for_completion(&uc_data->completion);
 		retval = uc_data->cb_status;
 	}
@@ -403,7 +399,6 @@ err:
 	}
 
 	mutex_unlock(&uc_data->lock);
-	//printk(KERN_INFO "%s: End",__func__);
 	return retval;
 }
 
@@ -411,7 +406,7 @@ static int ram_read(struct cpcap_uc_data *uc_data, unsigned short address,
 		    unsigned short num_words, unsigned short *data)
 {
 	int retval = -EFAULT;
-	//printk(KERN_INFO "pICS_%s: Starting...",__func__);
+
 	mutex_lock(&uc_data->lock);
 
 	if ((uc_data->cpcap->vendor == CPCAP_VENDOR_ST) &&
@@ -442,6 +437,7 @@ static int ram_read(struct cpcap_uc_data *uc_data, unsigned short address,
 		retval = cpcap_irq_unmask(uc_data->cpcap, CPCAP_IRQ_UC_PRIRAMR);
 		if (retval)
 			goto err;
+
 		wait_for_completion(&uc_data->completion);
 		retval = uc_data->cb_status;
 	}
@@ -454,7 +450,6 @@ err:
 	}
 
 	mutex_unlock(&uc_data->lock);
-	//printk(KERN_INFO "pICS_%s: Ending...",__func__);
 	return retval;
 }
 
@@ -555,8 +550,7 @@ err:
 	return retval;
 }
 
-static long fops_ioctl(struct file *file,
-		      unsigned int cmd, unsigned long arg)
+static long fops_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
 	int retval = -ENOTTY;
 	struct cpcap_uc_data *data = file->private_data;
@@ -641,6 +635,7 @@ int cpcap_uc_start(struct cpcap_device *cpcap, enum cpcap_bank bank, enum cpcap_
 		}
 	}
 
+	dev_dbg(&cpcap_uc_info->cpcap->spi->dev, "Macro %d, retval: %d\n", macro, retval);
 	return retval;
 }
 EXPORT_SYMBOL_GPL(cpcap_uc_start);
@@ -753,7 +748,7 @@ static int fw_load(struct cpcap_uc_data *uc_data, struct device *dev)
 	unsigned char odd_bytes;
 	struct cpcap_platform_data *data;
 
-	data = uc_data->cpcap->spi->controller_data;
+	data = uc_data->cpcap->spi->dev.platform_data;
 
 	if (!uc_data || !dev)
 		return -EINVAL;
@@ -838,7 +833,7 @@ static int cpcap_uc_probe(struct platform_device *pdev)
 {
 	int retval = 0;
 	struct cpcap_uc_data *data;
-	//printk(KERN_INFO "pICS_%s: Starting...",__func__);
+
 	if (pdev->dev.platform_data == NULL) {
 		dev_err(&pdev->dev, "no platform_data\n");
 		return -EINVAL;
@@ -864,7 +859,6 @@ static int cpcap_uc_probe(struct platform_device *pdev)
 	if (((data->cpcap->vendor == CPCAP_VENDOR_TI) &&
 	     (data->cpcap->revision >= CPCAP_REVISION_2_0)) ||
 		(data->cpcap->vendor == CPCAP_VENDOR_ST)) {
-		//printk(KERN_INFO "pICS_%s: inside if...",__func__);
 		retval = cpcap_irq_register(data->cpcap, CPCAP_IRQ_PRIMAC,
 					    primac_handler, data);
 		if (retval)
@@ -881,7 +875,7 @@ static int cpcap_uc_probe(struct platform_device *pdev)
 					    ram_read_state_machine, data);
 		if (retval)
 			goto err_ucreset;
-		//printk(KERN_INFO "pICS_%s: after PRIRAMR register...",__func__);
+
 		retval = cpcap_irq_register(data->cpcap,
 					    CPCAP_IRQ_UC_PRIRAMW,
 					    ram_write_state_machine, data);

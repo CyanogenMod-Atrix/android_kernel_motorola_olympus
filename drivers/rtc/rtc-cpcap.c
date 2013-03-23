@@ -22,9 +22,10 @@
 #include <linux/platform_device.h>
 #include <linux/rtc.h>
 #include <linux/err.h>
-#include <linux/slab.h>
 #include <linux/spi/cpcap.h>
-#ifdef RTC_INTF_CPCAP_SECCLKD
+#include <linux/slab.h>
+#include <linux/sched.h>
+#ifdef CONFIG_RTC_INTF_SECCLKD
 #include <linux/miscdevice.h>
 
 #define CNT_MASK  0xFFFF
@@ -34,9 +35,9 @@
 #define TOD1_MASK 0x00FF
 #define TOD2_MASK 0x01FF
 
-#ifdef RTC_INTF_CPCAP_SECCLKD
+#ifdef CONFIG_RTC_INTF_SECCLKD
 static int cpcap_rtc_open(struct inode *inode, struct file *file);
-static int cpcap_rtc_ioctl(struct inode *inode, struct file *file,
+static long cpcap_rtc_ioctl(struct file *file,
 			    unsigned int cmd, unsigned long arg);
 static unsigned int cpcap_rtc_poll(struct file *file, poll_table *wait);
 static int cpcap_rtc_read_time(struct device *dev, struct rtc_time *tm);
@@ -53,7 +54,7 @@ struct cpcap_rtc {
 	struct rtc_device *rtc_dev;
 	int alarm_enabled;
 	int second_enabled;
-#ifdef RTC_INTF_CPCAP_SECCLKD
+#ifdef CONFIG_RTC_INTF_SECCLKD
 	struct device *dev;
 	struct mutex lock;	/* protect access to flags */
 	wait_queue_head_t wait;
@@ -62,11 +63,11 @@ struct cpcap_rtc {
 #endif
 };
 
-#ifdef RTC_INTF_CPCAP_SECCLKD
+#ifdef CONFIG_RTC_INTF_SECCLKD
 static const struct file_operations cpcap_rtc_fops = {
 	.owner = THIS_MODULE,
 	.open = cpcap_rtc_open,
-	.ioctl = cpcap_rtc_ioctl,
+	.unlocked_ioctl = cpcap_rtc_ioctl,
 	.poll = cpcap_rtc_poll,
 };
 
@@ -84,8 +85,7 @@ static int cpcap_rtc_open(struct inode *inode, struct file *file)
 	return 0;
 }
 
-static int cpcap_rtc_ioctl(struct inode *inode,
-			    struct file *file,
+static long cpcap_rtc_ioctl(struct file *file,
 			    unsigned int cmd,
 			    unsigned long arg)
 {
@@ -226,7 +226,7 @@ static int cpcap_rtc_set_time(struct device *dev, struct rtc_time *tm)
 	int second_masked;
 	int alarm_masked;
 	int ret = 0;
-#ifdef RTC_INTF_CPCAP_SECCLKD
+#ifdef CONFIG_RTC_INTF_SECCLKD
 	unsigned short local_cnt;
 #endif
 
@@ -246,7 +246,7 @@ static int cpcap_rtc_set_time(struct device *dev, struct rtc_time *tm)
 	if (!alarm_masked)
 		cpcap_irq_mask(rtc->cpcap, CPCAP_IRQ_TODA);
 
-#ifdef RTC_INTF_CPCAP_SECCLKD
+#ifdef CONFIG_RTC_INTF_SECCLKD
 	/* Increment the counter and update validity 2 register */
 	ret = cpcap_regacc_read(rtc->cpcap, CPCAP_REG_VAL2, &local_cnt);
 
@@ -293,7 +293,7 @@ static int cpcap_rtc_set_time(struct device *dev, struct rtc_time *tm)
 	if (!alarm_masked)
 		cpcap_irq_unmask(rtc->cpcap, CPCAP_IRQ_TODA);
 
-#ifdef RTC_INTF_CPCAP_SECCLKD
+#ifdef CONFIG_RTC_INTF_SECCLKD
 	mutex_lock(&rtc->lock);
 	rtc->data_pending = 1;
 	mutex_unlock(&rtc->lock);
@@ -356,7 +356,7 @@ static struct rtc_class_ops cpcap_rtc_ops = {
 	.set_time		= cpcap_rtc_set_time,
 	.read_alarm		= cpcap_rtc_read_alarm,
 	.set_alarm		= cpcap_rtc_set_alarm,
-	.alarm_irq_enable	= cpcap_rtc_alarm_irq_enable,
+	.alarm_irq_enable 	= cpcap_rtc_alarm_irq_enable,
 };
 
 static void cpcap_rtc_irq(enum cpcap_irqs irq, void *data)
@@ -378,7 +378,7 @@ static void cpcap_rtc_irq(enum cpcap_irqs irq, void *data)
 static int __devinit cpcap_rtc_probe(struct platform_device *pdev)
 {
 	struct cpcap_rtc *rtc;
-#ifdef RTC_INTF_CPCAP_SECCLKD
+#ifdef CONFIG_RTC_INTF_SECCLKD
 	int ret = 0;
 #endif
 
@@ -396,7 +396,7 @@ static int __devinit cpcap_rtc_probe(struct platform_device *pdev)
 		return PTR_ERR(rtc->rtc_dev);
 	}
 
-#ifdef RTC_INTF_CPCAP_SECCLKD
+#ifdef CONFIG_RTC_INTF_SECCLKD
 	rtc->dev = &pdev->dev;
 	ret = misc_register(&cpcap_rtc_dev);
 	if (ret != 0) {
@@ -428,7 +428,7 @@ static int __devexit cpcap_rtc_remove(struct platform_device *pdev)
 	cpcap_irq_free(rtc->cpcap, CPCAP_IRQ_TODA);
 	cpcap_irq_free(rtc->cpcap, CPCAP_IRQ_1HZ);
 
-#ifdef RTC_INTF_CPCAP_SECCLKD
+#ifdef CONFIG_RTC_INTF_SECCLKD
 	misc_deregister(&cpcap_rtc_dev);
 #endif
 	rtc_device_unregister(rtc->rtc_dev);

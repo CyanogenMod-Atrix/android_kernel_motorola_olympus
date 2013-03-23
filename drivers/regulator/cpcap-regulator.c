@@ -39,18 +39,10 @@
 		.type = REGULATOR_VOLTAGE, 	\
 		.owner = THIS_MODULE, 		\
 	}
-#ifdef CONFIG_STOCK_VOLTAGE
 static const int sw1_val_tbl[] = {750000, 762500, 775000, 787500, 800000, 812500, 825000, 837500, 850000, 862500, 875000, 887500, 900000, 912500, 925000, 937500, 950000, 962500, 975000, 987500, 1000000, 1012500, 1025000, 1037500, 1050000, 1062500, 1075000, 1087500, 1100000};
-static const int sw2_val_tbl[] = {900000, 912500, 925000, 937500, 950000, 962500, 975000, 987500, 1000000, 1012500, 1025000, 1037500, 1050000, 1062500, 1075000, 1087500, 1100000};
-static const int sw4_val_tbl[] = {900000, 912500, 925000, 937500, 950000, 962500, 975000, 987500, 1000000, 1012500, 1025000, 1037500, 1050000, 1062500, 1075000, 1087500, 1100000};
-#else
-static const int sw1_val_tbl[] = {750000, 762500, 775000, 787500, 800000, 812500, 825000, 837500, 850000, 862500, 875000, 887500, 900000, 912500, 925000, 937500, 950000, 962500, 975000, 987500, 1000000, 1012500, 1025000, 1037500, 1050000, 1062500, 1075000, 1087500, 1100000, 1112500, 1125000, 1137500, 1150000, 1162500, 1175000, 1187500, 1200000, 1212500, 1225000, 1237500, 1250000, 1262500, 1275000, 1287500, 1300000, 1312500, 1325000, 1337500, 1350000, 1362500, 1375000, 1387500, 1400000, 1412500, 1425000, 1437500, 1450000, 1462500, 1475000};
-static const int sw2_val_tbl[] = {900000, 912500, 925000, 937500, 950000, 962500, 975000, 987500, 1000000, 1012500, 1025000, 1037500, 1050000, 1062500, 1075000, 1087500, 1100000, 1112500, 1125000, 1137500, 1150000, 1162500, 1175000, 1187500, 1200000, 1212500, 1225000, 1237500, 1250000, 1262500, 1275000, 1287500, 1300000, 1312500, 1325000, 1337500, 1350000,
-1362500, 1375000, 1387500, 1400000, 1412500, 1425000, 1437500, 1450000, 1462500, 1475000};
-static const int sw4_val_tbl[] = {900000, 912500, 925000, 937500, 950000, 962500, 975000, 987500, 1000000, 1012500, 1025000, 1037500, 1050000, 1062500, 1075000, 1087500, 1100000, 1112500, 1125000, 1137500, 1150000, 1162500, 1175000, 1187500, 1200000, 1212500, 1225000, 1237500, 1250000, 1262500, 1275000, 1287500, 1300000, 1312500, 1325000, 1337500, 1350000, 1362500, 1375000, 1387500, 1400000, 1412500, 1425000, 1437500, 1450000, 1462500, 1475000
-};
-#endif
+static const int sw2_val_tbl[] = {900000, 912500, 925000, 937500, 950000, 962500, 975000, 987500, 1000000, 1012500, 1025000, 1037500, 1050000, 1062500, 1075000, 1087500, 1100000, 1112500, 1125000, 1137500, 1150000, 1162500, 1175000, 1187500, 1200000};
 static const int sw3_val_tbl[] = {1350000, 1800000, 1850000, 1875000};
+static const int sw4_val_tbl[] = {900000, 912500, 925000, 937500, 950000, 962500, 975000, 987500, 1000000, 1012500, 1025000, 1037500, 1050000, 1062500, 1075000, 1087500, 1100000, 1112500, 1125000, 1137500, 1150000, 1162500, 1175000, 1187500, 1200000};
 static const int sw5_val_tbl[] = {0, 5050000};
 static const int vcam_val_tbl[] = {2600000, 2700000, 2800000, 2900000};
 static const int vcsi_val_tbl[] = {1200000, 1800000};
@@ -274,8 +266,8 @@ static struct {
 	[CPCAP_VPLL]     = {CPCAP_REG_VPLLC,
 			    CPCAP_REG_ASSIGN3,
 			    CPCAP_BIT_VPLL_SEL,
+//			    0x0047,
 			    0x0048,
-//			    0x0043,
 			    0x0018,
 			    3,
 			    0x0000,
@@ -555,6 +547,7 @@ static int cpcap_regulator_disable(struct regulator_dev *rdev)
 	regltr_id = rdev_get_id(rdev);
 	if (regltr_id >= CPCAP_NUM_REGULATORS)
 		return -EINVAL;
+
 	regnr = cpcap_regltr_data[regltr_id].reg;
 
 	retval = 0;
@@ -698,7 +691,7 @@ static int __devinit cpcap_regulator_probe(struct platform_device *pdev)
 
 	/* Already set by core driver */
 	cpcap = platform_get_drvdata(pdev);
-	data = cpcap->spi->controller_data;
+	data = cpcap->spi->dev.platform_data;
 	init = pdev->dev.platform_data;
 
 	reg_id = pdev->id;
@@ -735,14 +728,12 @@ static int __devinit cpcap_regulator_probe(struct platform_device *pdev)
 	init_mode =
 		cpcap_regulator_find_init_mode_mask(cpcap,
 					data->regulator_mode_values[reg_id]);
-
 	if (init_mode != NULL)
 		cpcap_regltr_data[reg_id].mode_val = init_mode->mode;
 
 	init_mode =
 		cpcap_regulator_find_init_mode_mask(cpcap,
 					data->regulator_off_mode_values[reg_id]);
-
 	if (init_mode != NULL)
 		cpcap_regltr_data[reg_id].off_mode_val = init_mode->mode;
 
@@ -752,11 +743,12 @@ static int __devinit cpcap_regulator_probe(struct platform_device *pdev)
 		return PTR_ERR(rdev);
 	/* this is ok since the cpcap is still reachable from the rdev */
 	platform_set_drvdata(pdev, rdev);
-/*
+/* 
 	if (reg_id == CPCAP_SW5) {
 		data->regulator_init =
 			cpcap->regulator_pdev[CPCAP_VUSB]->dev.platform_data;
-		data->regulator_init->supply_regulator = "vusb";
+		data->regulator_init->supply_regulator_dev =
+			rdev_get_dev(rdev);
 		platform_device_add(cpcap->regulator_pdev[CPCAP_VUSB]);
 	}*/
 

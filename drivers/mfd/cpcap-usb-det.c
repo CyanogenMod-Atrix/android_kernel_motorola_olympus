@@ -34,6 +34,7 @@
 #include <linux/spi/spi.h>
 
 #include <linux/cpcap-accy.h>
+#include <linux/usb/composite.h>
 
 #define CPCAP_SENSE4_LS		8
 #define CPCAP_BIT_DP_S_LS	(CPCAP_BIT_DP_S << CPCAP_SENSE4_LS)
@@ -98,6 +99,14 @@
 			     CPCAP_BIT_VBUSVLD_S   | \
 			     CPCAP_BIT_SESSVLD_S   | \
 			     CPCAP_BIT_CHRGCURR1_S | \
+			     CPCAP_BIT_DP_S_LS)
+
+#define SENSE_WHISPER_LD2 (CPCAP_BIT_ID_GROUND_S | \
+			     CPCAP_BIT_VBUSVLD_S   | \
+			     CPCAP_BIT_SESSVLD_S   | \
+			     CPCAP_BIT_CHRGCURR1_S | \
+			     CPCAP_BIT_SE1_S       | \
+			     CPCAP_BIT_DM_S_LS     | \
 			     CPCAP_BIT_DP_S_LS)
 
 #define ADC_AUDIO_THRES     0x12C
@@ -171,13 +180,11 @@ struct cpcap_usb_det_data {
 	struct cpcap_device *cpcap;
 	struct delayed_work work;
 	struct workqueue_struct *wq;
-	struct cpcap_whisper_pdata *pdata;
 	unsigned short sense;
 	unsigned short prev_sense;
 	enum cpcap_det_state state;
 	enum cpcap_accy usb_accy;
 	struct platform_device *usb_dev;
-	struct platform_device *usb_connected_dev;
 	struct platform_device *charger_connected_dev;
 	struct regulator *regulator;
 	struct wake_lock wake_lock;
@@ -188,7 +195,6 @@ struct cpcap_usb_det_data {
 	struct switch_dev dsdev;
 	struct switch_dev edsdev;
 	unsigned char audio;
-	unsigned char uartmux;
 	short whisper_auth;
 	bool hall_effect_connected;
 	enum cpcap_irqs irq;
@@ -307,7 +313,6 @@ void cpcap_accy_set_dock_switch(struct cpcap_device *cpcap, int state, bool is_h
 				break;
 			case MOBILE_DOCK:
 				switch_set_state(&data->edsdev, EXT_MOBILE_DOCK);
-				switch_set_state(&data->dsdev, DESK_DOCK);
 				data->hall_effect_connected = is_hall_effect;
 				break;
 			default:
@@ -469,21 +474,6 @@ static int configure_hardware(struct cpcap_usb_det_data *data, enum cpcap_accy a
 
 	switch (accy) {
 	case CPCAP_ACCY_USB:
-		retval |= cpcap_regacc_write(data->cpcap, CPCAP_REG_USBC1, 0,
-					     CPCAP_BIT_VBUSPD);
-		gpio_set_value(data->pdata->data_gpio, 1);
-		if (data->otg)
-			raw_notifier_call_chain((void *)&data->otg->notifier.head,
-						     USB_EVENT_VBUS, NULL);
-		break;
-	case CPCAP_ACCY_USB_DEVICE:
-		retval |= cpcap_regacc_write(data->cpcap, CPCAP_REG_USBC1, 0,
-					     CPCAP_BIT_VBUSPD);
-		gpio_set_value(data->pdata->data_gpio, 1);
-		if (data->otg)
-			raw_notifier_call_chain((void *)&data->otg->notifier.head,
-						     USB_EVENT_ID, NULL);
-		break;
 	case CPCAP_ACCY_FACTORY:
 		retval |= cpcap_regacc_write(data->cpcap, CPCAP_REG_USBC1, 0,
 					     CPCAP_BIT_VBUSPD);
@@ -496,6 +486,14 @@ static int configure_hardware(struct cpcap_usb_det_data *data, enum cpcap_accy a
 		if ((data->cpcap->vendor == CPCAP_VENDOR_ST) &&
 			(data->cpcap->revision == CPCAP_REVISION_2_0))
 				vusb_enable(data);
+
+		gpio_set_value(data->cpcap->usbmux_gpio, 1);
+
+		android_usb_set_connected(1, accy);
+
+		if (data->otg)
+			raw_notifier_call_chain((void *)&data->otg->notifier.head,
+						     USB_EVENT_VBUS, NULL);
 		break;
 
 	case CPCAP_ACCY_CHARGER:
@@ -523,6 +521,7 @@ static int configure_hardware(struct cpcap_usb_det_data *data, enum cpcap_accy a
 		break;
 
 	case CPCAP_ACCY_UNKNOWN:
+		gpio_set_value(data->cpcap->usbmux_gpio, 0);
 		retval |= cpcap_regacc_write(data->cpcap, CPCAP_REG_USBC1, 0,
 					     CPCAP_BIT_VBUSPD);
 		retval |= cpcap_regacc_write(data->cpcap, CPCAP_REG_USBC1, 0,
@@ -551,6 +550,11 @@ static int configure_hardware(struct cpcap_usb_det_data *data, enum cpcap_accy a
 					     CPCAP_BIT_VBUSPD);
 		retval |= cpcap_regacc_write(data->cpcap, CPCAP_REG_USBC3, 0,
 					     CPCAP_BIT_VBUSSTBY_EN);
+
+		gpio_set_value(data->cpcap->usbmux_gpio, 1);
+		if (data->otg)
+			raw_notifier_call_chain((void *)&data->otg->notifier.head,
+						     USB_EVENT_ID, NULL);
 		break;
 
 	case CPCAP_ACCY_NONE:
@@ -568,6 +572,12 @@ static int configure_hardware(struct cpcap_usb_det_data *data, enum cpcap_accy a
 					     CPCAP_BIT_VBUSSTBY_EN);
 		data->whisper_auth = AUTH_NOT_STARTED;
 		tegra_gpio_enable(data->cpcap->spdif_gpio);
+
+		android_usb_set_connected(0, data->usb_accy);
+
+		if (data->otg)
+			raw_notifier_call_chain((void *)&data->otg->notifier.head,
+						     USB_EVENT_NONE, NULL);
 		break;
 	}
 
@@ -645,18 +655,14 @@ static void notify_accy(struct cpcap_usb_det_data *data, enum cpcap_accy accy)
 	dev_info(&data->cpcap->spi->dev, "notify_accy: accy=%d\n", accy);
 
 	if ((data->usb_accy != CPCAP_ACCY_NONE) && (data->usb_dev != NULL)) {
-		if (!((data->usb_accy == CPCAP_ACCY_USB_DEVICE) && (accy == CPCAP_ACCY_CHARGER))) {
+		if (!((data->usb_accy == CPCAP_ACCY_WHISPER_SMART_DOCK) && (accy == CPCAP_ACCY_CHARGER))) {
 			platform_device_del(data->usb_dev);
 			data->usb_dev = NULL;
 		}
 	}
 
 	configure_hardware(data, accy);
-	/* SMART dock needs to load USB Host stack */
-	if (accy == CPCAP_ACCY_WHISPER_SMART_DOCK)
-		data->usb_accy = CPCAP_ACCY_USB_DEVICE;
-	else
-		data->usb_accy = accy;
+	data->usb_accy = accy;
 
 	if (accy != CPCAP_ACCY_NONE) {
 		/* SMART dock needs to charge */
@@ -672,21 +678,6 @@ static void notify_accy(struct cpcap_usb_det_data *data, enum cpcap_accy accy)
 		}
 	} else
 		vusb_disable(data);
-
-	if ((accy == CPCAP_ACCY_USB) || (accy == CPCAP_ACCY_FACTORY)
-		|| (accy == CPCAP_ACCY_USB_DEVICE)
-		|| (accy == CPCAP_ACCY_WHISPER_SMART_DOCK)) {
-		if (!data->usb_connected_dev) {
-			data->usb_connected_dev =
-			    platform_device_alloc("cpcap_usb_connected", -1);
-			platform_device_add_data(data->usb_connected_dev,
-					&data->usb_accy, sizeof(data->usb_accy));
-			platform_device_add(data->usb_connected_dev);
-		}
-	} else if (data->usb_connected_dev) {
-		platform_device_del(data->usb_connected_dev);
-		data->usb_connected_dev = NULL;
-	}
 
 	if (accy == CPCAP_ACCY_CHARGER) {
 		if (!data->charger_connected_dev) {
@@ -846,7 +837,8 @@ static void detection_work(struct work_struct *work)
 			/* Special handling of CHARGER/SPD undetect. */
 			data->state = CHARGER;
 			notify_whisper_switch(data, CPCAP_ACCY_CHARGER);
-		} else if (data->sense == SENSE_WHISPER_SMART) {
+		} else if (data->sense == SENSE_WHISPER_SMART ||
+                           data->sense == SENSE_WHISPER_LD2) {
 
 			if (cpcap_usb_det_debug)
 				pr_info("cpcap_usb_det: WHISPER_SMART_DOCK\n");
@@ -983,6 +975,10 @@ static void detection_work(struct work_struct *work)
 			} else {
 				if (cpcap_usb_det_debug)
 					pr_info("cpcap_usb_det: Waiting for VBUS to drain before switching on RVRS CHRG\n");
+
+				/* Unmask the IDFLOAT irq in case the line is not floating by the
+				 * time we read the sense bits */
+				cpcap_irq_unmask(data->cpcap, CPCAP_IRQ_IDFLOAT);
 			}
 		} else if (!isVBusValid) {
 			if (cpcap_usb_det_debug)
@@ -1082,7 +1078,7 @@ static void detection_work(struct work_struct *work)
 		get_sense(data);
 		isVBusValid = vbus_valid_adc_check(data);
 
-		if (data->whisper_auth == AUTH_FAILED && data->usb_accy == CPCAP_ACCY_USB_DEVICE
+		if (data->whisper_auth == AUTH_FAILED && data->usb_accy == CPCAP_ACCY_WHISPER_SMART_DOCK
 				&& isVBusValid) {
 			notify_accy(data, CPCAP_ACCY_CHARGER); /*can only charge when auth failed*/
 		}
@@ -1138,7 +1134,8 @@ static void int_handler(enum cpcap_irqs int_event, void *data)
 	queue_delayed_work(usb_det_data->wq, &(usb_det_data->work), 0);
 }
 
-int cpcap_accy_whisper(struct cpcap_device *cpcap, unsigned long cmd)
+int cpcap_accy_whisper(struct cpcap_device *cpcap,
+		       struct cpcap_whisper_request *req)
 {
 	struct cpcap_usb_det_data *data = cpcap->accydata;
 	int retval = -EAGAIN;
@@ -1146,7 +1143,8 @@ int cpcap_accy_whisper(struct cpcap_device *cpcap, unsigned long cmd)
 	int dock_type = NO_DOCK;
 
 	if (cpcap_usb_det_debug)
-	pr_info("cpcap_usb_det %s: ioctl cmd = 0x%08lx\n", __func__, cmd);
+		pr_info("cpcap_usb_det %s: ioctl cmd = 0x%08x\n",
+			__func__, req->cmd);
 
 	if (!data)
 		return -ENODEV;
@@ -1154,12 +1152,12 @@ int cpcap_accy_whisper(struct cpcap_device *cpcap, unsigned long cmd)
 	/* Can only change settings if not debouncing and is whisper device */
 	if (data->state == CHARGER || data->state == WHISPER_PPD
 				|| data->state == WHISPER_SMART_DOCK) {
-		if (cmd & CPCAP_WHISPER_ENABLE_UART) {
+		if (req->cmd & CPCAP_WHISPER_ENABLE_UART) {
 			if (data->state != WHISPER_SMART_DOCK) {
 				cpcap_irq_mask(data->cpcap, CPCAP_IRQ_SE1);
 				data->whisper_auth = AUTH_IN_PROGRESS;
 				retval = cpcap_regacc_write(data->cpcap, CPCAP_REG_USBC2,
-					((data->uartmux << 8) |
+					((data->cpcap->uartmux << 8) |
 					CPCAP_BIT_EMUMODE0),
 					CPCAP_BIT_UARTMUX1 | CPCAP_BIT_UARTMUX0 |
 					CPCAP_BIT_EMUMODE2 | CPCAP_BIT_EMUMODE1 |
@@ -1170,10 +1168,11 @@ int cpcap_accy_whisper(struct cpcap_device *cpcap, unsigned long cmd)
 				retval = -ENOTTY; /* uart_enable only supported for basic docks */
 
 		} else {
-			value = (cmd & CPCAP_WHISPER_MODE_PU) ? CPCAP_BIT_ID100KPU : 0;
+			value = (req->cmd & CPCAP_WHISPER_MODE_PU) ?
+			  CPCAP_BIT_ID100KPU : 0;
 			if (value != 0) {
 				cpcap_irq_mask(data->cpcap, CPCAP_IRQ_SE1);
-				dock_type = ((cmd >> 27)%MAX_DOCK);
+				dock_type = ((req->cmd >> 27)%MAX_DOCK);
 				cpcap_accy_set_dock_switch(data->cpcap, dock_type, false);
 				data->whisper_auth = AUTH_PASSED;
 				if (data->state != WHISPER_SMART_DOCK) {
@@ -1237,19 +1236,17 @@ static int cpcap_usb_det_probe(struct platform_device *pdev)
 {
 	int retval;
 	struct cpcap_usb_det_data *data;
-	printk(KERN_INFO "pICS_%s: step 1...\n",__func__);
+
 	if (pdev->dev.platform_data == NULL) {
 		dev_err(&pdev->dev, "no platform_data\n");
 		return -EINVAL;
 	}
-	printk(KERN_INFO "pICS_%s: step 2...\n",__func__);
+
 	data = kzalloc(sizeof(*data), GFP_KERNEL);
 	if (!data)
 		return -ENOMEM;
-	printk(KERN_INFO "pICS_%s: step 3...\n",__func__);
-	//data->cpcap = pdev->dev.platform_data;
-	data->cpcap = platform_get_drvdata(pdev);
-	data->pdata = pdev->dev.platform_data;
+
+	data->cpcap = pdev->dev.platform_data;
 	data->state = CONFIG;
 	data->wq = create_singlethread_workqueue("cpcap_accy");
 	INIT_DELAYED_WORK(&data->work, detection_work);
@@ -1268,13 +1265,12 @@ static int cpcap_usb_det_probe(struct platform_device *pdev)
 	switch_dev_register(&data->emusdev);
 	switch_dev_register(&data->dsdev);
 	switch_dev_register(&data->edsdev);
-	data->uartmux = 1;
 	data->whisper_auth = AUTH_NOT_STARTED;
 	data->hall_effect_connected = false;
 	data->irq = CPCAP_IRQ__START;
-	printk(KERN_INFO "pICS_%s: step 4...\n",__func__);
+
 	platform_set_drvdata(pdev, data);
-	printk(KERN_INFO "pICS_%s: step 5...\n",__func__);
+
 	data->regulator = regulator_get(&pdev->dev, "vusb");
 	if (IS_ERR(data->regulator)) {
 		dev_err(&pdev->dev, "Could not get regulator for cpcap_usb\n");
@@ -1282,26 +1278,18 @@ static int cpcap_usb_det_probe(struct platform_device *pdev)
 		goto free_mem;
 	}
 	regulator_set_voltage(data->regulator, 3300000, 3300000);
-	printk(KERN_INFO "pICS_%s: step 6...\n",__func__);
+
 	/* Clear the interrupts so they are in a known state when starting detection. */
 	retval = cpcap_irq_clear(data->cpcap, CPCAP_IRQ_CHRG_DET);
-	printk(KERN_INFO "pICS_%s: step 6a...\n",__func__);
 	retval |= cpcap_irq_clear(data->cpcap, CPCAP_IRQ_CHRG_CURR1);
-	printk(KERN_INFO "pICS_%s: step 6b...\n",__func__);
 	retval |= cpcap_irq_clear(data->cpcap, CPCAP_IRQ_SE1);
-	printk(KERN_INFO "pICS_%s: step 6c...\n",__func__);
 	retval |= cpcap_irq_clear(data->cpcap, CPCAP_IRQ_IDGND);
-	printk(KERN_INFO "pICS_%s: step 6d...\n",__func__);
 	retval |= cpcap_irq_clear(data->cpcap, CPCAP_IRQ_VBUSVLD);
-	printk(KERN_INFO "pICS_%s: step 6e...\n",__func__);
 	retval |= cpcap_irq_clear(data->cpcap, CPCAP_IRQ_IDFLOAT);
-	printk(KERN_INFO "pICS_%s: step 6f...\n",__func__);
 	retval |= cpcap_irq_clear(data->cpcap, CPCAP_IRQ_DPI);
-	printk(KERN_INFO "pICS_%s: step 6g...\n",__func__);
 	retval |= cpcap_irq_clear(data->cpcap, CPCAP_IRQ_DMI);
-	printk(KERN_INFO "pICS_%s: step 6h...\n",__func__);
 	retval |= cpcap_irq_clear(data->cpcap, CPCAP_IRQ_SESSVLD);
-	printk(KERN_INFO "pICS_%s: step 7...\n",__func__);
+
 	/* Register the interrupt handler, please be aware this will enable the
 	   interrupts. */
 	retval |= cpcap_irq_register(data->cpcap, CPCAP_IRQ_CHRG_DET,
@@ -1323,11 +1311,6 @@ static int cpcap_usb_det_probe(struct platform_device *pdev)
 	retval |= cpcap_irq_register(data->cpcap, CPCAP_IRQ_SESSVLD,
 				     int_handler, data);
 
-	retval |= cpcap_regacc_write(data->cpcap, CPCAP_REG_USBC2,
-				     (data->uartmux << 8),
-				     (CPCAP_BIT_UARTMUX1 | CPCAP_BIT_UARTMUX0));
-
-	printk(KERN_INFO "pICS_%s: step 8...\n",__func__);
 	if (retval != 0) {
 		dev_err(&pdev->dev, "Initialization Error\n");
 		retval = -ENODEV;
@@ -1337,9 +1320,10 @@ static int cpcap_usb_det_probe(struct platform_device *pdev)
 #ifdef CONFIG_USB_CPCAP_OTG
 	data->otg = otg_get_transceiver();
 #endif
+
 	data->cpcap->accydata = data;
 	dev_info(&pdev->dev, "CPCAP USB detection device probed\n");
-	printk(KERN_INFO "pICS_%s: step 9...\n",__func__);
+
 	/* Schedule initial detection.  This is done in case an interrupt has
 	   already scheduled the work, to keep it from running more than once. */
 	queue_delayed_work(data->wq, &(data->work), 0);
@@ -1399,7 +1383,7 @@ static int __exit cpcap_usb_det_remove(struct platform_device *pdev)
 	switch_dev_unregister(&data->dsdev);
 	switch_dev_unregister(&data->edsdev);
 
-	gpio_set_value(data->pdata->data_gpio, 1);
+	gpio_set_value(data->cpcap->usbmux_gpio, 1);
 
 	vusb_disable(data);
 	regulator_put(data->regulator);

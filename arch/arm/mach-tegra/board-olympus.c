@@ -375,7 +375,7 @@ static struct platform_device tegra_w1_device = {
 	.platform_data = &tegra_w1_pdata,
 	},
 };
-
+#if 0
 static int cpcap_usb_connected_probe(struct platform_device *pdev)
 {
 /*	struct cpcap_accy_platform_data *pdata = pdev->dev.platform_data;*/
@@ -440,7 +440,7 @@ struct platform_driver cpcap_usb_connected_driver = {
                 .owner  = THIS_MODULE,
     },
 };
-
+#endif
 
 static int config_unused_pins(char *pins, int num)
 {
@@ -471,19 +471,17 @@ static void __init tegra_mot_init(void)
 	
 	tegra_clk_init_from_table(olympus_clk_init_table);
 
-	tegra_ram_console_debug_init();
+	//tegra_ram_console_debug_init();
 
 	olympus_pinmux_init();
 
 	olympus_devices_init();
 
-//	olympus_audio_init();
-
 	olympus_power_init();
 	
 	mot_tcmd_init();
 
-	mot_sec_init();
+//	mot_sec_init();
 
 	olympus_panel_init();
 
@@ -491,9 +489,11 @@ static void __init tegra_mot_init(void)
 
 	//olympus_keypad_init();
 
+	olympus_backlight_init();
+
 	olympus_kbc_init();
 
-	olympus_i2c_init();
+	olympus_touch_init();
 
 	if( (bi_powerup_reason() & PWRUP_FACTORY_CABLE) &&
 	    (bi_powerup_reason() != PWRUP_INVALID) ){
@@ -509,9 +509,9 @@ if (1==0) olympus_emc_init();
 	//mot_modem_init();
 	//olympus_wlan_init();
 
-	platform_driver_register(&cpcap_usb_connected_driver);
+//	platform_driver_register(&cpcap_usb_connected_driver);
 
-	mot_sensors_init();
+	olympus_sensors_init();
 
 	pm_power_off = mot_system_power_off;
 	//tegra_setup_bluesleep();

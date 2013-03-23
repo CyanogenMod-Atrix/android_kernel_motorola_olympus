@@ -27,9 +27,6 @@
 #include <linux/qtouch_obp_ts.h>
 #include <linux/interrupt.h>
 #include <linux/input.h>
-#include <linux/leds-lm3530.h>
-#include <linux/leds-lm3532.h>
-#include <linux/isl29030.h>
 
 #include "board-olympus.h"
 #include "gpio-names.h"
@@ -39,90 +36,6 @@
 
 #define OLYMPUS_TOUCH_IRQ_GPIO 		TEGRA_GPIO_PF5
 #define OLYMPUS_TOUCH_RESET_GPIO 	TEGRA_GPIO_PF4
-#define OLYMPUS_COMPASS_IRQ_GPIO TEGRA_GPIO_PE2
-
-#define TEGRA_BACKLIGHT_EN_GPIO 	32 /* TEGRA_GPIO_P?? */
-#define TEGRA_KEY_BACKLIGHT_EN_GPIO 	47 /* TEGRA_GPIO_P?? */
-
-static int disp_backlight_init(void)
-{
-    int ret;
-
-    tegra_gpio_enable(TEGRA_BACKLIGHT_EN_GPIO);
-    tegra_gpio_enable(TEGRA_KEY_BACKLIGHT_EN_GPIO);
-    if ((ret = gpio_request(TEGRA_BACKLIGHT_EN_GPIO, "backlight_en"))) {
-        pr_err("%s: gpio_request(%d, backlight_en) failed: %d\n",
-            __func__, TEGRA_BACKLIGHT_EN_GPIO, ret);
-        return ret;
-    } else {
-        pr_info("%s: gpio_request(%d, backlight_en) success!\n",
-            __func__, TEGRA_BACKLIGHT_EN_GPIO);
-    }
-    if ((ret = gpio_direction_output(TEGRA_BACKLIGHT_EN_GPIO, 1))) {
-        pr_err("%s: gpio_direction_output(backlight_en) failed: %d\n",
-            __func__, ret);
-        return ret;
-    }
-/*	if ((ret = gpio_request(TEGRA_KEY_BACKLIGHT_EN_GPIO,
-			"key_backlight_en"))) {
-		pr_err("%s: gpio_request(%d, key_backlight_en) failed: %d\n",
-			__func__, TEGRA_KEY_BACKLIGHT_EN_GPIO, ret);
-		return ret;
-	} else {
-		pr_info("%s: gpio_request(%d, key_backlight_en) success!\n",
-			__func__, TEGRA_KEY_BACKLIGHT_EN_GPIO);
-	}
-	if ((ret = gpio_direction_output(TEGRA_KEY_BACKLIGHT_EN_GPIO, 1))) {
-		pr_err("%s: gpio_direction_output(key_backlight_en) failed: %d\n",
-			__func__, ret);
-		return ret;
-	}*/
-
-    return 0;
-}
-
-static int disp_backlight_power_on(void)
-{
-    pr_info("%s: display backlight is powered on\n", __func__);
-    gpio_set_value(TEGRA_BACKLIGHT_EN_GPIO, 1);
-    gpio_set_value(TEGRA_KEY_BACKLIGHT_EN_GPIO, 1);
-    return 0;
-}
-
-static int disp_backlight_power_off(void)
-{
-    pr_info("%s: display backlight is powered off\n", __func__);
-    gpio_set_value(TEGRA_BACKLIGHT_EN_GPIO, 0);
-    gpio_set_value(TEGRA_KEY_BACKLIGHT_EN_GPIO, 0);
-    return 0;
-}
-
-struct lm3530_platform_data lm3530_pdata = {
-    .init = disp_backlight_init,
-    .power_on = disp_backlight_power_on,
-    .power_off = disp_backlight_power_off,
-
-    .ramp_time = 0,   /* Ramp time in milliseconds */
-    .gen_config = 
-        LM3530_26mA_FS_CURRENT | LM3530_LINEAR_MAPPING | LM3530_I2C_ENABLE,
-    .als_config = 0,  /* We don't use ALS from this chip */
-};
-
-struct lm3532_platform_data lm3532_pdata = {
-    .flags = LM3532_CONFIG_BUTTON_BL | LM3532_HAS_WEBTOP,
-    .init = disp_backlight_init,
-    .power_on = disp_backlight_power_on,
-    .power_off = disp_backlight_power_off,
-
-    .ramp_time = 0,   /* Ramp time in milliseconds */
-    .ctrl_a_fs_current = LM3532_26p6mA_FS_CURRENT,
-    .ctrl_b_fs_current = LM3532_8p2mA_FS_CURRENT,
-    .ctrl_a_mapping_mode = LM3532_LINEAR_MAPPING,
-    .ctrl_b_mapping_mode = LM3532_LINEAR_MAPPING,
-	.ctrl_a_pwm = 0x82,
-};
-
-extern int MotorolaBootDispArgGet(unsigned int *arg);
 
 static int touch_reset(void)
 {
@@ -1004,30 +917,6 @@ struct qtouch_ts_platform_data ts_platform_olympus_m_1 =
 */
 };
 
-extern struct isl29030_platform_data isl29030_als_ir_data_Olympus;
-
-static struct i2c_board_info __initdata olympus_i2c_bus1_board_info[] = {
-	[BACKLIGHT] = { /* Display backlight */
-		I2C_BOARD_INFO(LM3532_NAME, LM3532_I2C_ADDR),
-		.platform_data = &lm3532_pdata,
-		/*.irq = ..., */
-	},
-	[TOUCHSCREEN] = {
-		//I2C_BOARD_INFO(QTOUCH_TS_NAME, XMEGAT_BL_I2C_ADDR),
-		I2C_BOARD_INFO(QTOUCH_TS_NAME, 0x4a),
-		.platform_data = &ts_platform_olympus_m_1,
-		.irq = TEGRA_GPIO_TO_IRQ(OLYMPUS_TOUCH_IRQ_GPIO),
-	},
-#if 0
-	[PROX] = {
-		/*  ISL 29030 (prox/ALS) driver */
-		I2C_BOARD_INFO(LD_ISL29030_NAME, 0x44),
-		.platform_data = &isl29030_als_ir_data_Olympus,
-		.irq = 180,
-	},
-#endif
-};
-
 /* center: x: home: 55, menu: 185, back: 305, search 425, y: 835 */
 static int vkey_size_olympus_p_1_42[4][4] = 
             { {67,900,134,80},    // KEY_MENU
@@ -1094,12 +983,21 @@ static struct attribute_group mot_properties_attr_group = {
 	.attrs = mot_properties_attrs,
 };
 
-static void olympus_touch_init(void)
+
+static struct i2c_board_info olympus_i2c1_touchscreen_info[] = {
+	{	/* Touchscreen */
+		I2C_BOARD_INFO(QTOUCH_TS_NAME, XMEGAT_BL_I2C_ADDR),
+		.platform_data = &ts_platform_olympus_m_1,
+		.irq = TOUCH_GPIO_INTR,
+	},
+};
+
+void __init olympus_touch_init(void)
 {
 	int ret = 0;
 	struct kobject *properties_kobj = NULL;
 	struct 	qtouch_ts_platform_data *pdata;
-	struct i2c_board_info *info = &olympus_i2c_bus1_board_info[TOUCHSCREEN];	
+	struct i2c_board_info *info = &olympus_i2c1_touchscreen_info[0];	
 
 	printk("\n%s: Updating i2c_bus_board_info with correct setup info for TS\n", __func__);
 	/*
@@ -1164,41 +1062,12 @@ static void olympus_touch_init(void)
 		pr_err("%s: gpio_direction_input(interrupt) failed\n",__func__);
 		goto err_request_irq;
 	}
+
+	printk("%s: registering i2c device... touchscreen\n", __func__);
+	printk("bus 0: %d device\n", 0);
+	i2c_register_board_info(0, olympus_i2c1_touchscreen_info, 1);
+
 err_request_irq:
 	pr_info("%s: finished\n", __func__ );
-}
-
-static void olympus_lights_init(void)
-{
-	unsigned int disp_type = 0;
-	int ret;
-
-#ifdef CONFIG_LEDS_DISP_BTN_TIED
-	lm3532_pdata.flags |= LM3532_DISP_BTN_TIED;
-#endif
-	if ((ret = MotorolaBootDispArgGet(&disp_type))) {
-		pr_err("\n%s: unable to read display type: %d\n", __func__, ret);
-		return;
-	}
-	if (disp_type & 0x100) {
-		pr_info("\n%s: 0x%x ES2 display; will enable PWM in LM3532\n",
-			__func__, disp_type);
-		lm3532_pdata.ctrl_a_pwm = 0x86;
-	} else {
-		pr_info("\n%s: 0x%x ES1 display; will NOT enable PWM in LM3532\n",
-			__func__, disp_type);
-	}
-}
-
-void __init olympus_i2c_init(void)
-{
-	olympus_lights_init();
-	olympus_touch_init();
-	
-	printk("%s: registering i2c devices...\n", __func__);
-	printk("bus 0: %d devices\n", ARRAY_SIZE(olympus_i2c_bus1_board_info));
-	i2c_register_board_info(0, olympus_i2c_bus1_board_info, 
-				ARRAY_SIZE(olympus_i2c_bus1_board_info));
-
 }
 

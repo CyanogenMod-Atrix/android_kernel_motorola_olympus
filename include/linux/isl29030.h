@@ -19,12 +19,11 @@
 #ifndef _LINUX_ISL29030_H__
 #define _LINUX_ISL29030_H__
 
+#include <linux/ioctl.h>
+
+#ifdef __KERNEL__
+
 #include <linux/types.h>
-
-#define	MANUAL		0
-#define	AUTOMATIC	1
-#define	MANUAL_SENSOR	2
-
 
 #define LD_ISL29030_NAME "isl29030_als_ir"
 #define FOPS_ISL29030_NAME "isl29030"
@@ -52,8 +51,8 @@
 #define ISL29030_LOW_LUX_RANGE	125
 
 /* Thresholds for switching between lux ranges. */
-#define ISL29030_LOW_TO_HIGH_COUNTS    800    /* ~24 lux */
-#define ISL29030_HIGH_TO_LOW_COUNTS    32     /* ~16 lux */
+#define ISL29030_LOW_TO_HIGH_COUNTS	800	/* ~24 lux */
+#define ISL29030_HIGH_TO_LOW_COUNTS	32	/* ~16 lux */
 
 #define ISL29030_ALS_FLAG_MASK		0x08
 #define ISL29030_PROX_FLAG_MASK		0x80
@@ -65,16 +64,9 @@
 #define PROXIMITY_NEAR	30		/* prox close threshold is 22-70mm */
 #define PROXIMITY_FAR	1000		/* 1 meter */
 
-
-#ifdef __KERNEL__
+#define ISL29030_REGULATOR_NAME_LENGTH	10
 
 struct isl29030_platform_data {
-	int  (*init)(void);
-	void (*exit)(void);
-	int  (*power_on)(void);
-	int  (*power_off)(void);
-	int	 (*getIrqStatus)(void);
-
 	u8	configure;
 	u8	interrupt_cntrl;
 	u8	prox_lower_threshold;
@@ -84,15 +76,15 @@ struct isl29030_platform_data {
 	u8	num_samples_for_noise_floor;
 	u32	lens_percent_t;
 	u16	irq;
-	int	gpio_intr;
-} __attribute__ ((packed));
+	u8	regulator_name[ISL29030_REGULATOR_NAME_LENGTH];
+} __packed;
 
 #endif	/* __KERNEL__ */
 
-#define ISL29030_IO			0xA3
-
-#define ISL29030_IOCTL_GET_ENABLE	_IOR(ISL29030_IO, 0x00, char)
-#define ISL29030_IOCTL_SET_ENABLE	_IOW(ISL29030_IO, 0x01, char)
-#define ISL29030_IOCTL_GET_INT_LINE     _IOR(ISL29030_IO, 0x02, char)
+#define ISL29030_IOCTL_BASE		0xA3
+#define ISL29030_IOCTL_GET_ENABLE	_IOR(ISL29030_IOCTL_BASE, 0x00, char)
+#define ISL29030_IOCTL_SET_ENABLE	_IOW(ISL29030_IOCTL_BASE, 0x01, char)
+#define ISL29030_IOCTL_GET_LIGHT_ENABLE	_IOR(ISL29030_IOCTL_BASE, 0x02, char)
+#define ISL29030_IOCTL_SET_LIGHT_ENABLE	_IOW(ISL29030_IOCTL_BASE, 0x03, char)
 
 #endif	/* _LINUX_ISL29030_H__ */

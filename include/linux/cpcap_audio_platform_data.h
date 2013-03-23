@@ -26,7 +26,6 @@ enum cpcap_audio_data_voice_type {
 	VOICE_TYPE_QC = 2,
 	VOICE_TYPE_STE = 3,
 	VOICE_TYPE_MOT = 4,
-	VOICE_TYPE_STE_PNX6718 = 5,
 };
 struct cpcap_audio_pdata {
 	int stereo_loudspeaker;
