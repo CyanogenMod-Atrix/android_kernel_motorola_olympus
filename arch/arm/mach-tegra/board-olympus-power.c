@@ -50,7 +50,7 @@
 extern void arch_reset(char mode, const char *cmd);
 static int disable_rtc_alarms(struct device *dev, void *cnt);
 
-void mot_system_power_off(void)
+void olympus_system_power_off(void)
 {
 	/* If there's external power, let's restart instead ...
 	   except for the case when phone was powered on with factory cable
@@ -938,7 +938,7 @@ static struct regulator_init_data cpcap_regulator[CPCAP_NUM_REGULATORS] = {
 			.min_uV			= 2775000,
 			.max_uV			= 3300000,
 			.valid_ops_mask		= (REGULATOR_CHANGE_VOLTAGE | REGULATOR_CHANGE_STATUS),
-			.always_on		= 1,  /* Reinitialized based on hwrev in mot_setup_power() */
+			.always_on		= 1,  /* Reinitialized based on hwrev in olympus_setup_power() */
 		},
 		.num_consumer_supplies	= ARRAY_SIZE(cpcap_vwlan2_consumers),
 		.consumer_supplies	= cpcap_vwlan2_consumers,
@@ -1029,7 +1029,7 @@ struct cpcap_platform_data tegra_cpcap_data =
 		 CPCAP_HWCFG0_SEC_STBY_VHVIO |
 		 CPCAP_HWCFG0_SEC_STBY_VPLL |
 		 CPCAP_HWCFG0_SEC_STBY_VSDIO),
-		(CPCAP_HWCFG1_SEC_STBY_VWLAN1 |    /* WLAN1 may be reset in mot_setup_power(). */
+		(CPCAP_HWCFG1_SEC_STBY_VWLAN1 |    /* WLAN1 may be reset in olympus_setup_power(). */
 		 CPCAP_HWCFG1_SEC_STBY_VSIMCARD)},
 	.spdif_gpio = TEGRA_GPIO_PD4,
 //	.uartmux = 1,

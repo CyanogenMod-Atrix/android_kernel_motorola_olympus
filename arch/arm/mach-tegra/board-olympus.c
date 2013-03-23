@@ -465,7 +465,7 @@ static int config_unused_pins(char *pins, int num)
         return ret;
 }
 
-static void __init tegra_mot_init(void)
+static void __init tegra_olympus_init(void)
 {
 /*	struct clk *clk;*/
 	
@@ -479,13 +479,13 @@ static void __init tegra_mot_init(void)
 
 	olympus_power_init();
 	
-	mot_tcmd_init();
+	olympus_tcmd_init();
 
-//	mot_sec_init();
+//	olympus_sec_init();
 
 	olympus_panel_init();
 
-//	mot_keymap_update_init();
+//	olympus_keymap_update_init();
 
 	//olympus_keypad_init();
 
@@ -506,14 +506,14 @@ if (1==0) olympus_emc_init();
 
 	platform_device_register(&tegra_w1_device);
 	
-	//mot_modem_init();
+	//olympus_modem_init();
 	//olympus_wlan_init();
 
 //	platform_driver_register(&cpcap_usb_connected_driver);
 
 	olympus_sensors_init();
 
-	pm_power_off = mot_system_power_off;
+	pm_power_off = olympus_system_power_off;
 	//tegra_setup_bluesleep();
 
 	/* Configure SPDIF_OUT as GPIO by default, it can be later controlled
@@ -548,7 +548,7 @@ if (1==0) olympus_emc_init();
 	tegra_release_bootloader_fb();	
 }
 
-static void __init mot_fixup(struct machine_desc *desc, struct tag *tags,
+static void __init olympus_fixup(struct machine_desc *desc, struct tag *tags,
                  char **cmdline, struct meminfo *mi)
 {
 	struct tag *t;
@@ -624,13 +624,13 @@ void __init tegra_olympus_reserve(void)
 MACHINE_START(OLYMPUS, "Olympus")
 
     .boot_params  = 0x00000100,
-    .fixup        = mot_fixup,
+    .fixup        = olympus_fixup,
     .map_io       = tegra_map_common_io,
     .reserve	  = tegra_olympus_reserve,
     .init_early	  = tegra_init_early,
     .init_irq     = tegra_init_irq,
     .timer        = &tegra_timer,
-    .init_machine = tegra_mot_init,
+    .init_machine = tegra_olympus_init,
 
 MACHINE_END
 

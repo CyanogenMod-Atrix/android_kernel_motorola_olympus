@@ -370,7 +370,7 @@ static struct nvhost_device olympus_disp1_device = {
 	},
 };
 
-static int mot_panel_setup_dc(void)
+static int olympus_panel_setup_dc(void)
 {
 	tegra_gpio_enable(47);	
 	gpio_request(47, "disp_5v_en");
@@ -483,7 +483,7 @@ int __init olympus_panel_init(void)
 	gpio_request(111, "hdmi_hpd");
 	gpio_direction_input(111);
 
-	mot_panel_setup_dc();
+	olympus_panel_setup_dc();
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
 	olympus_panel_early_suspender.suspend = olympus_panel_early_suspend;

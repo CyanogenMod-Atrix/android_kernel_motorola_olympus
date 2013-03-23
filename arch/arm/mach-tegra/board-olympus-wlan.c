@@ -45,7 +45,7 @@
 static bool wlan_ctrl_ready = false;
 
 static struct sk_buff *wlan_static_skb[WLAN_SKB_BUF_NUM];
-char mot_wlan_mac[6] = {0x00, 0x90, 0xC3, 0x00, 0x00, 0x00};
+char olympus_wlan_mac[6] = {0x00, 0x90, 0xC3, 0x00, 0x00, 0x00};
 
 struct wifi_mem_prealloc_struct {
 	void *mem_ptr;
@@ -111,10 +111,10 @@ static struct wifi_mem_prealloc_struct
 	{"MX", "XY", 3}
  };
 
-static struct cntry_locales_custom *mot_locales_table_ptr;
-static int mot_locales_table_size;
+static struct cntry_locales_custom *olympus_locales_table_ptr;
+static int olympus_locales_table_size;
 
-static void *mot_wifi_mem_prealloc(int section, unsigned long size)
+static void *olympus_wifi_mem_prealloc(int section, unsigned long size)
 {
 	if (section == PREALLOC_WLAN_NUMBER_OF_SECTIONS)
 		return wlan_static_skb;
@@ -125,7 +125,7 @@ static void *mot_wifi_mem_prealloc(int section, unsigned long size)
 	return wifi_mem_array[section].mem_ptr;
 }
 
- int __init mot_init_wifi_mem(void)
+ int __init olympus_init_wifi_mem(void)
  {
 	int i;
 	for (i = 0; (i < WLAN_SKB_BUF_NUM); i++) {
@@ -143,7 +143,7 @@ static void *mot_wifi_mem_prealloc(int section, unsigned long size)
 	return 0;
  }
 
-static struct resource mot_wifi_resources[] = {
+static struct resource olympus_wifi_resources[] = {
 	[0] = {
 		.name	= "bcm4329_wlan_irq",
 		.start	= TEGRA_GPIO_TO_IRQ(WLAN_IRQ_GPIO),
@@ -153,14 +153,14 @@ static struct resource mot_wifi_resources[] = {
 	},
  };
 
- static int mot_wifi_cd; /* WIFI virtual 'card detect' status */
+ static int olympus_wifi_cd; /* WIFI virtual 'card detect' status */
  static void (*wifi_status_cb)(int card_present, void *dev_id);
  static void *wifi_status_cb_devid;
 
- int mot_wifi_set_carddetect(int val)
+ int olympus_wifi_set_carddetect(int val)
  {
 	pr_debug("%s: %d\n", __func__, val);
-	mot_wifi_cd = val;
+	olympus_wifi_cd = val;
 	//sdhci_tegra_wlan_detect();
 	if (wifi_status_cb)
 		wifi_status_cb(val, wifi_status_cb_devid);
@@ -169,7 +169,7 @@ static struct resource mot_wifi_resources[] = {
 	return 0;
  }
 
- int mot_wifi_power(int on)
+ int olympus_wifi_power(int on)
  {
 	pr_debug("%s: %d\n", __func__, on);
 	gpio_set_value(WLAN_REG_ON_GPIO, on);
@@ -179,20 +179,20 @@ static struct resource mot_wifi_resources[] = {
 	return 0;
  }
 
- static void *mot_wifi_get_country_code(char *my_iso)
+ static void *olympus_wifi_get_country_code(char *my_iso)
  {
 	int i;
 	if (!my_iso)
 		return NULL;
 
-	for (i = 0; i < mot_locales_table_size; i++)
-		if (strcmp(my_iso, mot_locales_table_ptr[i].iso_abbrev) == 0)
-			return &mot_locales_table_ptr[i];
+	for (i = 0; i < olympus_locales_table_size; i++)
+		if (strcmp(my_iso, olympus_locales_table_ptr[i].iso_abbrev) == 0)
+			return &olympus_locales_table_ptr[i];
 	/* return default configuration if no match found */
-	return &mot_locales_table_ptr[0];
+	return &olympus_locales_table_ptr[0];
  }
 
- int mot_wifi_reset(int on)
+ int olympus_wifi_reset(int on)
  {
 	pr_debug("%s:\n", __func__);
 	gpio_set_value(WLAN_RESET_GPIO, on);
@@ -200,35 +200,35 @@ static struct resource mot_wifi_resources[] = {
 	return 0;
  }
 
- int mot_wifi_get_mac_addr(unsigned char *buf)
+ int olympus_wifi_get_mac_addr(unsigned char *buf)
  {
 	if (!buf)
 		return -EINVAL;
 	pr_debug("%s\n", __func__);
-	memcpy(buf, mot_wlan_mac, sizeof(mot_wlan_mac));
+	memcpy(buf, olympus_wlan_mac, sizeof(olympus_wlan_mac));
 	return 0;
  }
 
- static struct wifi_platform_data mot_wifi_control = {
-	.set_power     = mot_wifi_power,
-	.set_reset      = mot_wifi_reset,
-	.set_carddetect = mot_wifi_set_carddetect,
-	.mem_prealloc   = mot_wifi_mem_prealloc,
-	.get_mac_addr   = mot_wifi_get_mac_addr,
-	.get_country_code = mot_wifi_get_country_code,
+ static struct wifi_platform_data olympus_wifi_control = {
+	.set_power     = olympus_wifi_power,
+	.set_reset      = olympus_wifi_reset,
+	.set_carddetect = olympus_wifi_set_carddetect,
+	.mem_prealloc   = olympus_wifi_mem_prealloc,
+	.get_mac_addr   = olympus_wifi_get_mac_addr,
+	.get_country_code = olympus_wifi_get_country_code,
  };
 
- static struct platform_device mot_wifi_device = {
+ static struct platform_device olympus_wifi_device = {
 	.name           = "bcm4329_wlan",
 	.id             = 1,
-	.num_resources  = ARRAY_SIZE(mot_wifi_resources),
-	.resource       = mot_wifi_resources,
+	.num_resources  = ARRAY_SIZE(olympus_wifi_resources),
+	.resource       = olympus_wifi_resources,
 	.dev            = {
-	.platform_data = &mot_wifi_control,
+	.platform_data = &olympus_wifi_control,
 	},
  };
 
- static int __init mot_wlan_gpio_init(void)
+ static int __init olympus_wlan_gpio_init(void)
  {
 	int ret = 0;
 	pr_debug("%s Enter\n", __func__);
@@ -272,11 +272,11 @@ static struct resource mot_wifi_resources[] = {
  {
 	int ret;
 	pr_debug("%s: start\n", __func__);
-	mot_wlan_gpio_init();
-	mot_init_wifi_mem();
-	mot_locales_table_ptr = olympus_locales_table;
-	mot_locales_table_size = ARRAY_SIZE(olympus_locales_table);
-	ret = platform_device_register(&mot_wifi_device);
+	olympus_wlan_gpio_init();
+	olympus_init_wifi_mem();
+	olympus_locales_table_ptr = olympus_locales_table;
+	olympus_locales_table_size = ARRAY_SIZE(olympus_locales_table);
+	ret = platform_device_register(&olympus_wifi_device);
 	wlan_ctrl_ready = (ret == 0);
 	return ret;
  }
@@ -323,7 +323,7 @@ static struct resource mot_wifi_resources[] = {
  }
  EXPORT_SYMBOL(bcm_wlan_get_irq);
 
- char *bcm_wlan_mac = mot_wlan_mac;
+ char *bcm_wlan_mac = olympus_wlan_mac;
  EXPORT_SYMBOL(bcm_wlan_mac);
 
 #endif /*  CONFIG_WIFI_CONTROL_EXPORT */
@@ -340,7 +340,7 @@ static struct resource mot_wifi_resources[] = {
 		wlan_mac_tag->addr[2], wlan_mac_tag->addr[3],
 		wlan_mac_tag->addr[4], wlan_mac_tag->addr[5]);
 
-	memcpy(mot_wlan_mac, wlan_mac_tag->addr, sizeof(mot_wlan_mac));
+	memcpy(olympus_wlan_mac, wlan_mac_tag->addr, sizeof(olympus_wlan_mac));
 
 	return 0;
  }

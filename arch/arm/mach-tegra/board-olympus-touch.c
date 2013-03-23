@@ -930,7 +930,7 @@ static int vkey_size_olympus_p_1_43[4][4] =
               {337,1024,87,76},    // KEY_BACK
               {472,1024,76,76}};  // KEY_SEARCH
 
-static ssize_t mot_virtual_keys_show(struct kobject *kobj,
+static ssize_t olympus_virtual_keys_show(struct kobject *kobj,
 					struct kobj_attribute *attr, char *buf)
 {
 	/* keys are specified by setting the x,y of the center, the width,
@@ -966,21 +966,21 @@ static ssize_t mot_virtual_keys_show(struct kobject *kobj,
 		return 0;
 };
 
-static struct kobj_attribute mot_virtual_keys_attr = {
+static struct kobj_attribute olympus_virtual_keys_attr = {
 	.attr = {
 		.name = "virtualkeys.qtouch-obp-ts",
 		.mode = S_IRUGO,
 	},
-	.show = &mot_virtual_keys_show,
+	.show = &olympus_virtual_keys_show,
 };
 
-static struct attribute *mot_properties_attrs[] = {
-	&mot_virtual_keys_attr.attr,
+static struct attribute *olympus_properties_attrs[] = {
+	&olympus_virtual_keys_attr.attr,
 	NULL,
 };
 
-static struct attribute_group mot_properties_attr_group = {
-	.attrs = mot_properties_attrs,
+static struct attribute_group olympus_properties_attr_group = {
+	.attrs = olympus_properties_attrs,
 };
 
 
@@ -1008,7 +1008,7 @@ void __init olympus_touch_init(void)
 	properties_kobj = kobject_create_and_add("board_properties", NULL);
 	if (properties_kobj)
 		ret = sysfs_create_group(properties_kobj,
-				 &mot_properties_attr_group);
+				 &olympus_properties_attr_group);
 	if (!properties_kobj || ret)
 		pr_err("failed to create board_properties\n");
 

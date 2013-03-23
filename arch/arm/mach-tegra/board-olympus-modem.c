@@ -25,17 +25,17 @@
 /*
  * Modem class control driver agent for MDM6600.
  */
-void (*mot_mdm_ctrl_agent_change)(int, int);
+void (*olympus_mdm_ctrl_agent_change)(int, int);
 
-int mot_mdm_ctrl_agent_register(void (*change)(int, int))
+int olympus_mdm_ctrl_agent_register(void (*change)(int, int))
 {
-	mot_mdm_ctrl_agent_change = change;
+	olympus_mdm_ctrl_agent_change = change;
 
 	return 0;
 }
 
 static struct mdm6600_agent_platform_data mdm6600_agent_platform_data = {
-	.mdm_ctrl_agent_register = mot_mdm_ctrl_agent_register
+	.mdm_ctrl_agent_register = olympus_mdm_ctrl_agent_register
 };
 
 static struct platform_device mdm6600_agent_platform_device = {
@@ -46,7 +46,7 @@ static struct platform_device mdm6600_agent_platform_device = {
 	},
 };
 
-static int __init mot_mdm6600_agent_init(void)
+static int __init olympus_mdm6600_agent_init(void)
 {
 	return platform_device_register(&mdm6600_agent_platform_device);
 }
@@ -68,7 +68,7 @@ static struct mdm_ctrl_peer_entry mdm_ctrl_peer[MDM_CTRL_MAX_PEERS];
 static unsigned int mdm_ctrl_peers = 0;
 static bool mdm_ctrl_state = true;
 
-int mot_mdm_ctrl_peer_register(void (*peer_startup)(void*),
+int olympus_mdm_ctrl_peer_register(void (*peer_startup)(void*),
                                void (*peer_shutdown)(void*),
                                void* peer_context)
 {
@@ -89,7 +89,7 @@ int mot_mdm_ctrl_peer_register(void (*peer_startup)(void*),
 	return 0;
 }
 
-static void mot_on_bp_startup(void)
+static void olympus_on_bp_startup(void)
 {
 	unsigned long flags;
 	int i;
@@ -109,7 +109,7 @@ static void mot_on_bp_startup(void)
 	spin_unlock_irqrestore(&mdm_ctrl_peer_lock, flags);
 }
 
-static void mot_on_bp_shutdown(void)
+static void olympus_on_bp_shutdown(void)
 {
 	unsigned long flags;
 	int i;
@@ -130,14 +130,14 @@ static void mot_on_bp_shutdown(void)
 }
 
 /* Some hacky glue between mdm_ctrl and the mdm6600 modem class driver. */
-static void mot_on_bp_change(int state, int status)
+static void olympus_on_bp_change(int state, int status)
 {
 	unsigned long flags;
 
 	spin_lock_irqsave(&mdm_ctrl_peer_lock, flags);
 
-	if (mot_mdm_ctrl_agent_change)
-		mot_mdm_ctrl_agent_change(state, status);
+	if (olympus_mdm_ctrl_agent_change)
+		olympus_mdm_ctrl_agent_change(state, status);
 
 	spin_unlock_irqrestore(&mdm_ctrl_peer_lock, flags);
 }
@@ -168,15 +168,15 @@ static struct platform_device mdm_ctrl_platform_device = {
 
 static const char mdm_ctrl_usb_regulator[] = "vusb_modem_flash";
 
-static int __init mot_mdm_ctrl_init(void)
+static int __init olympus_mdm_ctrl_init(void)
 {
 	int value;
 
 	spin_lock_init(&mdm_ctrl_peer_lock);
 
-	mdm_ctrl_platform_data.on_bp_startup = mot_on_bp_startup;
-	mdm_ctrl_platform_data.on_bp_shutdown = mot_on_bp_shutdown;
-	mdm_ctrl_platform_data.on_bp_change = mot_on_bp_change;
+	mdm_ctrl_platform_data.on_bp_startup = olympus_on_bp_startup;
+	mdm_ctrl_platform_data.on_bp_shutdown = olympus_on_bp_shutdown;
+	mdm_ctrl_platform_data.on_bp_change = olympus_on_bp_change;
 
 	if ((HWREV_TYPE_IS_FINAL(system_rev) ||
 			(HWREV_TYPE_IS_PORTABLE(system_rev) &&
@@ -265,7 +265,7 @@ struct mdm6600_spi_platform_data mdm6600_spi_platform_data = {
 	.gpio_mrdy = MDM6600_HOST_WAKE_GPIO,
 	.gpio_srdy = MDM6600_PEER_WAKE_GPIO,
 #ifdef CONFIG_MDM_CTRL
-	.peer_register = mot_mdm_ctrl_peer_register,
+	.peer_register = olympus_mdm_ctrl_peer_register,
 #endif
 };
 
@@ -281,7 +281,7 @@ struct spi_board_info tegra_spi_mdm6600_device[] __initdata = {
     },
 };
 
-static int __init mot_setup_mdm6600_spi_ipc(void)
+static int __init olympus_setup_mdm6600_spi_ipc(void)
 {
 	return spi_register_board_info(tegra_spi_mdm6600_device,
 				ARRAY_SIZE(tegra_spi_mdm6600_device));
@@ -306,7 +306,7 @@ static struct platform_device mdm6600_usb_platform_device = {
 	.num_resources = ARRAY_SIZE(mdm6600_resources),
 };
 
-static int __init mot_setup_mdm6600_usb_ipc(int irq)
+static int __init olympus_setup_mdm6600_usb_ipc(int irq)
 {
 	if (irq) {
 		gpio_request(irq, "mdm6600_usb_wakeup");
@@ -324,21 +324,21 @@ static int __init mot_setup_mdm6600_usb_ipc(int irq)
 
 #define WRIGLEY_HOST_WAKE_GPIO TEGRA_GPIO_PC7
 
-int __init mot_modem_init(void)
+int __init olympus_modem_init(void)
 {
 	char bp_ctrl_bus[40] = "UART";
 	char bp_data_bus[20] = "only";
 
 	if ( !(HWREV_TYPE_IS_MORTABLE(system_rev) && HWREV_REV(system_rev) <= HWREV_REV_1) ) {
 		strcat(bp_ctrl_bus, " (with mdm_ctrl)");
-		mot_mdm_ctrl_init();
-		mot_mdm6600_agent_init();
+		olympus_mdm_ctrl_init();
+		olympus_mdm6600_agent_init();
 	} else
 		strcat(bp_ctrl_bus, " (NO mdm_ctrl)");
 
 	strcpy(bp_data_bus, "and SPI");
-	mot_setup_mdm6600_spi_ipc();
-	mot_setup_mdm6600_usb_ipc(0);
+	olympus_setup_mdm6600_spi_ipc();
+	olympus_setup_mdm6600_usb_ipc(0);
 
 	/* All hardware at least has MDM6x00 at the moment. */
 	printk(KERN_INFO "%s: MDM6x00 on %s %s\n", __func__,

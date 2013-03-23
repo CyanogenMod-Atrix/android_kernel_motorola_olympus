@@ -33,13 +33,13 @@
 #include "gpio-names.h"
 #include "board-olympus.h"
 
-static int mot_boot_recovery = 0;
-static int __init mot_bm_recovery_setup(char *options)
+static int olympus_boot_recovery = 0;
+static int __init olympus_bm_recovery_setup(char *options)
 {
-       mot_boot_recovery = 1;
+       olympus_boot_recovery = 1;
        return 1;
 }
-__setup("rec", mot_bm_recovery_setup);
+__setup("rec", olympus_bm_recovery_setup);
 
 #define PRODUCT_TYPE_MAX_LEN 4
 static char product_type[PRODUCT_TYPE_MAX_LEN + 1] = "cw";
@@ -415,47 +415,47 @@ __tagtable(ATAG_NVIDIA, parse_tag_nvidia);
  * Security
  */
 
-static struct sec_platform_data mot_sec_platform_data;
-static struct platform_device mot_sec_platform_device = {
+static struct sec_platform_data olympus_sec_platform_data;
+static struct platform_device olympus_sec_platform_device = {
     .name          = "sec",
     .id            = 0,
     .dev =
     {
-        .platform_data = &mot_sec_platform_data,
+        .platform_data = &olympus_sec_platform_data,
     }
 };
 
-void mot_sec_init(void)
+void olympus_sec_init(void)
 {
-    	platform_device_register(&mot_sec_platform_device);
+    	platform_device_register(&olympus_sec_platform_device);
 }
 
 
 /*
  * TCMD
  */
-static struct tcmd_driver_platform_data mot_tcmd_platform_data;
-static struct platform_device mot_tcmd_platform_device = {
+static struct tcmd_driver_platform_data olympus_tcmd_platform_data;
+static struct platform_device olympus_tcmd_platform_device = {
     .name          = "tcmd_driver",
     .id            = 0,
     .dev = {
-		.platform_data = &mot_tcmd_platform_data,
+		.platform_data = &olympus_tcmd_platform_data,
     }
 };
 
-void mot_tcmd_init(void)
+void olympus_tcmd_init(void)
 {
-	mot_tcmd_platform_data.gpio_list[TCMD_GPIO_ISL29030_INT]
+	olympus_tcmd_platform_data.gpio_list[TCMD_GPIO_ISL29030_INT]
       = TEGRA_GPIO_PE1;
-	mot_tcmd_platform_data.gpio_list[TCMD_GPIO_KXTF9_INT]
+	olympus_tcmd_platform_data.gpio_list[TCMD_GPIO_KXTF9_INT]
       = TEGRA_GPIO_PV3;
-	mot_tcmd_platform_data.gpio_list[TCMD_GPIO_MMC_DETECT]
+	olympus_tcmd_platform_data.gpio_list[TCMD_GPIO_MMC_DETECT]
       = TEGRA_GPIO_PI5;
-	mot_tcmd_platform_data.gpio_list[TCMD_GPIO_INT_MAX_NUM]
+	olympus_tcmd_platform_data.gpio_list[TCMD_GPIO_INT_MAX_NUM]
       = -1;
-	mot_tcmd_platform_data.size = TCMD_GPIO_INT_MAX_NUM;
+	olympus_tcmd_platform_data.size = TCMD_GPIO_INT_MAX_NUM;
 
-	platform_device_register(&mot_tcmd_platform_device);
+	platform_device_register(&olympus_tcmd_platform_device);
 }
 
 /*
@@ -502,11 +502,11 @@ static int __init parse_tag_motorola(const struct tag *tag)
 	
     s_MotorolaFBInfo = moto_tag->allow_fb_open;
 
-/*    #ifdef CONFIG_MOT_ALLOW_FB_OPEN*/
+/*    #ifdef CONFIG_olympus_ALLOW_FB_OPEN*/
     s_MotorolaFBInfo = 1; // allow fb open for charger and bootmenu (minui)
 /*    #endif*/
  
-/*    mot_sec_platform_data.fl_factory = moto_tag->in_factory;*/
+/*    olympus_sec_platform_data.fl_factory = moto_tag->in_factory;*/
 
     bootloader_ver_major = moto_tag->bl_ver_major;
     bootloader_ver_minor = moto_tag->bl_ver_minor;
@@ -518,7 +518,7 @@ static int __init parse_tag_motorola(const struct tag *tag)
     pr_info("%s: uboot v%d.%d\n", __func__, uboot_ver_major, uboot_ver_minor);
     pr_info("%s: panel_size: 0x%x\n", __func__, s_MotorolaDispInfo);
     pr_info("%s: allow_fb_open: %x\n", __func__, s_MotorolaFBInfo);
-/*    pr_info("%s: factory: %d\n", __func__, mot_sec_platform_data.fl_factory);*/
+/*    pr_info("%s: factory: %d\n", __func__, olympus_sec_platform_data.fl_factory);*/
     pr_info("%s: cid_suspend_boot: %u\n", __func__, (unsigned)moto_tag->cid_suspend_boot);
 
     /*

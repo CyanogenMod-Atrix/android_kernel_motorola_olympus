@@ -15,291 +15,157 @@
  *
  */
 
-#include <linux/resource.h>
-#include <linux/platform_device.h>
-#include <linux/wlan_plat.h>
-#include <linux/delay.h>
-#include <linux/gpio.h>
+#include <linux/kernel.h>
+#include <linux/init.h>
 #include <linux/clk.h>
-#include <linux/err.h>
+#include <linux/console.h>
+#include <linux/delay.h>
+#include <linux/dma-mapping.h>
+#include <linux/fsl_devices.h>
+#include <linux/gpio.h>
+#include <linux/mtd/mtd.h>
+#include <linux/mtd/partitions.h>
+#include <linux/platform_device.h>
+#include <linux/platform_data/tegra_usb.h>
+#include <linux/pda_power.h>
+#include <linux/regulator/machine.h>
+#include <linux/reboot.h>
+#include <linux/serial_8250.h>
+#include <linux/i2c.h>
+#include <linux/i2c-tegra.h>
+#include <linux/spi-tegra.h>
+#include <linux/spi/spi.h>
+#include <linux/spi/cpcap.h>
+#include <linux/tegra_uart.h>
+#include <linux/nvhost.h>
+
+#include <linux/usb/composite.h>
+#include <linux/usb/gadget.h>
+#include <linux/usb/f_accessory.h>
+#include <linux/fsl_devices.h>
+
+#include <asm/mach/time.h>
+#include <asm/mach-types.h>
+
+#include <mach/clk.h>
+#include <mach/gpio.h>
+#include <mach/io.h>
+#include <mach/iomap.h>
+#include <mach/irqs.h>
+#include <mach/i2s.h>
+#include <mach/kbc.h>
+#include <mach/nand.h>
+#include <mach/pinmux.h>
+#include <mach/sdhci.h>
+#include <mach/w1.h>
+#include <mach/usb_phy.h>
+#include <mach/olympus_usb.h>
+#include <mach/nvmap.h>
+
+#include "clock.h"
+#include "devices.h"
+#include "gpio-names.h"
+#include "pm.h"
+#include "board.h"
+#include "hwrev.h"
+#include "board-olympus.h"
 #include <linux/mmc/host.h>
 
-#include <asm/mach-types.h>
-#include <mach/irqs.h>
-#include <mach/iomap.h>
-#include <mach/sdhci.h>
-
-#include "gpio-names.h"
-#include "board.h"
-
-#define OLYMPUS_WLAN_PWR	TEGRA_GPIO_PU3
-#define OLYMPUS_WLAN_RST	TEGRA_GPIO_PU2
-#define OLYMPUS_WLAN_WOW	TEGRA_GPIO_PU5
-
-#define OLYMPUS_EXT_SDCARD_DETECT	TEGRA_GPIO_PI5
-
-static void (*wifi_status_cb)(int card_present, void *dev_id);
-static void *wifi_status_cb_devid;
-
-static int olympus_wifi_status_register(
-		void (*sdhcicallback)(int card_present, void *dev_id),
-		void *dev_id)
-{
-	if (wifi_status_cb)
-		return -EAGAIN;
-	wifi_status_cb = sdhcicallback;
-	wifi_status_cb_devid = dev_id;
-	return 0;
-}
-
-static int olympus_wifi_set_carddetect(int val)
-{
-	pr_debug("%s: %d\n", __func__, val);
-	if (wifi_status_cb)
-		wifi_status_cb(val, wifi_status_cb_devid);
-	else
-		pr_warning("%s: Nobody to notify\n", __func__);
-	return 0;
-}
-
-static int olympus_wifi_power(int on)
-{
-	gpio_set_value(OLYMPUS_WLAN_PWR, on);
-	mdelay(100);
-	gpio_set_value(OLYMPUS_WLAN_RST, on);
-	mdelay(200);
-
-	return 0;
-}
-
-static int olympus_wifi_reset(int on)
-{
-//	pr_debug("%s: do nothing\n", __func__);
-	pr_debug("%s:\n", __func__);
-	gpio_set_value(OLYMPUS_WLAN_RST, on);
-	mdelay(100);
-	return 0;
-}
-
-
-static struct wifi_platform_data olympus_wifi_control = {
-	.set_power      = olympus_wifi_power,
-	.set_reset      = olympus_wifi_reset,
-	.set_carddetect = olympus_wifi_set_carddetect,
-};
-
-static struct resource wifi_resource[] = {
-	[0] = {
-		.name	= "bcm4329_wlan_irq",
-		.start	= TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PU5),
-		.end	= TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PU5),
-		.flags	= IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHLEVEL | IORESOURCE_IRQ_SHAREABLE,
-	},
-};
-
-static struct platform_device olympus_wifi_device = {
-	.name           = "bcm4329_wlan",
-	.id             = 1,
-	.num_resources	= 1,
-	.resource	= wifi_resource,
-	.dev            = {
-		.platform_data = &olympus_wifi_control,
-	},
-};
-
-static struct resource sdhci_resource1[] = {
-	[0] = {
-		.start  = INT_SDMMC1,
-		.end    = INT_SDMMC1,
-		.flags  = IORESOURCE_IRQ,
-	},
-	[1] = {
-		.start	= TEGRA_SDMMC1_BASE,
-		.end	= TEGRA_SDMMC1_BASE + TEGRA_SDMMC1_SIZE-1,
-		.flags	= IORESOURCE_MEM,
-	},
-};
-
-
-static struct resource sdhci_resource3[] = {
-	[0] = {
-		.start  = INT_SDMMC3,
-		.end    = INT_SDMMC3,
-		.flags  = IORESOURCE_IRQ,
-	},
-	[1] = {
-		.start	= TEGRA_SDMMC3_BASE,
-		.end	= TEGRA_SDMMC3_BASE + TEGRA_SDMMC3_SIZE-1,
-		.flags	= IORESOURCE_MEM,
-	},
-};
-
-static struct resource sdhci_resource4[] = {
-	[0] = {
-		.start  = INT_SDMMC4,
-		.end    = INT_SDMMC4,
-		.flags  = IORESOURCE_IRQ,
-	},
-	[1] = {
-		.start	= TEGRA_SDMMC4_BASE,
-		.end	= TEGRA_SDMMC4_BASE + TEGRA_SDMMC4_SIZE-1,
-		.flags	= IORESOURCE_MEM,
-	},
-};
-
-#ifdef CONFIG_MMC_EMBEDDED_SDIO
-static struct embedded_sdio_data embedded_sdio_data1 = {
-	.cccr   = {
-		.sdio_vsn       = 2,
-		.multi_block    = 1,
-		.low_speed      = 0,
-		.wide_bus       = 0,
-		.high_power     = 1,
-		.high_speed     = 1,
-	},
-	.cis  = {
-		.vendor         = 0x02d0,
-		.device         = 0x4329,
-	},
-};
+#ifdef CONFIG_USB_G_ANDROID
+#include <linux/usb/android_composite.h>
 #endif
 
-static struct tegra_sdhci_platform_data tegra_sdhci_platform_data1 = {
-	.mmc_data = {
-		.register_status_notify	= olympus_wifi_status_register,
-#ifdef CONFIG_MMC_EMBEDDED_SDIO
-		.embedded_sdio = &embedded_sdio_data1,
-#endif
-		.built_in = 0,
-		.ocr_mask = MMC_OCR_1V8_MASK,
-	},
-#ifndef CONFIG_MMC_EMBEDDED_SDIO
-	.pm_flags = MMC_PM_KEEP_POWER,
-#endif
-	.cd_gpio = -1,
-	.wp_gpio = -1,
-	.power_gpio = -1,
-	.max_clk_limit = 50000000,
-};
-
-static struct tegra_sdhci_platform_data tegra_sdhci_platform_data3 = {
-	.cd_gpio = OLYMPUS_EXT_SDCARD_DETECT,
-	.wp_gpio = -1,
-	.power_gpio = -1,
-	.max_clk_limit = 50000000,
-};
-
-static struct tegra_sdhci_platform_data tegra_sdhci_platform_data4 = {
-	.cd_gpio = -1,
-	.wp_gpio = -1,
-	.power_gpio = -1,
-	.mmc_data = {
-		.built_in = 1,
-	},
-	.is_8bit = 1,
-	.max_clk_limit = 50000000,
-};
-
-static struct platform_device tegra_sdhci_device1 = {
-	.name		= "sdhci-tegra",
-	.id		= 1,
-	.resource	= sdhci_resource1,
-	.num_resources	= ARRAY_SIZE(sdhci_resource1),
-	.dev = {
-		.platform_data = &tegra_sdhci_platform_data1,
-	},
-};
-
-static struct platform_device tegra_sdhci_device3 = {
-	.name		= "sdhci-tegra",
-	.id		= 2,
-	.resource	= sdhci_resource2,
-	.num_resources	= ARRAY_SIZE(sdhci_resource2),
-	.dev = {
-		.platform_data = &tegra_sdhci_platform_data2,
-	},
-};
-
-static struct platform_device tegra_sdhci_device4 = {
-	.name		= "sdhci-tegra",
-	.id		= 3,
-	.resource	= sdhci_resource3,
-	.num_resources	= ARRAY_SIZE(sdhci_resource3),
-	.dev = {
-		.platform_data = &tegra_sdhci_platform_data3,
-	},
-};
+/*
+ * SDHCI init
+ */
 
 extern struct tegra_nand_platform tegra_nand_plat;
 
-#ifdef CONFIG_TEGRA_PREPOWER_WIFI
-static int __init olympus_wifi_prepower(void)
+static struct tegra_sdhci_platform_data olympus_sdhci_platform[] = {
+	[0] = { /* SDHCI 1 - WIFI*/
+		.mmc_data = {
+			.built_in = 1,
+		},
+		.wp_gpio = -1,
+		.cd_gpio = -1,
+		.power_gpio = -1,
+		.max_clk_limit = 50000000,
+	},
+	[1] = {
+
+	},
+	[2] = {
+		.mmc_data = {
+			.built_in = 0,
+			.card_present = 0,
+		},
+		.wp_gpio = -1,
+		.cd_gpio = 69,
+		.power_gpio = -1,
+		.max_clk_limit = 50000000,
+	},
+	[3] = {
+		.mmc_data = {
+			.built_in = 1,
+		},
+		.wp_gpio = -1,
+		.cd_gpio = -1,
+		.power_gpio = -1,
+		.is_8bit = 1,
+		.max_clk_limit = 50000000,
+	},
+};
+
+static const char tegra_sdio_ext_reg_str[] = "vsdio_ext";
+int tegra_sdhci_boot_device = -1;
+
+void __init olympus_sdhci_init(void)
 {
+	int i;
 
-	olympus_wifi_power(1);
+	printk(KERN_INFO "pICS_%s: Starting...",__func__);
 
-	return 0;
-}
+	tegra_sdhci_device1.dev.platform_data = &olympus_sdhci_platform[0];
+	tegra_sdhci_device3.dev.platform_data = &olympus_sdhci_platform[2];
+	tegra_sdhci_device4.dev.platform_data = &olympus_sdhci_platform[3];
 
-subsys_initcall_sync(olympus_wifi_prepower);
-#endif
+	/* Olympus P3+, Etna P2+, Etna S3+, Daytona and Sunfire
+	   can handle shutting down the external SD card. */
+	if ( (HWREV_TYPE_IS_FINAL(system_rev) || (HWREV_TYPE_IS_PORTABLE(system_rev) && (HWREV_REV(system_rev) >= HWREV_REV_3)))) 			{
+	/*	olympus_sdhci_platform[2].regulator_str = (char *)tegra_sdio_ext_reg_str;*/
+		}
 
-static int __init olympus_wifi_init(void)
-{
+		/* check if an "MBR" partition was parsed from the tegra partition
+		 * command line, and store it in sdhci.3's offset field */
 
-	tegra_gpio_enable(OLYMPUS_WLAN_PWR);
-	ret = gpio_request(OLYMPUS_WLAN_PWR, "wlan_power");
-	if (ret)
-		pr_err("%s: Err %d gpio_reqest wlan_power\n", __func__, ret);
-	 else
-		ret = gpio_direction_output(OLYMPUS_WLAN_PWR, 0);
-	if (ret) {
-		pr_err("%s: Err %d gpio_direction wlan_power\n", __func__, ret);
-		return -1;
-	}
-
-	tegra_gpio_enable(WLAN_RESET_GPIO);
-	ret = gpio_request(WLAN_RESET_GPIO, "wlan_rst");
-	if (ret)
-		pr_err("%s: %d gpio_reqest wlan_rst\n", __func__, ret);
-	else
-		ret = gpio_direction_output(WLAN_RESET_GPIO, 0);
-	if (ret) {
-		pr_err("%s: Err %d gpio_direction wlan_rst\n", __func__, ret);
-		return -1;
-	}
-
-	tegra_gpio_enable(OLYMPUS_WLAN_WOW);
-	ret = gpio_request(OLYMPUS_WLAN_WOW, "bcmsdh_sdmmc");
-	if (ret)
-		pr_err("%s: Error (%d) - gpio_reqest bcmsdh_sdmmc\n", __func__, ret);
-	else
-		ret = gpio_direction_input(OLYMPUS_WLAN_WOW);
-	if (ret) {
-		pr_err("%s: Err %d gpio_direction bcmsdh_sdmmc\n", __func__, ret);
-		return -1;
-	}
-
-	gpio_direction_output(OLYMPUS_WLAN_PWR, 0);
-	gpio_direction_output(OLYMPUS_WLAN_RST, 0);
-	gpio_direction_input(OLYMPUS_WLAN_WOW);
-
-	platform_device_register(&olympus_wifi_device);
-	return 0;
-}
-int __init olympus_sdhci_init(void)
-{
 	for (i=0; i<tegra_nand_plat.nr_parts; i++) {
 		if (strcmp("mbr", tegra_nand_plat.parts[i].name))
 			continue;
-		tegra_sdhci_platform_data4.startoffset = tegra_nand_plat.parts[i].offset;
+		olympus_sdhci_platform[3].startoffset = tegra_nand_plat.parts[i].offset;
 		printk(KERN_INFO "pICS_%s: tegra_sdhci_boot_device plat->offset = 0x%llx ",__func__, tegra_nand_plat.parts[i].offset);		
-	}
+		}
 
 	platform_device_register(&tegra_sdhci_device4);
 	platform_device_register(&tegra_sdhci_device1);
 	platform_device_register(&tegra_sdhci_device3);
+}
 
-	olympus_wifi_init();
-	return 0;
+void tegra_system_power_off(void)
+{
+	struct regulator *regulator = regulator_get(NULL, "soc_main");
+
+	if (!IS_ERR(regulator)) {
+		int rc;
+		regulator_enable(regulator);
+		rc = regulator_disable(regulator);
+		pr_err("%s: regulator_disable returned %d\n", __func__, rc);
+	} else {
+		pr_err("%s: regulator_get returned %ld\n", __func__,
+		       PTR_ERR(regulator));
+	}
+	local_irq_disable();
+	while (1) {
+		dsb();
+		__asm__ ("wfi");
+	}
 }

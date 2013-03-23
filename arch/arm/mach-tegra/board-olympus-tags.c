@@ -370,7 +370,7 @@ static int __init parse_tag_motorola(const struct tag *tag)
 	
     s_MotorolaFBInfo = moto_tag->allow_fb_open;
  
-/*   mot_sec_platform_data.fl_factory = moto_tag->in_factory;*/
+/*   olympus_sec_platform_data.fl_factory = moto_tag->in_factory;*/
 
     bootloader_ver_major = moto_tag->bl_ver_major;
     bootloader_ver_minor = moto_tag->bl_ver_minor;
@@ -383,7 +383,7 @@ static int __init parse_tag_motorola(const struct tag *tag)
     pr_info("%s: uboot v%d.%d\n", __func__, uboot_ver_major, uboot_ver_minor);
     pr_info("%s: panel_size: 0x%x\n", __func__, s_MotorolaDispInfo);
     pr_info("%s: allow_fb_open: %x\n", __func__, s_MotorolaFBInfo);
-/*    pr_info("%s: factory: %d\n", __func__, mot_sec_platform_data.fl_factory);*/
+/*    pr_info("%s: factory: %d\n", __func__, olympus_sec_platform_data.fl_factory);*/
     pr_info("%s: cid_suspend_boot: %u\n", __func__, (unsigned)moto_tag->cid_suspend_boot);
 
     /*
@@ -418,7 +418,7 @@ __tagtable(ATAG_BLDEBUG, parse_tag_bldebug);
   * Parse the WLAN MAC ATAG
   */
 
-char mot_wlan_mac[6] = {0x00, 0x90, 0xC3, 0x00, 0x00, 0x00};
+char olympus_wlan_mac[6] = {0x00, 0x90, 0xC3, 0x00, 0x00, 0x00};
 
  static int __init parse_tag_wlan_mac(const struct tag *tag)
  {
@@ -429,7 +429,7 @@ char mot_wlan_mac[6] = {0x00, 0x90, 0xC3, 0x00, 0x00, 0x00};
 		wlan_mac_tag->addr[2], wlan_mac_tag->addr[3],
 		wlan_mac_tag->addr[4], wlan_mac_tag->addr[5]);
 
-	memcpy(mot_wlan_mac, wlan_mac_tag->addr, sizeof(mot_wlan_mac));
+	memcpy(olympus_wlan_mac, wlan_mac_tag->addr, sizeof(olympus_wlan_mac));
 
 	return 0;
  }
