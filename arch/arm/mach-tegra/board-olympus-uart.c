@@ -21,28 +21,13 @@
 #include <linux/console.h>
 #include <linux/delay.h>
 #include <linux/dma-mapping.h>
-#include <linux/fsl_devices.h>
 #include <linux/gpio.h>
-#include <linux/mtd/mtd.h>
-#include <linux/mtd/partitions.h>
 #include <linux/platform_device.h>
-#include <linux/platform_data/tegra_usb.h>
 #include <linux/pda_power.h>
 #include <linux/regulator/machine.h>
 #include <linux/reboot.h>
 #include <linux/serial_8250.h>
-#include <linux/i2c.h>
-#include <linux/i2c-tegra.h>
-#include <linux/spi-tegra.h>
-#include <linux/spi/spi.h>
-#include <linux/spi/cpcap.h>
 #include <linux/tegra_uart.h>
-#include <linux/nvhost.h>
-
-#include <linux/usb/composite.h>
-#include <linux/usb/gadget.h>
-#include <linux/usb/f_accessory.h>
-#include <linux/fsl_devices.h>
 
 #include <asm/mach/time.h>
 #include <asm/mach-types.h>
@@ -53,14 +38,6 @@
 #include <mach/iomap.h>
 #include <mach/irqs.h>
 #include <mach/i2s.h>
-#include <mach/kbc.h>
-#include <mach/nand.h>
-#include <mach/pinmux.h>
-#include <mach/sdhci.h>
-#include <mach/w1.h>
-#include <mach/usb_phy.h>
-#include <mach/olympus_usb.h>
-#include <mach/nvmap.h>
 
 #include "clock.h"
 #include "devices.h"
@@ -69,11 +46,6 @@
 #include "board.h"
 #include "hwrev.h"
 #include "board-olympus.h"
-#include <linux/mmc/host.h>
-
-#ifdef CONFIG_USB_G_ANDROID
-#include <linux/usb/android_composite.h>
-#endif
 
 static struct plat_serial8250_port debug_uart_platform_data[] = {
 	{
@@ -144,6 +116,16 @@ static void __init uart_debug_init(void)
 	}
 }
 
+static struct tegra_uart_platform_data ipc_olympus_pdata = 
+{
+	.uart_ipc = 1,
+	.uart_wake_host = TEGRA_GPIO_PA0,
+	.uart_wake_request = TEGRA_GPIO_PF1,
+#ifdef CONFIG_MDM_CTRL
+	.peer_register = olympus_mdm_ctrl_peer_register,
+#endif
+};
+
 void __init olympus_uart_init(void)
 {
 	int i;
@@ -162,10 +144,14 @@ void __init olympus_uart_init(void)
 	olympus_uart_pdata.parent_clk_list = uart_parent_clk;
 	olympus_uart_pdata.parent_clk_count = ARRAY_SIZE(uart_parent_clk);
 
+	ipc_olympus_pdata.parent_clk_list = uart_parent_clk;
+	ipc_olympus_pdata.parent_clk_count = ARRAY_SIZE(uart_parent_clk);
+
 	tegra_uarta_device.dev.platform_data = &olympus_uart_pdata;
 	tegra_uartb_device.dev.platform_data = &olympus_uart_pdata;
 	tegra_uartc_device.dev.platform_data = &olympus_uart_pdata;
-        tegra_uartd_device.dev.platform_data = &olympus_uart_pdata;
+	tegra_uartd_device.dev.platform_data = &ipc_olympus_pdata;
+//        tegra_uartd_device.dev.platform_data = &olympus_uart_pdata;
 
 	if (!is_tegra_debug_uartport_hs())
 		uart_debug_init();

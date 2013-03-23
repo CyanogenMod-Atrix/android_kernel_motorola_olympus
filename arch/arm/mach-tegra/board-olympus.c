@@ -475,25 +475,31 @@ static void __init tegra_olympus_init(void)
 
 	olympus_pinmux_init();
 
+	olympus_i2c_init();
+
+	olympus_uart_init();
+
+	olympus_spi_init();
+
 	olympus_devices_init();
 
 	olympus_power_init();
 	
+	olympus_sdhci_init();
+
 	olympus_tcmd_init();
 
 //	olympus_sec_init();
 
 	olympus_panel_init();
 
-//	olympus_keymap_update_init();
-
-	//olympus_keypad_init();
-
 	olympus_backlight_init();
 
 	olympus_kbc_init();
 
 	olympus_touch_init();
+
+	olympus_usb_init();
 
 	if( (bi_powerup_reason() & PWRUP_FACTORY_CABLE) &&
 	    (bi_powerup_reason() != PWRUP_INVALID) ){

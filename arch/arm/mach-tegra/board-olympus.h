@@ -36,15 +36,17 @@ extern int olympus_keymap_update_init(void);
 
 extern void cpcap_set_dock_switch(int state);
 
-void olympus_usb_init(void);
+void __init olympus_usb_init(void);
 
 void __init olympus_uart_init(void);
 
 void __init olympus_sdhci_init(void);
 
-void tegra_system_power_off(void);
+void __init olympus_i2c_init(void);
 
-void olympus_i2c_reg(void);
+void __init olympus_spi_init(void);
+
+void tegra_system_power_off(void);
 
 #define SERIAL_NUMBER_STRING_LEN 17
 

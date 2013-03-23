@@ -21,28 +21,11 @@
 #include <linux/console.h>
 #include <linux/delay.h>
 #include <linux/dma-mapping.h>
-#include <linux/fsl_devices.h>
 #include <linux/gpio.h>
-#include <linux/mtd/mtd.h>
-#include <linux/mtd/partitions.h>
 #include <linux/platform_device.h>
-#include <linux/platform_data/tegra_usb.h>
-#include <linux/pda_power.h>
-#include <linux/regulator/machine.h>
 #include <linux/reboot.h>
-#include <linux/serial_8250.h>
 #include <linux/i2c.h>
 #include <linux/i2c-tegra.h>
-#include <linux/spi-tegra.h>
-#include <linux/spi/spi.h>
-#include <linux/spi/cpcap.h>
-#include <linux/tegra_uart.h>
-#include <linux/nvhost.h>
-
-#include <linux/usb/composite.h>
-#include <linux/usb/gadget.h>
-#include <linux/usb/f_accessory.h>
-#include <linux/fsl_devices.h>
 
 #include <asm/mach/time.h>
 #include <asm/mach-types.h>
@@ -52,15 +35,6 @@
 #include <mach/io.h>
 #include <mach/iomap.h>
 #include <mach/irqs.h>
-#include <mach/i2s.h>
-#include <mach/kbc.h>
-#include <mach/nand.h>
-#include <mach/pinmux.h>
-#include <mach/sdhci.h>
-#include <mach/w1.h>
-#include <mach/usb_phy.h>
-#include <mach/olympus_usb.h>
-#include <mach/nvmap.h>
 
 #include "clock.h"
 #include "devices.h"
@@ -69,11 +43,6 @@
 #include "board.h"
 #include "hwrev.h"
 #include "board-olympus.h"
-#include <linux/mmc/host.h>
-
-#ifdef CONFIG_USB_G_ANDROID
-#include <linux/usb/android_composite.h>
-#endif
 
 static struct tegra_i2c_platform_data olympus_i2c1_platform_data = {
 	.adapter_nr	= 0,
@@ -111,7 +80,7 @@ static struct tegra_i2c_platform_data olympus_dvc_platform_data = {
 	.arb_recovery = arb_lost_recovery,
 };
 
-void olympus_i2c_reg(void)
+void olympus_i2c_init(void)
 {
 	tegra_i2c_device1.dev.platform_data = &olympus_i2c1_platform_data;
 	tegra_i2c_device2.dev.platform_data = &olympus_i2c2_platform_data;
