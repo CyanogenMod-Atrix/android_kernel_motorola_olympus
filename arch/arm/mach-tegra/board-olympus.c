@@ -53,13 +53,6 @@
 #include "gpio-names.h"
 #include "pm.h"
 
-#include <linux/qtouch_obp_ts.h>
-#if 0
-#include <linux/isl29030.h>
-
-#include <linux/leds-lm3530.h>
-#include <linux/leds-lm3532.h>
-#endif
 #include "board.h"
 #include "hwrev.h"
 
@@ -481,6 +474,8 @@ static void __init tegra_olympus_init(void)
 
 	olympus_spi_init();
 
+	olympus_audio_init();
+
 	olympus_devices_init();
 
 	olympus_power_init();
@@ -551,7 +546,7 @@ if (1==0) olympus_emc_init();
 			}
 		}
 	
-	tegra_release_bootloader_fb();	
+	//tegra_release_bootloader_fb();	
 }
 
 static void __init olympus_fixup(struct machine_desc *desc, struct tag *tags,
@@ -610,7 +605,7 @@ static void __init olympus_fixup(struct machine_desc *desc, struct tag *tags,
 
 int __init olympus_protected_aperture_init(void)
 {
-	//tegra_protected_aperture_init(tegra_grhost_aperture);
+	tegra_protected_aperture_init(tegra_grhost_aperture);
 	return 0;
 }
 late_initcall(olympus_protected_aperture_init);
@@ -622,8 +617,8 @@ void __init tegra_olympus_reserve(void)
 	if (memblock_reserve(0x0, 4096) < 0)
 		pr_warn("Cannot reserve first 4K of memory for safety\n");
 
-	tegra_reserve(SZ_128M+SZ_64M, SZ_8M, SZ_16M);
-	tegra_ram_console_debug_reserve(SZ_1M);
+	tegra_reserve(SZ_128M, SZ_8M, SZ_8M);
+	//tegra_ram_console_debug_reserve(SZ_1M);
 
 }
 

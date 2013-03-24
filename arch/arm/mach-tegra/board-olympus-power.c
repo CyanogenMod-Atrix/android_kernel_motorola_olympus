@@ -1032,8 +1032,8 @@ struct cpcap_platform_data tegra_cpcap_data =
 		(CPCAP_HWCFG1_SEC_STBY_VWLAN1 |    /* WLAN1 may be reset in olympus_setup_power(). */
 		 CPCAP_HWCFG1_SEC_STBY_VSIMCARD)},
 	.spdif_gpio = TEGRA_GPIO_PD4,
-//	.uartmux = 1,
-//	.usbmux_gpio = TEGRA_GPIO_PV6,
+	.uartmux = 1,
+	.usbmux_gpio = TEGRA_GPIO_PV6,
 };
 
 struct regulator_consumer_supply fixed_sdio_en_consumers[] = {
@@ -1071,10 +1071,6 @@ static struct platform_device fixed_regulator_devices[] = {
 
 struct tegra_spi_device_controller_data olympus_spi_tegra_data = {
 	.is_hw_based_cs = 0,
-/*
-	.cs_setup_clk_count = 7,
-	.cs_hold_clk_count = 0x1F,
-*/
 };
 
 struct spi_board_info tegra_spi_devices[] __initdata = {
@@ -1149,21 +1145,13 @@ void __init olympus_suspend_init(void)
 {
 
 	tegra_pm_irq_set_wake_type(tegra_wake_to_irq(TEGRA_WAKE_GPIO_PL1), WAKE_LOW);
-//	tegra_pm_irq_set_wake(tegra_wake_to_irq(TEGRA_WAKE_GPIO_PL1), 1);
-
 	tegra_pm_irq_set_wake_type(tegra_wake_to_irq(TEGRA_WAKE_GPIO_PA0), WAKE_HI);
-//	tegra_pm_irq_set_wake(tegra_wake_to_irq(TEGRA_WAKE_GPIO_PA0), 1);
 	tegra_pm_irq_set_wake_type(tegra_wake_to_irq(TEGRA_WAKE_KBC_EVENT), WAKE_HI);
-//	tegra_pm_irq_set_wake(tegra_wake_to_irq(TEGRA_WAKE_KBC_EVENT), 1);
 	tegra_pm_irq_set_wake_type(tegra_wake_to_irq(TEGRA_WAKE_PWR_INT), WAKE_HI);
-//	tegra_pm_irq_set_wake(tegra_wake_to_irq(TEGRA_WAKE_PWR_INT), 1);
 
 	tegra_pm_irq_set_wake_type(tegra_wake_to_irq(TEGRA_WAKE_GPIO_PU5), WAKE_ANY);
-//	tegra_pm_irq_set_wake(tegra_wake_to_irq(TEGRA_WAKE_GPIO_PU5), 1);
 	tegra_pm_irq_set_wake_type(tegra_wake_to_irq(TEGRA_WAKE_GPIO_PU6), WAKE_ANY);
-//	tegra_pm_irq_set_wake(tegra_wake_to_irq(TEGRA_WAKE_GPIO_PU6), 1);
 	tegra_pm_irq_set_wake_type(tegra_wake_to_irq(TEGRA_WAKE_GPIO_PV2), WAKE_ANY);
-//	tegra_pm_irq_set_wake(tegra_wake_to_irq(TEGRA_WAKE_GPIO_PV2), 1);
 	
 	tegra_init_suspend(&olympus_suspend_data);
 }
@@ -1173,7 +1161,6 @@ static void get_cpcap_audio_data(void)
         static struct cpcap_audio_pdata data;
         cpcap_audio_device.dev.platform_data = (void *)&data;
 
-        /* read modem-type from device tree to setup data.voice_type */
         printk("CPCAP audio  init \n");
         data.voice_type = VOICE_TYPE_QC;
         data.stereo_loudspeaker = 0;
@@ -1191,8 +1178,6 @@ void __init olympus_power_init(void)
 	int error;
 	unsigned long pmc_cntrl_0;
 
-	//printk(KERN_INFO "pICS_%s: step in...\n",__func__);
-
 	/* Enable CORE_PWR_REQ signal from T20. The signal must be enabled
 	 * before the CPCAP uC firmware is started. */
 	pmc_cntrl_0 = readl(IO_ADDRESS(TEGRA_PMC_BASE));
@@ -1203,10 +1188,10 @@ void __init olympus_power_init(void)
 	gpio_request(154, "usb_host_pwr_en");
 	gpio_direction_output(154,0);
 
-	tegra_gpio_enable(174);
+/*	tegra_gpio_enable(174);
 	gpio_request(174, "usb_host_pwr_en");
 	gpio_direction_output(174,0);
-	gpio_set_value(174,1);
+	gpio_set_value(174,1);*/
 
 	/* CPCAP standby lines connected to CPCAP GPIOs on Etna P1B & Olympus P2 */
 	if ( HWREV_TYPE_IS_FINAL(system_rev) ||

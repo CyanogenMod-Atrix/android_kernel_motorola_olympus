@@ -873,30 +873,38 @@ void __init tegra_reserve(unsigned long carveout_size, unsigned long fb_size,
 	}
 
 	pr_info("Tegra reserved memory:\n"
-		"LP0:                    %08lx - %08lx\n"
-		"Bootloader framebuffer: %08lx - %08lx\n"
-		"Framebuffer:            %08lx - %08lx\n"
-		"2nd Framebuffer:        %08lx - %08lx\n"
-		"Carveout:               %08lx - %08lx\n"
-		"Vpr:                    %08lx - %08lx\n",
+		"LP0:                    %08lx - %08lx (%4ld kB)\n"
+		"Bootloader framebuffer: %08lx - %08lx (%4ld MB)\n"
+		"Framebuffer:            %08lx - %08lx (%4ld MB)\n"
+		"2nd Framebuffer:        %08lx - %08lx (%4ld MB)\n"
+		"Carveout:               %08lx - %08lx (%4ld MB)\n"
+		"Vpr:                    %08lx - %08lx (%4ld kB)\n"
+		"Graphics Aperture:      %08lx\n",
 		tegra_lp0_vec_start,
 		tegra_lp0_vec_size ?
 			tegra_lp0_vec_start + tegra_lp0_vec_size - 1 : 0,
+		tegra_lp0_vec_size >> 10,
 		tegra_bootloader_fb_start,
 		tegra_bootloader_fb_size ?
 			tegra_bootloader_fb_start + tegra_bootloader_fb_size - 1 : 0,
+		tegra_bootloader_fb_size >> 20,
 		tegra_fb_start,
 		tegra_fb_size ?
 			tegra_fb_start + tegra_fb_size - 1 : 0,
+		tegra_fb_size >> 20,
 		tegra_fb2_start,
 		tegra_fb2_size ?
 			tegra_fb2_start + tegra_fb2_size - 1 : 0,
+		tegra_fb2_size >> 20,
 		tegra_carveout_start,
 		tegra_carveout_size ?
 			tegra_carveout_start + tegra_carveout_size - 1 : 0,
+		tegra_carveout_size >> 20,
 		tegra_vpr_start,
 		tegra_vpr_size ?
-			tegra_vpr_start + tegra_vpr_size - 1 : 0);
+			tegra_vpr_start + tegra_vpr_size - 1 : 0,
+		tegra_vpr_size >> 10,
+		tegra_grhost_aperture);
 }
 
 static struct resource ram_console_resources[] = {

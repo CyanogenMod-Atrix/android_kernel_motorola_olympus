@@ -91,7 +91,7 @@ void __init olympus_spi_init(void)
 	tegra_spi_device3.dev.platform_data = &olympus_spi_pdata;
 	tegra_spi_device4.dev.platform_data = &olympus_spi_pdata;
 */
-	platform_device_register(&tegra_spi_device1);
+//	platform_device_register(&tegra_spi_slave_device1);
 	platform_device_register(&tegra_spi_device2);
 	platform_device_register(&tegra_spi_device3);
 	platform_device_register(&tegra_spi_device4);

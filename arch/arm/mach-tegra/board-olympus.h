@@ -5,6 +5,7 @@
 
 extern int __init olympus_kbc_init(void);
 extern void __init olympus_pinmux_init(void);
+extern void __init olympus_audio_init(void);
 extern int __init olympus_panel_init(void);
 extern void __init olympus_emc_init(void);
 extern void __init olympus_devices_init(void);

@@ -30,14 +30,7 @@
 #include <linux/pda_power.h>
 #include <linux/regulator/machine.h>
 #include <linux/reboot.h>
-#include <linux/serial_8250.h>
-#include <linux/i2c.h>
-#include <linux/i2c-tegra.h>
-#include <linux/spi-tegra.h>
-#include <linux/spi/spi.h>
 #include <linux/spi/cpcap.h>
-#include <linux/tegra_uart.h>
-#include <linux/nvhost.h>
 
 #include <linux/usb/composite.h>
 #include <linux/usb/gadget.h>
@@ -52,15 +45,8 @@
 #include <mach/io.h>
 #include <mach/iomap.h>
 #include <mach/irqs.h>
-#include <mach/i2s.h>
-#include <mach/kbc.h>
-#include <mach/nand.h>
-#include <mach/pinmux.h>
-#include <mach/sdhci.h>
-#include <mach/w1.h>
 #include <mach/usb_phy.h>
 #include <mach/olympus_usb.h>
-#include <mach/nvmap.h>
 
 #include "clock.h"
 #include "devices.h"
@@ -69,7 +55,6 @@
 #include "board.h"
 #include "hwrev.h"
 #include "board-olympus.h"
-#include <linux/mmc/host.h>
 
 #ifdef CONFIG_USB_G_ANDROID
 #include <linux/usb/android_composite.h>

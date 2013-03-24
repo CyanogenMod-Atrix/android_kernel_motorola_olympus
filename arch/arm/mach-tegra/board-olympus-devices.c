@@ -60,11 +60,6 @@ static struct platform_device olympus_touch_xmegat = {
 	.id = -1,
 };
 
-static struct platform_device olympus_codec_cpcap = {
-	.name   = "cpcap_audio",
-        .id             = 0,
-};
-
 static struct platform_device *olympus_devices[] __initdata = {
 	&tegra_pmu_device,
 	&tegra_gart_device,
@@ -72,13 +67,6 @@ static struct platform_device *olympus_devices[] __initdata = {
 	&tegra_pwfm1_device,
 	&tegra_avp_device,
 	&tegra_camera,
-	&tegra_i2s_device1,
-	&tegra_i2s_device2,
-	&tegra_das_device,
-	&tegra_pcm_device,
-	&tegra_spdif_device,
-	&olympus_codec_cpcap,
-	&spdif_dit_device,
 	&olympus_touch_xmegat,
 };
 
