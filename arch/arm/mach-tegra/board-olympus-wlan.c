@@ -153,9 +153,20 @@ static struct resource olympus_wifi_resources[] = {
 	},
  };
 
- static int olympus_wifi_cd; /* WIFI virtual 'card detect' status */
+ static int olympus_wifi_cd;
  static void (*wifi_status_cb)(int card_present, void *dev_id);
  static void *wifi_status_cb_devid;
+
+int olympus_wifi_status_register(
+		void (*sdhcicallback)(int card_present, void *dev_id),
+		void *dev_id)
+{
+	if (wifi_status_cb)
+		return -EAGAIN;
+	wifi_status_cb = sdhcicallback;
+	wifi_status_cb_devid = dev_id;
+	return 0;
+}
 
  int olympus_wifi_set_carddetect(int val)
  {

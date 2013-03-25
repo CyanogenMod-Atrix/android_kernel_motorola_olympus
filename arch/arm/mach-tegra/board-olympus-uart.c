@@ -74,8 +74,8 @@ static struct platform_device *olympus_uart_devices[] __initdata = {
 	&tegra_uarta_device,
 	&tegra_uartb_device,
 	&tegra_uartc_device,
-        &tegra_uartd_device,
-	&tegra_uarte_device,
+  //      &tegra_uartd_device,
+//	&tegra_uarte_device,
 };
 
 struct uart_clk_parent uart_parent_clk[] = {

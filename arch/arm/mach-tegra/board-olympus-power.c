@@ -948,6 +948,7 @@ static struct regulator_init_data cpcap_regulator[CPCAP_NUM_REGULATORS] = {
 			.min_uV			= 1800000,
 			.max_uV			= 2900000,
 			.valid_ops_mask		= 0,
+			.always_on 		= 1,
 		},
 	},
 	[CPCAP_VSIMCARD] = {
@@ -1250,6 +1251,6 @@ void __init olympus_power_init(void)
 	(void) platform_device_register(&cpcap_reg_virt_vcsi_2);
 	(void) platform_device_register(&cpcap_reg_virt_sw5);
 #endif
-	regulator_has_full_constraints();
+	//regulator_has_full_constraints();
 	olympus_suspend_init();
 }

@@ -208,10 +208,9 @@ static struct tegra_dsi_cmd dsi_olympus_init_cmd[]= {
 };
 */
 static struct tegra_dsi_cmd dsi_suspend_cmd[] = {
-	DSI_CMD_SHORT(0x05, 0x28, 0x00),
-	DSI_DLY_MS(20), 
 	DSI_CMD_SHORT(0x05, 0x10, 0x00),
-	DSI_DLY_MS(120),
+	DSI_CMD_SHORT(0x05, 0x28, 0x00),
+	DSI_DLY_MS(68), 
 };
 
 static int olympus_panel_enable(void)
@@ -288,18 +287,16 @@ static int olympus_panel_disable(void)
 			return ret;
 		}
 		regulator_put(olympus_SW5);
-		olympus_dsi_reg = NULL;
+		olympus_SW5 = NULL;
 	}
 	printk(KERN_INFO "pICS_%s: level 3...",__func__);
 
 	return 0;
 }
-
+/* TODO: fill with correct Olympus DSI MIPI panel settings
 static struct tegra_dsi_out olympus_dsi_out = {
 	.n_data_lanes = 2,
 	.pixel_format = TEGRA_DSI_PIXEL_FORMAT_24BIT_P, // 3
-	.video_data_type = TEGRA_DSI_VIDEO_TYPE_VIDEO_MODE, //nn
-	.video_burst_mode = TEGRA_DSI_VIDEO_NONE_BURST_MODE, //nn
 //	.refresh_rate = 60,
 	.refresh_rate = 64, //nn
 //	.rated_refresh_rate = 0,
@@ -312,15 +309,16 @@ static struct tegra_dsi_out olympus_dsi_out = {
 	.chip_rev = 0,
 //	.panel_has_frame_buffer = 1,
 //	.panel_has_frame_buffer = 0,  
-//	.dsi_init_cmd = dsi_init_cmd, 	/*init cmd*/
+//	.dsi_init_cmd = dsi_init_cmd,
 //	.n_init_cmd = ARRAY_SIZE(dsi_init_cmd),
-	.dsi_init_cmd = dsi_olympus_init_cmd, 	/*init cmd*/
+	.dsi_init_cmd = dsi_olympus_init_cmd,
 	.n_init_cmd = ARRAY_SIZE(dsi_olympus_init_cmd),
 	.dsi_suspend_cmd = dsi_suspend_cmd,
 	.n_suspend_cmd = ARRAY_SIZE(dsi_suspend_cmd),		
-	.video_data_type = TEGRA_DSI_VIDEO_TYPE_COMMAND_MODE,
+	.video_burst_mode = TEGRA_DSI_VIDEO_NONE_BURST_MODE, //nn
 	.video_clock_mode = TEGRA_DSI_VIDEO_CLOCK_TX_ONLY, //nn
 //	.video_clock_mode = TEGRA_DSI_VIDEO_CLOCK_CONTINUOUS,
+	.video_data_type = TEGRA_DSI_VIDEO_TYPE_COMMAND_MODE,
 	.power_saving_suspend = 1, //nn
 	.phy_timing = { //nn
 		.t_hsdexit_ns = 6,
@@ -329,14 +327,37 @@ static struct tegra_dsi_out olympus_dsi_out = {
 		.t_datzero_ns = 9,
 		.t_clktrail_ns = 4,
 		.t_clkpost_ns = 10,
-		.t_clkzero_ns = 13,
+		//.t_clkzero_ns = 13,
+		.t_clkzero_ns = 10,  //WAR
 		//.t_tlpx_ns =  2,
 	},
 //	.lp_cmd_mode_freq_khz = 10000, 
 	.lp_cmd_mode_freq_khz = 229500, //nn
-	/* TODO: Get the vender recommended freq */
 //	.lp_read_cmd_mode_freq_khz = 230000,
 // 	.te_polarity_low = true,
+};*/
+
+static struct tegra_dsi_out olympus_dsi_out = {
+	.n_data_lanes = 2,
+	.pixel_format = TEGRA_DSI_PIXEL_FORMAT_24BIT_P, // 3
+	.refresh_rate = 64,
+//	.rated_refresh_rate = 0,
+	.panel_reset = 1,
+	.virtual_channel = TEGRA_DSI_VIRTUAL_CHANNEL_0, // 0
+	.dsi_instance = 0,
+	.chip_id = 0,
+	.chip_rev = 0,
+	.panel_has_frame_buffer = 1,
+	.dsi_init_cmd = dsi_olympus_init_cmd, /*init cmd*/
+	.n_init_cmd = ARRAY_SIZE(dsi_olympus_init_cmd),
+	.dsi_suspend_cmd = dsi_suspend_cmd,
+	.n_suspend_cmd = ARRAY_SIZE(dsi_suspend_cmd),	
+	.video_data_type = TEGRA_DSI_VIDEO_TYPE_COMMAND_MODE,
+	// .video_clock_mode = TEGRA_DSI_VIDEO_CLOCK_TX_ONLY,
+	.video_clock_mode = TEGRA_DSI_VIDEO_CLOCK_CONTINUOUS,
+	.lp_cmd_mode_freq_khz = 10000,
+	.lp_read_cmd_mode_freq_khz = 230000,
+	.te_polarity_low = true,
 };
 
 static struct tegra_dc_out olympus_disp1_out = {
@@ -386,11 +407,11 @@ static int olympus_panel_setup_dc(void)
 {
 	tegra_gpio_enable(47);	
 	gpio_request(47, "disp_5v_en");
-	gpio_direction_output(47, 0);
+	gpio_direction_output(47, 1);
 
 	tegra_gpio_enable(35);
 	gpio_request(35, "disp_reset_n");
-	gpio_direction_output(35, 0);
+	gpio_direction_output(35, 1);
 
 	tegra_gpio_enable(46);
 	gpio_request(46, "hdmi_5v_en");
@@ -577,9 +598,11 @@ int __init olympus_panel_init(void)
 	res->start = tegra_fb_start;
 	res->end = tegra_fb_start + tegra_fb_size - 1;
 
-	if (tegra_bootloader_fb_start)
-		tegra_move_framebuffer(tegra_fb_start,tegra_bootloader_fb_start,
+	if (tegra_bootloader_fb_start) {
+	printk(KERN_INFO "pICS_%s: move framebuffer...",__func__);
+	tegra_move_framebuffer(tegra_fb_start,tegra_bootloader_fb_start,
 			min(tegra_fb_size, tegra_bootloader_fb_size));
+	}
 
 	res = nvhost_get_resource_byname(&olympus_disp2_device,
 		IORESOURCE_MEM, "fbmem");

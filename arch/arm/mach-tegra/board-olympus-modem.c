@@ -7,17 +7,28 @@
 #include <linux/interrupt.h>
 #include <linux/spinlock.h>
 #include <linux/platform_device.h>
-#include <linux/qtouch_obp_ts.h>
+#include <linux/serial_core.h>
+#include <linux/wakelock.h>
 
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
+#include <hwrev.h>
 
+#include <mach/irqs.h>
+#include <mach/iomap.h>
+#include <mach/dma.h>
 #include <mach/mdm_ctrl.h>
+#include <mach/tegra_hsuart.h>
 
-#include <linux/spi/spi.h>
+#ifdef CONFIG_SPI_SLAVE_TEGRA
+#include <mach/spi.h>
+#include <mach/mdm6600_spi.h>
 #include <linux/spi-tegra.h>
-#include <linux/spi/mdm6600_spi.h>
+#include <linux/spi/spi.h>
+#endif
 
+#include "clock.h"
+#include "devices.h"
 #include "gpio-names.h"
 #include "board-olympus.h"
 
@@ -77,6 +88,7 @@ int olympus_mdm_ctrl_peer_register(void (*peer_startup)(void*),
 	if (mdm_ctrl_peers >= MDM_CTRL_MAX_PEERS)
 		return -ENOMEM;
 
+	pr_info("%s()\n", __func__);
 	spin_lock_irqsave(&mdm_ctrl_peer_lock, flags);
 
 	mdm_ctrl_peer[mdm_ctrl_peers].startup = peer_startup;
@@ -178,14 +190,16 @@ static int __init olympus_mdm_ctrl_init(void)
 	mdm_ctrl_platform_data.on_bp_shutdown = olympus_on_bp_shutdown;
 	mdm_ctrl_platform_data.on_bp_change = olympus_on_bp_change;
 
-	if ((HWREV_TYPE_IS_FINAL(system_rev) ||
-			(HWREV_TYPE_IS_PORTABLE(system_rev) &&
-			(HWREV_REV(system_rev) >= HWREV_REV_3))))
-		mdm_ctrl_platform_data.usb_regulator =
-					mdm_ctrl_usb_regulator;
-	else
-		/* BP_RESOUT floats on P2 and older Olympus hardware */
-		mdm_ctrl_platform_data.bp_resout_quirk = true;
+	if (machine_is_olympus()) {
+		if ((HWREV_TYPE_IS_FINAL(system_rev) ||
+				(HWREV_TYPE_IS_PORTABLE(system_rev) &&
+				(HWREV_REV(system_rev) >= HWREV_REV_3))))
+			mdm_ctrl_platform_data.usb_regulator =
+						mdm_ctrl_usb_regulator;
+		else
+			/* BP_RESOUT floats on P2 and older Olympus hardware */
+			mdm_ctrl_platform_data.bp_resout_quirk = true;
+	}
 
 	mdm_ctrl_platform_data.ap_status0_gpio = AP_STATUS0_GPIO;
 	mdm_ctrl_platform_data.ap_status1_gpio = AP_STATUS1_GPIO;
@@ -254,44 +268,148 @@ static int __init olympus_mdm_ctrl_init(void)
 	return platform_device_register(&mdm_ctrl_platform_device);
 }
 
+#define MDM6600_UART_HOST_WAKE_GPIO TEGRA_GPIO_PA0
+#define MDM6600_UART_PEER_WAKE_GPIO TEGRA_GPIO_PF1
+#define MDM6600_DATA_HOST_WAKE_GPIO TEGRA_GPIO_PL1
+#define MDM6600_DATA_PEER_WAKE_GPIO TEGRA_GPIO_PF2
 
-#define MDM6600_HOST_WAKE_GPIO TEGRA_GPIO_PL1
-#define MDM6600_PEER_WAKE_GPIO TEGRA_GPIO_PF2
+/*
+ * MDM6600 UART IPC link configuration
+ */
+extern struct uart_clk_parent uart_parent_clk[3];
+
+static struct wake_lock mdm6600_host_wakelock;
+
+static irqreturn_t mdm6600_host_wake_irq_handler(int irq, void *ptr)
+{
+	/* Keep us awake for a bit until RIL gets going */
+	wake_lock_timeout(&mdm6600_host_wakelock, (HZ * 1));
+	return IRQ_HANDLED;
+}
+
+static void mdm6600_wake_peer(struct uart_port *uport)
+{
+	gpio_set_value(MDM6600_UART_PEER_WAKE_GPIO, 1);
+	udelay(35);
+	gpio_set_value(MDM6600_UART_PEER_WAKE_GPIO, 0);
+	udelay(35);
+}
+
+static struct tegra_hsuart_platform_data olympus_mdm6600_uart_pdata = {
+	.wake_peer = mdm6600_wake_peer,
+	.parent_clk_list = uart_parent_clk,
+	.parent_clk_count = ARRAY_SIZE(uart_parent_clk),
+};
+
+static int olympus_setup_mdm6600_uart_ipc(void)
+{
+	int irq, err;
+
+	/* Host wake */
+	wake_lock_init(&mdm6600_host_wakelock, WAKE_LOCK_SUSPEND,
+		"mdm6600 host wakelock");
+
+	gpio_request(MDM6600_UART_HOST_WAKE_GPIO, "mdm6600 wake host");
+	gpio_direction_input(MDM6600_UART_HOST_WAKE_GPIO);
+	irq = gpio_to_irq(MDM6600_UART_HOST_WAKE_GPIO);
+	pr_info("%s: irq: %d, value: %d\n", __func__, irq,
+				gpio_get_value(MDM6600_UART_HOST_WAKE_GPIO));
+
+	irq_set_irq_wake(irq, 1);
+	irq_set_irq_type(irq, IRQ_TYPE_EDGE_RISING);
+	err = request_irq(irq, mdm6600_host_wake_irq_handler,
+			IRQF_DISABLED, "mdm6600_wake_host", NULL);
+	if (err < 0) {
+		pr_err("%s: failed to register MDM6600 BP AP WAKE "
+		       "interrupt handler, errno = %d\n", __func__, -err);
+	}
+
+	/* Peer wake */
+	gpio_request(MDM6600_UART_PEER_WAKE_GPIO, "mdm6600 wake peer");
+	gpio_direction_output(MDM6600_UART_PEER_WAKE_GPIO, 1);
+	gpio_set_value(MDM6600_UART_PEER_WAKE_GPIO, 0);
+
+	tegra_uartd_device.dev.platform_data = &olympus_mdm6600_uart_pdata;
+	return platform_device_register(&tegra_uartd_device);
+}
 
 /*
  * MDM6600 SPI IPC link configuration
  */
-struct mdm6600_spi_platform_data mdm6600_spi_platform_data = {
-	.gpio_mrdy = MDM6600_HOST_WAKE_GPIO,
-	.gpio_srdy = MDM6600_PEER_WAKE_GPIO,
-#ifdef CONFIG_MDM_CTRL
-	.peer_register = olympus_mdm_ctrl_peer_register,
-#endif
+#ifdef CONFIG_SPI_SLAVE_TEGRA
+static struct tegra_spi_platform_data mdm6600_spi_slave_platform_data = {
+	.is_dma_based = true,
+	.is_clkon_always = false,
 };
 
-struct spi_board_info tegra_spi_mdm6600_device[] __initdata = {
-{
-	.modalias = "mdm6600_spi",
-	.bus_num = 0,
-	.chip_select = 0,
-	.mode = SPI_MODE_0 | SPI_CS_HIGH,
-	.max_speed_hz = 26000000,
-	.platform_data = &mdm6600_spi_platform_data,
-	.irq = 0,
-    },
+static struct tegra_clk_init_table mdm6600_spi_clk_table[] = {
+	/* spi slave controller clock @ 4 x 13000 Khz interface clock */
+	{ "sbc1",	"pll_m",	104000000,	true},
+	{ NULL,		NULL,		0,		0},
+};
+
+static struct resource mdm6600_spi_slave_resource[] = {
+	[0] = {
+		.start	= INT_SPI_1,
+		.end	= INT_SPI_1,
+		.flags	= IORESOURCE_IRQ,
+	},
+	[1] = {
+		.start	= TEGRA_SPI1_BASE,
+		.end	= TEGRA_SPI1_BASE + TEGRA_SPI1_SIZE-1,
+		.flags	= IORESOURCE_MEM,
+	},
+};
+
+static struct platform_device mdm6600_spi_slave_device = {
+	.name           = "spi_slave_tegra",
+	.id             = 0,
+	.resource       = mdm6600_spi_slave_resource,
+	.num_resources  = ARRAY_SIZE(mdm6600_spi_slave_resource),
+	.dev  = {
+		.coherent_dma_mask = 0xffffffff,
+		.platform_data = &mdm6600_spi_slave_platform_data,
+	},
+};
+
+static struct mdm6600_spi_platform_data mdm6600_spi_platform_data = {
+	.gpio_mrdy = MDM6600_DATA_HOST_WAKE_GPIO,
+	.gpio_srdy = MDM6600_DATA_PEER_WAKE_GPIO,
+	.peer_register = olympus_mdm_ctrl_peer_register,
+};
+
+static struct spi_board_info mdm6600_spi_slave_devices[] __initdata = {
+	[0] = {
+		.modalias = "mdm6600_spi",
+		.bus_num = 0,
+		.chip_select = 0,
+		.mode = SPI_MODE_0,
+		.max_speed_hz = 26000000,
+		.platform_data = &mdm6600_spi_platform_data,
+		.irq = 0,
+	},
 };
 
 static int __init olympus_setup_mdm6600_spi_ipc(void)
 {
-	return spi_register_board_info(tegra_spi_mdm6600_device,
-				ARRAY_SIZE(tegra_spi_mdm6600_device));
+	tegra_clk_init_from_table(mdm6600_spi_clk_table);
+	platform_device_register(&mdm6600_spi_slave_device);
+
+	return spi_register_board_info(mdm6600_spi_slave_devices,
+				ARRAY_SIZE(mdm6600_spi_slave_devices));
 }
+#else
+static int __init olympus_setup_mdm6600_spi_ipc(void)
+{
+	return 0;
+}
+#endif
 
 /*
  * MDM6600 USB IPC link configuration
  */
 
-static struct resource mdm6600_resources[] = {
+static struct resource mdm6600_usb_resources[] = {
 	[0] = {
 		.flags = IORESOURCE_IRQ,
 		.start = 0,
@@ -302,8 +420,8 @@ static struct resource mdm6600_resources[] = {
 static struct platform_device mdm6600_usb_platform_device = {
 	.name = "mdm6600_modem",
 	.id   = -1,
-	.resource = mdm6600_resources,
-	.num_resources = ARRAY_SIZE(mdm6600_resources),
+	.resource = mdm6600_usb_resources,
+	.num_resources = ARRAY_SIZE(mdm6600_usb_resources),
 };
 
 static int __init olympus_setup_mdm6600_usb_ipc(int irq)
@@ -311,38 +429,36 @@ static int __init olympus_setup_mdm6600_usb_ipc(int irq)
 	if (irq) {
 		gpio_request(irq, "mdm6600_usb_wakeup");
 		gpio_direction_input(irq);
-		mdm6600_resources[0].start = TEGRA_GPIO_TO_IRQ(irq);
-		mdm6600_resources[0].end = TEGRA_GPIO_TO_IRQ(irq);
-	}
+		mdm6600_usb_resources[0].start = TEGRA_GPIO_TO_IRQ(irq);
+		mdm6600_usb_resources[0].end = TEGRA_GPIO_TO_IRQ(irq);
+	} else
+		mdm6600_usb_platform_device.num_resources = 0;
+
 	return platform_device_register(&mdm6600_usb_platform_device);
 }
-
-/*
- * Interim Wrigley host wake support.
- */
-#include <linux/wakelock.h>
-
-#define WRIGLEY_HOST_WAKE_GPIO TEGRA_GPIO_PC7
 
 int __init olympus_modem_init(void)
 {
 	char bp_ctrl_bus[40] = "UART";
 	char bp_data_bus[20] = "only";
 
-	if ( !(HWREV_TYPE_IS_MORTABLE(system_rev) && HWREV_REV(system_rev) <= HWREV_REV_1) ) {
+	if ((machine_is_olympus() &&
+	      HWREV_REV(system_rev) <= HWREV_REV_1))
+	    {
 		strcat(bp_ctrl_bus, " (with mdm_ctrl)");
 		olympus_mdm_ctrl_init();
 		olympus_mdm6600_agent_init();
 	} else
 		strcat(bp_ctrl_bus, " (NO mdm_ctrl)");
 
+	olympus_setup_mdm6600_uart_ipc();
+
 	strcpy(bp_data_bus, "and SPI");
 	olympus_setup_mdm6600_spi_ipc();
 	olympus_setup_mdm6600_usb_ipc(0);
-
+	
 	/* All hardware at least has MDM6x00 at the moment. */
-	printk(KERN_INFO "%s: MDM6x00 on %s %s\n", __func__,
-				bp_ctrl_bus, bp_data_bus);
+	pr_info("%s: MDM6x00 on %s %s\n", __func__, bp_ctrl_bus, bp_data_bus);
 
 	return 0;
 }

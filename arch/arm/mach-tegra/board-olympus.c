@@ -486,9 +486,9 @@ static void __init tegra_olympus_init(void)
 
 //	olympus_sec_init();
 
-	olympus_panel_init();
-
 	olympus_backlight_init();
+
+	olympus_panel_init();
 
 	olympus_kbc_init();
 
@@ -507,8 +507,8 @@ if (1==0) olympus_emc_init();
 
 	platform_device_register(&tegra_w1_device);
 	
-	//olympus_modem_init();
-	//olympus_wlan_init();
+	olympus_modem_init();
+	olympus_wlan_init();
 
 //	platform_driver_register(&cpcap_usb_connected_driver);
 
@@ -546,7 +546,7 @@ if (1==0) olympus_emc_init();
 			}
 		}
 	
-	//tegra_release_bootloader_fb();	
+	tegra_release_bootloader_fb();	
 }
 
 static void __init olympus_fixup(struct machine_desc *desc, struct tag *tags,
