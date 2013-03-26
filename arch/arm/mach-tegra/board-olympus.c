@@ -484,7 +484,7 @@ static void __init tegra_olympus_init(void)
 
 	olympus_tcmd_init();
 
-//	olympus_sec_init();
+	olympus_sec_init();
 
 	olympus_backlight_init();
 

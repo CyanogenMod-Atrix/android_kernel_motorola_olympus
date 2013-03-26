@@ -1,11 +1,3 @@
-/*
- * arch/arm/mach-tegra/board-mot-wlan.c
- *
- * Board file with wlan specific functions and data structrures
- *
- * Copyright (c) 2010, Motorola Corporation.
- *
- */
 #include <linux/kernel.h>
 #include <linux/init.h>
 #include <linux/module.h>
