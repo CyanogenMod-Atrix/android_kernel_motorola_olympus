@@ -154,13 +154,14 @@ static const struct neigh_ops arp_direct_ops = {
 	.connected_output =	neigh_direct_output,
 };
 
-static const struct neigh_ops arp_broken_ops = {
+const struct neigh_ops arp_broken_ops = {
 	.family =		AF_INET,
 	.solicit =		arp_solicit,
 	.error_report =		arp_error_report,
 	.output =		neigh_compat_output,
 	.connected_output =	neigh_compat_output,
 };
+EXPORT_SYMBOL(arp_broken_ops);
 
 struct neigh_table arp_tbl = {
 	.family		= AF_INET,

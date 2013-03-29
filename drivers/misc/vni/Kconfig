@@ -1,0 +1,11 @@
+#
+# Virtual Network Interfaces configuration
+#
+
+menu "Motorola Virtual Network Interface driver"
+
+config MOT_VNI_DRIVER
+        tristate "Motorola VNI driver"
+        default m
+
+endmenu
