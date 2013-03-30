@@ -47,8 +47,17 @@
 #define PMC_CTRL		0x0
 #define PMC_CTRL_INTR_LOW	(1 << 17)
 
-extern void arch_reset(char mode, const char *cmd);
-static int disable_rtc_alarms(struct device *dev, void *cnt);
+static int disable_rtc_alarms(struct device *dev, void *data)
+{
+	return (rtc_alarm_irq_enable((struct rtc_device *)dev, 0));
+}
+
+void olympus_pm_restart(char mode, const char *cmd)
+{
+	/* Assert SYSRSTRTB input to CPCAP to force cold restart */
+	gpio_request(TEGRA_GPIO_PZ2, "sysrstrtb");
+	gpio_direction_output(TEGRA_GPIO_PZ2, 0);
+}
 
 void olympus_system_power_off(void)
 {
@@ -61,7 +70,7 @@ void olympus_system_power_off(void)
 	{
 		printk("External power detected- rebooting\r\n");
 		cpcap_misc_clear_power_handoff_info();
-		arch_reset(0,"");
+		olympus_pm_restart(0, "");
 		while(1);
 	}
 
@@ -93,7 +102,7 @@ void olympus_system_power_off(void)
 
 	mdelay(500);
 	printk("Power-off failed (Factory cable inserted?), rebooting\r\n");
-	arch_reset(0,"");
+	olympus_pm_restart(0,"");
 }
 
 static struct cpcap_device *cpcap_di;
@@ -1168,11 +1177,6 @@ static void get_cpcap_audio_data(void)
 	data.mic3 = 1;
 }
 
-static int disable_rtc_alarms(struct device *dev, void *data)
-{
-	return (rtc_alarm_irq_enable((struct rtc_device *)dev, 0));
-}
-
 void __init olympus_power_init(void)
 {
 	unsigned int i;
@@ -1253,4 +1257,7 @@ void __init olympus_power_init(void)
 #endif
 	//regulator_has_full_constraints();
 	olympus_suspend_init();
+
+	pm_power_off = olympus_system_power_off;
+	arm_pm_restart = olympus_pm_restart;
 }

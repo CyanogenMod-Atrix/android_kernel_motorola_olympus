@@ -484,6 +484,8 @@ static void __init tegra_olympus_init(void)
 
 	olympus_tcmd_init();
 
+	olympus_sensors_init();
+
 	olympus_sec_init();
 
 	olympus_backlight_init();
@@ -496,6 +498,8 @@ static void __init tegra_olympus_init(void)
 
 	olympus_usb_init();
 
+	olympus_cameras_init();
+
 	if( (bi_powerup_reason() & PWRUP_FACTORY_CABLE) &&
 	    (bi_powerup_reason() != PWRUP_INVALID) ){
 #ifdef NEED_FACT_BUSY_HINT
@@ -505,16 +509,13 @@ static void __init tegra_olympus_init(void)
 
 if (1==0) olympus_emc_init();
 
-	platform_device_register(&tegra_w1_device);
-	
 	olympus_modem_init();
 	olympus_wlan_init();
 
 //	platform_driver_register(&cpcap_usb_connected_driver);
 
-	olympus_sensors_init();
-
-	pm_power_off = olympus_system_power_off;
+	platform_device_register(&tegra_w1_device);
+	
 	//tegra_setup_bluesleep();
 
 	/* Configure SPDIF_OUT as GPIO by default, it can be later controlled
