@@ -340,7 +340,8 @@ static struct tegra_dsi_out olympus_dsi_out = {
 static struct tegra_dsi_out olympus_dsi_out = {
 	.n_data_lanes = 2,
 	.pixel_format = TEGRA_DSI_PIXEL_FORMAT_24BIT_P, // 3
-	.refresh_rate = 64,
+//	.refresh_rate = 64,
+	.refresh_rate = 60,
 //	.rated_refresh_rate = 0,
 	.panel_reset = 1,
 	.virtual_channel = TEGRA_DSI_VIRTUAL_CHANNEL_0, // 0
@@ -356,8 +357,8 @@ static struct tegra_dsi_out olympus_dsi_out = {
 	// .video_clock_mode = TEGRA_DSI_VIDEO_CLOCK_TX_ONLY,
 	.video_clock_mode = TEGRA_DSI_VIDEO_CLOCK_CONTINUOUS,
 	.lp_cmd_mode_freq_khz = 10000,
-	.lp_read_cmd_mode_freq_khz = 230000,
-	.te_polarity_low = true,
+//	.lp_read_cmd_mode_freq_khz = 230000,
+//	.te_polarity_low = true,
 };
 
 static struct tegra_dc_out olympus_disp1_out = {

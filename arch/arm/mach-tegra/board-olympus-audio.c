@@ -40,7 +40,7 @@
 #include "hwrev.h"
 
 static struct platform_device olympus_codec_cpcap = {
-	.name   = "cpcap_audio",
+		.name   = "cpcap_audio",
         .id             = 0,
 };
 

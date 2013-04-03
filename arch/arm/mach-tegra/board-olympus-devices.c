@@ -50,11 +50,6 @@
 #include "hwrev.h"
 #include "board-olympus.h"
 
-static struct platform_device tegra_camera = {
-	.name = "tegra_camera",
-	.id = -1,
-};
-
 static struct platform_device olympus_touch_xmegat = {
 	.name = "qtouch-obp-ts",
 	.id = -1,
@@ -66,7 +61,7 @@ static struct platform_device *olympus_devices[] __initdata = {
 	&tegra_wdt_device,
 	&tegra_pwfm1_device,
 	&tegra_avp_device,
-	&tegra_camera,
+//	&tegra_camera,
 	&olympus_touch_xmegat,
 };
 

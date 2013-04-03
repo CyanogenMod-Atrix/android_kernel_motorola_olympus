@@ -170,6 +170,14 @@ config INPUT_KEYRESET
 	  To compile this driver as a module, choose M here: the
 	  module will be called keyreset.
 
+config INPUT_AES1750
+	tristate "AuthenTec AES1750" if EMBEDDED
+	depends on INPUT
+	depends on SPI
+	default !EMBEDDED
+	---help---
+	  Support for the AuthenTech AES1750 autentication interface.
+
 comment "Input Device Drivers"
 
 source "drivers/input/keyboard/Kconfig"

@@ -167,9 +167,9 @@ static struct tegra_usb_platform_data tegra_udc_pdata = {
 	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
 	.op_mode = TEGRA_USB_OPMODE_DEVICE,
 	.u_data.dev = {
-		.vbus_pmu_irq = 0,
-		.vbus_gpio = -1,
-		.charging_supported = false,
+		//.vbus_pmu_irq = -1,
+		.vbus_gpio = TEGRA_GPIO_PV6,
+		.charging_supported = true,
 		.remote_wakeup_supported = false,
 	},
 	.u_cfg.utmi = {
@@ -190,8 +190,8 @@ static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
 	.op_mode = TEGRA_USB_OPMODE_HOST,
 	.u_data.host = {
 		.vbus_gpio = -1,
-		.vbus_reg = NULL,
-//		.vbus_reg = "vusb",
+//		.vbus_reg = NULL,
+		.vbus_reg = "vusb",
 		.hot_plug = true,
 		.remote_wakeup_supported = false,
 		.power_off_on_suspend = true,
@@ -317,8 +317,8 @@ void olympus_usb_init(void)
 		acm_pdata.use_iads = 1;*/
 	}
 
-	tegra_ehci2_device.dev.platform_data = &tegra_ehci2_ulpi_link_pdata;
-	platform_device_register(&tegra_ehci2_device);
+//	tegra_ehci2_device.dev.platform_data = &tegra_ehci2_ulpi_link_pdata;
+//	platform_device_register(&tegra_ehci2_device);
 
 	tegra_ehci3_device.dev.platform_data = &tegra_ehci3_utmi_pdata;
 	platform_device_register(&tegra_ehci3_device);

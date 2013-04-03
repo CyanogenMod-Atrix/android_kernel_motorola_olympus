@@ -343,6 +343,7 @@ struct akm8975_platform_data akm8975_data = {
 	.exit      = akm8975_exit,
 	.power_on  = akm8975_power_on,
 	.power_off = akm8975_power_off,
+	.layout	   = 1,
 };
 
 struct platform_device akm8975_platform_device = {
@@ -425,7 +426,7 @@ static struct platform_device *olympus_sensors[] __initdata = {
 	&tegra_vib_gpio,
 	&tegra_tmon,
 };
-
+#if 0
 static int aes1750_interrupt = TEGRA_GPIO_PM5;
 
 static struct tegra_spi_platform_data aes1750_spi_slave_platform_data = {
@@ -447,7 +448,7 @@ static struct spi_board_info aes1750_spi_device __initdata = {
 		.platform_data = &aes1750_spi_slave_platform_data,
 		.irq = 0,
 };
-
+#endif
 static struct i2c_board_info olympus_i2c1_board_info[] = {
 	{
 		/*  ISL 29030 (prox/ALS) driver */
@@ -496,10 +497,10 @@ void __init olympus_sensors_init(void)
 
 	i2c_register_board_info(3, olympus_i2c4_board_info, 
 				ARRAY_SIZE(olympus_i2c4_board_info));
-
+/*
         aes1750_spi_device.irq = gpio_to_irq(aes1750_interrupt);
         spi_register_board_info(&aes1750_spi_device,
 					sizeof(aes1750_spi_device));
-
+*/
 }
 

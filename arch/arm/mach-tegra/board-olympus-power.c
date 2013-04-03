@@ -766,6 +766,7 @@ struct regulator_consumer_supply cpcap_vwlan2_consumers[] = {
 	REGULATOR_CONSUMER("vusb_modem_ipc", NULL),
 	REGULATOR_CONSUMER("vhdmi", NULL),
 	REGULATOR_CONSUMER("vdd_vcore_temp", NULL),
+	REGULATOR_CONSUMER("usb_bat_chg", NULL),
 };
 
 struct regulator_consumer_supply cpcap_vsimcard_consumers[] = {
@@ -1090,9 +1091,8 @@ struct spi_board_info tegra_spi_devices[] __initdata = {
         .chip_select = 0,
         .mode = SPI_MODE_0 | SPI_CS_HIGH,
         .max_speed_hz = 8000000,
-//        .controller_data = &tegra_cpcap_data,
-	.platform_data = &tegra_cpcap_data,
-	.controller_data = &olympus_spi_tegra_data,
+        .platform_data = &tegra_cpcap_data,
+        .controller_data = &olympus_spi_tegra_data,
         .irq = INT_EXTERNAL_PMU,
     },
 
@@ -1171,10 +1171,10 @@ static void get_cpcap_audio_data(void)
         static struct cpcap_audio_pdata data;
         cpcap_audio_device.dev.platform_data = (void *)&data;
 
-        printk("CPCAP audio  init \n");
+        printk("CPCAP audio init \n");
         data.voice_type = VOICE_TYPE_QC;
         data.stereo_loudspeaker = 0;
-	data.mic3 = 1;
+        data.mic3 = 1;
 }
 
 void __init olympus_power_init(void)
@@ -1205,8 +1205,7 @@ void __init olympus_power_init(void)
 	       (HWREV_REV(system_rev)  >= HWREV_REV_1B))  ||
 	     (machine_is_olympus() &&
 	       HWREV_TYPE_IS_PORTABLE(system_rev) &&
-	       (HWREV_REV(system_rev)  >= HWREV_REV_2)) ||
-		  machine_is_tegra_daytona() || machine_is_sunfire()) {
+	       (HWREV_REV(system_rev)  >= HWREV_REV_2))) {
 		tegra_cpcap_data.hwcfg[1] |= CPCAP_HWCFG1_STBY_GPIO;
 	}
 
@@ -1249,12 +1248,14 @@ void __init olympus_power_init(void)
 	}
 
 	(void) platform_driver_register(&cpcap_validity_driver);
+/*
 #ifdef CONFIG_REGULATOR_VIRTUAL_CONSUMER
 	(void) platform_device_register(&cpcap_reg_virt_vcam);
 	(void) platform_device_register(&cpcap_reg_virt_vcsi);
 	(void) platform_device_register(&cpcap_reg_virt_vcsi_2);
 	(void) platform_device_register(&cpcap_reg_virt_sw5);
 #endif
+*/
 	//regulator_has_full_constraints();
 	olympus_suspend_init();
 

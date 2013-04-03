@@ -365,7 +365,7 @@ static struct platform_device tegra_w1_device = {
 	.name          = "tegra_w1",
 	.id            = -1,
 	.dev	   =  {
-	.platform_data = &tegra_w1_pdata,
+			.platform_data = &tegra_w1_pdata,
 	},
 };
 #if 0
@@ -464,7 +464,7 @@ static void __init tegra_olympus_init(void)
 	
 	tegra_clk_init_from_table(olympus_clk_init_table);
 
-	//tegra_ram_console_debug_init();
+	tegra_ram_console_debug_init();
 
 	olympus_pinmux_init();
 
@@ -486,7 +486,7 @@ static void __init tegra_olympus_init(void)
 
 	olympus_sensors_init();
 
-	olympus_sec_init();
+	//olympus_sec_init();
 
 	olympus_backlight_init();
 
@@ -498,16 +498,9 @@ static void __init tegra_olympus_init(void)
 
 	olympus_usb_init();
 
-	olympus_cameras_init();
+//	olympus_cameras_init();
 
-	if( (bi_powerup_reason() & PWRUP_FACTORY_CABLE) &&
-	    (bi_powerup_reason() != PWRUP_INVALID) ){
-#ifdef NEED_FACT_BUSY_HINT
-		FactoryBusyHint(); //factory workaround no longer needed
-#endif
-	}
-
-if (1==0) olympus_emc_init();
+//	olympus_emc_init();
 
 	olympus_modem_init();
 	olympus_wlan_init();
@@ -523,11 +516,10 @@ if (1==0) olympus_emc_init();
 	   can interefere with CPCAP ID pin, as SPDIF_OUT and ID are coupled.
 	*/
 
-	tegra_gpio_enable(TEGRA_GPIO_PD4);
+/*	tegra_gpio_enable(TEGRA_GPIO_PD4);
 	gpio_request(TEGRA_GPIO_PD4, "spdif_enable");
 	gpio_direction_output(TEGRA_GPIO_PD4, 0);
 	gpio_export(TEGRA_GPIO_PD4, false);
-	if (1==0)
 	if ((HWREV_TYPE_IS_PORTABLE(system_rev) || HWREV_TYPE_IS_FINAL(system_rev)))
 		{
 			if (HWREV_REV(system_rev) >= HWREV_REV_1 && HWREV_REV(system_rev) < HWREV_REV_2)
@@ -546,7 +538,7 @@ if (1==0) olympus_emc_init();
 				config_unused_pins(oly_unused_pins_p3, ARRAY_SIZE(oly_unused_pins_p3));
 			}
 		}
-	
+	*/
 	tegra_release_bootloader_fb();	
 }
 
@@ -618,8 +610,8 @@ void __init tegra_olympus_reserve(void)
 	if (memblock_reserve(0x0, 4096) < 0)
 		pr_warn("Cannot reserve first 4K of memory for safety\n");
 
-	tegra_reserve(SZ_128M, SZ_8M, SZ_8M);
-	//tegra_ram_console_debug_reserve(SZ_1M);
+	tegra_reserve(SZ_128M + SZ_64M, SZ_8M, SZ_8M);
+	tegra_ram_console_debug_reserve(SZ_1M);
 
 }
 

@@ -51,7 +51,7 @@ static int soc_pcm_apply_symmetry(struct snd_pcm_substream *substream)
 		return 0;
 	}
 
-	dev_dbg(&rtd->dev, "Symmetry forces %dHz rate\n", rtd->rate);
+	dev_info(&rtd->dev, "Symmetry forces %dHz rate\n", rtd->rate);
 
 	ret = snd_pcm_hw_constraint_minmax(substream->runtime,
 					   SNDRV_PCM_HW_PARAM_RATE,
@@ -589,6 +589,9 @@ int soc_new_pcm(struct snd_soc_pcm_runtime *rtd, int num)
 	char new_name[64];
 	int ret = 0, playback = 0, capture = 0;
 
+	printk(KERN_INFO "%s: codec_dai->name: %s \n",__func__, codec_dai->name);
+	printk(KERN_INFO "%s: cpu_dai->name: %s \n",__func__, cpu_dai->name);
+
 	/* check client and interface hw capabilities */
 	snprintf(new_name, sizeof(new_name), "%s %s-%d",
 			rtd->dai_link->stream_name, codec_dai->name, num);
@@ -598,8 +601,7 @@ int soc_new_pcm(struct snd_soc_pcm_runtime *rtd, int num)
 		playback = 1;
 	if (codec_dai->driver->capture.channels_min)
 		capture = 1;
-	printk(KERN_INFO "%s: registered pcm #%d %s\n",__func__, num,new_name);
-	dev_dbg(rtd->card->dev, "registered pcm #%d %s\n",num,new_name);
+	dev_info(rtd->card->dev, "registered pcm #%d %s\n",num,new_name);
 	ret = snd_pcm_new(rtd->card->snd_card, new_name,
 			num, playback, capture, &pcm);
 	if (ret < 0) {

@@ -763,7 +763,7 @@ static int fw_load(struct cpcap_uc_data *uc_data, struct device *dev)
 			uc_data->cpcap->vendor, err);
 		goto err;
 	}
-
+	dev_info(dev, "Loading firmware...\n");
 	for (rec = (void *)fw->data; rec; rec = ihex_next_binrec(rec)) {
 		odd_bytes = 0;
 		num_bytes = be16_to_cpu(rec->len);
@@ -775,7 +775,7 @@ static int fw_load(struct cpcap_uc_data *uc_data, struct device *dev)
 		}
 
 		num_words = num_bytes >> 1;
-		dev_info(dev, "Loading %d word(s) at 0x%04x\n",
+		dev_dbg(dev, "Loading %d word(s) at 0x%04x\n",
 			 num_words, be32_to_cpu(rec->addr));
 
 		buf = kzalloc(num_bytes, GFP_KERNEL);
