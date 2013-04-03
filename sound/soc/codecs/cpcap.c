@@ -36,7 +36,7 @@
 
 #include "cpcap.h"
 
-#define CPCAP_AUDIO_DEBUG 1
+/* #define CPCAP_AUDIO_DEBUG */
 #ifdef CPCAP_AUDIO_DEBUG
 #define CPCAP_AUDIO_DEBUG_LOG(args...) printk(KERN_INFO "ALSA CPCAP:" args)
 #else
@@ -2412,6 +2412,7 @@ struct snd_soc_dai_driver cpcap_dai[] = {
 		.channels_max = 4,
 		.rates = SNDRV_PCM_RATE_8000_48000,
 		.formats = SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FORMAT_S24_LE,},
+	.ops = &cpcap_dai_mm_ops,
 },
 {
 	.name = "cpcap codec",

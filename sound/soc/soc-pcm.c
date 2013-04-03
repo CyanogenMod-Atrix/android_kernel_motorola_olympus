@@ -51,7 +51,7 @@ static int soc_pcm_apply_symmetry(struct snd_pcm_substream *substream)
 		return 0;
 	}
 
-	dev_info(&rtd->dev, "Symmetry forces %dHz rate\n", rtd->rate);
+	dev_dbg(&rtd->dev, "Symmetry forces %dHz rate\n", rtd->rate);
 
 	ret = snd_pcm_hw_constraint_minmax(substream->runtime,
 					   SNDRV_PCM_HW_PARAM_RATE,
@@ -589,26 +589,23 @@ int soc_new_pcm(struct snd_soc_pcm_runtime *rtd, int num)
 	char new_name[64];
 	int ret = 0, playback = 0, capture = 0;
 
-	printk(KERN_INFO "%s: codec_dai->name: %s \n",__func__, codec_dai->name);
-	printk(KERN_INFO "%s: cpu_dai->name: %s \n",__func__, cpu_dai->name);
-
 	/* check client and interface hw capabilities */
 	snprintf(new_name, sizeof(new_name), "%s %s-%d",
 			rtd->dai_link->stream_name, codec_dai->name, num);
-	
 
 	if (codec_dai->driver->playback.channels_min)
 		playback = 1;
 	if (codec_dai->driver->capture.channels_min)
 		capture = 1;
-	dev_info(rtd->card->dev, "registered pcm #%d %s\n",num,new_name);
+
+	dev_dbg(rtd->card->dev, "registered pcm #%d %s\n",num,new_name);
 	ret = snd_pcm_new(rtd->card->snd_card, new_name,
 			num, playback, capture, &pcm);
 	if (ret < 0) {
 		printk(KERN_ERR "asoc: can't create pcm for codec %s\n", codec->name);
 		return ret;
 	}
-	printk(KERN_INFO "%s: passed snd_pcm_new\n",__func__);
+
 	/* DAPM dai link stream work */
 	INIT_DELAYED_WORK(&rtd->delayed_work, close_delayed_work);
 
@@ -624,16 +621,14 @@ int soc_new_pcm(struct snd_soc_pcm_runtime *rtd, int num)
 		soc_pcm_ops.page = platform->driver->ops->page;
 	}
 
-	if (playback) {
+	if (playback)
 		snd_pcm_set_ops(pcm, SNDRV_PCM_STREAM_PLAYBACK, &soc_pcm_ops);
-	printk(KERN_INFO "%s: passed snd_pcm_set_ops\n",__func__);}
-	if (capture){
+
+	if (capture)
 		snd_pcm_set_ops(pcm, SNDRV_PCM_STREAM_CAPTURE, &soc_pcm_ops);
-	printk(KERN_INFO "%s: passed snd_pcm_set_ops\n",__func__);}
 
 	if (platform->driver->pcm_new) {
 		ret = platform->driver->pcm_new(rtd);
-		printk(KERN_INFO "%s: passed ret = platform->driver->pcm_new(rtd);\n",__func__);
 		if (ret < 0) {
 			pr_err("asoc: platform pcm constructor failed\n");
 			return ret;

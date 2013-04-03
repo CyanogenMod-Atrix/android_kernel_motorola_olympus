@@ -581,7 +581,7 @@ int snd_soc_suspend(struct device *dev)
 				codec->cache_sync = 1;
 				break;
 			default:
-				dev_info(codec->dev, "CODEC is on over suspend\n");
+				dev_dbg(codec->dev, "CODEC is on over suspend\n");
 				break;
 			}
 		}
@@ -618,7 +618,7 @@ static void soc_resume_deferred(struct work_struct *work)
 	 * so userspace apps are blocked from touching us
 	 */
 
-	dev_info(card->dev, "starting resume work\n");
+	dev_dbg(card->dev, "starting resume work\n");
 
 	/* Bring us up into D2 so that DAPM starts enabling things */
 	snd_power_change_state(card->snd_card, SNDRV_CTL_POWER_D2);
@@ -650,7 +650,7 @@ static void soc_resume_deferred(struct work_struct *work)
 				codec->suspended = 0;
 				break;
 			default:
-				dev_info(codec->dev, "CODEC was on over suspend\n");
+				dev_dbg(codec->dev, "CODEC was on over suspend\n");
 				break;
 			}
 		}
@@ -701,7 +701,7 @@ static void soc_resume_deferred(struct work_struct *work)
 	if (card->resume_post)
 		card->resume_post(card);
 
-	dev_info(card->dev, "resume work completed\n");
+	dev_dbg(card->dev, "resume work completed\n");
 
 	/* userspace can access us now we are back as we were before */
 	snd_power_change_state(card->snd_card, SNDRV_CTL_POWER_D0);
@@ -723,10 +723,10 @@ int snd_soc_resume(struct device *dev)
 		ac97_control |= cpu_dai->driver->ac97_control;
 	}
 	if (ac97_control) {
-		dev_info(dev, "Resuming AC97 immediately\n");
+		dev_dbg(dev, "Resuming AC97 immediately\n");
 		soc_resume_deferred(&card->deferred_resume_work);
 	} else {
-		dev_info(dev, "Scheduling resume work\n");
+		dev_dbg(dev, "Scheduling resume work\n");
 		if (!schedule_work(&card->deferred_resume_work))
 			dev_err(dev, "resume work item may be lost\n");
 	}
@@ -753,7 +753,8 @@ static int soc_bind_dai_link(struct snd_soc_card *card, int num)
 
 	if (rtd->complete)
 		return 1;
-	dev_info(card->dev, "binding %s at idx %d\n", dai_link->name, num);
+	dev_dbg(card->dev, "binding %s at idx %d\n", dai_link->name, num);
+
 	/* do we already have the CPU DAI for this link ? */
 	if (rtd->cpu_dai) {
 		goto find_codec;
@@ -765,7 +766,7 @@ static int soc_bind_dai_link(struct snd_soc_card *card, int num)
 			goto find_codec;
 		}
 	}
-	dev_info(card->dev, "CPU DAI %s not registered\n",
+	dev_dbg(card->dev, "CPU DAI %s not registered\n",
 			dai_link->cpu_dai_name);
 
 find_codec:
@@ -787,13 +788,13 @@ find_codec:
 					goto find_platform;
 				}
 			}
-			dev_info(card->dev, "CODEC DAI %s not registered\n",
+			dev_dbg(card->dev, "CODEC DAI %s not registered\n",
 					dai_link->codec_dai_name);
 
 			goto find_platform;
 		}
 	}
-	dev_info(card->dev, "CODEC %s not registered\n",
+	dev_dbg(card->dev, "CODEC %s not registered\n",
 			dai_link->codec_name);
 
 find_platform:
@@ -814,7 +815,7 @@ find_platform:
 		}
 	}
 
-	dev_info(card->dev, "platform %s not registered\n",
+	dev_dbg(card->dev, "platform %s not registered\n",
 			dai_link->platform_name);
 	return 0;
 
@@ -1113,7 +1114,7 @@ static int soc_probe_dai_link(struct snd_soc_card *card, int num, int order)
 	struct snd_soc_dai *codec_dai = rtd->codec_dai, *cpu_dai = rtd->cpu_dai;
 	int ret;
 
-	dev_info(card->dev, "probe %s dai link %d late %d\n",
+	dev_dbg(card->dev, "probe %s dai link %d late %d\n",
 			card->name, num, order);
 
 	/* config components */
@@ -1189,7 +1190,6 @@ static int soc_probe_dai_link(struct snd_soc_card *card, int num, int order)
 	if (ret < 0)
 		printk(KERN_WARNING "asoc: failed to add pmdown_time sysfs\n");
 
-	printk(KERN_ERR "asoc: create pcm %s\n", dai_link->stream_name);
 	/* create the pcm */
 	ret = soc_new_pcm(rtd, num);
 	if (ret < 0) {
@@ -1327,7 +1327,7 @@ static void snd_soc_instantiate_card(struct snd_soc_card *card)
 		mutex_unlock(&card->mutex);
 		return;
 	}
-	printk(KERN_INFO "%s: bind DAIs %s", __func__, card->name);
+
 	/* bind DAIs */
 	for (i = 0; i < card->num_links; i++)
 		soc_bind_dai_link(card, i);
@@ -1337,7 +1337,7 @@ static void snd_soc_instantiate_card(struct snd_soc_card *card)
 		mutex_unlock(&card->mutex);
 		return;
 	}
-	printk(KERN_INFO "%s:initialize the register cache for each available codec %s", __func__, card->name);
+
 	/* initialize the register cache for each available codec */
 	list_for_each_entry(codec, &codec_list, list) {
 		if (codec->cache_init)
@@ -1360,7 +1360,7 @@ static void snd_soc_instantiate_card(struct snd_soc_card *card)
 			return;
 		}
 	}
-	printk(KERN_INFO "%s: register a sound card %s", __func__, card->name);
+
 	/* card bind complete so register a sound card */
 	ret = snd_card_create(SNDRV_DEFAULT_IDX1, SNDRV_DEFAULT_STR1,
 			card->owner, 0, &card->snd_card);
@@ -1385,18 +1385,18 @@ static void snd_soc_instantiate_card(struct snd_soc_card *card)
 	/* deferred resume work */
 	INIT_WORK(&card->deferred_resume_work, soc_resume_deferred);
 #endif
-	printk(KERN_INFO "%s: snd_soc_dapm_new_controls %s", __func__, card->name);
+
 	if (card->dapm_widgets)
 		snd_soc_dapm_new_controls(&card->dapm, card->dapm_widgets,
 					  card->num_dapm_widgets);
-	printk(KERN_INFO "%s: card->probe(%s)", __func__, card->name);
+
 	/* initialise the sound card only once */
 	if (card->probe) {
 		ret = card->probe(card);
 		if (ret < 0)
 			goto card_probe_error;
 	}
-	printk(KERN_INFO "%s: early DAI link probe %s", __func__, card->name);
+
 	/* early DAI link probe */
 	for (order = SND_SOC_COMP_ORDER_FIRST; order <= SND_SOC_COMP_ORDER_LAST;
 			order++) {
@@ -1505,10 +1505,8 @@ card_probe_error:
 static void snd_soc_instantiate_cards(void)
 {
 	struct snd_soc_card *card;
-	list_for_each_entry(card, &card_list, list) {
-		printk(KERN_INFO "%s: card: %s", __func__, card->name);
+	list_for_each_entry(card, &card_list, list)
 		snd_soc_instantiate_card(card);
-	}
 }
 
 /* probes a new socdev */
@@ -1680,7 +1678,7 @@ int snd_soc_platform_read(struct snd_soc_platform *platform,
 	}
 
 	ret = platform->driver->read(platform, reg);
-	dev_info(platform->dev, "read %x => %x\n", reg, ret);
+	dev_dbg(platform->dev, "read %x => %x\n", reg, ret);
 	trace_snd_soc_preg_read(platform, reg, ret);
 
 	return ret;
@@ -1695,7 +1693,7 @@ int snd_soc_platform_write(struct snd_soc_platform *platform,
 		return -1;
 	}
 
-	dev_info(platform->dev, "write %x = %x\n", reg, val);
+	dev_dbg(platform->dev, "write %x = %x\n", reg, val);
 	trace_snd_soc_preg_write(platform, reg, val);
 	return platform->driver->write(platform, reg, val);
 }
@@ -1767,7 +1765,7 @@ unsigned int snd_soc_read(struct snd_soc_codec *codec, unsigned int reg)
 	unsigned int ret;
 
 	ret = codec->read(codec, reg);
-	dev_info(codec->dev, "read %x => %x\n", reg, ret);
+	dev_dbg(codec->dev, "read %x => %x\n", reg, ret);
 	trace_snd_soc_reg_read(codec, reg, ret);
 
 	return ret;
@@ -1777,7 +1775,7 @@ EXPORT_SYMBOL_GPL(snd_soc_read);
 unsigned int snd_soc_write(struct snd_soc_codec *codec,
 			   unsigned int reg, unsigned int val)
 {
-	dev_info(codec->dev, "write %x = %x\n", reg, val);
+	dev_dbg(codec->dev, "write %x = %x\n", reg, val);
 	trace_snd_soc_reg_write(codec, reg, val);
 	return codec->write(codec, reg, val);
 }
@@ -2905,7 +2903,7 @@ int snd_soc_register_card(struct snd_soc_card *card)
 	snd_soc_instantiate_cards();
 	mutex_unlock(&client_mutex);
 
-	dev_info(card->dev, "Registered card '%s'\n", card->name);
+	dev_dbg(card->dev, "Registered card '%s'\n", card->name);
 
 	return 0;
 }
@@ -2924,7 +2922,7 @@ int snd_soc_unregister_card(struct snd_soc_card *card)
 	mutex_lock(&client_mutex);
 	list_del(&card->list);
 	mutex_unlock(&client_mutex);
-	dev_info(card->dev, "Unregistered card '%s'\n", card->name);
+	dev_dbg(card->dev, "Unregistered card '%s'\n", card->name);
 
 	return 0;
 }
@@ -2999,7 +2997,7 @@ int snd_soc_register_dai(struct device *dev,
 {
 	struct snd_soc_dai *dai;
 
-	dev_info(dev, "dai register %s\n", dev_name(dev));
+	dev_dbg(dev, "dai register %s\n", dev_name(dev));
 
 	dai = kzalloc(sizeof(struct snd_soc_dai), GFP_KERNEL);
 	if (dai == NULL)
@@ -3066,7 +3064,7 @@ int snd_soc_register_dais(struct device *dev,
 	struct snd_soc_dai *dai;
 	int i, ret = 0;
 
-	dev_info(dev, "dai register %s #%Zu\n", dev_name(dev), count);
+	dev_dbg(dev, "dai register %s #%Zu\n", dev_name(dev), count);
 
 	for (i = 0; i < count; i++) {
 
@@ -3138,7 +3136,7 @@ int snd_soc_register_platform(struct device *dev,
 {
 	struct snd_soc_platform *platform;
 
-	dev_info(dev, "platform register %s\n", dev_name(dev));
+	dev_dbg(dev, "platform register %s\n", dev_name(dev));
 
 	platform = kzalloc(sizeof(struct snd_soc_platform), GFP_KERNEL);
 	if (platform == NULL)
@@ -3240,7 +3238,7 @@ int snd_soc_register_codec(struct device *dev,
 	struct snd_soc_codec *codec;
 	int ret, i;
 
-	dev_info(dev, "codec register %s\n", dev_name(dev));
+	dev_dbg(dev, "codec register %s\n", dev_name(dev));
 
 	codec = kzalloc(sizeof(struct snd_soc_codec), GFP_KERNEL);
 	if (codec == NULL)

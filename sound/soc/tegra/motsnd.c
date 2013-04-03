@@ -770,6 +770,8 @@ static int __init motsnd_soc_init(void)
 		return -ENOMEM;
 	}
 
+	snd_soc_register_dais(&mot_snd_device->dev, dai, ARRAY_SIZE(dai));
+
 	card_data = kzalloc(sizeof(struct mot_card_data), GFP_KERNEL);
 	if (!card_data) {
 		printk(KERN_ERR "Can't allocate tegra asoc utils data\n");
@@ -781,8 +783,6 @@ static int __init motsnd_soc_init(void)
 		goto err_free;
 	platform_set_drvdata(mot_snd_device, &snd_soc_mot);
 	snd_soc_card_set_drvdata(&snd_soc_mot, card_data);
-
-	snd_soc_register_dais(&mot_snd_device->dev, dai, ARRAY_SIZE(dai));
 
 	ret = platform_device_add(mot_snd_device);
 	if (ret)

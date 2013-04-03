@@ -101,7 +101,7 @@
 #else
 #define TEGRA_SYSTEM_DMA_CH_NR			32
 #endif
-#define TEGRA_SYSTEM_DMA_AVP_CH_NUM		4
+#define TEGRA_SYSTEM_DMA_AVP_CH_NUM		2 // Olympus: Changed for in-call voice support. Previously was 4 and on 2.6.39.4 and lower was 0.
 #define TEGRA_SYSTEM_DMA_CH_MIN			0
 #define TEGRA_SYSTEM_DMA_CH_MAX	\
 	(TEGRA_SYSTEM_DMA_CH_NR - TEGRA_SYSTEM_DMA_AVP_CH_NUM - 1)

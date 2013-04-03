@@ -388,8 +388,10 @@ static u64 tegra_dma_mask = DMA_BIT_MASK(32);
 int tegra_pcm_dma_allocate(struct snd_soc_pcm_runtime *rtd, size_t size)
 {
 	struct snd_card *card = rtd->card->snd_card;
-	//struct snd_soc_dai *dai = rtd->cpu_dai;
-	struct snd_soc_dai *dai = rtd->codec_dai;
+	struct snd_soc_dai *dai = rtd->cpu_dai;
+/*Olympus: Added codec_dai for checking what is present and what is not, 
+		detecting by cpu_dai was not correct*/
+	struct snd_soc_dai *codec_dai = rtd->codec_dai;	
 	struct snd_pcm *pcm = rtd->pcm;
 	int ret = 0;
 
@@ -398,30 +400,15 @@ int tegra_pcm_dma_allocate(struct snd_soc_pcm_runtime *rtd, size_t size)
 	if (!card->dev->coherent_dma_mask)
 		card->dev->coherent_dma_mask = 0xffffffff;
 
-	if (dai->driver->playback.channels_min) {
-		printk(KERN_INFO "%s, dai->driver->name: %s", __func__, dai->driver->name);
-		printk(KERN_INFO "%s, dai->driver->playback.stream_name: %s", __func__, dai->driver->playback.stream_name);
-		printk(KERN_INFO "%s, dai->driver->playback.formats: %lu", __func__, dai->driver->playback.formats);
-		printk(KERN_INFO "%s, dai->driver->playback.channels_min: %u", __func__, dai->driver->playback.channels_min);
-		printk(KERN_INFO "%s, dai->driver->playback.channels_max: %u", __func__, dai->driver->playback.channels_max);
-		printk(KERN_INFO "%s, dai->driver->playback.rate_min: %u", __func__, dai->driver->playback.rate_min);
-		printk(KERN_INFO "%s, dai->driver->playback.rate_max: %u", __func__, dai->driver->playback.rate_max);
-		printk(KERN_INFO "%s, dai->driver->playback.rates: %u", __func__, dai->driver->playback.rates);
+	if (codec_dai->driver->playback.channels_min) {		//dai -> codec_dai
 		ret = tegra_pcm_preallocate_dma_buffer(pcm,
 						SNDRV_PCM_STREAM_PLAYBACK,
 						size);
 		if (ret)
 			goto err;
 	}
-	if (dai->driver->capture.channels_min) {
-		printk(KERN_INFO "%s, dai->driver->name: %s", __func__, dai->driver->name);
-		printk(KERN_INFO "%s, dai->driver->capture.stream_name: %s", __func__, dai->driver->capture.stream_name);
-		printk(KERN_INFO "%s, dai->driver->capture.formats: %lu", __func__, dai->driver->capture.formats);
-		printk(KERN_INFO "%s, dai->driver->capture.channels_min: %u", __func__, dai->driver->capture.channels_min);
-		printk(KERN_INFO "%s, dai->driver->capture.channels_max: %u", __func__, dai->driver->capture.channels_max);
-		printk(KERN_INFO "%s, dai->driver->capture.rate_min: %u", __func__, dai->driver->capture.rate_min);
-		printk(KERN_INFO "%s, dai->driver->capture.rate_max: %u", __func__, dai->driver->capture.rate_max);
-		printk(KERN_INFO "%s, dai->driver->capture.rates: %u", __func__, dai->driver->capture.rates);
+
+	if (codec_dai->driver->capture.channels_min) {		//dai -> codec_dai
 		ret = tegra_pcm_preallocate_dma_buffer(pcm,
 						SNDRV_PCM_STREAM_CAPTURE,
 						size);
