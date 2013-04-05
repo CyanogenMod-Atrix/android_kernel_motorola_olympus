@@ -41,6 +41,17 @@ static int __init olympus_bm_recovery_setup(char *options)
 }
 __setup("rec", olympus_bm_recovery_setup);
 
+#define BOOT_MODE_MAX_LEN 30
+static char boot_mode[BOOT_MODE_MAX_LEN + 1];
+int __init board_boot_mode_init(char *s)
+{
+	strncpy(boot_mode, s, BOOT_MODE_MAX_LEN);
+	boot_mode[BOOT_MODE_MAX_LEN] = '\0';
+	printk(KERN_INFO "boot_mode=%s\n", boot_mode);
+	return 1;
+}
+__setup("androidboot.mode=", board_boot_mode_init);
+
 #if defined(CONFIG_MTD_NAND_TEGRA) || defined(CONFIG_EMBEDDED_MMC_START_OFFSET)
 #define MAX_MTD_PARTNR 16
 static struct mtd_partition tegra_mtd_partitions[MAX_MTD_PARTNR];

@@ -41,10 +41,6 @@
 #include <mach/iomap.h>
 #include <mach/irqs.h>
 #include <mach/w1.h>
-#include <linux/regulator/consumer.h>
-#include <linux/regulator/driver.h>
-#include <linux/regulator/machine.h>
-#include <linux/usb/android_composite.h>
 #include <linux/gpio.h>
 #include <linux/cpcap-accy.h>
 #include <linux/reboot.h>
@@ -236,7 +232,7 @@ static char oly_unused_pins_p1[] = {
         TEGRA_GPIO_PL5,
         TEGRA_GPIO_PL6,
         TEGRA_GPIO_PL7,
-	TEGRA_GPIO_PT2,
+        TEGRA_GPIO_PT2,
         TEGRA_GPIO_PD6,
         TEGRA_GPIO_PD7,
         TEGRA_GPIO_PR3,
@@ -293,51 +289,48 @@ static __initdata struct tegra_clk_init_table olympus_clk_init_table[] = {
 	{ NULL,		NULL,		0,		0},
 };
 
-static noinline void __init tegra_setup_bluesleep(void)
+static struct resource olympus_bcm4329_rfkill_resources[] = {
+	{
+		.name	= "bcm4329_nreset_gpio",
+		.start	= 0,
+		.end	= 0,
+		.flags	= IORESOURCE_IO,
+	},
+	{
+		.name	= "bcm4329_nshutdown_gpio",
+		.start	= TEGRA_GPIO_PU0,
+		.end	= TEGRA_GPIO_PU0,
+		.flags	= IORESOURCE_IO,
+	},
+	{
+		.name	= "bcm4329_wake_gpio",
+		.start	= TEGRA_GPIO_PU1,
+		.end	= TEGRA_GPIO_PU1,
+		.flags	= IORESOURCE_IO,
+	},
+	{
+		.name	= "bcm4329_host_wake_gpio",
+		.start	= TEGRA_GPIO_PU6,
+		.end	= TEGRA_GPIO_PU6,
+		.flags	= IORESOURCE_IO,
+	},
+};
+
+static struct platform_device olympus_bcm4329_rfkill_device = {
+	.name		= "bcm4329_rfkill",
+	.id		= -1,
+	.num_resources	= ARRAY_SIZE(olympus_bcm4329_rfkill_resources),
+	.resource	= olympus_bcm4329_rfkill_resources,
+};
+
+static noinline void __init olympus_bt_rfkill(void)
 {
-       struct platform_device *pDev = NULL;
-       struct resource *res;
+	olympus_bcm4329_rfkill_resources[0].start =
+		olympus_bcm4329_rfkill_resources[0].end = TEGRA_GPIO_PU4;
+	printk("%s: registering bcm4329_rfkill device...\n", __func__);
 
-       pDev = platform_device_alloc("bluesleep", 0);
-       if (!pDev) {
-               pr_err("unable to allocate platform device for bluesleep");
-               goto fail;
-       }
-
-       res = kzalloc(sizeof(struct resource)*3, GFP_KERNEL);
-       if (!res) {
-               pr_err("unable to allocate resource for bluesleep\n");
-               goto fail;
-       }
-
-       res[0].name   = "gpio_host_wake";
-       res[0].start  = TEGRA_GPIO_PU6;
-       res[0].end    = TEGRA_GPIO_PU6;
-       res[0].flags  = IORESOURCE_IO;
-
-       res[1].name   = "gpio_ext_wake";
-       res[1].start  = TEGRA_GPIO_PU1;
-       res[1].end    = TEGRA_GPIO_PU1;
-       res[1].flags  = IORESOURCE_IO;
-
-       res[2].name   = "host_wake";
-       res[2].start  = gpio_to_irq(TEGRA_GPIO_PU6);
-       res[2].end    = gpio_to_irq(TEGRA_GPIO_PU6);
-       res[2].flags  = IORESOURCE_IRQ;
-
-       if (platform_device_add_resources(pDev, res, 3)) {
-               pr_err("unable to add resources to bluesleep device\n");
-               goto fail;
-       }
-
-       if (platform_device_add(pDev)) {
-               pr_err("unable to add bluesleep device\n");
-               goto fail;
-       }
-
-fail:
-       if (pDev)
-               return;
+	platform_device_register(&olympus_bcm4329_rfkill_device);
+	return;
 }
 
 static struct tegra_w1_timings tegra_w1_platform_timings = {
@@ -486,7 +479,7 @@ static void __init tegra_olympus_init(void)
 
 	olympus_sensors_init();
 
-	//olympus_sec_init();
+	olympus_sec_init();
 
 	olympus_backlight_init();
 
@@ -496,9 +489,11 @@ static void __init tegra_olympus_init(void)
 
 	olympus_touch_init();
 
+	olympus_bt_rfkill();
+
 	olympus_usb_init();
 
-//	olympus_cameras_init();
+	olympus_cameras_init();
 
 //	olympus_emc_init();
 
