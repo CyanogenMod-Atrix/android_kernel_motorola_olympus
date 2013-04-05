@@ -54,6 +54,7 @@
 #include "pm.h"
 
 #include "board.h"
+#include "devices.h"
 #include "hwrev.h"
 
 #include "board-olympus.h"
@@ -361,13 +362,12 @@ static struct tegra_w1_platform_data tegra_w1_pdata = {
         .timings = &tegra_w1_platform_timings,
 };
 
-static struct platform_device tegra_w1_device = {
-	.name          = "tegra_w1",
-	.id            = -1,
-	.dev	   =  {
-			.platform_data = &tegra_w1_pdata,
-	},
-};
+static void olympus_w1_init(void)
+{
+        tegra_w1_device.dev.platform_data = &tegra_w1_pdata;
+        platform_device_register(&tegra_w1_device);
+}
+
 #if 0
 static int cpcap_usb_connected_probe(struct platform_device *pdev)
 {
@@ -507,7 +507,7 @@ static void __init tegra_olympus_init(void)
 
 //	platform_driver_register(&cpcap_usb_connected_driver);
 
-	platform_device_register(&tegra_w1_device);
+	olympus_w1_init();
 	
 	//tegra_setup_bluesleep();
 
