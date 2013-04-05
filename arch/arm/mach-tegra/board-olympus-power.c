@@ -266,9 +266,11 @@ static struct platform_device cpcap_3mm5_device = {
 };
 
 static struct platform_device cpcap_batt_device = {
-	.name           = "cpcap_battery",
-	.id             = -1,
-	.dev.platform_data = NULL,
+	.name   = "cpcap_battery",
+        .id     = -1,
+        .dev    = {
+                .platform_data  = NULL,
+        },
 };
 
 static struct platform_device cpcap_usb_device = {

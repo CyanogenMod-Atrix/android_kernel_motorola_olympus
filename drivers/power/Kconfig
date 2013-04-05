@@ -297,6 +297,12 @@ config CHARGER_MAX8998
 	  Say Y to enable support for the battery charger control sysfs and
 	  platform data of MAX8998/LP3974 PMICs.
 
+config MOT_CHARGING_DIS
+        bool "eng build support"
+        default n
+        help
+         Say Y here to enable disable usb charging when it is plug in.
+
 endif # POWER_SUPPLY
 
 config TEGRA_BPC_MGMT
