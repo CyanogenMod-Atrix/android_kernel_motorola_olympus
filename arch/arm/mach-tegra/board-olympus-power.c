@@ -55,6 +55,7 @@ static int disable_rtc_alarms(struct device *dev, void *data)
 void olympus_pm_restart(char mode, const char *cmd)
 {
 	/* Assert SYSRSTRTB input to CPCAP to force cold restart */
+	tegra_gpio_enable(TEGRA_GPIO_PZ2);
 	gpio_request(TEGRA_GPIO_PZ2, "sysrstrtb");
 	gpio_direction_output(TEGRA_GPIO_PZ2, 0);
 }
@@ -68,13 +69,13 @@ void olympus_system_power_off(void)
 	   !((bi_powerup_reason() & PWRUP_FACTORY_CABLE) &&
 	     (bi_powerup_reason() != PWRUP_INVALID)) )
 	{
-		printk("External power detected- rebooting\r\n");
+		pr_info("%s: external power detected: rebooting\n", __func__);
 		cpcap_misc_clear_power_handoff_info();
 		olympus_pm_restart(0, "");
 		while(1);
 	}
 
-	printk(KERN_ERR "%s(): Powering down system\n", __func__);
+	printk(KERN_ERR "%s: powering down system\n", __func__);
 
 	/* Disable RTC alarms to prevent unwanted powerups */
 	class_for_each_device(rtc_class, NULL, NULL, disable_rtc_alarms);
@@ -83,26 +84,34 @@ void olympus_system_power_off(void)
 	cpcap_disable_powercut();
 
 	/* We need to set the WDI bit low to power down normally */
-	if (HWREV_TYPE_IS_PORTABLE(system_rev) &&
-	    HWREV_REV(system_rev) >= HWREV_REV_1 &&
-	    HWREV_REV(system_rev) <= HWREV_REV_1C )
+	if (machine_is_olympus())
 	{
-		/* Olympus P1 */
-		gpio_request(TEGRA_GPIO_PT4, "P1 WDI");
-		gpio_direction_output(TEGRA_GPIO_PT4, 1);
-		gpio_set_value(TEGRA_GPIO_PT4, 0);
+		if (HWREV_TYPE_IS_PORTABLE(system_rev) &&
+		    HWREV_REV(system_rev) >= HWREV_REV_1 &&
+		    HWREV_REV(system_rev) <= HWREV_REV_1C )
+		{
+			/* Olympus P1 */
+			gpio_request(TEGRA_GPIO_PT4, "P1 WDI");
+			gpio_direction_output(TEGRA_GPIO_PT4, 1);
+			gpio_set_value(TEGRA_GPIO_PT4, 0);
+		}
+		else
+		{
+			/* Olympus Mortable, P0, P2 and later */
+			gpio_request(TEGRA_GPIO_PV7, "P2 WDI");
+			gpio_direction_output(TEGRA_GPIO_PV7, 1);
+			gpio_set_value(TEGRA_GPIO_PV7, 0);
+		}
 	}
 	else
 	{
-		/* Olympus Mortable, P0, P2 and later */
-		gpio_request(TEGRA_GPIO_PV7, "P2 WDI");
-		gpio_direction_output(TEGRA_GPIO_PV7, 1);
-		gpio_set_value(TEGRA_GPIO_PV7, 0);
+		printk(KERN_ERR "Could not poweroff.  Unknown hardware "
+				"revision: 0x%x\n", system_rev);
 	}
 
 	mdelay(500);
 	printk("Power-off failed (Factory cable inserted?), rebooting\r\n");
-	olympus_pm_restart(0,"");
+	olympus_pm_restart(0, "");
 }
 
 static struct cpcap_device *cpcap_di;
@@ -117,20 +126,20 @@ static int cpcap_validity_reboot(struct notifier_block *this,
 	dev_info(&(cpcap_di->spi->dev), "Saving power down reason.\n");
 
 	if (code == SYS_RESTART) {
+		/* Set the soft reset bit in the cpcap */
+		cpcap_regacc_write(cpcap_di, CPCAP_REG_VAL1,
+			CPCAP_BIT_SOFT_RESET,
+			CPCAP_BIT_SOFT_RESET);
 		if (mode != NULL && !strncmp("outofcharge", mode, 12)) {
 			/* Set the outofcharge bit in the cpcap */
 			ret = cpcap_regacc_write(cpcap_di, CPCAP_REG_VAL1,
-						 CPCAP_BIT_OUT_CHARGE_ONLY,
-						 CPCAP_BIT_OUT_CHARGE_ONLY);
+				CPCAP_BIT_OUT_CHARGE_ONLY,
+				CPCAP_BIT_OUT_CHARGE_ONLY);
 			if (ret) {
 				dev_err(&(cpcap_di->spi->dev),
 					"outofcharge cpcap set failure.\n");
 				result = NOTIFY_BAD;
 			}
-			/* Set the soft reset bit in the cpcap */
-			cpcap_regacc_write(cpcap_di, CPCAP_REG_VAL1,
-					   CPCAP_BIT_SOFT_RESET,
-					   CPCAP_BIT_SOFT_RESET);
 			if (ret) {
 				dev_err(&(cpcap_di->spi->dev),
 					"reset cpcap set failure.\n");
@@ -139,7 +148,7 @@ static int cpcap_validity_reboot(struct notifier_block *this,
 		}
 
 		/* Check if we are starting recovery mode */
-		if (mode != NULL && !strncmp("recovery", mode, 9)) {
+		if (mode != NULL && !strncmp("fota", mode, 5)) {
 			/* Set the fota (recovery mode) bit in the cpcap */
 			ret = cpcap_regacc_write(cpcap_di, CPCAP_REG_VAL1,
 				CPCAP_BIT_FOTA_MODE, CPCAP_BIT_FOTA_MODE);
@@ -151,7 +160,7 @@ static int cpcap_validity_reboot(struct notifier_block *this,
 		} else {
 			/* Set the fota (recovery mode) bit in the cpcap */
 			ret = cpcap_regacc_write(cpcap_di, CPCAP_REG_VAL1, 0,
-						 CPCAP_BIT_FOTA_MODE);
+						CPCAP_BIT_FOTA_MODE);
 			if (ret) {
 				dev_err(&(cpcap_di->spi->dev),
 					"Recovery cpcap clear failure.\n");
@@ -159,16 +168,79 @@ static int cpcap_validity_reboot(struct notifier_block *this,
 			}
 		}
 		/* Check if we are going into fast boot mode */
-		if (mode != NULL && !strncmp("bootloader", mode, 11)) {
+		if (mode != NULL && ( !strncmp("bootloader", mode, 11) ||
+							  !strncmp("fastboot", mode, 9) ) ) {
+
 			/* Set the bootmode bit in the cpcap */
 			ret = cpcap_regacc_write(cpcap_di, CPCAP_REG_VAL1,
-				CPCAP_BIT_BOOT_MODE, CPCAP_BIT_BOOT_MODE);
+				CPCAP_BIT_FASTBOOT_MODE, CPCAP_BIT_FASTBOOT_MODE);
+
 			if (ret) {
 				dev_err(&(cpcap_di->spi->dev),
-					"Boot mode cpcap set failure.\n");
+					"Boot (fastboot) mode cpcap set failure.\n");
 				result = NOTIFY_BAD;
 			}
 		}
+
+		/* Check if we are going into rsd (mot-flash) mode */
+		if (mode != NULL && !strncmp("rsd", mode, 4)) {
+			/* Set the bootmode bit in the cpcap */
+
+			ret = cpcap_regacc_write(cpcap_di, CPCAP_REG_VAL1,
+				CPCAP_BIT_FLASH_MODE, CPCAP_BIT_FLASH_MODE);
+
+			if (ret) {
+				dev_err(&(cpcap_di->spi->dev),
+					"RSD (mot-flash) mode cpcap set failure.\n");
+				result = NOTIFY_BAD;
+			}
+		}
+
+		/* Check if we are going into rsd (mot-flash) mode */
+		if (mode != NULL && !strncmp("nv", mode, 3)) {
+			/* Set the bootmode bit in the cpcap */
+
+			ret = cpcap_regacc_write(cpcap_di, CPCAP_REG_VAL1,
+				CPCAP_BIT_NVFLASH_MODE, CPCAP_BIT_NVFLASH_MODE );
+
+			if (ret) {
+				dev_err(&(cpcap_di->spi->dev),
+					"RSD (mot-flash) mode cpcap set failure.\n");
+				result = NOTIFY_BAD;
+			}
+		}
+
+		/* Check if we are going into rsd (mot-flash) mode */
+		if (mode != NULL && !strncmp("recovery", mode, 9)) {
+			/* Set the bootmode bit in the cpcap */
+
+			ret = cpcap_regacc_write(cpcap_di, CPCAP_REG_VAL1,
+				CPCAP_BIT_RECOVERY_MODE, CPCAP_BIT_RECOVERY_MODE );
+
+			if (ret) {
+				dev_err(&(cpcap_di->spi->dev),
+					"RSD (mot-flash) mode cpcap set failure.\n");
+				result = NOTIFY_BAD;
+			}
+		}
+
+		/* Check if we are going into bponly mode */
+		if (mode != NULL && !strncmp("bponly", mode, 7)) {
+			/* Set the bootmode bit in the cpcap */
+
+			ret = cpcap_regacc_write(cpcap_di, CPCAP_REG_VAL1,
+				CPCAP_BIT_BP_ONLY_FLASH, CPCAP_BIT_BP_ONLY_FLASH );
+
+			if (ret) {
+				dev_err(&(cpcap_di->spi->dev),
+					"BP only mode cpcap set failure.\n");
+				result = NOTIFY_BAD;
+			}
+		}
+
+
+
+		cpcap_regacc_write(cpcap_di, CPCAP_REG_MI2, 0, 0xFFFF);
 	} else {
 		ret = cpcap_regacc_write(cpcap_di, CPCAP_REG_VAL1,
 					 0,
@@ -181,7 +253,7 @@ static int cpcap_validity_reboot(struct notifier_block *this,
 
 		/* Clear the soft reset bit in the cpcap */
 		ret = cpcap_regacc_write(cpcap_di, CPCAP_REG_VAL1, 0,
-					 CPCAP_BIT_SOFT_RESET);
+					CPCAP_BIT_SOFT_RESET);
 		if (ret) {
 			dev_err(&(cpcap_di->spi->dev),
 				"SW Reset cpcap set failure.\n");
@@ -189,7 +261,7 @@ static int cpcap_validity_reboot(struct notifier_block *this,
 		}
 		/* Clear the fota (recovery mode) bit in the cpcap */
 		ret = cpcap_regacc_write(cpcap_di, CPCAP_REG_VAL1, 0,
-					 CPCAP_BIT_FOTA_MODE);
+					CPCAP_BIT_FOTA_MODE);
 		if (ret) {
 			dev_err(&(cpcap_di->spi->dev),
 				"Recovery cpcap clear failure.\n");
@@ -208,13 +280,14 @@ static int cpcap_validity_reboot(struct notifier_block *this,
 
 	return result;
 }
+
 static struct notifier_block validity_reboot_notifier = {
 	.notifier_call = cpcap_validity_reboot,
 };
 
 static int cpcap_validity_probe(struct platform_device *pdev)
 {
-//	int err;
+	int err;
 
 	if (pdev->dev.platform_data == NULL) {
 		dev_err(&pdev->dev, "no platform_data\n");
@@ -223,13 +296,33 @@ static int cpcap_validity_probe(struct platform_device *pdev)
 
 	cpcap_di = pdev->dev.platform_data;
 
-	cpcap_regacc_write(cpcap_di, CPCAP_REG_VAL1,
-			   (CPCAP_BIT_AP_KERNEL_PANIC | CPCAP_BIT_SOFT_RESET),
-			   (CPCAP_BIT_AP_KERNEL_PANIC | CPCAP_BIT_SOFT_RESET));
+#ifdef CONFIG_BOOTINFO
+	if (bi_powerup_reason() != PU_REASON_CHARGER) {
+		/* Set Kpanic bit, which will be cleared at normal reboot */
+		cpcap_regacc_write(cpcap_di, CPCAP_REG_VAL1,
+				   CPCAP_BIT_AP_KERNEL_PANIC,
+				   CPCAP_BIT_AP_KERNEL_PANIC);
+	}
+#endif
 
 	register_reboot_notifier(&validity_reboot_notifier);
 
-	return 0;
+#ifdef CONFIG_MFD_CPCAP_SOFTRESET
+	/* CORE_PWR_REQ is only properly connected on P1 hardware and later */
+	if (stingray_revision() >= STINGRAY_REVISION_P1) {
+		err = cpcap_uc_start(cpcap_di, CPCAP_MACRO_14);
+		dev_info(&pdev->dev, "Started macro 14: %d\n", err);
+	} else
+		dev_info(&pdev->dev, "Not starting macro 14 (no hw support)\n");
+
+	/* Enable workaround to allow soft resets to work */
+	cpcap_regacc_write(cpcap_di, CPCAP_REG_PGC,
+			   CPCAP_BIT_SYS_RST_MODE, CPCAP_BIT_SYS_RST_MODE);
+	err = cpcap_uc_start(cpcap_di,CPCAP_BANK_PRIMARY, CPCAP_MACRO_15);
+	dev_info(&pdev->dev, "Started macro 15: %d\n", err);
+#endif
+
+	return err;
 }
 
 static int cpcap_validity_remove(struct platform_device *pdev)
@@ -1155,7 +1248,7 @@ static struct tegra_suspend_platform_data olympus_suspend_data = {
 
 void __init olympus_suspend_init(void)
 {
-
+/*
 	tegra_pm_irq_set_wake_type(tegra_wake_to_irq(TEGRA_WAKE_GPIO_PL1), WAKE_LOW);
 	tegra_pm_irq_set_wake_type(tegra_wake_to_irq(TEGRA_WAKE_GPIO_PA0), WAKE_HI);
 	tegra_pm_irq_set_wake_type(tegra_wake_to_irq(TEGRA_WAKE_KBC_EVENT), WAKE_HI);
@@ -1164,7 +1257,7 @@ void __init olympus_suspend_init(void)
 	tegra_pm_irq_set_wake_type(tegra_wake_to_irq(TEGRA_WAKE_GPIO_PU5), WAKE_ANY);
 	tegra_pm_irq_set_wake_type(tegra_wake_to_irq(TEGRA_WAKE_GPIO_PU6), WAKE_ANY);
 	tegra_pm_irq_set_wake_type(tegra_wake_to_irq(TEGRA_WAKE_GPIO_PV2), WAKE_ANY);
-	
+*/	
 	tegra_init_suspend(&olympus_suspend_data);
 }
 
@@ -1191,12 +1284,12 @@ void __init olympus_power_init(void)
 	pmc_cntrl_0 |= 0x00000200;
 	writel(pmc_cntrl_0, IO_ADDRESS(TEGRA_PMC_BASE));
 
-	tegra_gpio_enable(154);
+/*	tegra_gpio_enable(154);
 	gpio_request(154, "usb_host_pwr_en");
 	gpio_direction_output(154,0);
 
-/*	tegra_gpio_enable(174);
-	gpio_request(174, "usb_host_pwr_en");
+	tegra_gpio_enable(174);
+	gpio_request(174, "usb_data_en");
 	gpio_direction_output(174,0);
 	gpio_set_value(174,1);*/
 

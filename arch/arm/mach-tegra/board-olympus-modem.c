@@ -442,8 +442,10 @@ int __init olympus_modem_init(void)
 	char bp_ctrl_bus[40] = "UART";
 	char bp_data_bus[20] = "only";
 
-	if ((machine_is_olympus() &&
-	      HWREV_REV(system_rev) <= HWREV_REV_1))
+	printk("%s: machine_is_olympus: %s\n", __func__, machine_is_olympus()?"TRUE":"FALSE"); 
+	printk("%s: system_rev: 0x%x", __func__, HWREV_REV(system_rev));
+	if ((machine_is_olympus() /*&&
+	      HWREV_REV(system_rev) <= HWREV_REV_1))*/))
 	    {
 		strcat(bp_ctrl_bus, " (with mdm_ctrl)");
 		olympus_mdm_ctrl_init();
