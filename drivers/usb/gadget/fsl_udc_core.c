@@ -44,10 +44,6 @@
 #include <linux/delay.h>
 #include <linux/regulator/consumer.h>
 #include <linux/workqueue.h>
-#include <linux/pm_qos_params.h>
-#include <linux/err.h>
-#include <linux/io.h>
-#include <linux/clk.h>
 
 #include <asm/byteorder.h>
 #include <asm/io.h>
@@ -56,7 +52,6 @@
 #include <asm/dma.h>
 
 #include <mach/iomap.h>
-#include <mach/usb_phy.h>
 
 #include "fsl_usb2_udc.h"
 
@@ -183,163 +178,6 @@ static inline void fsl_set_accessors(struct fsl_usb2_platform_data *pdata) {}
 #define cpu_to_hc32(x)		cpu_to_le32(x)
 #define hc32_to_cpu(x)		le32_to_cpu(x)
 #endif /* CONFIG_PPC32 */
-/*
- * CyanogenMod-Atrix added
- */
-
-static struct tegra_usb_phy *phy;
-static struct clk *udc_clk;
-static struct clk *emc_clk;
-static struct clk *sclk_clk;
-static void *udc_base;
-
-int fsl_udc_clk_init(struct platform_device *pdev)
-{
-	struct resource *res;
-	int err;
-	int instance;
-	struct fsl_usb2_platform_data *pdata = pdev->dev.platform_data;
-
-
-	udc_clk = clk_get(&pdev->dev, NULL);
-	if (IS_ERR(udc_clk)) {
-		dev_err(&pdev->dev, "Can't get udc clock\n");
-		return PTR_ERR(udc_clk);
-	}
-
-	clk_enable(udc_clk);
-
-	emc_clk = clk_get(&pdev->dev, "emc");
-	if (IS_ERR(emc_clk)) {
-		dev_err(&pdev->dev, "Can't get emc clock\n");
-		err = PTR_ERR(emc_clk);
-		goto err_emc;
-	}
-
-	clk_enable(emc_clk);
-	clk_set_rate(emc_clk, ULONG_MAX);
-
-	sclk_clk = clk_get(&pdev->dev, "sclk");
-	if (IS_ERR(sclk_clk)) {
-		dev_err(&pdev->dev, "Can't get sclk clock\n");
-		err = PTR_ERR(emc_clk);
-		goto err_sclk;
-	}
-
-	clk_enable(sclk_clk);
-	clk_set_rate(sclk_clk, 240000000);
-
-	/* we have to remap the registers ourselves as fsl_udc does not
-	 * export them for us.
-	 */
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	if (!res) {
-		err = -ENXIO;
-		goto err0;
-	}
-	udc_base = ioremap(res->start, resource_size(res));
-	if (!udc_base) {
-		err = -ENOMEM;
-		goto err0;
-	}
-
-	instance = pdev->id;
-	if (instance == -1)
-		instance = 0;
-
-	phy = tegra_usb_phy_open(pdev);
-	if (IS_ERR(phy)) {
-		dev_err(&pdev->dev, "Can't open phy\n");
-		err = PTR_ERR(phy);
-		goto err1;
-	}
-
-	tegra_usb_phy_power_on(phy);
-
-	return 0;
-err1:
-	iounmap(udc_base);
-err0:
-	clk_disable(sclk_clk);
-	clk_put(sclk_clk);
-err_sclk:
-	clk_disable(emc_clk);
-	clk_put(emc_clk);
-err_emc:
-	clk_disable(udc_clk);
-	clk_put(udc_clk);
-	return err;
-}
-
-void fsl_udc_clk_finalize(struct platform_device *pdev)
-{
-}
-
-void fsl_udc_clk_release(void)
-{
-	tegra_usb_phy_close(phy);
-
-	iounmap(udc_base);
-
-	clk_disable(udc_clk);
-	clk_put(udc_clk);
-
-	clk_disable(emc_clk);
-	clk_put(emc_clk);
-
-	clk_disable(sclk_clk);
-	clk_put(sclk_clk);
-}
-
-void fsl_udc_clk_suspend(void)
-{
-	tegra_usb_phy_power_off(phy);
-	clk_disable(udc_clk);
-	clk_disable(emc_clk);
-	clk_disable(sclk_clk);
-}
-
-void fsl_udc_clk_resume(void)
-{
-	clk_enable(sclk_clk);
-	clk_enable(emc_clk);
-	clk_enable(udc_clk);
-	tegra_usb_phy_power_on(phy);
-}
-
-void fsl_udc_clk_enable(void)
-{
-	clk_enable(udc_clk);
-}
-
-void fsl_udc_clk_disable(void)
-{
-	clk_disable(udc_clk);
-}
-
-bool fsl_udc_charger_detect(void)
-{
-	return tegra_usb_phy_charger_detected(phy);
-}
-
-void fsl_udc_dtd_prepare(void)
-{
-	/* When we are programming two DTDs very close to each other,
-	 * the second DTD is being prefetched before it is actually written
-	 * to DDR. To prevent this, we disable prefetcher before programming
-	 * any new DTD and re-enable it before priming endpoint.
-	 */
-	tegra_usb_phy_memory_prefetch_off(phy);
-}
-
-void fsl_udc_ep_barrier(void)
-{
-	tegra_usb_phy_memory_prefetch_on(phy);
-}
-
-/*
- * CyanogenMod-Atrix added -end
- */
 
 /*
  * High speed test mode packet(53 bytes).
@@ -1577,14 +1415,14 @@ static int fsl_vbus_session(struct usb_gadget *gadget, int is_active)
 		udc->vbus_active = 0;
 		udc->usb_state = USB_STATE_DEFAULT;
 		spin_unlock_irqrestore(&udc->lock, flags);
-		fsl_udc_clk_suspend();
+		fsl_udc_clk_suspend(false);
 		if (udc->vbus_regulator) {
 			/* set the current limit to 0mA */
 			regulator_set_current_limit(
 				udc->vbus_regulator, 0, 0);
 		}
 	} else if (!udc->vbus_active && is_active) {
-		fsl_udc_clk_resume();
+		fsl_udc_clk_resume(false);
 		/* setup the controller in the device mode */
 		dr_controller_setup(udc);
 		/* setup EP0 for setup packet */
@@ -3302,7 +3140,7 @@ static int __init fsl_udc_probe(struct platform_device *pdev)
 	if (udc_controller->transceiver) {
 		dr_controller_stop(udc_controller);
 		dr_controller_reset(udc_controller);
-		fsl_udc_clk_suspend();
+		fsl_udc_clk_suspend(false);
 		udc_controller->vbus_active = 0;
 		udc_controller->usb_state = USB_STATE_DEFAULT;
 		otg_set_peripheral(udc_controller->transceiver, &udc_controller->gadget);
@@ -3421,7 +3259,7 @@ static int fsl_udc_suspend(struct platform_device *pdev, pm_message_t state)
     if (udc_controller->transceiver) {
         udc_controller->transceiver->state = OTG_STATE_UNDEFINED;
     }
-    fsl_udc_clk_suspend();
+    fsl_udc_clk_suspend(true);
     return 0;
 }
 
@@ -3432,32 +3270,32 @@ static int fsl_udc_suspend(struct platform_device *pdev, pm_message_t state)
 static int fsl_udc_resume(struct platform_device *pdev)
 {
 	if (udc_controller->transceiver) {
-		fsl_udc_clk_resume();
+		fsl_udc_clk_resume(true);
 		if (!(fsl_readl(&usb_sys_regs->vbus_wakeup) & USB_SYS_ID_PIN_STATUS)) {
 			/* If ID status is low means host is connected, return */
-			fsl_udc_clk_suspend();
+			fsl_udc_clk_suspend(false);
 			return 0;
 		}
 		/* check for VBUS */
 		if (!(fsl_readl(&usb_sys_regs->vbus_wakeup) & USB_SYS_VBUS_STATUS)) {
 			/* if there is no VBUS then power down the clocks and return */
-			fsl_udc_clk_suspend();
+			fsl_udc_clk_suspend(false);
 			return 0;
 		} else {
-			fsl_udc_clk_suspend();
+			fsl_udc_clk_suspend(false);
 			if (udc_controller->transceiver->state == OTG_STATE_A_HOST)
 				return 0;
 			/* Detected VBUS set the transceiver state to device mode */
 			udc_controller->transceiver->state = OTG_STATE_B_PERIPHERAL;
 		}
 	} else {
-		fsl_udc_clk_resume();
+		fsl_udc_clk_resume(true);
 	}
-	fsl_udc_clk_resume();
+	fsl_udc_clk_resume(true);
 
 	/* Power down the phy if cable is not connected */
 	if (!(fsl_readl(&usb_sys_regs->vbus_wakeup) & USB_SYS_VBUS_STATUS))
-		fsl_udc_clk_suspend();
+		fsl_udc_clk_suspend(false);
 	else
 		fsl_udc_restart(udc_controller);
 

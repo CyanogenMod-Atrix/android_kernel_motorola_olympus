@@ -156,7 +156,6 @@ static irqreturn_t tegra_ehci_irq(struct usb_hcd *hcd)
 	struct tegra_ehci_hcd *tegra = dev_get_drvdata(hcd->self.controller);
 	struct ehci_hcd *ehci = hcd_to_ehci(hcd);
 	irqreturn_t irq_status;
-	bool pmc_remote_wakeup = false;
 
 	spin_lock(&ehci->lock);
 	irq_status = tegra_usb_phy_irq(tegra->phy);
@@ -166,8 +165,9 @@ static irqreturn_t tegra_ehci_irq(struct usb_hcd *hcd)
 	}
 	if (tegra_usb_phy_remote_wakeup(tegra->phy)) {
 		ehci_info(ehci, "remote wakeup detected\n");
-		pmc_remote_wakeup = true;
 		usb_hcd_resume_root_hub(hcd);
+		spin_unlock(&ehci->lock);
+		return irq_status;
 	}
 	spin_unlock(&ehci->lock);
 
@@ -178,10 +178,6 @@ static irqreturn_t tegra_ehci_irq(struct usb_hcd *hcd)
 
 	irq_status = ehci_irq(hcd);
 
-	if (pmc_remote_wakeup) {
-		ehci->controller_remote_wakeup = false;
-	}
-
 	if (ehci->controller_remote_wakeup) {
 		ehci->controller_remote_wakeup = false;
 		tegra_usb_phy_pre_resume(tegra->phy, true);
@@ -190,54 +186,6 @@ static irqreturn_t tegra_ehci_irq(struct usb_hcd *hcd)
 	return irq_status;
 }
 
-
-#ifdef CONFIG_MACH_OLYMPUS
-void tegra_ehci_enable_host (struct usb_hcd *hcd)
-{
-	printk(KERN_DEBUG "%s  TO DO\n", __func__);
-#if 0
-	struct ehci_hcd *ehci = hcd_to_ehci (hcd);
-	unsigned long flags;
-
-	spin_lock_irqsave (&ehci->lock, flags);
-
-	if (ehci->transceiver->state == OTG_STATE_A_HOST) {
-		if (!ehci->host_reinited) {
-			schedule_work(&ehci->irq_work);
-			spin_unlock_irqrestore (&ehci->lock, flags);
-			return;
-		} else
-			printk(KERN_DEBUG "%s host initialized already\n", __func__);
-	} else if (ehci->transceiver->state == OTG_STATE_A_SUSPEND) {
-		if (!ehci->host_reinited) {
-			printk(KERN_DEBUG "%s host not initialized\n", __func__);
-			spin_unlock_irqrestore (&ehci->lock, flags);
-			return;
-		}
-		else {
-			/* Force the disconnect because otherwise we could get
-			 * left in the connected state if the last getPorStatus
-			 * request comes in before the HOST -> SUSPEND state
-			 * change. */
-			spin_unlock_irqrestore (&ehci->lock, flags);
-			/* indicate hcd flags, that hardware is not accessible now */
-			clear_bit(HCD_FLAG_HW_ACCESSIBLE, &hcd->flags);
-			ehci_halt(ehci);
-			tegra_ehci_power_down(hcd);
-			ehci->transceiver->state = OTG_STATE_UNDEFINED;
-			ehci->host_reinited = 0;
-			return;
-		}
-	} else
-		printk(KERN_DEBUG "%s unexpected state\n", __func__);
-
-	spin_unlock_irqrestore (&ehci->lock, flags);
-	ehci_irq(hcd);
-
-	return;
-#endif
-}
-#endif
 
 static int tegra_ehci_hub_control(
 	struct usb_hcd	*hcd,
@@ -250,7 +198,6 @@ static int tegra_ehci_hub_control(
 {
 	struct tegra_ehci_hcd *tegra = dev_get_drvdata(hcd->self.controller);
 	struct ehci_hcd *ehci = hcd_to_ehci(hcd);
-	unsigned long	flags;
 	int	retval = 0;
 	u32 __iomem	*status_reg;
 
@@ -264,6 +211,7 @@ static int tegra_ehci_hub_control(
 	switch (typeReq) {
 	case GetPortStatus:
 		if (tegra->port_resuming) {
+			u32 cmd;
 			int delay = ehci->reset_done[wIndex-1] - jiffies;
 			/* Sometimes it seems we get called too soon... In that case, wait.*/
 			if (delay > 0) {
@@ -278,9 +226,11 @@ static int tegra_ehci_hub_control(
 			tegra_usb_phy_post_resume(tegra->phy);
 			tegra->port_resuming = 0;
 			/* If run bit is not set by now enable it */
-			if (ehci->command & CMD_RUN) {
+			cmd = ehci_readl(ehci, &ehci->regs->command);
+			if (!(cmd & CMD_RUN)) {
+				cmd |= CMD_RUN;
 				ehci->command |= CMD_RUN;
-				ehci_writel(ehci, ehci->command, &ehci->regs->command);
+				ehci_writel(ehci, cmd, &ehci->regs->command);
 			}
 			/* Now we can safely re-enable irqs */
 			ehci_writel(ehci, INTR_MASK, &ehci->regs->intr_enable);
@@ -457,6 +407,7 @@ static int tegra_ehci_probe(struct platform_device *pdev)
 	struct resource *res;
 	struct usb_hcd *hcd;
 	struct tegra_ehci_hcd *tegra;
+	struct tegra_usb_platform_data *pdata = dev_get_platdata(&pdev->dev);
 	int err = 0;
 	int irq;
 
@@ -527,13 +478,15 @@ static int tegra_ehci_probe(struct platform_device *pdev)
 		goto fail_phy;
 	}
 
-	err = enable_irq_wake(tegra->irq);
-	if (err < 0) {
-		dev_warn(&pdev->dev,
-				"Couldn't enable USB host mode wakeup, irq=%d, "
-				"error=%d\n", irq, err);
-		err = 0;
-		tegra->irq = 0;
+	if (pdata->u_data.host.remote_wakeup_supported) {
+		err = enable_irq_wake(tegra->irq);
+		if (err < 0) {
+			dev_warn(&pdev->dev,
+					"Couldn't enable USB host mode wakeup,"
+					" irq=%d error=%d\n", irq, err);
+			err = 0;
+			tegra->irq = 0;
+		}
 	}
 
 	tegra->ehci = hcd_to_ehci(hcd);
@@ -581,6 +534,7 @@ static int tegra_ehci_suspend(struct platform_device *pdev, pm_message_t state)
 static int tegra_ehci_remove(struct platform_device *pdev)
 {
 	struct tegra_ehci_hcd *tegra = platform_get_drvdata(pdev);
+	struct tegra_usb_platform_data *pdata = dev_get_platdata(&pdev->dev);
 	struct usb_hcd *hcd = ehci_to_hcd(tegra->ehci);
 
 	if (tegra == NULL || hcd == NULL)
@@ -593,7 +547,7 @@ static int tegra_ehci_remove(struct platform_device *pdev)
 	}
 #endif
 
-	if (tegra->irq)
+	if (tegra->irq && pdata->u_data.host.remote_wakeup_supported)
 		disable_irq_wake(tegra->irq);
 
 	/* Make sure phy is powered ON to access USB register */
@@ -601,10 +555,10 @@ static int tegra_ehci_remove(struct platform_device *pdev)
 		tegra_usb_phy_power_on(tegra->phy);
 
 	usb_remove_hcd(hcd);
-	usb_put_hcd(hcd);
 	tegra_usb_phy_power_off(tegra->phy);
 	tegra_usb_phy_close(tegra->phy);
 	iounmap(hcd->regs);
+	usb_put_hcd(hcd);
 
 	return 0;
 }

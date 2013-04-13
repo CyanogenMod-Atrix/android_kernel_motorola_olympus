@@ -313,6 +313,16 @@ static const char fsg_string_interface[] = "Mass Storage";
 #include "storage_common.c"
 
 
+#ifdef CONFIG_USB_MOT_ANDROID
+#define USB_SMART_VERSION_SIZE 255
+u8 sm_vers[USB_SMART_VERSION_SIZE];
+u8 sm_vers_sz;
+void update_function_type_and_reenumerate(int index);
+void set_cdrom_umount(void);
+#define CDROM_INDEX 0x00
+#define CDROM2_INDEX 0x33
+#define MTPUSBNET_INDEX 0x1E
+#endif
 /*-------------------------------------------------------------------------*/
 
 struct fsg_dev;
@@ -369,6 +379,7 @@ struct fsg_common {
 	u8			cmnd[MAX_COMMAND_SIZE];
 
 	unsigned int		nluns;
+	unsigned int		cdrom_lun_num;
 	unsigned int		lun;
 	struct fsg_lun		*luns;
 	struct fsg_lun		*curlun;
@@ -407,10 +418,14 @@ struct fsg_common {
 	char inquiry_string[8 + 16 + 4 + 1];
 
 	struct kref		ref;
+#ifdef CONFIG_USB_MOT_ANDROID
+	unsigned int		switch_mode:1;
+#endif
 };
 
 struct fsg_config {
 	unsigned nluns;
+	unsigned cdrom_lun_num;
 	struct fsg_lun_config {
 		const char *filename;
 		char ro;
@@ -602,6 +617,63 @@ static void bulk_out_complete(struct usb_ep *ep, struct usb_request *req)
 	spin_unlock(&common->lock);
 }
 
+static int fsg_ctrlrequest(struct usb_composite_dev *cdev,
+			   const struct usb_ctrlrequest *ctrl)
+{
+	struct usb_request      *req = cdev->req;
+	u16                     w_index = le16_to_cpu(ctrl->wIndex);
+	u16                     w_value = le16_to_cpu(ctrl->wValue);
+	u16                     w_length = le16_to_cpu(ctrl->wLength);
+	int rc = -EOPNOTSUPP;
+
+	req->length = 0;
+
+	switch (ctrl->bRequest) {
+#ifdef CONFIG_USB_MOT_ANDROID
+	case USB_BULK_GET_ENCAP_RESPONSE:
+		printk(KERN_INFO "get smart version\n");
+		if (!((ctrl->bRequestType & USB_TYPE_MASK) ==
+		      USB_TYPE_VENDOR)) {
+			printk(KERN_INFO "%s: invalid vendor command "
+			       "request\n", __func__);
+			break;
+		}
+
+		if (w_value != 1 || w_index) {
+			printk(KERN_INFO "%s: Invalid len/value of "
+			       "encapsulated command\n", __func__);
+			break;
+		} else {
+			printk(KERN_INFO " memcpy USB_BULK_GET_ENCAP_RESPONSE  smart version [%d]\n",
+			       sm_vers_sz);
+			/*
+			 * fill the bufer smart version read
+			 * from cdrom flash partition
+			 */
+			memcpy((void *)req->buf, (void *)sm_vers, sm_vers_sz);
+			req->length = sm_vers_sz;
+			if (req->length >= 0) {
+				rc = usb_ep_queue(cdev->gadget->ep0,
+						  req, GFP_ATOMIC);
+
+				if (rc < 0)
+					printk(KERN_INFO "fsg  setup response error\n");
+
+				return rc;
+			} else
+				printk(KERN_INFO "%s: req len is not valid,"
+				       "exiting\n", __func__);
+		}
+		break;
+#endif
+	}
+	printk(KERN_INFO
+	       "unknown class-specific control req %02x.%02x v%04x i%04x l%u\n",
+	       ctrl->bRequestType, ctrl->bRequest,
+	       le16_to_cpu(ctrl->wValue), w_index, w_length);
+	return -EOPNOTSUPP;
+}
+
 static int fsg_setup(struct usb_function *f,
 		     const struct usb_ctrlrequest *ctrl)
 {
@@ -643,7 +715,18 @@ static int fsg_setup(struct usb_function *f,
 		if (w_index != fsg->interface_number || w_value != 0)
 			return -EDOM;
 		VDBG(fsg, "get max LUN\n");
-		*(u8 *)req->buf = fsg->common->nluns - 1;
+		if (fsg->common->cdrom_lun_num > 0) {
+			if (cdrom_enable)
+				*(u8 *)req->buf = fsg->common->nluns - 1;
+			else
+				*(u8 *)req->buf =
+					fsg->common->cdrom_lun_num - 1;
+		} else {
+			if (cdrom_enable)
+				*(u8 *)req->buf = 0;
+			else
+				*(u8 *)req->buf = fsg->common->nluns - 1;
+		}
 
 		/* Respond with data/status */
 		req->length = min((u16)1, w_length);
@@ -908,11 +991,13 @@ static int do_write(struct fsg_common *common)
 			curlun->sense_data = SS_INVALID_FIELD_IN_CDB;
 			return -EINVAL;
 		}
+#ifndef CONFIG_USB_MOT_ANDROID
 		if (!curlun->nofua && (common->cmnd[1] & 0x08)) { /* FUA */
 			spin_lock(&curlun->filp->f_lock);
 			curlun->filp->f_flags |= O_SYNC;
 			spin_unlock(&curlun->filp->f_lock);
 		}
+#endif
 	}
 	if (lba >= curlun->num_sectors) {
 		curlun->sense_data = SS_LOGICAL_BLOCK_ADDRESS_OUT_OF_RANGE;
@@ -1055,11 +1140,19 @@ static int do_write(struct fsg_common *common)
 			}
 			continue;
 		}
-
+#ifdef CONFIG_USB_MOT_ANDROID
+		/* Do not wait here. Just check for any pending signals and
+		 * continue with the next BH to process */
+		if (signal_pending(current)) {
+			rc = -EINTR;
+			return rc;
+		}
+#else
 		/* Wait for something to happen */
 		rc = sleep_thread(common);
 		if (rc)
 			return rc;
+#endif
 	}
 
 	return -EIO;		/* No default reply */
@@ -1479,11 +1572,29 @@ static int do_start_stop(struct fsg_common *common)
 			return 0;
 	}
 
+	/* If lun is removable disk then cdrom parameter
+	 * is set to '0', if lun is cdrom cdrom parameter
+	 * is set to 1.
+	 * Depending on cdrom value, loej=1, start=0 then
+	 * schedule a work-queue for mode change
+	 */
+	if (cdrom_allow_switch && curlun->cdrom && loej && !start) {
+		printk(KERN_INFO "schedule fsg cdrom eject\n");
+		common->switch_mode = 1;
+	}
+
 	up_read(&common->filesem);
 	down_write(&common->filesem);
 	fsg_lun_close(curlun);
 	up_write(&common->filesem);
 	down_read(&common->filesem);
+
+#ifdef CONFIG_USB_MOT_ANDROID
+	if (curlun->cdrom) {
+		pr_info("%s: eject, umount cdrom image\n", __func__);
+		set_cdrom_umount();
+	}
+#endif
 
 	return common->ops && common->ops->post_eject
 		? min(0, common->ops->post_eject(common, curlun,
@@ -2433,8 +2544,20 @@ reset:
 static int fsg_set_alt(struct usb_function *f, unsigned intf, unsigned alt)
 {
 	struct fsg_dev *fsg = fsg_from_func(f);
+	int i;
 	fsg->common->new_fsg = fsg;
 	raise_exception(fsg->common, FSG_STATE_CONFIG_CHANGE);
+#ifdef CONFIG_USB_MOT_ANDROID
+	for (i = 0; i < fsg->common->nluns; ++i) {
+		if ((i == fsg->common->cdrom_lun_num) && cdrom_enable) {
+			fsg->common->luns[i].cdrom = 1;
+			fsg->common->luns[i].ro = 1;
+		} else {
+			fsg->common->luns[i].cdrom = 0;
+			fsg->common->luns[i].ro = 0;
+		}
+	}
+#endif
 	return USB_GADGET_DELAYED_STATUS;
 }
 
@@ -2626,6 +2749,11 @@ static int fsg_main_thread(void *common_)
 			continue;
 		}
 
+		if (common->switch_mode) {
+			common->switch_mode = 0;
+			update_function_type_and_reenumerate(MTPUSBNET_INDEX);
+		}
+
 		if (!common->running) {
 			sleep_thread(common);
 			continue;
@@ -2737,6 +2865,7 @@ static struct fsg_common *fsg_common_init(struct fsg_common *common,
 		common->free_storage_on_release = 0;
 	}
 
+	common->cdrom_lun_num = cfg->cdrom_lun_num;
 	common->ops = cfg->ops;
 	common->private_data = cfg->private_data;
 

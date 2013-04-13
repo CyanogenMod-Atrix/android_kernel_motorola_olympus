@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 NVIDIA Corporation
+ * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
  *
  * Description:
  * High-speed USB device controller driver.
@@ -38,7 +38,11 @@
 #define USB_MAX_CTRL_PAYLOAD		64
 
  /* Charger current limit=1800mA, as per the USB charger spec */
-#define USB_CHARGING_CURRENT_LIMIT_MA 1800
+#define USB_CHARGING_DCP_CURRENT_LIMIT_UA 1800000
+#define USB_CHARGING_CDP_CURRENT_LIMIT_UA 900000
+#define USB_CHARGING_SDP_CURRENT_LIMIT_UA 100000
+#define USB_CHARGING_NON_STANDARD_CHARGER_CURRENT_LIMIT_UA 1800000
+
  /* 1 sec wait time for charger detection after vbus is detected */
 #define USB_CHARGER_DETECTION_WAIT_TIME_MS 1000
 #define BOOST_TRIGGER_SIZE 4096
@@ -156,6 +160,8 @@
 #define  PORTSCX_PORT_SUSPEND                 0x00000080
 #define  PORTSCX_PORT_RESET                   0x00000100
 #define  PORTSCX_LINE_STATUS_BITS             0x00000C00
+#define  PORTSCX_LINE_STATUS_DP_BIT           0x00000800
+#define  PORTSCX_LINE_STATUS_DM_BIT           0x00000400
 #define  PORTSCX_PORT_POWER                   0x00001000
 #define  PORTSCX_PORT_INDICTOR_CTRL           0x0000C000
 #define  PORTSCX_PORT_TEST_CTRL               0x000F0000
@@ -390,9 +396,19 @@ struct tegra_ep {
 	struct ep_queue_head *qh;
 	const struct usb_endpoint_descriptor *desc;
 	struct usb_gadget *gadget;
+	struct ep_td_struct *last_td;
+	int last_dtd_count;
 
 	char name[14];
 	unsigned stopped:1;
+};
+
+enum tegra_connect_type {
+	CONNECT_TYPE_NONE,
+	CONNECT_TYPE_SDP,
+	CONNECT_TYPE_DCP,
+	CONNECT_TYPE_CDP,
+	CONNECT_TYPE_NON_STANDARD_CHARGER
 };
 
 struct tegra_udc {
@@ -415,6 +431,7 @@ struct tegra_udc {
 	struct work_struct boost_cpufreq_work;
 	/* irq work for controlling the usb power */
 	struct work_struct irq_work;
+	enum tegra_connect_type connect_type;
 	void __iomem *regs;
 	size_t ep_qh_size;		/* size after alignment adjustment*/
 	dma_addr_t ep_qh_dma;		/* dma address of QH */

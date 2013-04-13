@@ -767,8 +767,30 @@ static inline void ehci_sync_mem(void)
 {
 	mb();
 }
+
+/*
+ * DMA coherent memory on ARM which features speculative prefetcher doesn't
+ * guarantee coherency, so introduce the helpers which can invalidate QH and
+ * QTD in L1/L2 cache. It enforces CPU reads from memory directly.
+ */
+static inline void ehci_sync_qh(struct ehci_hcd *ehci, struct ehci_qh *qh)
+{
+	dma_sync_single_for_cpu(ehci_to_hcd(ehci)->self.controller, qh->qh_dma,
+		sizeof(struct ehci_qh_hw), DMA_FROM_DEVICE);
+}
+static inline void ehci_sync_qtd(struct ehci_hcd *ehci, struct ehci_qtd *qtd)
+{
+	dma_sync_single_for_cpu(ehci_to_hcd(ehci)->self.controller,
+		qtd->qtd_dma, sizeof(struct ehci_qtd), DMA_FROM_DEVICE);
+}
 #else
 static inline void ehci_sync_mem()
+{
+}
+static inline void ehci_sync_qh(struct ehci_hcd *ehci, struct ehci_qh *qh)
+{
+}
+static inline void ehci_sync_qtd(struct ehci_hcd *ehci, struct ehci_qtd *qtd)
 {
 }
 #endif
