@@ -47,7 +47,7 @@ static int cpcap_usb_chgr_probe(struct platform_device *pdev)
 	cpcap = pdev->dev.platform_data;
 	platform_set_drvdata(pdev, cpcap);
 
-	cpcap_batt_set_usb_prop_curr(cpcap, 100);
+	cpcap_batt_set_usb_prop_curr(cpcap, 500);
 	cpcap_batt_set_usb_prop_online(cpcap, 1, CPCAP_BATT_USB_MODEL_USB);
 
 	return ret;
