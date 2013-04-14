@@ -514,6 +514,7 @@ int nvhost_module_init(struct nvhost_device *dev)
 	}
 
 	attr = &dev->power_attrib->power_attr[NVHOST_POWER_SYSFS_ATTRIB_CLOCKGATE_DELAY];
+	sysfs_attr_init(&attr->attr);
 	attr->attr.name = "clockgate_delay";
 	attr->attr.mode = S_IWUSR | S_IRUGO;
 	attr->show = clockgate_delay_show;
@@ -525,6 +526,7 @@ int nvhost_module_init(struct nvhost_device *dev)
 	}
 
 	attr = &dev->power_attrib->power_attr[NVHOST_POWER_SYSFS_ATTRIB_POWERGATE_DELAY];
+	sysfs_attr_init(&attr->attr);
 	attr->attr.name = "powergate_delay";
 	attr->attr.mode = S_IWUSR | S_IRUGO;
 	attr->show = powergate_delay_show;
@@ -536,6 +538,7 @@ int nvhost_module_init(struct nvhost_device *dev)
 	}
 
 	attr = &dev->power_attrib->power_attr[NVHOST_POWER_SYSFS_ATTRIB_REFCOUNT];
+	sysfs_attr_init(&attr->attr);
 	attr->attr.name = "refcount";
 	attr->attr.mode = S_IRUGO;
 	attr->show = refcount_show;

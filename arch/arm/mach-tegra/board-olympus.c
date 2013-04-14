@@ -90,7 +90,7 @@ static char oly_unused_pins_p3[] = {
         TEGRA_GPIO_PL5,
         TEGRA_GPIO_PL6,
         TEGRA_GPIO_PL7,
-	TEGRA_GPIO_PT2,
+        TEGRA_GPIO_PT2,
         TEGRA_GPIO_PD6,
         TEGRA_GPIO_PD7,
         TEGRA_GPIO_PR3,

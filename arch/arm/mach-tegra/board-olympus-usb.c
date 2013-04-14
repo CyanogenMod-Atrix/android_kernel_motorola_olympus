@@ -110,7 +110,7 @@ static struct tegra_usb_platform_data tegra_udc_pdata = {
 	.op_mode = TEGRA_USB_OPMODE_DEVICE,
 	.u_data.dev = {
 		//.vbus_pmu_irq = -1,
-		.vbus_gpio = TEGRA_GPIO_PV6,
+		//.vbus_gpio = TEGRA_GPIO_PV6,
 		.charging_supported = true,
 		.remote_wakeup_supported = false,
 	},
@@ -193,7 +193,7 @@ void olympus_usb_init(void)
 	cpcap_otg_device.dev.platform_data = &cpcap_otg_pdata;
 	cpcap_device_register(&cpcap_otg_device);
 
-	tegra_ehci1_device.dev.platform_data = &tegra_ehci1_utmi_pdata;
+//	tegra_ehci1_device.dev.platform_data = &tegra_ehci1_utmi_pdata;
 
 	tegra_udc_device.dev.platform_data = &tegra_udc_pdata;
 	platform_device_register(&tegra_udc_device);
@@ -205,7 +205,7 @@ void olympus_usb_init(void)
 		snprintf(android_usb_pdata.device_serial, 
 			sizeof(android_usb_pdata.device_serial), "037c7148423ff097");
 
-	tegra_ehci3_device.dev.platform_data = &tegra_ehci3_utmi_pdata;
+//	tegra_ehci3_device.dev.platform_data = &tegra_ehci3_utmi_pdata;
 	platform_device_register(&tegra_ehci3_device);
 
 	platform_device_register(&android_usb_platform_device);

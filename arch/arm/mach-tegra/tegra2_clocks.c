@@ -94,8 +94,7 @@
 #define PLL_OUT_CLKEN			(1<<1)
 #define PLL_OUT_RESET_DISABLE		(1<<0)
 
-//#define PLL_MISC(c)			(((c)->flags & PLL_ALT_MISC_REG) ? 0x4 : 0xc)
-#define PLL_MISC(c)			(((c)->flags & PLL_ALT_MISC_REG) ? 0xc : 0xc)
+#define PLL_MISC(c)			(((c)->flags & PLL_ALT_MISC_REG) ? 0x4 : 0xc)
 
 #define PLL_MISC_DCCON_SHIFT		20
 #define PLL_MISC_CPCON_SHIFT		8

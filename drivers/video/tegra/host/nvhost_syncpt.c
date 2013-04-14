@@ -415,6 +415,7 @@ int nvhost_syncpt_init(struct nvhost_device *dev,
 
 		min->id = i;
 		min->host = host;
+		sysfs_attr_init(&min->attr.attr);
 		min->attr.attr.name = min_name;
 		min->attr.attr.mode = S_IRUGO;
 		min->attr.show = syncpt_min_show;
@@ -425,6 +426,7 @@ int nvhost_syncpt_init(struct nvhost_device *dev,
 
 		max->id = i;
 		max->host = host;
+		sysfs_attr_init(&max->attr.attr);
 		max->attr.attr.name = max_name;
 		max->attr.attr.mode = S_IRUGO;
 		max->attr.show = syncpt_max_show;
