@@ -511,29 +511,31 @@ static void __init tegra_olympus_init(void)
 	   can interefere with CPCAP ID pin, as SPDIF_OUT and ID are coupled.
 	*/
 
-/*	tegra_gpio_enable(TEGRA_GPIO_PD4);
+	tegra_gpio_enable(TEGRA_GPIO_PD4);
 	gpio_request(TEGRA_GPIO_PD4, "spdif_enable");
 	gpio_direction_output(TEGRA_GPIO_PD4, 0);
 	gpio_export(TEGRA_GPIO_PD4, false);
-	if ((HWREV_TYPE_IS_PORTABLE(system_rev) || HWREV_TYPE_IS_FINAL(system_rev)))
+/*	if ((HWREV_TYPE_IS_PORTABLE(system_rev) || HWREV_TYPE_IS_FINAL(system_rev)))
 		{
 			if (HWREV_REV(system_rev) >= HWREV_REV_1 && HWREV_REV(system_rev) < HWREV_REV_2)
 			{
+				printk("%s: Olympus P1\n", __func__);
 				// Olympus P1
 				config_unused_pins(oly_unused_pins_p1, ARRAY_SIZE(oly_unused_pins_p1));
 			}
 			else if (HWREV_REV(system_rev) >= HWREV_REV_2 && HWREV_REV(system_rev) < HWREV_REV_3)
 			{
+				printk("%s: Olympus P2\n", __func__);
 				// Olympus P2
 				config_unused_pins(oly_unused_pins_p2, ARRAY_SIZE(oly_unused_pins_p2));
 			}
 			else if (HWREV_REV(system_rev) >= HWREV_REV_3 || HWREV_TYPE_IS_FINAL(system_rev))
 			{
+				printk("%s: Olympus P3 and newer\n", __func__);
 			// Olympus P3 and newer
 				config_unused_pins(oly_unused_pins_p3, ARRAY_SIZE(oly_unused_pins_p3));
 			}
-		}
-	*/
+		}*/
 	tegra_release_bootloader_fb();	
 }
 
@@ -582,7 +584,6 @@ static void __init olympus_fixup(struct machine_desc *desc, struct tag *tags,
 			printk("%s: ATAG %X\n", __func__, t->hdr.tag);
 		}
 	}
-
 	/*
 	 * Dump memory nodes
 	 */

@@ -460,7 +460,7 @@ void olympus_tcmd_init(void)
 /*
  * Some global queries for the framebuffer, display, and backlight drivers.
  */
-static unsigned int s_MotorolaDispInfo = 0;
+unsigned int s_MotorolaDispInfo = 0;
 static unsigned int s_MotorolaFBInfo = 1;
 
 unsigned short bootloader_ver_major = 0;

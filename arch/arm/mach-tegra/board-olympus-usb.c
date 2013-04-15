@@ -205,7 +205,7 @@ void olympus_usb_init(void)
 		snprintf(android_usb_pdata.device_serial, 
 			sizeof(android_usb_pdata.device_serial), "037c7148423ff097");
 
-//	tegra_ehci3_device.dev.platform_data = &tegra_ehci3_utmi_pdata;
+	tegra_ehci3_device.dev.platform_data = &tegra_ehci3_utmi_pdata;
 	platform_device_register(&tegra_ehci3_device);
 
 	platform_device_register(&android_usb_platform_device);

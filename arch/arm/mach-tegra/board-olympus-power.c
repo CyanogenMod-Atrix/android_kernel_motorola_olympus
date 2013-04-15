@@ -287,7 +287,7 @@ static struct notifier_block validity_reboot_notifier = {
 
 static int cpcap_validity_probe(struct platform_device *pdev)
 {
-	int err;
+	int err = 0;
 
 	if (pdev->dev.platform_data == NULL) {
 		dev_err(&pdev->dev, "no platform_data\n");
@@ -308,13 +308,6 @@ static int cpcap_validity_probe(struct platform_device *pdev)
 	register_reboot_notifier(&validity_reboot_notifier);
 
 #ifdef CONFIG_MFD_CPCAP_SOFTRESET
-	/* CORE_PWR_REQ is only properly connected on P1 hardware and later */
-	if (stingray_revision() >= STINGRAY_REVISION_P1) {
-		err = cpcap_uc_start(cpcap_di, CPCAP_MACRO_14);
-		dev_info(&pdev->dev, "Started macro 14: %d\n", err);
-	} else
-		dev_info(&pdev->dev, "Not starting macro 14 (no hw support)\n");
-
 	/* Enable workaround to allow soft resets to work */
 	cpcap_regacc_write(cpcap_di, CPCAP_REG_PGC,
 			   CPCAP_BIT_SYS_RST_MODE, CPCAP_BIT_SYS_RST_MODE);
@@ -416,7 +409,7 @@ static struct platform_device *cpcap_devices[] = {
 	&cpcap_disp_button_led,
 	&cpcap_3mm5_device,
 	&cpcap_audio_device,
-	&cpcap_usb_device,
+//	&cpcap_usb_device,
 	&cpcap_usb_det_device,
 	&cpcap_batt_device,
 //	&cpcap_wdt_device,
@@ -1332,26 +1325,18 @@ void __init olympus_power_init(void)
 
 	spi_register_board_info(tegra_spi_devices, ARRAY_SIZE(tegra_spi_devices));
 
-	get_cpcap_audio_data();
-
-	for (i = 0; i < ARRAY_SIZE(cpcap_devices); i++)
-		cpcap_device_register(cpcap_devices[i]);
-
 	for (i = 0; i < sizeof(fixed_regulator_devices)/sizeof(fixed_regulator_devices[0]); i++) {
 		error = platform_device_register(&fixed_regulator_devices[i]);
 		pr_info("Registered reg-fixed-voltage: %d result: %d\n", i, error);
 	}
 
-	(void) platform_driver_register(&cpcap_validity_driver);
-/*
-#ifdef CONFIG_REGULATOR_VIRTUAL_CONSUMER
-	(void) platform_device_register(&cpcap_reg_virt_vcam);
-	(void) platform_device_register(&cpcap_reg_virt_vcsi);
-	(void) platform_device_register(&cpcap_reg_virt_vcsi_2);
-	(void) platform_device_register(&cpcap_reg_virt_sw5);
-#endif
-*/
-	//regulator_has_full_constraints();
+	get_cpcap_audio_data();
+
+	for (i = 0; i < ARRAY_SIZE(cpcap_devices); i++)
+		cpcap_device_register(cpcap_devices[i]);
+
+	(void) cpcap_driver_register(&cpcap_validity_driver);
+
 	olympus_suspend_init();
 
 	pm_power_off = olympus_system_power_off;

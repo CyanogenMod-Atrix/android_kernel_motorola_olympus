@@ -149,28 +149,21 @@ static u8 qhd_smd_cmdF4_es4[]={0xf4, 0x00, 0xbb, 0x46, 0x53, 0x0c, 0x49, 0x74, 0
 static u8 qhd_smd_cmdF8_es4[]  = { 0xF8, 0x0A, 0x04, 0x10, 0x2A, 0x35, 0x35, 0x35, 0x35, 0x21, 0x1A };
 
 static u8 gamma_r_F9[]         = { 0xF9, 0x04 };
-static u8 gamma_r_FA_es4[]     = { 0xFA, 0x08, 0x1C, 0x1B, 0x0F, 0x0F, 0x0A,
-                                         0x1E, 0x22, 0x27, 0x26, 0x07, 0x0D };
-static u8 gamma_r_FB_es4[]     = { 0xFB, 0x08, 0x3C, 0x27, 0x0F, 0x0F, 0x0A,
-                                         0x1E, 0x26, 0x31, 0x2F, 0x07, 0x0B };
+static u8 gamma_r_FA_es4[]     = { 0xFA, 0x08, 0x1C, 0x1B, 0x0F, 0x0F, 0x0A, 0x1E, 0x22, 0x27, 0x26, 0x07, 0x0D };
+static u8 gamma_r_FB_es4[]     = { 0xFB, 0x08, 0x3C, 0x27, 0x0F, 0x0F, 0x0A, 0x1E, 0x26, 0x31, 0x2F, 0x07, 0x0B };
 
 static u8 gamma_g_F9[]         = { 0xF9, 0x02 };
-static u8 gamma_g_FA_es4[]     = { 0xFA, 0x30, 0x14, 0x0F, 0x00, 0x06, 0x02,
-                                         0x1E, 0x22, 0x27, 0x27, 0x08, 0x10 };
-static u8 gamma_g_FB_es4[]     = { 0xFB, 0x30, 0x35, 0x0F, 0x00, 0x0A, 0x02,
-                                         0x1C, 0x23, 0x31, 0x2F, 0x08, 0x0E };
+static u8 gamma_g_FA_es4[]     = { 0xFA, 0x30, 0x14, 0x0F, 0x00, 0x06, 0x02, 0x1E, 0x22, 0x27, 0x27, 0x08, 0x10 };
+static u8 gamma_g_FB_es4[]     = { 0xFB, 0x30, 0x35, 0x0F, 0x00, 0x0A, 0x02, 0x1C, 0x23, 0x31, 0x2F, 0x08, 0x0E };
 
 static u8 gamma_b_F9[]         = { 0xF9, 0x01 };
-static u8 gamma_b_FA_es4[]     = { 0xFA, 0x12, 0x1B, 0x26, 0x0E, 0x12, 0x0B,
-                                         0x1E, 0x22, 0x27, 0x27, 0x06, 0x0C };
-static u8 gamma_b_FB_es4[]     = { 0xFB, 0x12, 0x3B, 0x2C, 0x12, 0x12, 0x0E,
-                                         0x1E, 0x26, 0x31, 0x2F, 0x06, 0x0D };
+static u8 gamma_b_FA_es4[]     = { 0xFA, 0x12, 0x1B, 0x26, 0x0E, 0x12, 0x0B, 0x1E, 0x22, 0x27, 0x27, 0x06, 0x0C };
+static u8 gamma_b_FB_es4[]     = { 0xFB, 0x12, 0x3B, 0x2C, 0x12, 0x12, 0x0E, 0x1E, 0x26, 0x31, 0x2F, 0x06, 0x0D };
 
 static u8 gamma_w_F9[]		   = { 0xF9, 0x20 };
-static u8 gamma_w_FA_es4[]     = { 0xFA, 0x37, 0x1B, 0x09, 0x01, 0x06, 0x04,
-                                         0x19, 0x19, 0x22, 0x24, 0x04, 0x15 };
-static u8 gamma_w_FB_es4[]     = { 0xFB, 0x37, 0x3B, 0x17, 0x01, 0x0A, 0x04,
-                                         0x19, 0x1D, 0x2C, 0x2C, 0x04, 0x13 };
+static u8 gamma_w_FA_es4[]     = { 0xFA, 0x37, 0x1B, 0x09, 0x01, 0x06, 0x04, 0x19, 0x19, 0x22, 0x24, 0x04, 0x15 };
+static u8 gamma_w_FB_es4[]     = { 0xFB, 0x37, 0x3B, 0x17, 0x01, 0x0A, 0x04, 0x19, 0x1D, 0x2C, 0x2C, 0x04, 0x13 };
+
 /* Backlight control */
 static u8 qhd_smd_cmd53_es2[]  = { 0x53, 0x2C };
 static u8 qhd_smd_cmd55_es2[]  = { 0x55, 0x01 };
@@ -193,6 +186,8 @@ static struct tegra_dsi_cmd dsi_olympus_init_cmd[]= {
 	DSI_CMD_LONG(0x39, qhd_smd_cmdB7_es4),
 	DSI_CMD_LONG(0x39, qhd_smd_cmdF4_es4),
 	DSI_CMD_LONG(0x39, qhd_smd_cmdF8_es4),
+
+	// Gamma settings??
 	DSI_CMD_LONG(0x39, gamma_r_F9),
 	DSI_CMD_LONG(0x39, gamma_r_FA_es4),
 	DSI_CMD_LONG(0x39, gamma_r_FB_es4),
@@ -205,6 +200,8 @@ static struct tegra_dsi_cmd dsi_olympus_init_cmd[]= {
 	DSI_CMD_LONG(0x39, gamma_w_F9),
 	DSI_CMD_LONG(0x39, gamma_w_FA_es4),
 	DSI_CMD_LONG(0x39, gamma_w_FB_es4),
+
+	//Backlight settings
 	DSI_CMD_LONG(0x39, qhd_smd_cmd53_es2),
 	DSI_CMD_LONG(0x39, qhd_smd_cmd35),
 	DSI_CMD_LONG(0x39, qhd_smd_cmdC3_es4),
@@ -370,11 +367,57 @@ static struct tegra_dsi_out olympus_dsi_out = {
 	.dsi_suspend_cmd = dsi_suspend_cmd,
 	.n_suspend_cmd = ARRAY_SIZE(dsi_suspend_cmd),	
 	.video_data_type = TEGRA_DSI_VIDEO_TYPE_COMMAND_MODE,
+	.video_clock_mode = TEGRA_DSI_VIDEO_CLOCK_TX_ONLY,
+	//.video_clock_mode = TEGRA_DSI_VIDEO_CLOCK_CONTINUOUS,
+	.lp_cmd_mode_freq_khz = 10000,
+	.lp_read_cmd_mode_freq_khz = 10000,
+	.te_polarity_low = true,
+};
+
+static struct tegra_dsi_out buggy_olympus_dsi_out = {
+	.n_data_lanes = 2,
+	.pixel_format = TEGRA_DSI_PIXEL_FORMAT_24BIT_P,
+	.refresh_rate = 64,
+	.rated_refresh_rate = 60,
+	.panel_reset = DSI_PANEL_RESET,
+	.power_saving_suspend = true,
+	.panel_has_frame_buffer = true,
+	.dsi_instance = 0,
+	.virtual_channel = TEGRA_DSI_VIRTUAL_CHANNEL_0,
+	.dsi_init_cmd = dsi_olympus_init_cmd, /*init cmd*/
+	.n_init_cmd = ARRAY_SIZE(dsi_olympus_init_cmd),
+	.dsi_suspend_cmd = dsi_suspend_cmd,
+	.n_suspend_cmd = ARRAY_SIZE(dsi_suspend_cmd),
+	.video_data_type = TEGRA_DSI_VIDEO_TYPE_COMMAND_MODE,
 	//.video_clock_mode = TEGRA_DSI_VIDEO_CLOCK_TX_ONLY,
 	.video_clock_mode = TEGRA_DSI_VIDEO_CLOCK_CONTINUOUS,
 	.lp_cmd_mode_freq_khz = 10000,
 	.lp_read_cmd_mode_freq_khz = 10000,
 	.te_polarity_low = true,
+};
+
+static struct tegra_dsi_out very_buggy_olympus_dsi_out = {
+		.n_data_lanes = 2,
+		.pixel_format = TEGRA_DSI_PIXEL_FORMAT_24BIT_P, // 3
+	//	.refresh_rate = 64,
+		.refresh_rate = 60,
+	//	.rated_refresh_rate = 0,
+		.panel_reset = 1,
+		.virtual_channel = TEGRA_DSI_VIRTUAL_CHANNEL_0, // 0
+		.dsi_instance = 0,
+		.chip_id = 0,
+		.chip_rev = 0,
+		.panel_has_frame_buffer = 1,
+		.dsi_init_cmd = dsi_olympus_init_cmd, /*init cmd*/
+		.n_init_cmd = ARRAY_SIZE(dsi_olympus_init_cmd),
+		.dsi_suspend_cmd = dsi_suspend_cmd,
+		.n_suspend_cmd = ARRAY_SIZE(dsi_suspend_cmd),
+		.video_data_type = TEGRA_DSI_VIDEO_TYPE_COMMAND_MODE,
+		// .video_clock_mode = TEGRA_DSI_VIDEO_CLOCK_TX_ONLY,
+		.video_clock_mode = TEGRA_DSI_VIDEO_CLOCK_CONTINUOUS,
+		.lp_cmd_mode_freq_khz = 10000,
+	//	.lp_read_cmd_mode_freq_khz = 230000,
+	//	.te_polarity_low = true,
 };
 
 static struct tegra_dc_out olympus_disp1_out = {
@@ -585,6 +628,12 @@ int __init olympus_panel_init(void)
 	tegra_gpio_enable(HDMI_HPD_GPIO);
 	gpio_request(HDMI_HPD_GPIO, "hdmi_hpd");
 	gpio_direction_input(HDMI_HPD_GPIO);
+
+	// Lets check if we have buggy DSI panel
+	if ((s_MotorolaDispInfo >> 31) & 0x01) {
+		printk(KERN_INFO "%s: Bad news dude, buggy panel you have :/",__func__);
+		olympus_disp1_out.dsi = &buggy_olympus_dsi_out;
+	}
 
 	olympus_panel_setup_dc();
 
