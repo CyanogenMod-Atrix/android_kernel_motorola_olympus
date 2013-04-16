@@ -87,9 +87,9 @@ static int olympus_camera_sensors_init(void)
 static int olympus_rear_cam_power_on(unsigned power_id)
 {
 
-	pr_debug("%s: (mask=%x) ++++\n", __func__, rear_cam.pwr_mask);
+	pr_info("%s: (mask=%x) ++++\n", __func__, rear_cam.pwr_mask);
 
-//	mutex_lock(&rear_cam.pwr_lock);
+	mutex_lock(&rear_cam.pwr_lock);
 
 	if (!rear_cam.pwr_mask) {
 
@@ -102,6 +102,7 @@ static int olympus_rear_cam_power_on(unsigned power_id)
 			}
 			regulator_enable(reg_avdd_cam1);
 			mdelay(20);
+			pr_info("%s: regulator enabled(vcsi)\n", __func__);
 		}
 
 		if (!reg_vdd_mipi) {
@@ -113,11 +114,13 @@ static int olympus_rear_cam_power_on(unsigned power_id)
 			}
 			regulator_enable(reg_vdd_mipi);
 			mdelay(5);
+			pr_info("%s: regulator enabled(vcam)\n", __func__);
 		}
 
 		if (rear_cam.pd_gpio) {
 			gpio_set_value(rear_cam.pd_gpio, rear_cam.pd_on);
 			mdelay(5);
+			pr_info("%s: gpio %u set %u\n", __func__, rear_cam.pd_gpio, rear_cam.pd_on);
 		}
 
 		if (rear_cam.rs_gpio) {
@@ -129,22 +132,22 @@ static int olympus_rear_cam_power_on(unsigned power_id)
 			mdelay(20);
 		}
 	} else {
-		pr_debug("%s: pwr_mask=%x, skipping\n", __func__, rear_cam.pwr_mask);
+		pr_info("%s: pwr_mask=%x, skipping\n", __func__, rear_cam.pwr_mask);
 	}
 
 	rear_cam.pwr_mask |= power_id;
-//	mutex_unlock(&rear_cam.pwr_lock);
+	mutex_unlock(&rear_cam.pwr_lock);
 
-	pr_debug("%s: (mask=%x) ----\n", __func__, rear_cam.pwr_mask);
+	pr_info("%s: (mask=%x) ----\n", __func__, rear_cam.pwr_mask);
 
 	return 0;
 }
 
 static int olympus_rear_cam_power_off(unsigned power_id)
 {
-	pr_debug("%s: (mask=%x) ++++\n", __func__, rear_cam.pwr_mask);
+	pr_info("%s: (mask=%x) ++++\n", __func__, rear_cam.pwr_mask);
 
-//	mutex_lock(&rear_cam.pwr_lock);
+	mutex_lock(&rear_cam.pwr_lock);
 	rear_cam.pwr_mask &= ~power_id;
 
 	if (!rear_cam.pwr_mask) {
@@ -165,12 +168,12 @@ static int olympus_rear_cam_power_off(unsigned power_id)
 			reg_vdd_mipi = NULL;
 		}
 	} else {
-		pr_debug("%s: pwr_mask=%x, skipping\n", __func__, rear_cam.pwr_mask);
+		pr_info("%s: pwr_mask=%x, skipping\n", __func__, rear_cam.pwr_mask);
 	}
 
-//	mutex_unlock(&rear_cam.pwr_lock);
+	mutex_unlock(&rear_cam.pwr_lock);
 
-	pr_debug("%s: (mask=%x) ----\n", __func__, rear_cam.pwr_mask);
+	pr_info("%s: (mask=%x) ----\n", __func__, rear_cam.pwr_mask);
 	return 0;
 }
 
@@ -185,6 +188,7 @@ static int olympus_front_cam_power_on(void)
 		}
 		regulator_enable(reg_avdd_cam1);
 		mdelay(20);
+		pr_info("%s: regulator enabled(reg_avdd_cam1)\n", __func__);
 	}
 
 	if (!reg_vdd_mipi) {
@@ -196,11 +200,13 @@ static int olympus_front_cam_power_on(void)
 		}
 		regulator_enable(reg_vdd_mipi);
 		mdelay(5);
+		pr_info("%s: regulator enabled(vcam)\n", __func__);
 	}
 
 	if (front_cam.pd_gpio) {
 		gpio_set_value(front_cam.pd_gpio, front_cam.pd_on);
 		mdelay(5);
+		pr_info("%s: gpio %u set %u\n", __func__, front_cam.pd_gpio, front_cam.pd_on);
 	}
 
 	if (front_cam.rs_gpio) {

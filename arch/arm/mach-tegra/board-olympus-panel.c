@@ -353,55 +353,55 @@ static struct tegra_dsi_out olympus_dsi_out = {
 };*/
 
 static struct tegra_dsi_out olympus_dsi_out = {
-	.n_data_lanes = 2,
-	.pixel_format = TEGRA_DSI_PIXEL_FORMAT_24BIT_P,
-	.refresh_rate = 64,
-	.rated_refresh_rate = 60,
-	.panel_reset = DSI_PANEL_RESET,
-	.power_saving_suspend = true,
-	.panel_has_frame_buffer = true,
-	.dsi_instance = 0,
-	.virtual_channel = TEGRA_DSI_VIRTUAL_CHANNEL_0,
-	.dsi_init_cmd = dsi_olympus_init_cmd, /*init cmd*/
-	.n_init_cmd = ARRAY_SIZE(dsi_olympus_init_cmd),
-	.dsi_suspend_cmd = dsi_suspend_cmd,
-	.n_suspend_cmd = ARRAY_SIZE(dsi_suspend_cmd),	
-	.video_data_type = TEGRA_DSI_VIDEO_TYPE_COMMAND_MODE,
-	.video_clock_mode = TEGRA_DSI_VIDEO_CLOCK_TX_ONLY,
-	//.video_clock_mode = TEGRA_DSI_VIDEO_CLOCK_CONTINUOUS,
-	.lp_cmd_mode_freq_khz = 10000,
-	.lp_read_cmd_mode_freq_khz = 10000,
-	.te_polarity_low = true,
+		.dsi_instance = 0,
+		.n_data_lanes = 2,
+		.refresh_rate = 64,
+		.lp_cmd_mode_freq_khz = 229500,
+		.panel_reset = 1,	/* resend the init sequence on each resume */
+		.panel_has_frame_buffer = true,
+		.panel_reset_timeout_msec = 202,
+		.power_saving_suspend = 1,	/* completely shutdown the panel */
+		.pixel_format = TEGRA_DSI_PIXEL_FORMAT_24BIT_P,
+		.video_data_type = TEGRA_DSI_VIDEO_TYPE_VIDEO_MODE,
+		.video_burst_mode = TEGRA_DSI_VIDEO_NONE_BURST_MODE,
+		.video_clock_mode = TEGRA_DSI_VIDEO_CLOCK_TX_ONLY,
+		.video_data_type = TEGRA_DSI_VIDEO_TYPE_COMMAND_MODE,
+		.virtual_channel = TEGRA_DSI_VIRTUAL_CHANNEL_0,
+		.dsi_init_cmd = dsi_olympus_init_cmd,
+		.n_init_cmd = ARRAY_SIZE(dsi_olympus_init_cmd),
+		.dsi_suspend_cmd = dsi_suspend_cmd,
+		.n_suspend_cmd = ARRAY_SIZE(dsi_suspend_cmd),
+		//.phy_timing = ???,
 };
 
 static struct tegra_dsi_out buggy_olympus_dsi_out = {
-	.n_data_lanes = 2,
-	.pixel_format = TEGRA_DSI_PIXEL_FORMAT_24BIT_P,
-	.refresh_rate = 64,
-	.rated_refresh_rate = 60,
-	.panel_reset = DSI_PANEL_RESET,
-	.power_saving_suspend = true,
-	.panel_has_frame_buffer = true,
-	.dsi_instance = 0,
-	.virtual_channel = TEGRA_DSI_VIRTUAL_CHANNEL_0,
-	.dsi_init_cmd = dsi_olympus_init_cmd, /*init cmd*/
-	.n_init_cmd = ARRAY_SIZE(dsi_olympus_init_cmd),
-	.dsi_suspend_cmd = dsi_suspend_cmd,
-	.n_suspend_cmd = ARRAY_SIZE(dsi_suspend_cmd),
-	.video_data_type = TEGRA_DSI_VIDEO_TYPE_COMMAND_MODE,
-	//.video_clock_mode = TEGRA_DSI_VIDEO_CLOCK_TX_ONLY,
-	.video_clock_mode = TEGRA_DSI_VIDEO_CLOCK_CONTINUOUS,
-	.lp_cmd_mode_freq_khz = 10000,
-	.lp_read_cmd_mode_freq_khz = 10000,
-	.te_polarity_low = true,
+		.dsi_instance = 0,
+		.n_data_lanes = 2,
+		.refresh_rate = 64,
+		.lp_cmd_mode_freq_khz = 229500,
+		.panel_reset = 1,	/* resend the init sequence on each resume */
+		.panel_has_frame_buffer = 1,
+		.panel_reset_timeout_msec = 202,
+		.power_saving_suspend = 1,	/* completely shutdown the panel */
+		.pixel_format = TEGRA_DSI_PIXEL_FORMAT_24BIT_P,
+		.video_data_type = TEGRA_DSI_VIDEO_TYPE_VIDEO_MODE,
+		.video_burst_mode = TEGRA_DSI_VIDEO_NONE_BURST_MODE,
+		.video_clock_mode = TEGRA_DSI_VIDEO_CLOCK_TX_ONLY,
+		//.video_clock_mode = TEGRA_DSI_VIDEO_CLOCK_CONTINUOUS,
+		.enable_hs_clock_on_lp_cmd_mode = 1,
+		.video_data_type = TEGRA_DSI_VIDEO_TYPE_COMMAND_MODE,
+		.virtual_channel = TEGRA_DSI_VIRTUAL_CHANNEL_0,
+		.dsi_init_cmd = dsi_olympus_init_cmd,
+		.n_init_cmd = ARRAY_SIZE(dsi_olympus_init_cmd),
+		.dsi_suspend_cmd = dsi_suspend_cmd,
+		.n_suspend_cmd = ARRAY_SIZE(dsi_suspend_cmd),
+		//.phy_timing = ???,
 };
 
 static struct tegra_dsi_out very_buggy_olympus_dsi_out = {
 		.n_data_lanes = 2,
 		.pixel_format = TEGRA_DSI_PIXEL_FORMAT_24BIT_P, // 3
-	//	.refresh_rate = 64,
 		.refresh_rate = 60,
-	//	.rated_refresh_rate = 0,
 		.panel_reset = 1,
 		.virtual_channel = TEGRA_DSI_VIRTUAL_CHANNEL_0, // 0
 		.dsi_instance = 0,
@@ -632,7 +632,7 @@ int __init olympus_panel_init(void)
 	// Lets check if we have buggy DSI panel
 	if ((s_MotorolaDispInfo >> 31) & 0x01) {
 		printk(KERN_INFO "%s: Bad news dude, buggy panel you have :/",__func__);
-		olympus_disp1_out.dsi = &very_buggy_olympus_dsi_out;
+		olympus_disp1_out.dsi = &buggy_olympus_dsi_out;
 	}
 
 	olympus_panel_setup_dc();
