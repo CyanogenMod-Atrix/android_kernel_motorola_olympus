@@ -235,8 +235,8 @@ struct soc380_platform_data olympus_soc380_data = {
 
 struct dw9714l_platform_data focuser_dw9714l_pdata = {
         .power_id = POWER_ID_FOCUSER,
-        .power_on = olympus_rear_cam_power_on,
-        .power_off = olympus_rear_cam_power_off,
+        //.power_on = olympus_rear_cam_power_on,
+        //.power_off = olympus_rear_cam_power_off,
 };
 
 static struct i2c_board_info olympus_i2c3_board_info[] = {
@@ -244,10 +244,10 @@ static struct i2c_board_info olympus_i2c3_board_info[] = {
 		I2C_BOARD_INFO("ov5650", 0x36),
 		.platform_data = &olympus_ov5650_data,
 	},
-	{       /* rear AF module */
-                I2C_BOARD_INFO("dw9714l", 0x0C),        // 0x18
-                .platform_data = &focuser_dw9714l_pdata,
-        },
+	//{       /* rear AF module */
+        //        I2C_BOARD_INFO("dw9714l", 0x0C),        // 0x18
+        //        .platform_data = &focuser_dw9714l_pdata,
+        //},
 	{
 		I2C_BOARD_INFO("soc380", 0x3D),   //0x3c
 		.platform_data = &olympus_soc380_data,
