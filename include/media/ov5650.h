@@ -89,8 +89,9 @@ struct ov5650_ae {
 
 #ifdef __KERNEL__
 struct ov5650_platform_data {
-	int (*power_on)(void);
-	int (*power_off)(void);
+		unsigned power_id;
+		int (*power_on)(unsigned power_id);
+		int (*power_off)(unsigned power_id);
 	void (*synchronize_sensors)(void);
 };
 #endif /* __KERNEL__ */

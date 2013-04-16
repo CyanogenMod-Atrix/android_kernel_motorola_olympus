@@ -632,7 +632,7 @@ int __init olympus_panel_init(void)
 	// Lets check if we have buggy DSI panel
 	if ((s_MotorolaDispInfo >> 31) & 0x01) {
 		printk(KERN_INFO "%s: Bad news dude, buggy panel you have :/",__func__);
-		olympus_disp1_out.dsi = &buggy_olympus_dsi_out;
+		olympus_disp1_out.dsi = &very_buggy_olympus_dsi_out;
 	}
 
 	olympus_panel_setup_dc();

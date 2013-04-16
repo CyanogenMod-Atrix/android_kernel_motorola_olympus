@@ -1046,7 +1046,7 @@ static struct regulator_init_data cpcap_regulator[CPCAP_NUM_REGULATORS] = {
 			.min_uV			= 1800000,
 			.max_uV			= 2900000,
 			.valid_ops_mask		= 0,
-			.always_on 		= 1,
+			//.always_on 		= 1,
 		},
 	},
 	[CPCAP_VSIMCARD] = {

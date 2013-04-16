@@ -493,7 +493,7 @@ static void __init tegra_olympus_init(void)
 
 	olympus_usb_init();
 
-	olympus_cameras_init();
+	olympus_camera_init();
 
 //	olympus_emc_init();
 

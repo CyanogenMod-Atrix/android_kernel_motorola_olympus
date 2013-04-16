@@ -16,7 +16,7 @@ extern void __init olympus_keypad_init(void);
 extern void __init olympus_touch_init(void);
 extern void __init olympus_backlight_init(void);
 extern void __init olympus_sensors_init(void);
-extern void __init olympus_cameras_init(void);
+extern void __init olympus_camera_init(void);
 extern void __init olympus_usb_gadget_init(void);
 
 extern int olympus_mdm_ctrl_shutdown(void);

@@ -89,7 +89,7 @@ static int olympus_rear_cam_power_on(unsigned power_id)
 
 	pr_debug("%s: (mask=%x) ++++\n", __func__, rear_cam.pwr_mask);
 
-	mutex_lock(&rear_cam.pwr_lock);
+//	mutex_lock(&rear_cam.pwr_lock);
 
 	if (!rear_cam.pwr_mask) {
 
@@ -133,7 +133,7 @@ static int olympus_rear_cam_power_on(unsigned power_id)
 	}
 
 	rear_cam.pwr_mask |= power_id;
-	mutex_unlock(&rear_cam.pwr_lock);
+//	mutex_unlock(&rear_cam.pwr_lock);
 
 	pr_debug("%s: (mask=%x) ----\n", __func__, rear_cam.pwr_mask);
 
@@ -144,7 +144,7 @@ static int olympus_rear_cam_power_off(unsigned power_id)
 {
 	pr_debug("%s: (mask=%x) ++++\n", __func__, rear_cam.pwr_mask);
 
-	mutex_lock(&rear_cam.pwr_lock);
+//	mutex_lock(&rear_cam.pwr_lock);
 	rear_cam.pwr_mask &= ~power_id;
 
 	if (!rear_cam.pwr_mask) {
@@ -168,7 +168,7 @@ static int olympus_rear_cam_power_off(unsigned power_id)
 		pr_debug("%s: pwr_mask=%x, skipping\n", __func__, rear_cam.pwr_mask);
 	}
 
-	mutex_unlock(&rear_cam.pwr_lock);
+//	mutex_unlock(&rear_cam.pwr_lock);
 
 	pr_debug("%s: (mask=%x) ----\n", __func__, rear_cam.pwr_mask);
 	return 0;
@@ -307,13 +307,12 @@ static void olympus_camera_set(void)
 		rear_cam.flash_on	= 1;
 }
 
-int __init olympus_camera_init(void)
+void __init olympus_camera_init(void)
 {
-	olympus_camera_select();
+	olympus_camera_set();
 	olympus_camera_sensors_init();
 	if (ndevices)
 		i2c_register_board_info(2, devices, ndevices);
 
-	return 0;
 }
 
