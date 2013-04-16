@@ -333,4 +333,4 @@ static void __exit dw9714l_exit(void)
 
 module_init(dw9714l_init);
 module_exit(dw9714l_exit);
-
+MODULE_LICENSE("GPL");

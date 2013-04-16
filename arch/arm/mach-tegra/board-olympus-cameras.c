@@ -5,6 +5,7 @@
 #include <linux/input.h>
 #include <linux/i2c.h>
 #include <media/ov5650.h>
+#include <media/dw9714l.h>
 #include <media/soc380.h>
 #include <linux/delay.h>
 #include <linux/regulator/consumer.h>
@@ -15,6 +16,8 @@
 #include "gpio-names.h"
 #include "board-olympus.h"
 #include "cpu-tegra.h"
+
+#define POWER_ID_FOCUSER	0x2
 
 #define CAMERA1_PWDN_GPIO		TEGRA_GPIO_PBB1
 #define CAMERA1_RESET_GPIO		TEGRA_GPIO_PD2
@@ -230,11 +233,21 @@ struct soc380_platform_data olympus_soc380_data = {
 	.power_off = olympus_soc380_power_off,
 };
 
+struct dw9714l_platform_data focuser_dw9714l_pdata = {
+        .power_id = POWER_ID_FOCUSER,
+        .power_on = olympus_rear_cam_power_on,
+        .power_off = olympus_rear_cam_power_off,
+};
+
 static struct i2c_board_info olympus_i2c3_board_info[] = {
 	{
 		I2C_BOARD_INFO("ov5650", 0x36),
 		.platform_data = &olympus_ov5650_data,
 	},
+	{       /* rear AF module */
+                I2C_BOARD_INFO("dw9714l", 0x0C),        // 0x18
+                .platform_data = &focuser_dw9714l_pdata,
+        },
 	{
 		I2C_BOARD_INFO("soc380", 0x3D),   //0x3c
 		.platform_data = &olympus_soc380_data,
