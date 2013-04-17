@@ -112,7 +112,7 @@ static int dw9714l_write_many(struct i2c_client *client,
 
 static int dw9714l_set_position(struct dw9714l_info *info, u32 position)
 {
-	int ret;
+	int ret=0;
 
 	if (position < info->config.pos_low ||
 	    position > info->config.pos_high)
