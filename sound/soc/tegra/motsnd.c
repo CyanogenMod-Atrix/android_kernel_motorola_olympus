@@ -276,6 +276,7 @@ static void motsnd_incall_shutdown(struct snd_pcm_substream *substream)
 	if(g_is_call_mode)
 		g_is_call_mode = false;
 
+
 }
 static int motsnd_incall_hw_params(struct snd_pcm_substream *substream,
 				   struct snd_pcm_hw_params *params)
@@ -660,7 +661,7 @@ static struct snd_soc_dai_link motsnd_dai[] = {
 //	.supported_be = mm1_be,
 //	.num_be = ARRAY_SIZE(mm1_be),
 //	.fe_playback_channels = 2,
-	.ops = &motsnd_ops
+	.ops = &motsnd_ops,
 //	.ignore_suspend = 1,
 },
 {

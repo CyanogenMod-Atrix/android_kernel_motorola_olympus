@@ -36,7 +36,7 @@
 
 #include "cpcap.h"
 
-#define CPCAP_AUDIO_DEBUG 1
+//#define CPCAP_AUDIO_DEBUG 1
 #ifdef CPCAP_AUDIO_DEBUG
 #define CPCAP_AUDIO_DEBUG_LOG(args...) printk(KERN_INFO "ALSA CPCAP:" args)
 #else

@@ -1229,6 +1229,7 @@ static struct tegra_suspend_platform_data olympus_suspend_data = {
 	.cpu_timer 	= 800,
 	.cpu_off_timer	= 600,
 	.suspend_mode	= TEGRA_SUSPEND_LP0,
+	//.suspend_mode	= TEGRA_SUSPEND_LP1,
 	.core_timer	= 1842,
 	.core_off_timer = 31,
 	.corereq_high	= true,
@@ -1270,6 +1271,17 @@ void __init olympus_power_init(void)
 	unsigned int i;
 	int error;
 	unsigned long pmc_cntrl_0;
+
+	void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
+	void __iomem *chip_id = IO_ADDRESS(TEGRA_APB_MISC_BASE) + 0x804;
+	u32 minor;
+
+	minor = (readl(chip_id) >> 16) & 0xf;
+	/* A03 (but not A03p) chips do not support LP0 */
+	if (minor == 3 && !(tegra_spare_fuse(18) || tegra_spare_fuse(19))) {
+		printk(KERN_INFO "%s: switching to LP1\n", __func__);
+		olympus_suspend_data.suspend_mode = TEGRA_SUSPEND_LP1;
+	}
 
 	/* Enable CORE_PWR_REQ signal from T20. The signal must be enabled
 	 * before the CPCAP uC firmware is started. */
