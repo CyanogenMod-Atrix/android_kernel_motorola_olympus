@@ -873,7 +873,10 @@ int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
 		/* If voice call is active, set a flag in PMC_SCRATCH37 */
 		reg = TEGRA_POWER_LP1_AUDIO;
 		pmc_32kwritel(reg, PMC_SCRATCH37);
-		mode = TEGRA_SUSPEND_LP1;
+/* Change of suspend mode to LP2 during calls */
+#ifdef CONFIG_MACH_OLYMPUS
+		mode = TEGRA_SUSPEND_LP2;
+#endif
 	}
 
 	if ((mode == TEGRA_SUSPEND_LP0) && !tegra_pm_irq_lp0_allowed()) {
