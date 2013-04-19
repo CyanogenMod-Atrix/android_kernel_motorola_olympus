@@ -36,6 +36,12 @@ config LEDS_LM3530
 	help
 	  This option enables support for LM3530 display backlight driver
 
+config LEDS_LM3554
+        tristate "LED support for the LM3554"
+        depends on LEDS_CLASS && I2C
+        help
+          This option enables support for the LM3554 LED driver
+
 config LEDS_CPCAP_BUTTON
 	tristate "LED Support for Button LEDS connected to CPCAP"
 	depends on LEDS_CLASS && MFD_CPCAP
