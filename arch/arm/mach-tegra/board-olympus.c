@@ -453,7 +453,6 @@ static int config_unused_pins(char *pins, int num)
 
 static void __init tegra_olympus_init(void)
 {
-/*	struct clk *clk;*/
 	
 	tegra_clk_init_from_table(olympus_clk_init_table);
 

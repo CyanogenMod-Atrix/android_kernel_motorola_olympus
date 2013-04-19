@@ -496,15 +496,14 @@ static int __init parse_tag_motorola(const struct tag *tag)
     int i = 0;
 
     s_MotorolaDispInfo = moto_tag->panel_size;
-    printk(KERN_INFO "pICS_%s",__func__);
 	
     s_MotorolaFBInfo = moto_tag->allow_fb_open;
 
 /*    #ifdef CONFIG_olympus_ALLOW_FB_OPEN*/
-    s_MotorolaFBInfo = 1; // allow fb open for charger and bootmenu (minui)
+//    s_MotorolaFBInfo = 1; // allow fb open for charger and bootmenu (minui)
 /*    #endif*/
  
-/*    olympus_sec_platform_data.fl_factory = moto_tag->in_factory;*/
+    olympus_sec_platform_data.fl_factory = moto_tag->in_factory;
 
     bootloader_ver_major = moto_tag->bl_ver_major;
     bootloader_ver_minor = moto_tag->bl_ver_minor;
@@ -516,7 +515,7 @@ static int __init parse_tag_motorola(const struct tag *tag)
     pr_info("%s: uboot v%d.%d\n", __func__, uboot_ver_major, uboot_ver_minor);
     pr_info("%s: panel_size: 0x%x\n", __func__, s_MotorolaDispInfo);
     pr_info("%s: allow_fb_open: %x\n", __func__, s_MotorolaFBInfo);
-/*    pr_info("%s: factory: %d\n", __func__, olympus_sec_platform_data.fl_factory);*/
+    pr_info("%s: factory: %d\n", __func__, olympus_sec_platform_data.fl_factory);
     pr_info("%s: cid_suspend_boot: %u\n", __func__, (unsigned)moto_tag->cid_suspend_boot);
 
     /*
