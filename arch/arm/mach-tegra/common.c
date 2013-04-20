@@ -754,43 +754,40 @@ void __init tegra_protected_aperture_init(unsigned long aperture)
  * highmem, or outside the memory map) to a physical address that is outside
  * the memory map.
  */
-
-/* Olympus: Some modification to convert 16-bit bootloader framebuffer to 32-bit main framebuffer */
-
 void tegra_move_framebuffer(unsigned long to, unsigned long from,
 	unsigned long size)
 {
 	struct page *page;
 	void __iomem *to_io;
 	void *from_virt;
-	unsigned long i,j,x,y;
-	unsigned short pixel_16;
-	unsigned long pixel_32;
+	unsigned long i, j, p, p2;
+	unsigned int r, g, b;
 
 	BUG_ON(PAGE_ALIGN((unsigned long)to) != (unsigned long)to);
 	BUG_ON(PAGE_ALIGN(from) != from);
 	BUG_ON(PAGE_ALIGN(size) != size);
 
-	to_io = ioremap(to, size);
+	to_io = ioremap(to, size*2);
 	if (!to_io) {
 		pr_err("%s: Failed to map target framebuffer\n", __func__);
 		return;
 	}
-	pixel_32 = 0;
-	x=0;
-	y=0;
+
 	if (pfn_valid(page_to_pfn(phys_to_page(from)))) {
 		for (i = 0 ; i < size; i += PAGE_SIZE) {
 			page = phys_to_page(from + i);
 			from_virt = kmap(page);
-			for (j=0; j<PAGE_SIZE; j+=sizeof (pixel_16)) {
-				memcpy(&pixel_16, from_virt + j, sizeof (pixel_16));
-				pixel_32 = pixel_16;
-				x+=sizeof(pixel_32);
-				if ((x+y)<size) memcpy(to_io + y + x, &pixel_32, sizeof(pixel_32));
+			for (j = 0; j < PAGE_SIZE; j += 2) {
+				p = *((unsigned long *)(from_virt + j));
+				r = (p>>11) & 0x1F;
+				g = (p>>5) & 0x3F;
+				b = (p & 0x001F);
+				r = (r<<3) | (r>>2);
+				g = (g<<2) | (g>>4);
+				b = (b<<3) | (b>>2);
+				p2= (b<<16) | (g<<8) | r;
+				memcpy(to_io+(i+j)*2,&p2,sizeof(p2));
 			}
-			x = 0;
-			y += 2*PAGE_SIZE;
 			kunmap(page);
 		}
 	} else {
