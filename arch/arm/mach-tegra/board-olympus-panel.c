@@ -1,17 +1,23 @@
 /*
  * arch/arm/mach-tegra/board-olympus-panel.c
  *
- * Copyright (C) 2010 Google, Inc.
+ * ...
  *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
+ * Copyright (c) 2009-2013, ...
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
  *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
 #include <linux/gpio.h>
@@ -38,6 +44,7 @@
 
 #include "board.h"
 #include "board-olympus.h"
+#include "devices.h"
 #include "gpio-names.h"
 #include "tegra2_host1x_devices.h"
 
@@ -483,7 +490,7 @@ static int olympus_panel_setup_dc(void)
 static int olympus_hdmi_enable(void)
 {
 	if (!olympus_hdmi_reg) {
-		olympus_hdmi_reg = regulator_get(NULL, "vhdmi"); /* LD011 */
+		olympus_hdmi_reg = regulator_get(NULL, "avdd_hdmi"); /* LD011 */
 		if (IS_ERR_OR_NULL(olympus_hdmi_reg)) {
 			pr_err("hdmi: couldn't get regulator vhdmi\n");
 			olympus_hdmi_reg = NULL;
@@ -495,6 +502,7 @@ static int olympus_hdmi_enable(void)
 	/* Need to also change avdd_hdmi_pll regulator */
 	if (!olympus_hdmi_pll) {
 		olympus_hdmi_pll = regulator_get(NULL, "avdd_hdmi_pll"); /* LD06 */
+		//olympus_hdmi_pll = regulator_get(NULL, "vpll"); /* LD06 */
 		if (IS_ERR_OR_NULL(olympus_hdmi_pll)) {
 			pr_err("hdmi: couldn't get regulator avdd_hdmi_pll\n");
 			olympus_hdmi_pll = NULL;
@@ -533,23 +541,24 @@ static struct tegra_dc_out olympus_disp2_out = {
 };
 
 static struct tegra_fb_data olympus_disp2_fb_data = {
-	.win		= 0,
-	.xres		= 1280,
-	.yres		= 720,
+	.win			= 0,
+	.xres			= 1280,
+	.yres			= 720,
 	.bits_per_pixel	= 32,
+	.flags			= TEGRA_FB_FLIP_ON_PROBE,
 };
 
 static struct tegra_dc_platform_data olympus_disp2_pdata = {
-	.flags		= 0,
-	.emc_clk_rate	= ULONG_MAX,
+	.flags			= 0,
+//	.emc_clk_rate	= ULONG_MAX,
 	.default_out	= &olympus_disp2_out,
-	.fb		= &olympus_disp2_fb_data,
+	.fb				= &olympus_disp2_fb_data,
 };
 
 static struct nvhost_device olympus_disp2_device = {
-	.name		= "tegradc",
-	.id		= 1,
-	.resource	= olympus_disp2_resources,
+	.name			= "tegradc",
+	.id				= 1,
+	.resource		= olympus_disp2_resources,
 	.num_resources	= ARRAY_SIZE(olympus_disp2_resources),
 	.dev = {
 		.platform_data = &olympus_disp2_pdata,
@@ -584,6 +593,8 @@ static struct platform_device *olympus_gfx_devices[] __initdata = {
 #if defined(CONFIG_TEGRA_NVMAP)
 	&olympus_nvmap_device,
 #endif
+	&tegra_gart_device,
+	&tegra_avp_device,
 	&olympus_disp1_backlight_device,
 };
 

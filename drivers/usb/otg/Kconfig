@@ -146,4 +146,14 @@ config FSL_USB2_OTG
 	help
 	  Enable this to support Freescale USB OTG transceiver.
 
+config USB_CPCAP_OTG
+        boolean "Motorola CPCAP OTG Driver"
+        depends on USB && ARCH_TEGRA && MFD_CPCAP
+        select USB_OTG_UTILS
+        help
+          Enable this driver on boards that use the CPCAP sensors for
+          ID and VBUS sensing. The driver receives notifications from
+          cpcap-whisper and emulates the same behavior as when the VBUS
+          and ID pins are connected to the app processor.
+
 endif # USB || OTG

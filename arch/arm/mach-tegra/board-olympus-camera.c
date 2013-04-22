@@ -1,5 +1,28 @@
+/*
+ * arch/arm/mach-tegra/board-olympus-panel.c
+ *
+ * ...
+ *
+ * Copyright (c) 2009-2013, ...
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+
 #include <linux/delay.h>
 #include <linux/i2c.h>
+#include <linux/platform_device.h>
 #include <mach/gpio.h>
 #include <media/ov5650.h>
 #include <media/dw9714l.h>
@@ -313,8 +336,14 @@ static void olympus_camera_set(void)
 		rear_cam.flash_on	= 1;
 }
 
+static struct platform_device tegra_camera = {
+	.name = "tegra_camera",
+	.id = -1,
+};
+
 void __init olympus_camera_init(void)
 {
+	platform_device_register (&tegra_camera);
 	olympus_camera_set();
 	olympus_camera_sensors_init();
 	if (ndevices)

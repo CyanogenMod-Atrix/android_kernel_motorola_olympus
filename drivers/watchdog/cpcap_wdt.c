@@ -33,7 +33,7 @@
 #include <linux/timer.h>
 #include <linux/workqueue.h>
 
-#define CPCAP_WDT_TIMEOUT	        40
+#define CPCAP_WDT_TIMEOUT	        80
 #define CPCAP_WDT_KICK_INTERVAL         10
 #define CPCAP_WDT_RAMWRITE_RETRIES	5
 #define CPCAP_WDT_MAX_TIMER		0xFFFF
@@ -271,7 +271,7 @@ static long cpcap_wdt_ioctl(struct file *file, unsigned int cmd,
         unsigned short int wdt_data;
 	int ret = 0;
 
-	printk(KERN_INFO "%s: ioctl cmd: 0x%x", __func__, cmd);
+	dev_info (wdt->dev, "%s: ioctl cmd: 0x%x", __func__, cmd);
 
 	switch (cmd) {
 	case WDIOC_GETSUPPORT:
@@ -371,7 +371,7 @@ static void cpcap_wdt_panic(enum cpcap_irqs irq, void *data)
 	dev_err(wdt->dev, "host watchdog timeout.  PANIC!\n");
 
 	/* now panic and reboot the system */
-	BUG();
+	//BUG();
 }
 #endif
 

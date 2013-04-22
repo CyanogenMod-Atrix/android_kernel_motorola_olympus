@@ -1,3 +1,25 @@
+/*
+ * arch/arm/mach-tegra/board-olympus-power.c
+ *
+ * ...
+ *
+ * Copyright (c) 2009-2013, ...
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+
 #include <linux/kernel.h>
 #include <linux/init.h>
 #include <linux/platform_device.h>
@@ -10,7 +32,6 @@
 #include <linux/gpio.h>
 #include <linux/io.h>
 #include <linux/mdm_ctrl.h>
-#include <linux/pda_power.h>
 #include <linux/regulator/consumer.h>
 #include <linux/regulator/driver.h>
 #include <linux/regulator/fixed.h>
@@ -777,6 +798,7 @@ struct regulator_consumer_supply cpcap_vcam_consumers[] = {
 struct regulator_consumer_supply cpcap_vhvio_consumers[] = {
 	REGULATOR_CONSUMER("vhvio", NULL /* lighting_driver */),
 	REGULATOR_CONSUMER("vddio_mipi", NULL /* Camera */),
+	REGULATOR_CONSUMER("avdd_hdmi_pll", NULL /* HDMI */),
 //	REGULATOR_CONSUMER("vhvio", NULL /* lighting_driver */),
 //	REGULATOR_CONSUMER("vhvio", NULL /* magnetometer */),
 //	REGULATOR_CONSUMER("vhvio", NULL /* light sensor */),
@@ -812,9 +834,8 @@ struct regulator_consumer_supply cpcap_vwlan2_consumers[] = {
 	REGULATOR_CONSUMER("avdd_usb", NULL), /* usb */
 	REGULATOR_CONSUMER("vusb_modem_flash", NULL),
 	REGULATOR_CONSUMER("vusb_modem_ipc", NULL),
-	REGULATOR_CONSUMER("vhdmi", NULL),
+	REGULATOR_CONSUMER("avdd_hdmi", NULL),
 	REGULATOR_CONSUMER("vdd_vcore_temp", NULL),
-	REGULATOR_CONSUMER("usb_bat_chg", NULL),
 };
 
 struct regulator_consumer_supply cpcap_vsimcard_consumers[] = {
@@ -1219,7 +1240,7 @@ static void get_cpcap_audio_data(void)
         static struct cpcap_audio_pdata data;
         cpcap_audio_device.dev.platform_data = (void *)&data;
 
-        printk("CPCAP audio init \n");
+        printk("CPCAP audio init\n");
         data.voice_type = VOICE_TYPE_QC;
         data.stereo_loudspeaker = 0;
         data.mic3 = 1;
@@ -1231,7 +1252,6 @@ void __init olympus_power_init(void)
 	int error;
 	unsigned long pmc_cntrl_0;
 
-	void __iomem *pmc = IO_ADDRESS(TEGRA_PMC_BASE);
 	void __iomem *chip_id = IO_ADDRESS(TEGRA_APB_MISC_BASE) + 0x804;
 	u32 minor;
 
