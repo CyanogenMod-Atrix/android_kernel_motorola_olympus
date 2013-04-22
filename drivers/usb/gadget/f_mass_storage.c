@@ -312,7 +312,6 @@ static const char fsg_string_interface[] = "Mass Storage";
 
 #include "storage_common.c"
 
-
 #ifdef CONFIG_USB_MOT_ANDROID
 #define USB_SMART_VERSION_SIZE 255
 u8 sm_vers[USB_SMART_VERSION_SIZE];
@@ -715,6 +714,7 @@ static int fsg_setup(struct usb_function *f,
 		if (w_index != fsg->interface_number || w_value != 0)
 			return -EDOM;
 		VDBG(fsg, "get max LUN\n");
+//		*(u8 *)req->buf = fsg->common->nluns - 1;
 		if (fsg->common->cdrom_lun_num > 0) {
 			if (cdrom_enable)
 				*(u8 *)req->buf = fsg->common->nluns - 1;
@@ -1797,37 +1797,6 @@ static int wedge_bulk_in_endpoint(struct fsg_dev *fsg)
 	return rc;
 }
 
-static int pad_with_zeros(struct fsg_dev *fsg)
-{
-	struct fsg_buffhd	*bh = fsg->common->next_buffhd_to_fill;
-	u32			nkeep = bh->inreq->length;
-	u32			nsend;
-	int			rc;
-
-	bh->state = BUF_STATE_EMPTY;		/* For the first iteration */
-	fsg->common->usb_amount_left = nkeep + fsg->common->residue;
-	while (fsg->common->usb_amount_left > 0) {
-
-		/* Wait for the next buffer to be free */
-		while (bh->state != BUF_STATE_EMPTY) {
-			rc = sleep_thread(fsg->common);
-			if (rc)
-				return rc;
-		}
-
-		nsend = min(fsg->common->usb_amount_left, FSG_BUFLEN);
-		memset(bh->buf + nkeep, 0, nsend - nkeep);
-		bh->inreq->length = nsend;
-		bh->inreq->zero = 0;
-		start_transfer(fsg, fsg->bulk_in, bh->inreq,
-			       &bh->inreq_busy, &bh->state);
-		bh = fsg->common->next_buffhd_to_fill = bh->next;
-		fsg->common->usb_amount_left -= nsend;
-		nkeep = 0;
-	}
-	return 0;
-}
-
 static int throw_away_data(struct fsg_common *common)
 {
 	struct fsg_buffhd	*bh;
@@ -1933,18 +1902,13 @@ static int finish_reply(struct fsg_common *common)
 		 * specification, which requires us to pad the data if we
 		 * don't halt the endpoint.  Presumably nobody will mind.)
 		 */
-		} else if (common->can_stall){
+		} else {
 			bh->inreq->zero = 1;
 			if (!start_in_transfer(common, bh))
 				rc = -EIO;
 			common->next_buffhd_to_fill = bh->next;
-			if (common->fsg)
+			if (common->can_stall)
 				rc = halt_bulk_in_endpoint(common->fsg);
-		} else if (fsg_is_set(common)) {
-			rc = pad_with_zeros(common->fsg);
-		} else {
-			/* Don't know what to do if common->fsg is NULL */
-			rc = -EIO;
 		}
 		break;
 
@@ -2127,7 +2091,7 @@ static int check_command(struct fsg_common *common, int cmnd_size,
 		    common->lun, lun);
 
 	/* Check the LUN */
-	if (common->lun >= 0 && common->lun < common->nluns) {
+	if (common->lun < common->nluns) {
 		curlun = &common->luns[common->lun];
 		common->curlun = curlun;
 		if (common->cmnd[0] != REQUEST_SENSE) {
@@ -2324,10 +2288,11 @@ static int do_scsi_command(struct fsg_common *common)
 		* the mask covers both host envs.
 		*/
 		reply = check_command(common, 10, DATA_DIR_TO_HOST,
-				      (0xf<<6) | (1<<1), 1,		
-		/*reply = check_command(common, 10, DATA_DIR_TO_HOST,
-				      (7<<6) | (1<<1), 1,*/
+				      (0xf<<6) | (1<<1), 1,
 				      "READ TOC");
+/*		reply = check_command(common, 10, DATA_DIR_TO_HOST,
+				      (7<<6) | (1<<1), 1,
+				      "READ TOC");*/
 		if (reply == 0)
 			reply = do_read_toc(common, bh);
 		break;
@@ -2573,19 +2538,6 @@ static int get_next_command(struct fsg_common *common)
 
 /*-------------------------------------------------------------------------*/
 
-static int enable_endpoint(struct fsg_common *common, struct usb_ep *ep,
-		const struct usb_endpoint_descriptor *d)
-{
-	int	rc;
-
-	ep->driver_data = common;
-	ep->desc = d;
-	rc = usb_ep_enable(ep);
-	if (rc)
-		ERROR(common, "can't enable %s, result %d\n", ep->name, rc);
-	return rc;
-}
-
 static int alloc_request(struct fsg_common *common, struct usb_ep *ep,
 		struct usb_request **preq)
 {
@@ -2599,7 +2551,6 @@ static int alloc_request(struct fsg_common *common, struct usb_ep *ep,
 /* Reset interface setting and re-init endpoint state (toggle etc). */
 static int do_set_interface(struct fsg_common *common, struct fsg_dev *new_fsg)
 {
-	const struct usb_endpoint_descriptor *d;
 	struct fsg_dev *fsg;
 	int i, rc = 0;
 
@@ -2644,7 +2595,7 @@ reset:
 
 	common->fsg = new_fsg;
 	fsg = common->fsg;
-#if 0
+
 	/* Enable the endpoints */
 	rc = config_ep_by_speed(common->gadget, &(fsg->function), fsg->bulk_in);
 	if (rc)
@@ -2666,22 +2617,6 @@ reset:
 	fsg->bulk_out_enabled = 1;
 	common->bulk_out_maxpacket =
 		le16_to_cpu(fsg->bulk_out->desc->wMaxPacketSize);
-#endif
-	/* Enable the endpoints */
-	d = fsg_ep_desc(common->gadget,
-			&fsg_fs_bulk_in_desc, &fsg_hs_bulk_in_desc);
-	rc = enable_endpoint(common, fsg->bulk_in, d);
-	if (rc)
-		goto reset;
-	fsg->bulk_in_enabled = 1;
-
-	d = fsg_ep_desc(common->gadget,
-			&fsg_fs_bulk_out_desc, &fsg_hs_bulk_out_desc);
-	rc = enable_endpoint(common, fsg->bulk_out, d);
-	if (rc)
-		goto reset;
-	fsg->bulk_out_enabled = 1;
-	common->bulk_out_maxpacket = le16_to_cpu(d->wMaxPacketSize);	
 	clear_bit(IGNORE_BULK_OUT, &fsg->atomic_bitflags);
 
 	/* Allocate the requests */
@@ -2916,11 +2851,11 @@ static int fsg_main_thread(void *common_)
 			handle_exception(common);
 			continue;
 		}
-
 		if (common->switch_mode) {
 			common->switch_mode = 0;
 			update_function_type_and_reenumerate(MTPUSBNET_INDEX);
 		}
+
 
 		if (!common->running) {
 			sleep_thread(common);

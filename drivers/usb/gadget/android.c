@@ -66,10 +66,10 @@ MODULE_VERSION("1.0");
 
 static const char longname[] = "Gadget Android";
 
-#define ID_PRODUCT_RNDIS_ACM_ETH_ADB 	0x7096
-#define ID_PRODUCT_ACM_ETH_ADB		0x7094
-#define ID_PRODUCT_RNDIS_ACM_ETH 	0x7095
-#define ID_PRODUCT_ACM_ETH		0x7093
+#define ID_PRODUCT_RNDIS_ACM_ETH_ADB 0x7096
+#define ID_PRODUCT_ACM_ETH_ADB 0x7094
+#define ID_PRODUCT_RNDIS_ACM_ETH 0x7095
+#define ID_PRODUCT_ACM_ETH 0x7093
 
 /* Default vendor and product IDs, overridden by userspace */
 #define VENDOR_ID		0x18D1
@@ -146,7 +146,6 @@ static char product_string[256];
 static char serial_string[256];
 static char cdrom_blkdev_path[256];
 
-
 /* String Table */
 static struct usb_string strings_dev[] = {
 	[STRING_MANUFACTURER_IDX].s = manufacturer_string,
@@ -181,7 +180,7 @@ static struct usb_configuration android_config_driver = {
 	.unbind		= android_unbind_config,
 	.bConfigurationValue = 1,
 	.bmAttributes	= USB_CONFIG_ATT_ONE | USB_CONFIG_ATT_SELFPOWER,
-	.bMaxPower	= 250, /* 500mA */
+	.bMaxPower	= 0xFA, /* 500ma */
 };
 
 static int mass_storage_function_set_cdrom_lun(char *lunpath);
@@ -189,7 +188,6 @@ static int mass_storage_function_set_cdrom_lun(char *lunpath);
 int android_usb_get_pid(char *fname)
 {
 	int j;
-	printk(KERN_INFO "%s\n", __func__);
 
 	for (j = 0; j < MAX_DEVICE_TYPE_NUM; j++) {
 		if (andusb_plat->android_pid[j].name == NULL)
@@ -245,16 +243,22 @@ static void android_work(struct work_struct *data)
 	unsigned long flags;
 	char ch = 0;
 	int rc = 0;
-	printk(KERN_INFO "%s\n", __func__);
+	printk(KERN_INFO "%s: start\n", __func__);
+
 	spin_lock_irqsave(&cdev->lock, flags);
-        if (cdev->config)
+  /*if (cdev->config)
 		uevent_envp = configured;
 	else if (dev->connected != dev->sw_connected)
+		uevent_envp = dev->connected ? connected : disconnected;*/
+	if (dev->connected != dev->sw_connected)
 		uevent_envp = dev->connected ? connected : disconnected;
+	else if (cdev->config)
+		uevent_envp = configured;
 	dev->sw_connected = dev->connected;
 	spin_unlock_irqrestore(&cdev->lock, flags);
 
-	/* update the lun sys file */
+	printk(KERN_INFO "%s: stage 1\n", __func__);
+/* update the lun sys file */
 	if (dev->cdrom_enable) {
 		/*
 		 * mount cdrom only when connect with cable,
@@ -295,7 +299,6 @@ static void android_work(struct work_struct *data)
 			 dev->connected, dev->sw_connected, cdev->config);
 	}
 }
-
 static int android_enable_function(struct android_dev *dev, char *name);
 
 static char *get_function_name(struct android_dev *dev)
@@ -806,8 +809,8 @@ static int mass_storage_function_init(struct android_usb_function *f,
 	if (!config)
 		return -ENOMEM;
 
-	//config->fsg.nluns = 1;
-	//config->fsg.luns[0].removable = 1;
+//	config->fsg.nluns = 1;
+//	config->fsg.luns[0].removable = 1;
 
 	config->fsg.cdrom_lun_num = andusb_plat->cdrom_lun_num;
 	config->fsg.nluns = andusb_plat->nluns;
@@ -1253,16 +1256,11 @@ functions_show(struct device *pdev, struct device_attribute *attr, char *buf)
 	struct android_usb_function *f;
 	char *buff = buf;
 
-	printk("%s: start", __func__);
-//	mutex_lock(&dev->mutex);
-
-	list_for_each_entry(f, &dev->enabled_functions, enabled_list) {
+	list_for_each_entry(f, &dev->enabled_functions, enabled_list)
 		buff += sprintf(buff, "%s,", f->name);
-	}
 
 	if (buff != buf)
 		*(buff-1) = '\n';
-//	printk("%s: end", __func__);
 	return buff - buf;
 }
 
@@ -1284,9 +1282,9 @@ functions_store(struct device *pdev, struct device_attribute *attr,
 
 	INIT_LIST_HEAD(&dev->enabled_functions);
 
-	strncpy(buf, buff, sizeof(buf));
-	//strncpy(buf, buff, sizeof(buf)-1);
-	//buf[sizeof(buf)-1] = '\0';
+/*	strncpy(buf, buff, sizeof(buf));*/
+	strncpy(buf, buff, sizeof(buf)-1);
+	buf[sizeof(buf)-1] = '\0';
 
 	if (!strcmp(buf, "cdrom")) {
 		dev->cdrom_enable = 1;
@@ -1317,7 +1315,6 @@ functions_store(struct device *pdev, struct device_attribute *attr,
 
 	return size;
 }
-
 static ssize_t
 smversion_show(struct device *pdev, struct device_attribute *attr, char *buf)
 {
@@ -1362,7 +1359,6 @@ static ssize_t enable_store(struct device *pdev, struct device_attribute *attr,
 	sscanf(buff, "%d", &enabled);
 	printk(KERN_INFO "%s: set enable = %d; old enable = %d\n", __func__,
 			enabled, dev->enabled);
-
 	if (enabled && !dev->enabled) {
 		if (!strncmp(boot_mode, "bp-tools", BOOT_MODE_MAX_LEN)) {
 			functions_len = functions_show(pdev, NULL, get_buf);
@@ -1390,7 +1386,6 @@ static ssize_t enable_store(struct device *pdev, struct device_attribute *attr,
 			}
 			functions_store(pdev, NULL, set_buf, sizeof(set_buf));
 		}
-
 		/* update values in composite driver's copy of device descriptor */
 		cdev->desc.idVendor = device_desc.idVendor;
 
@@ -1607,7 +1602,6 @@ static int android_bind(struct usb_composite_dev *cdev)
 		device_desc.bcdDevice = __constant_cpu_to_le16(0x9999);
 	}
 
-	usb_gadget_set_selfpowered(gadget);
 	dev->cdev = cdev;
 
 	return 0;
@@ -1745,8 +1739,8 @@ static void android_disconnect(struct usb_gadget *gadget)
 	    dev->cdrom_enable) {
 		update_function_type_and_reenumerate(CDROM_INDEX);
 	}
-	dev->connected = 0;
-	schedule_work(&dev->work);
+/*	dev->connected = 0;
+	schedule_work(&dev->work);*/
 	spin_unlock_irqrestore(&cdev->lock, flags);
 }
 
@@ -1772,7 +1766,6 @@ static int android_create_device(struct android_dev *dev)
 	}
 	return 0;
 }
-
 static int android_gadget_probe(struct platform_device *pdev)
 {
 	andusb_plat = pdev->dev.platform_data;

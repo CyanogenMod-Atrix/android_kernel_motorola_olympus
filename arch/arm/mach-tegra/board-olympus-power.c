@@ -412,7 +412,7 @@ static struct platform_device *cpcap_devices[] = {
 //	&cpcap_usb_device,
 	&cpcap_usb_det_device,
 	&cpcap_batt_device,
-//	&cpcap_wdt_device,
+	&cpcap_wdt_device,
 };
 
 static int is_olympus_ge_p0(struct cpcap_device *cpcap)
