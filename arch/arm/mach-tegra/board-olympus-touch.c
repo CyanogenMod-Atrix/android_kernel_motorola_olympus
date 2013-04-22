@@ -992,12 +992,19 @@ static struct i2c_board_info olympus_i2c1_touchscreen_info[] = {
 	},
 };
 
+static struct platform_device olympus_touch_xmegat = {
+	.name = "qtouch-obp-ts",
+	.id = -1,
+};
+
 void __init olympus_touch_init(void)
 {
 	int ret = 0;
 	struct kobject *properties_kobj = NULL;
 	struct 	qtouch_ts_platform_data *pdata;
 	struct i2c_board_info *info = &olympus_i2c1_touchscreen_info[0];	
+
+	platform_device_register(&olympus_touch_xmegat);
 
 	printk("\n%s: Updating i2c_bus_board_info with correct setup info for TS\n", __func__);
 	/*

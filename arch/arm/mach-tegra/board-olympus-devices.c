@@ -50,11 +50,6 @@
 #include "hwrev.h"
 #include "board-olympus.h"
 
-static struct platform_device olympus_touch_xmegat = {
-	.name = "qtouch-obp-ts",
-	.id = -1,
-};
-
 static struct platform_device tegra_camera = {
 	.name = "tegra_camera",
 	.id = -1,
@@ -67,9 +62,8 @@ static struct platform_device *olympus_devices[] __initdata = {
 	&tegra_pwfm1_device,
 	&tegra_avp_device,
 	&tegra_camera,
-	&olympus_touch_xmegat,
 };
-
+#if 0
 static int tegra_reboot_notify(struct notifier_block *nb,
 				unsigned long event, void *data)
 {
@@ -98,15 +92,15 @@ static void olympus_reboot_init(void)
 		pr_err("%s: failed to regsiter platform reboot notifier\n",
 			__func__);
 }
-
+#endif
 void __init olympus_devices_init()
 {
 
 	platform_add_devices(olympus_devices, ARRAY_SIZE(olympus_devices));
 
-	pm_power_off = tegra_system_power_off;
+	//pm_power_off = tegra_system_power_off;
 	
-	olympus_reboot_init();
+	//olympus_reboot_init();
 
 }
 

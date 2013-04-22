@@ -296,24 +296,24 @@ static int cpcap_validity_probe(struct platform_device *pdev)
 
 	cpcap_di = pdev->dev.platform_data;
 
-//#ifdef CONFIG_BOOTINFO
+#ifdef CONFIG_BOOTINFO
 	if (bi_powerup_reason() != PU_REASON_CHARGER) {
 		/* Set Kpanic bit, which will be cleared at normal reboot */
 		cpcap_regacc_write(cpcap_di, CPCAP_REG_VAL1,
 				   CPCAP_BIT_AP_KERNEL_PANIC,
 				   CPCAP_BIT_AP_KERNEL_PANIC);
 	}
-//#endif
+#endif
 
 	register_reboot_notifier(&validity_reboot_notifier);
 
-//#ifdef CONFIG_MFD_CPCAP_SOFTRESET
+#ifdef CONFIG_MFD_CPCAP_SOFTRESET
 	/* Enable workaround to allow soft resets to work */
 	cpcap_regacc_write(cpcap_di, CPCAP_REG_PGC,
 			   CPCAP_BIT_SYS_RST_MODE, CPCAP_BIT_SYS_RST_MODE);
 	err = cpcap_uc_start(cpcap_di,CPCAP_BANK_PRIMARY, CPCAP_MACRO_15);
 	dev_info(&pdev->dev, "Started macro 15: %d\n", err);
-//#endif
+#endif
 
 	return err;
 }
@@ -412,7 +412,7 @@ static struct platform_device *cpcap_devices[] = {
 //	&cpcap_usb_device,
 	&cpcap_usb_det_device,
 	&cpcap_batt_device,
-	&cpcap_wdt_device,
+//	&cpcap_wdt_device,
 };
 
 static int is_olympus_ge_p0(struct cpcap_device *cpcap)
