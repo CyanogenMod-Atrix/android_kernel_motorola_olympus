@@ -132,7 +132,6 @@ obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-devices.o
 #obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-gps.o
 obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-i2c.o
 obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-kbc.o
-obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-keypad.o
 obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-memory.o
 obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-misc.o
 obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-modem.o
