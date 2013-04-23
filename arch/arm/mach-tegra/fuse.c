@@ -179,6 +179,13 @@ unsigned long long tegra_chip_uid(void)
 
 	lo = tegra_fuse_readl(FUSE_UID_LOW);
 	hi = tegra_fuse_readl(FUSE_UID_HIGH);
+
+	pr_info("TEGRA uid: 0x%llx chip_id: %u major: 0x%x minor: %d"
+				" netlist: %d patch: %d priv: %s revision: %d\n",
+				(hi << 32ull) | lo, tegra_id.chipid, tegra_id.major,
+				tegra_id.minor, tegra_id.netlist, tegra_id.patch,
+				tegra_id.priv, tegra_id.revision);
+
 	return (hi << 32ull) | lo;
 #else
 	u64 uid = 0ull;

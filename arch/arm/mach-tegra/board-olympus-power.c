@@ -1255,7 +1255,7 @@ void __init olympus_power_init(void)
 	void __iomem *chip_id = IO_ADDRESS(TEGRA_APB_MISC_BASE) + 0x804;
 	u32 minor;
 
-	printk(KERN_INFO "%s: tegra chip uid = %llx\n", __func__, tegra_chip_uid());
+	tegra_chip_uid();
 
 	minor = (readl(chip_id) >> 16) & 0xf;
 	/* A03 (but not A03p) chips do not support LP0 */
