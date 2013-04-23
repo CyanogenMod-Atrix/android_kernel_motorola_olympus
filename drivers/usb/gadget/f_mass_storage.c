@@ -1503,7 +1503,9 @@ static int build_toc_response_buf(u8 *dest)
 static int do_read_toc(struct fsg_common *common, struct fsg_buffhd *bh)
 {
 	struct fsg_lun	*curlun = common->curlun;
+#if 0
 	int		msf = common->cmnd[1] & 0x02;
+#endif
 	int		start_track = common->cmnd[6];
 	u8		*buf = (u8 *)bh->buf;
 	int toc_buf_len = 0;
