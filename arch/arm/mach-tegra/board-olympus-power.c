@@ -83,19 +83,6 @@ void olympus_pm_restart(char mode, const char *cmd)
 
 void olympus_system_power_off(void)
 {
-	/* If there's external power, let's restart instead ...
-	   except for the case when phone was powered on with factory cable
-	   and thus has to stay powered off after Turn-Off TCMD INKVSSW-994 */
-	if (cpcap_misc_is_ext_power() &&
-	   !((bi_powerup_reason() & PWRUP_FACTORY_CABLE) &&
-	     (bi_powerup_reason() != PWRUP_INVALID)) )
-	{
-		pr_info("%s: external power detected: rebooting\n", __func__);
-		cpcap_misc_clear_power_handoff_info();
-		olympus_pm_restart(0, "");
-		while(1);
-	}
-
 	printk(KERN_ERR "%s: powering down system\n", __func__);
 
 	/* Disable RTC alarms to prevent unwanted powerups */
