@@ -115,6 +115,7 @@ static int cpcap_reboot(struct notifier_block *this, unsigned long code,
 {
 	int ret = -1;
 	int result = NOTIFY_DONE;
+	char *mode = cmd;
 
 	/* Disable the USB transceiver */
 	ret = cpcap_regacc_write(misc_cpcap, CPCAP_REG_USBC2, 0,
@@ -126,16 +127,155 @@ static int cpcap_reboot(struct notifier_block *this, unsigned long code,
 		result = NOTIFY_BAD;
 	}
 
-	if (code == SYS_RESTART)
+	if (code == SYS_RESTART) {
+		/* Set the soft reset bit in the cpcap */
+		cpcap_regacc_write(misc_cpcap, CPCAP_REG_VAL1,
+			CPCAP_BIT_SOFT_RESET,
+			CPCAP_BIT_SOFT_RESET);
+		if (mode != NULL && !strncmp("outofcharge", mode, 12)) {
+			/* Set the outofcharge bit in the cpcap */
+			ret = cpcap_regacc_write(misc_cpcap, CPCAP_REG_VAL1,
+				CPCAP_BIT_OUT_CHARGE_ONLY,
+				CPCAP_BIT_OUT_CHARGE_ONLY);
+			if (ret) {
+				dev_err(&(misc_cpcap->spi->dev),
+					"outofcharge cpcap set failure.\n");
+				result = NOTIFY_BAD;
+			}
+			if (ret) {
+				dev_err(&(misc_cpcap->spi->dev),
+					"reset cpcap set failure.\n");
+				result = NOTIFY_BAD;
+			}
+		}
+		/* Check if we are starting recovery mode */
+		if (mode != NULL && !strncmp("fota", mode, 5)) {
+			/* Set the fota (recovery mode) bit in the cpcap */
+			ret = cpcap_regacc_write(misc_cpcap, CPCAP_REG_VAL1,
+				CPCAP_BIT_FOTA_MODE, CPCAP_BIT_FOTA_MODE);
+			if (ret) {
+				dev_err(&(misc_cpcap->spi->dev),
+					"Recovery cpcap set failure.\n");
+				result = NOTIFY_BAD;
+			}
+		} else {
+			/* Set the fota (recovery mode) bit in the cpcap */
+			ret = cpcap_regacc_write(misc_cpcap, CPCAP_REG_VAL1, 0,
+						CPCAP_BIT_FOTA_MODE);
+			if (ret) {
+				dev_err(&(misc_cpcap->spi->dev),
+					"Recovery cpcap clear failure.\n");
+				result = NOTIFY_BAD;
+			}
+		}
+		/* Check if we are going into fast boot mode */
+		if (mode != NULL && ( !strncmp("bootloader", mode, 11) ||
+							  !strncmp("fastboot", mode, 9) ) ) {
+
+			/* Set the bootmode bit in the cpcap */
+			ret = cpcap_regacc_write(misc_cpcap, CPCAP_REG_VAL1,
+				CPCAP_BIT_FASTBOOT_MODE, CPCAP_BIT_FASTBOOT_MODE);
+
+			if (ret) {
+				dev_err(&(misc_cpcap->spi->dev),
+					"Boot (fastboot) mode cpcap set failure.\n");
+				result = NOTIFY_BAD;
+			}
+		}
+
+		/* Check if we are going into rsd (mot-flash) mode */
+		if (mode != NULL && !strncmp("rsd", mode, 4)) {
+			/* Set the bootmode bit in the cpcap */
+
+			ret = cpcap_regacc_write(misc_cpcap, CPCAP_REG_VAL1,
+				CPCAP_BIT_FLASH_MODE, CPCAP_BIT_FLASH_MODE);
+
+			if (ret) {
+				dev_err(&(misc_cpcap->spi->dev),
+					"RSD (mot-flash) mode cpcap set failure.\n");
+				result = NOTIFY_BAD;
+			}
+		}
+
+		/* Check if we are going into rsd (mot-flash) mode */
+		if (mode != NULL && !strncmp("nv", mode, 3)) {
+			/* Set the bootmode bit in the cpcap */
+
+			ret = cpcap_regacc_write(misc_cpcap, CPCAP_REG_VAL1,
+				CPCAP_BIT_NVFLASH_MODE, CPCAP_BIT_NVFLASH_MODE );
+
+			if (ret) {
+				dev_err(&(misc_cpcap->spi->dev),
+					"RSD (mot-flash) mode cpcap set failure.\n");
+				result = NOTIFY_BAD;
+			}
+		}
+
+		/* Check if we are going into rsd (mot-flash) mode */
+		if (mode != NULL && !strncmp("recovery", mode, 9)) {
+			/* Set the bootmode bit in the cpcap */
+
+			ret = cpcap_regacc_write(misc_cpcap, CPCAP_REG_VAL1,
+				CPCAP_BIT_RECOVERY_MODE, CPCAP_BIT_RECOVERY_MODE );
+
+			if (ret) {
+				dev_err(&(misc_cpcap->spi->dev),
+					"RSD (mot-flash) mode cpcap set failure.\n");
+				result = NOTIFY_BAD;
+			}
+		}
+
+		/* Check if we are going into bponly mode */
+		if (mode != NULL && !strncmp("bponly", mode, 7)) {
+			/* Set the bootmode bit in the cpcap */
+
+			ret = cpcap_regacc_write(misc_cpcap, CPCAP_REG_VAL1,
+				CPCAP_BIT_BP_ONLY_FLASH, CPCAP_BIT_BP_ONLY_FLASH );
+
+			if (ret) {
+				dev_err(&(misc_cpcap->spi->dev),
+					"BP only mode cpcap set failure.\n");
+				result = NOTIFY_BAD;
+			}
+		}
 		cpcap_regacc_write(misc_cpcap, CPCAP_REG_MI2, 0, 0xFFFF);
+	} else {
+		ret = cpcap_regacc_write(misc_cpcap, CPCAP_REG_VAL1,
+					 0,
+					 CPCAP_BIT_OUT_CHARGE_ONLY);
+		if (ret) {
+			dev_err(&(misc_cpcap->spi->dev),
+				"outofcharge cpcap set failure.\n");
+			result = NOTIFY_BAD;
+		}
+
+		/* Clear the soft reset bit in the cpcap */
+		ret = cpcap_regacc_write(misc_cpcap, CPCAP_REG_VAL1, 0,
+					CPCAP_BIT_SOFT_RESET);
+		if (ret) {
+			dev_err(&(misc_cpcap->spi->dev),
+				"SW Reset cpcap set failure.\n");
+			result = NOTIFY_BAD;
+		}
+		/* Clear the fota (recovery mode) bit in the cpcap */
+		ret = cpcap_regacc_write(misc_cpcap, CPCAP_REG_VAL1, 0,
+					CPCAP_BIT_FOTA_MODE);
+		if (ret) {
+			dev_err(&(misc_cpcap->spi->dev),
+				"Recovery cpcap clear failure.\n");
+			result = NOTIFY_BAD;
+		}
+	}
 
 	/* Always clear the power cut bit on SW Shutdown*/
-	ret = cpcap_regacc_write(misc_cpcap, CPCAP_REG_PC1,
-		0, CPCAP_BIT_PC1_PCEN);
+	cpcap_disable_powercut();
+
+	/* Always clear the kpanic bit */
+	ret = cpcap_regacc_write(misc_cpcap, CPCAP_REG_VAL1,
+		0, CPCAP_BIT_AP_KERNEL_PANIC);
 	if (ret) {
 		dev_err(&(misc_cpcap->spi->dev),
-			"Clear Power Cut bit failure.\n");
-		result = NOTIFY_BAD;
+			"Clear kernel panic bit failure.\n");
 	}
 
 	/* Clear the charger and charge path settings to avoid a false turn on
