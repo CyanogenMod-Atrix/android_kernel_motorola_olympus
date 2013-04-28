@@ -880,9 +880,12 @@ static const struct file_operations proc_sysrq_trigger_operations = {
 
 static void sysrq_init_procfs(void)
 {
+	printk (KERN_INFO "%s: initializing sysrq-trigger\n", __func__);
 	if (!proc_create("sysrq-trigger", S_IWUSR, NULL,
-			 &proc_sysrq_trigger_operations))
+			 &proc_sysrq_trigger_operations)) {
+		printk (KERN_INFO "%s: error initializing sysrq-trigger\n", __func__);
 		pr_err("Failed to register proc interface\n");
+	}
 }
 
 #else
