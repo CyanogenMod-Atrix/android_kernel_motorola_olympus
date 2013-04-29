@@ -22,6 +22,10 @@
 
 #include <linux/fb.h>
 
+#if defined(CONFIG_MACH_MOT)
+# define TEGRA_FB_BLANK_ON_PROBE
+#endif
+
 struct nvhost_device;
 struct tegra_dc;
 struct tegra_fb_data;

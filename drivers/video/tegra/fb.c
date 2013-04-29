@@ -605,6 +605,9 @@ struct tegra_fb_info *tegra_fb_register(struct nvhost_device *ndev,
 			goto err_free;
 		}
 		tegra_fb->valid = true;
+#ifdef TEGRA_FB_BLANK_ON_PROBE
+                memset(fb_base, 0x00, fb_size);
+#endif
 	}
 
 	stride = tegra_dc_get_stride(dc, 0);
