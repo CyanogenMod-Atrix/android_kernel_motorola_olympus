@@ -44,10 +44,14 @@
 #include <linux/spi-tegra.h>
 
 #include <asm/mach-types.h>
+#include <mach/iomap.h>
+#include "apbio.h"
 #include <asm/mach/arch.h>
 #include <asm/mach/time.h>
 #include <asm/setup.h>
 #include <asm/bootinfo.h>
+#include <mach/io.h>
+#include <mach/system.h>
 
 #include <mach/iomap.h>
 #include <mach/irqs.h>
@@ -55,7 +59,9 @@
 #include "gpio-names.h"
 #include "board.h"
 #include "hwrev.h"
-#include "pm.h"
+#include "pm.h"#include <mach/io.h>
+#include <mach/iomap.h>
+#include "apbio.h"
 #include "pm-irq.h"
 #include "fuse.h"
 #include "wakeups-t2.h"
@@ -78,8 +84,19 @@ void olympus_pm_restart(char mode, const char *cmd)
 	/* Assert SYSRSTRTB input to CPCAP to force cold restart */
 	tegra_gpio_enable(TEGRA_GPIO_PZ2);
 	gpio_request(TEGRA_GPIO_PZ2, "sysrstrtb");
+	gpio_set_value(TEGRA_GPIO_PZ2, 0);
 	gpio_direction_output(TEGRA_GPIO_PZ2, 0);
+
+	void __iomem *reset = IO_ADDRESS(TEGRA_PMC_BASE + 0x00);
+	u32 reg;
+	reg = readl_relaxed(reset + PMC_SCRATCH0);
+	writel_relaxed(reg, reset + PMC_SCRATCH0);
+	// use _related to avoid spinlock since caches are off
+	reg = readl_relaxed(reset);
+	reg |= 0x10; /*** DO NOT KNOW WHAT ADDRESS TO SET THIS ***/
+	writel_relaxed(reg, reset);
 }
+
 
 void olympus_system_power_off(void)
 {
