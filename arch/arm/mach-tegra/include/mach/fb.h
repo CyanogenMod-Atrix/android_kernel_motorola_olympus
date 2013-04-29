@@ -22,7 +22,7 @@
 
 #include <linux/fb.h>
 
-#if defined(CONFIG_MACH_MOT)
+#if defined(CONFIG_MACH_OLYMPUS)
 # define TEGRA_FB_BLANK_ON_PROBE
 #endif
 
