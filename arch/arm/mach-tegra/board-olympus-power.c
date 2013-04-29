@@ -59,7 +59,8 @@
 #include "gpio-names.h"
 #include "board.h"
 #include "hwrev.h"
-#include "pm.h"#include <mach/io.h>
+#include "pm.h"
+#include <mach/io.h>
 #include <mach/iomap.h>
 #include "apbio.h"
 #include "pm-irq.h"
