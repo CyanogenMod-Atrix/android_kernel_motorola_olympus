@@ -87,15 +87,6 @@ void olympus_pm_restart(char mode, const char *cmd)
 	gpio_request(TEGRA_GPIO_PZ2, "sysrstrtb");
 	gpio_set_value(TEGRA_GPIO_PZ2, 0);
 	gpio_direction_output(TEGRA_GPIO_PZ2, 0);
-
-	void __iomem *reset = IO_ADDRESS(TEGRA_PMC_BASE + 0x00);
-	u32 reg;
-	reg = readl_relaxed(reset + PMC_SCRATCH0);
-	writel_relaxed(reg, reset + PMC_SCRATCH0);
-	// use _related to avoid spinlock since caches are off
-	reg = readl_relaxed(reset);
-	reg |= 0x10; /*** DO NOT KNOW WHAT ADDRESS TO SET THIS ***/
-	writel_relaxed(reg, reset);
 }
 
 
