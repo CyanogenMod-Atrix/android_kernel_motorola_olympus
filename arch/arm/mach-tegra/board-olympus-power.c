@@ -101,7 +101,6 @@ void olympus_system_power_off(void)
 	     (bi_powerup_reason() != PWRUP_INVALID)) )
 	{
 		pr_info("%s: external power detected: rebooting\n", __func__);
-		cpcap_misc_clear_power_handoff_info();
 		olympus_pm_restart(0, "");
 		while(1);
 	}
