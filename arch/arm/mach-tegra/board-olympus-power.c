@@ -52,6 +52,8 @@
 #include <asm/bootinfo.h>
 #include <mach/io.h>
 #include <mach/system.h>
+#include <asm/cacheflush.h>
+#include <linux/cpu.h>
 
 #include <mach/iomap.h>
 #include <mach/irqs.h>
@@ -82,11 +84,10 @@ static int disable_rtc_alarms(struct device *dev, void *data)
 
 void olympus_pm_restart(char mode, const char *cmd)
 {
-	/* Assert SYSRSTRTB input to CPCAP to force cold restart */
-	tegra_gpio_enable(TEGRA_GPIO_PZ2);
-	gpio_request(TEGRA_GPIO_PZ2, "sysrstrtb");
-	gpio_set_value(TEGRA_GPIO_PZ2, 0);
-	gpio_direction_output(TEGRA_GPIO_PZ2, 0);
+	disable_nonboot_cpus();
+	flush_cache_all();
+	outer_disable();
+	arm_machine_restart(mode,cmd);
 }
 
 
