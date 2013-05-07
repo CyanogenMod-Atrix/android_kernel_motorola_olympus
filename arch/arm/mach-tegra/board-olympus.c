@@ -365,73 +365,6 @@ static void olympus_w1_init(void)
         platform_device_register(&tegra_w1_device);
 }
 
-#if 0
-static int cpcap_usb_connected_probe(struct platform_device *pdev)
-{
-/*	struct cpcap_accy_platform_data *pdata = pdev->dev.platform_data;*/
-
-	int nr_gpio;
-	int ret;
-
-	nr_gpio = 174;
-
-	tegra_gpio_enable(nr_gpio);
-    	ret = gpio_request(nr_gpio, "usb_data_en");
-
-    	printk(KERN_INFO "pICS_%s: gpio_request(nr_gpio=%i, 'usb_data_en');\n",__func__, nr_gpio);
-
-	gpio_direction_output(nr_gpio, 0);	
-	gpio_set_value(nr_gpio, 1);
-#if 0
-	platform_set_drvdata(pdev, pdata);
-
-	/* when the phone is the host do not start the gadget driver */
-	if((pdata->accy == CPCAP_ACCY_USB) || (pdata->accy == CPCAP_ACCY_FACTORY)) {
-		tegra_otg_set_mode(0);
-		android_usb_set_connected(1, pdata->accy);
-	}
-	if(pdata->accy == CPCAP_ACCY_USB_DEVICE) {
-		tegra_otg_set_mode(1);
-	}
-
-//	mdm_ctrl_set_usb_ipc(true);
-#endif
-	return 0;
-}
-
-static int cpcap_usb_connected_remove(struct platform_device *pdev)
-{
-/*	struct cpcap_accy_platform_data *pdata = pdev->dev.platform_data;*/
-
-	int nr_gpio;
-
-//	mdm_ctrl_set_usb_ipc(false);
-	
-	nr_gpio = 174;
-	gpio_set_value(nr_gpio, 0);
-printk(KERN_INFO "pICS_%s: nr_gpio=%i, 'usb_data_en';\n",__func__, nr_gpio);
-	gpio_free(nr_gpio);
-	
-	tegra_gpio_disable(nr_gpio);
-/*
-	if((pdata->accy == CPCAP_ACCY_USB) || (pdata->accy == CPCAP_ACCY_FACTORY))
-		android_usb_set_connected(0, pdata->accy);
-
-	tegra_otg_set_mode(2);
-*/
-        return 0;
-}
-
-struct platform_driver cpcap_usb_connected_driver = {
-        .probe          = cpcap_usb_connected_probe,
-        .remove         = cpcap_usb_connected_remove,
-        .driver         = {
-                .name   = "cpcap_usb_connected",
-                .owner  = THIS_MODULE,
-    },
-};
-#endif
-
 static int config_unused_pins(char *pins, int num)
 {
         int i, ret = 0;
@@ -496,14 +429,12 @@ static void __init tegra_olympus_init(void)
 
 	olympus_usb_init();
 
-//	olympus_camera_init();
+	olympus_camera_init();
 
 //	olympus_emc_init();
 
 	olympus_modem_init();
 	olympus_wlan_init();
-
-//	platform_driver_register(&cpcap_usb_connected_driver);
 
 	olympus_w1_init();
 	

@@ -21,10 +21,16 @@
 #define __MACH_TEGRA_FB_H
 
 #include <linux/fb.h>
-
+/* not needed anymore for Olympus
+ * since we fixed tegra_move_framebuffer to support conversion
+ * from 16bit to 24bit
+ * and also there are no issues with init (unless there are;)
+ */
+/*
 #if defined(CONFIG_MACH_OLYMPUS)
 # define TEGRA_FB_BLANK_ON_PROBE
 #endif
+*/
 
 struct nvhost_device;
 struct tegra_dc;
