@@ -431,7 +431,7 @@ static void __init tegra_olympus_init(void)
 
 	olympus_camera_init();
 
-//	olympus_emc_init();
+	olympus_emc_init();
 
 	olympus_modem_init();
 	olympus_wlan_init();

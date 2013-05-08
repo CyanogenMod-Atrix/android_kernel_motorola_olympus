@@ -109,11 +109,13 @@ static int olympus_camera_sensors_init(void)
 
 static int olympus_rear_cam_power_on(unsigned power_id)
 {
-
 	pr_info("%s: (mask=%x) ++++\n", __func__, rear_cam.pwr_mask);
 
-	mutex_lock(&rear_cam.pwr_lock);
+if ((power_id==POWER_ID_FOCUSER) && (rear_cam.pwr_mask==0)) {
+	pr_info("%s: power_id 0x%x skiping powering on due to mask=%x", __func__, power_id, rear_cam.pwr_mask);
+} else {
 
+	mutex_lock(&rear_cam.pwr_lock);
 	if (!rear_cam.pwr_mask) {
 
 		if (!reg_avdd_cam1) {
@@ -160,7 +162,7 @@ static int olympus_rear_cam_power_on(unsigned power_id)
 
 	rear_cam.pwr_mask |= power_id;
 	mutex_unlock(&rear_cam.pwr_lock);
-
+}
 	pr_info("%s: (mask=%x) ----\n", __func__, rear_cam.pwr_mask);
 
 	return 0;
@@ -168,6 +170,8 @@ static int olympus_rear_cam_power_on(unsigned power_id)
 
 static int olympus_rear_cam_power_off(unsigned power_id)
 {
+	int ret = 0;
+
 	pr_info("%s: (mask=%x) ++++\n", __func__, rear_cam.pwr_mask);
 
 	mutex_lock(&rear_cam.pwr_lock);
@@ -179,17 +183,32 @@ static int olympus_rear_cam_power_off(unsigned power_id)
 		if (rear_cam.rs_gpio)
 			gpio_set_value(rear_cam.rs_gpio, !rear_cam.rs_on);
 
-		if (reg_avdd_cam1) {
-			regulator_disable(reg_avdd_cam1);
-			regulator_put(reg_avdd_cam1);
-			reg_avdd_cam1 = NULL;
-		}
-
 		if (reg_vdd_mipi) {
-			regulator_disable(reg_vdd_mipi);
+			ret = regulator_disable(reg_vdd_mipi);
+			if (ret < 0) {
+					printk(KERN_ERR
+						"%s: regulator reg_vdd_mipi could not be disabled\n", __func__);
+					return ret;
+			}
 			regulator_put(reg_vdd_mipi);
 			reg_vdd_mipi = NULL;
+			printk(KERN_INFO
+					"%s: regulator reg_vdd_mipi disabled\n", __func__);
 		}
+
+		if (reg_avdd_cam1) {
+			ret = regulator_disable(reg_avdd_cam1);
+			if (ret < 0) {
+				printk(KERN_ERR
+					"%s: regulator reg_avdd_cam1 could not be disabled\n", __func__);
+				return ret;
+			}
+			regulator_put(reg_avdd_cam1);
+			reg_avdd_cam1 = NULL;
+			printk(KERN_INFO
+					"%s: regulator reg_avdd_cam1 disabled\n", __func__);
+		}
+
 	} else {
 		pr_info("%s: pwr_mask=%x, skipping\n", __func__, rear_cam.pwr_mask);
 	}
@@ -246,30 +265,47 @@ static int olympus_front_cam_power_on(void)
 
 static int olympus_front_cam_power_off(void)
 {
+	int ret = 0;
+
 	if (front_cam.pd_gpio)
 		gpio_set_value(front_cam.pd_gpio, !front_cam.pd_on);
 	if (front_cam.rs_gpio)
 		gpio_set_value(front_cam.rs_gpio, !front_cam.rs_on);
 
 	if (reg_vdd_mipi) {
-		regulator_disable(reg_vdd_mipi);
+		ret = regulator_disable(reg_vdd_mipi);
+		if (ret < 0) {
+			printk(KERN_ERR
+				"%s: regulator reg_vdd_mipi could not be disabled\n", __func__);
+			return ret;
+		}
 		regulator_put(reg_vdd_mipi);
 		reg_vdd_mipi = NULL;
+		printk(KERN_INFO
+			"%s: regulator reg_vdd_mipi disabled\n", __func__);
+
 	}
 
 	if (reg_avdd_cam1) {
-		regulator_disable(reg_avdd_cam1);
+		ret = regulator_disable(reg_avdd_cam1);
+		if (ret < 0) {
+			printk(KERN_ERR
+				"%s: regulator reg_avdd_cam1 could not be disabled\n", __func__);
+			return ret;
+		}
 		regulator_put(reg_avdd_cam1);
 		reg_avdd_cam1 = NULL;
+		printk(KERN_INFO
+				"%s: regulator reg_avdd_cam1 disabled\n", __func__);
 	}
 
 	return 0;
 }
 
 struct ov5650_platform_data olympus_ov5650_data = {
+	.power_id = POWER_ID_SENSOR,
 	.power_on = olympus_rear_cam_power_on,
 	.power_off = olympus_rear_cam_power_off,
-	.power_id = POWER_ID_SENSOR,
 };
 
 struct soc380_platform_data olympus_soc380_data = {
