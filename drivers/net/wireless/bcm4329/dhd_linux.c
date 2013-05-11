@@ -349,7 +349,7 @@ struct semaphore dhd_registration_sem;
 #define DHD_REGISTRATION_TIMEOUT  24000  /* msec : allowed time to finished dhd registration */
 #endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)) */
 /* load firmware and/or nvram values from the filesystem */
-module_param_string(firmware_path, firmware_path, MOD_PARAM_PATHLEN, 0);
+module_param_string(firmware_path, firmware_path, MOD_PARAM_PATHLEN, 0660);
 module_param_string(nvram_path, nvram_path, MOD_PARAM_PATHLEN, 0);
 
 /* Error bits */
@@ -1944,18 +1944,30 @@ dhd_open(struct net_device *net)
 #endif
 	int ifidx;
 
+	int32 ret = 0;
+	dhd_os_wake_lock(&dhd->pub);
+	/* Update FW path if it was changed */
+	if ((firmware_path != NULL) && (firmware_path[0] != '\0')) {
+			if (firmware_path[strlen(firmware_path)-1] == '\n')
+					firmware_path[strlen(firmware_path)-1] = '\0';
+			strcpy(fw_path, firmware_path);
+			firmware_path[0] = '\0';
+	}
 	/*  Force start if ifconfig_up gets called before START command */
 	wl_control_wl_start(net);
 
 	ifidx = dhd_net2idx(dhd, net);
 	DHD_TRACE(("%s: ifidx %d\n", __FUNCTION__, ifidx));
 
-	if (ifidx == DHD_BAD_IF)
-		return -1;
+	if (ifidx == DHD_BAD_IF) {
+		ret = -1;
+		goto exit;
+    }
 
 	if ((dhd->iflist[ifidx]) && (dhd->iflist[ifidx]->state == WLC_E_IF_DEL)) {
 		DHD_ERROR(("%s: Error: called when IF already deleted\n", __FUNCTION__));
-		return -1;
+		ret = -1;
+		goto exit;
 	}
 
 	if (ifidx == 0) { /* do it only for primary eth0 */
@@ -1977,7 +1989,9 @@ dhd_open(struct net_device *net)
 	dhd->pub.up = 1;
 
 	OLD_MOD_INC_USE_COUNT;
-	return 0;
+exit:
+	dhd_os_wake_unlock(&dhd->pub);
+	return ret;
 }
 
 osl_t *
