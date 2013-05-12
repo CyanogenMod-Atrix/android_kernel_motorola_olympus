@@ -20,6 +20,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
+#include <linux/kernel.h>
 #include <linux/gpio.h>
 #include <linux/clk.h>
 #include <linux/i2c.h>
@@ -556,21 +557,21 @@ static void olympus_panel_early_suspend(struct early_suspend *h)
 	int i;
 	for (i = 0; i < num_registered_fb; i++)
 		fb_blank(registered_fb[i], FB_BLANK_POWERDOWN);
+
 #ifdef CONFIG_TEGRA_CONVSERVATIVE_GOV_ON_EARLYSUPSEND
-	cpufreq_save_default_governor();
-	cpufreq_set_conservative_governor();
-	cpufreq_set_conservative_governor_param(
-		SET_CONSERVATIVE_GOVERNOR_UP_THRESHOLD,
-		SET_CONSERVATIVE_GOVERNOR_DOWN_THRESHOLD);
+	cpufreq_store_default_gov();
+	cpufreq_change_gov(cpufreq_conservative_gov);
 #endif
 }
 
 static void olympus_panel_late_resume(struct early_suspend *h)
 {
 	int i;
+
 #ifdef CONFIG_TEGRA_CONVSERVATIVE_GOV_ON_EARLYSUPSEND
-	cpufreq_restore_default_governor();
+	cpufreq_restore_default_gov();
 #endif
+
 	for (i = 0; i < num_registered_fb; i++)
 		fb_blank(registered_fb[i], FB_BLANK_UNBLANK);
 }
