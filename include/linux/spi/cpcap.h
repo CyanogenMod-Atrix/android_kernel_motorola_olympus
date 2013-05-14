@@ -26,7 +26,7 @@
 #include <linux/platform_device.h>
 #endif
 
-#ifdef CONFIG_RTC_INTF_SECCLKD
+#ifdef CONFIG_RTC_INTF_CPCAP_SECCLKD
 #include <linux/rtc.h>
 #endif
 
@@ -353,7 +353,7 @@ enum {
 	CPCAP_IOCTL_NUM_UC_SET_TURBO_MODE,
 	CPCAP_IOCTL_NUM_UC__END,
 
-#ifdef CONFIG_RTC_INTF_SECCLKD
+#ifdef CONFIG_RTC_INTF_CPCAP_SECCLKD
 	CPCAP_IOCTL_NUM_RTC__START,
 	CPCAP_IOCTL_NUM_RTC_COUNT,
 	CPCAP_IOCTL_NUM_RTC__END,
@@ -597,7 +597,7 @@ struct cpcap_batt_usb_data {
 	enum cpcap_batt_usb_model model;
 };
 
-#ifdef CONFIG_RTC_INTF_SECCLKD
+#ifdef CONFIG_RTC_INTF_CPCAP_SECCLKD
 struct cpcap_rtc_time_cnt {
 	struct rtc_time time;
 	unsigned short count;
@@ -728,7 +728,7 @@ struct cpcap_whisper_request {
  * OUTPUTS: The command writes the register data back to user space at the
  * location specified, or it may return an error code.
  */
-#ifdef CONFIG_RTC_INTF_SECCLKD
+#ifdef CONFIG_RTC_INTF_CPCAP_SECCLKD
 #define CPCAP_IOCTL_GET_RTC_TIME_COUNTER \
 	_IOR(0, CPCAP_IOCTL_NUM_RTC_COUNT, struct cpcap_rtc_time_cnt)
 #endif

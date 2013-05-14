@@ -25,17 +25,17 @@
 #include <linux/interrupt.h>
 #include <linux/irq.h>
 #include <linux/miscdevice.h>
-#include <linux/mdm_ctrl.h>
 #include <linux/platform_device.h>
+#include <linux/sched.h>
 #include <linux/notifier.h>
 #include <linux/poll.h>
 #include <linux/mutex.h>
 #include <linux/workqueue.h>
 #include <linux/debugfs.h>
 #include <linux/wakelock.h>
-#include <linux/sched.h>
 #include <linux/timer.h>
 #include <linux/regulator/consumer.h>
+#include <linux/mdm_ctrl.h>
 
 #include <mach/mdm_ctrl.h>
 
@@ -977,7 +977,8 @@ out:
 }
 
 /* Modify the client information for enabling / disabling an irq */
-static void set_interrupt(struct gpioinfo *gpio, struct clientinfo *cinfo, int enable)
+static void set_interrupt(struct gpioinfo *gpio, struct clientinfo *cinfo,
+			  int enable)
 {
 	int mask = cinfo->mask;
 	if (enable == 0) {
@@ -1010,10 +1011,10 @@ static void ioctl_set_usb_state(int status, struct clientinfo *cinfo)
 
 /* Performs the appropriate action for the specified IOCTL command,
  * returning a failure code only if the IOCTL command was not recognized */
-static long mdm_ctrl_ioctl(struct file *filp,
-				   unsigned int cmd, unsigned long data)
+static long mdm_ctrl_ioctl(struct file *filp, unsigned int cmd,
+			   unsigned long data)
 {
-	int ret = -EINVAL;
+	long ret = -EINVAL;
 	int *dataParam = (int *)data;
 	int value = -1;
 	int intParam = -1;
@@ -1166,7 +1167,7 @@ static const struct file_operations mdm_ctrl_fops = {
 	.release = mdm_ctrl_release,
 	.poll = mdm_ctrl_poll,
 	.read = mdm_ctrl_read,
-	.unlocked_ioctl = mdm_ctrl_ioctl,
+	.compat_ioctl = mdm_ctrl_ioctl,
 };
 
 static struct miscdevice mdm_ctrl_misc_device = {
@@ -1217,10 +1218,13 @@ static int __devinit mdm_ctrl_probe(struct platform_device *pdev)
 
 	/* Get the usb regulator if one was defined. */
 	if (pdata->usb_regulator != NULL) {
-		mdm_ctrl.usb_regulator = regulator_get(NULL, pdata->usb_regulator);
+		mdm_ctrl.usb_regulator = regulator_get(NULL,
+						       pdata->usb_regulator);
 		if (IS_ERR(mdm_ctrl.usb_regulator)) {
-			pr_info("%s: Unable to obtain usb regulator for flash mode: %s regulator_get returned: %ld\n",
-					__func__, pdata->usb_regulator, PTR_ERR(mdm_ctrl.usb_regulator));
+			pr_info("%s: Unable to obtain usb regulator for flash "
+				"mode: %s regulator_get returned: %ld\n",
+				__func__, pdata->usb_regulator,
+				PTR_ERR(mdm_ctrl.usb_regulator));
 			mdm_ctrl.usb_regulator = NULL;
 		}
 	}
@@ -1333,9 +1337,11 @@ static int __devinit mdm_ctrl_probe(struct platform_device *pdev)
 			bp_status = get_bp_status();
 		}
 
-		/* Next try restarting it a few times, but do it in the background */
+		/* Next try restarting it a few times, but do it in the
+		   background */
 		if (!BP_READY(bp_status))
-			queue_work(mdm_ctrl.working_queue, &mdm_ctrl.restart_work);
+			queue_work(mdm_ctrl.working_queue,
+						&mdm_ctrl.restart_work);
 		else
 			atomic_set(&mdm_ctrl.state, MDM_CTRL_STATE_ON);
 	}

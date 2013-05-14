@@ -633,7 +633,7 @@ struct regulator_consumer_supply cpcap_sw1_consumers[] = {
 struct regulator_consumer_supply cpcap_sw2_consumers[] = {
 //	REGULATOR_CONSUMER("sw2", NULL /* core */),
 	REGULATOR_CONSUMER("vdd_core", NULL),
-//	REGULATOR_CONSUMER("vdd_aon", NULL),
+	REGULATOR_CONSUMER("vdd_aon", NULL),
 };
 
 struct regulator_consumer_supply cpcap_sw3_consumers[] = {
@@ -642,7 +642,7 @@ struct regulator_consumer_supply cpcap_sw3_consumers[] = {
 
 struct regulator_consumer_supply cpcap_sw4_consumers[] = {
 //	REGULATOR_CONSUMER("sw4", NULL /* core */),
-	REGULATOR_CONSUMER("vdd_aon", NULL),
+//	REGULATOR_CONSUMER("vdd_aon", NULL),
 };
 
 struct regulator_consumer_supply cpcap_sw5_consumers[] = {
@@ -954,6 +954,10 @@ struct cpcap_platform_data tegra_cpcap_data =
 		 CPCAP_HWCFG0_SEC_STBY_VCAM |
 		 CPCAP_HWCFG0_SEC_STBY_VCSI |
 		 CPCAP_HWCFG0_SEC_STBY_VHVIO |
+/*		 CPCAP_HWCFG0_SEC_STBY_VDIG |	//added
+		 CPCAP_HWCFG0_SEC_STBY_VDAC | //added
+		 CPCAP_HWCFG0_SEC_STBY_VRF1 | //added
+		 CPCAP_HWCFG0_SEC_STBY_VRF2 | //added*/
 		 CPCAP_HWCFG0_SEC_STBY_VPLL |
 		 CPCAP_HWCFG0_SEC_STBY_VSDIO),
 		(CPCAP_HWCFG1_SEC_STBY_VWLAN1 |    /* WLAN1 may be reset in olympus_setup_power(). */
@@ -1015,21 +1019,20 @@ struct spi_board_info tegra_spi_devices[] __initdata = {
 };
 
 static struct tegra_suspend_platform_data olympus_suspend_data = {
-/*	.cpu_timer 	= 800,
+	.cpu_timer 	= 800,
 	.cpu_off_timer	= 600,
 	.suspend_mode	= TEGRA_SUSPEND_LP0,
 	.core_timer	= 1842,
 	.core_off_timer = 31,
-	.separate_req	= true,
 	.corereq_high	= true,
-	.sysclkreq_high	= true,*/
-	.cpu_timer	= 2000,
+	.sysclkreq_high	= true,
+/*	.cpu_timer	= 2000,
 	.cpu_off_timer	= 0,
 	.suspend_mode	= TEGRA_SUSPEND_LP0,
 	.core_timer	= 0x7e7e,
 	.core_off_timer = 0,
 	.corereq_high	= true,
-	.sysclkreq_high	= true,
+	.sysclkreq_high	= true,*/
 };
 
 #define WAKE_ANY 0x03
@@ -1082,9 +1085,9 @@ void __init olympus_power_init(void)
 
 	/* Enable CORE_PWR_REQ signal from T20. The signal must be enabled
 	 * before the CPCAP uC firmware is started. */
-	pmc_cntrl_0 = readl(IO_ADDRESS(TEGRA_PMC_BASE));
+	/*pmc_cntrl_0 = readl(IO_ADDRESS(TEGRA_PMC_BASE));
 	pmc_cntrl_0 |= 0x00000200;
-	writel(pmc_cntrl_0, IO_ADDRESS(TEGRA_PMC_BASE));
+	writel(pmc_cntrl_0, IO_ADDRESS(TEGRA_PMC_BASE));*/
 
 /*	tegra_gpio_enable(154);
 	gpio_request(154, "usb_host_pwr_en");
