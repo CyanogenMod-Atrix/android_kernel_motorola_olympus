@@ -431,7 +431,7 @@ static void __init tegra_olympus_init(void)
 
 	olympus_camera_init();
 
-	olympus_emc_init();
+	//olympus_emc_init();
 
 	olympus_modem_init();
 
@@ -450,6 +450,7 @@ static void __init tegra_olympus_init(void)
 	gpio_request(TEGRA_GPIO_PD4, "spdif_enable");
 	gpio_direction_output(TEGRA_GPIO_PD4, 0);
 	gpio_export(TEGRA_GPIO_PD4, false);
+	/*
 	if ((HWREV_TYPE_IS_PORTABLE(system_rev) || HWREV_TYPE_IS_FINAL(system_rev)))
 		{
 			if (HWREV_REV(system_rev) >= HWREV_REV_1 && HWREV_REV(system_rev) < HWREV_REV_2)
@@ -470,7 +471,7 @@ static void __init tegra_olympus_init(void)
 			// Olympus P3 and newer
 				config_unused_pins(oly_unused_pins_p3, ARRAY_SIZE(oly_unused_pins_p3));
 			}
-		}
+		}*/
 	tegra_release_bootloader_fb();	
 }
 
