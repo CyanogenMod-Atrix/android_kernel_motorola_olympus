@@ -132,8 +132,8 @@ static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
 	.op_mode = TEGRA_USB_OPMODE_HOST,
 	.u_data.host = {
 		.vbus_gpio = -1,
-//		.vbus_reg = NULL,
-		.vbus_reg = "vusb",
+		.vbus_reg = NULL,
+//		.vbus_reg = "vusb",
 		.hot_plug = true,
 		.remote_wakeup_supported = false,
 		.power_off_on_suspend = true,
@@ -193,7 +193,7 @@ void olympus_usb_init(void)
 	cpcap_otg_device.dev.platform_data = &cpcap_otg_pdata;
 	cpcap_device_register(&cpcap_otg_device);
 
-//	tegra_ehci1_device.dev.platform_data = &tegra_ehci1_utmi_pdata;
+	tegra_ehci1_device.dev.platform_data = &tegra_ehci1_utmi_pdata;
 
 	tegra_udc_device.dev.platform_data = &tegra_udc_pdata;
 	platform_device_register(&tegra_udc_device);

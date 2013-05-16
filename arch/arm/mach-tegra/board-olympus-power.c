@@ -626,22 +626,22 @@ struct cpcap_mode_value *cpcap_regulator_off_mode_values[] = {
 	{ .supply = name, .dev = device, }
 
 struct regulator_consumer_supply cpcap_sw1_consumers[] = {
-//	REGULATOR_CONSUMER("sw1", NULL /* core */),
+	REGULATOR_CONSUMER("sw1", NULL /* core */),
 	REGULATOR_CONSUMER("vdd_cpu", NULL),
 };
 
 struct regulator_consumer_supply cpcap_sw2_consumers[] = {
-//	REGULATOR_CONSUMER("sw2", NULL /* core */),
+	REGULATOR_CONSUMER("sw2", NULL /* core */),
 	REGULATOR_CONSUMER("vdd_core", NULL),
 	REGULATOR_CONSUMER("vdd_aon", NULL),
 };
 
 struct regulator_consumer_supply cpcap_sw3_consumers[] = {
-//	REGULATOR_CONSUMER("sw3", NULL /* VIO */),
+	REGULATOR_CONSUMER("sw3", NULL /* VIO */),
 };
 
 struct regulator_consumer_supply cpcap_sw4_consumers[] = {
-//	REGULATOR_CONSUMER("sw4", NULL /* core */),
+	REGULATOR_CONSUMER("sw4", NULL /* core */),
 //	REGULATOR_CONSUMER("vdd_aon", NULL),
 };
 
@@ -1085,9 +1085,9 @@ void __init olympus_power_init(void)
 
 	/* Enable CORE_PWR_REQ signal from T20. The signal must be enabled
 	 * before the CPCAP uC firmware is started. */
-	/*pmc_cntrl_0 = readl(IO_ADDRESS(TEGRA_PMC_BASE));
+	pmc_cntrl_0 = readl(IO_ADDRESS(TEGRA_PMC_BASE));
 	pmc_cntrl_0 |= 0x00000200;
-	writel(pmc_cntrl_0, IO_ADDRESS(TEGRA_PMC_BASE));*/
+	writel(pmc_cntrl_0, IO_ADDRESS(TEGRA_PMC_BASE));
 
 /*	tegra_gpio_enable(154);
 	gpio_request(154, "usb_host_pwr_en");

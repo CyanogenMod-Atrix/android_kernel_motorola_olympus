@@ -180,7 +180,8 @@ static struct usb_configuration android_config_driver = {
 	.unbind		= android_unbind_config,
 	.bConfigurationValue = 1,
 	.bmAttributes	= USB_CONFIG_ATT_ONE | USB_CONFIG_ATT_SELFPOWER,
-	.bMaxPower	= 0xFA, /* 500ma */
+	//.bMaxPower	= 0xFA, /* 500ma */
+	.bMaxPower	= 0xc8, /* 400ma */
 };
 
 static int mass_storage_function_set_cdrom_lun(char *lunpath);
