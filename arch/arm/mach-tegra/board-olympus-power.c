@@ -901,7 +901,6 @@ static struct regulator_init_data cpcap_regulator[CPCAP_NUM_REGULATORS] = {
 			.max_uV			= 3000000,
 			.valid_ops_mask		= (REGULATOR_CHANGE_VOLTAGE |
 						   REGULATOR_CHANGE_STATUS),
-			.always_on		= 0, //1
 		},
 		.num_consumer_supplies	= ARRAY_SIZE(cpcap_vvib_consumers),
 		.consumer_supplies	= cpcap_vvib_consumers,
@@ -912,6 +911,7 @@ static struct regulator_init_data cpcap_regulator[CPCAP_NUM_REGULATORS] = {
 			.max_uV			= 3300000,
 			.valid_ops_mask		= REGULATOR_CHANGE_STATUS,
 			.apply_uV		= 1,
+			.always_on		= 0, //1
 		},
 		.num_consumer_supplies	= ARRAY_SIZE(cpcap_vusb_consumers),
 		.consumer_supplies	= cpcap_vusb_consumers,
@@ -977,6 +977,7 @@ struct cpcap_platform_data tegra_cpcap_data =
 
 struct regulator_consumer_supply fixed_sdio_en_consumers[] = {
 	REGULATOR_SUPPLY("vddio_sdmmc", "sdhci-tegra.2"),
+
 };
 
 static struct regulator_init_data fixed_sdio_regulator = {
@@ -1026,6 +1027,27 @@ struct spi_board_info tegra_spi_devices[] __initdata = {
 
 };
 
+
+static void olympus_board_suspend(int lp_state, enum suspend_stage stg)
+{
+	if ((lp_state == TEGRA_SUSPEND_LP1) && (stg == TEGRA_SUSPEND_BEFORE_CPU))
+		tegra_console_uart_suspend();
+	if (lp_state == TEGRA_SUSPEND_LP0)
+			{
+				tegra_gpio_disable(TEGRA_GPIO_PF3); //sdcard ext
+			};
+};
+
+static void olympus_board_resume(int lp_state, enum resume_stage stg)
+{
+	if ((lp_state == TEGRA_SUSPEND_LP1) && (stg == TEGRA_RESUME_AFTER_CPU))
+		tegra_console_uart_resume();
+	if (lp_state == TEGRA_SUSPEND_LP0)
+			{
+				tegra_gpio_enable(TEGRA_GPIO_PF3);
+			};
+};
+
 static struct tegra_suspend_platform_data olympus_suspend_data = {
 	.cpu_timer 	= 800,
 	.cpu_off_timer	= 600,
@@ -1034,6 +1056,8 @@ static struct tegra_suspend_platform_data olympus_suspend_data = {
 	.core_off_timer = 31,
 	.corereq_high	= true,
 	.sysclkreq_high	= true,
+	.board_suspend = olympus_board_suspend,
+	.board_resume = olympus_board_resume,
 /*	.cpu_timer	= 2000,
 	.cpu_off_timer	= 0,
 	.suspend_mode	= TEGRA_SUSPEND_LP0,
@@ -1050,14 +1074,14 @@ static struct tegra_suspend_platform_data olympus_suspend_data = {
 void __init olympus_suspend_init(void)
 {
 
-/*	tegra_pm_irq_set_wake_type(tegra_wake_to_irq(TEGRA_WAKE_GPIO_PL1), WAKE_LOW);
+	tegra_pm_irq_set_wake_type(tegra_wake_to_irq(TEGRA_WAKE_GPIO_PL1), WAKE_LOW);
 	tegra_pm_irq_set_wake_type(tegra_wake_to_irq(TEGRA_WAKE_GPIO_PA0), WAKE_HI);
 	tegra_pm_irq_set_wake_type(tegra_wake_to_irq(TEGRA_WAKE_KBC_EVENT), WAKE_HI);
 	tegra_pm_irq_set_wake_type(tegra_wake_to_irq(TEGRA_WAKE_PWR_INT), WAKE_HI);
 
 	tegra_pm_irq_set_wake_type(tegra_wake_to_irq(TEGRA_WAKE_GPIO_PU5), WAKE_ANY);
 	tegra_pm_irq_set_wake_type(tegra_wake_to_irq(TEGRA_WAKE_GPIO_PU6), WAKE_ANY);
-	tegra_pm_irq_set_wake_type(tegra_wake_to_irq(TEGRA_WAKE_GPIO_PV2), WAKE_ANY);*/
+	tegra_pm_irq_set_wake_type(tegra_wake_to_irq(TEGRA_WAKE_GPIO_PV2), WAKE_ANY);
 
 	tegra_init_suspend(&olympus_suspend_data);
 }
