@@ -3,6 +3,9 @@
  *
  *  Copyright (C) 2000 Andrea Arcangeli <andrea@suse.de> SuSE
  *
+ * Copyright 2013: Olympus Kernel Project
+ * <http://forum.xda-developers.com/showthread.php?t=2016837>
+ *
  * 30042000 Jens Axboe <axboe@kernel.dk> :
  *
  * Split the elevator a bit so that it is possible to choose a different

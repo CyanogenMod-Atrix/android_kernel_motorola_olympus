@@ -2,6 +2,8 @@
  *	w1_family.h
  *
  * Copyright (c) 2004 Evgeniy Polyakov <zbr@ioremap.net>
+ * Copyright 2013: Olympus Kernel Project
+ * <http://forum.xda-developers.com/showthread.php?t=2016837>
  *
  *
  * This program is free software; you can redistribute it and/or modify

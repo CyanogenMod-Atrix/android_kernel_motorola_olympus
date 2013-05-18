@@ -1,6 +1,8 @@
 /*
  * Copyright (C) 1991, 1992 Linus Torvalds
  * Copyright (C) 1994,      Karl Keyte: Added support for disk statistics
+ * Copyright 2013: Olympus Kernel Project
+ * <http://forum.xda-developers.com/showthread.php?t=2016837>
  * Elevator latency, (C) 2000  Andrea Arcangeli <andrea@suse.de> SuSE
  * Queue request tables / lock, selectable elevator, Jens Axboe <axboe@suse.de>
  * kernel-doc documentation started by NeilBrown <neilb@cse.unsw.edu.au>

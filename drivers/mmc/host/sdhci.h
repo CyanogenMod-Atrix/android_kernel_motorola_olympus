@@ -5,6 +5,9 @@
  *
  *  Copyright (C) 2005-2008 Pierre Ossman, All Rights Reserved.
  *
+ *  Copyright 2013: Olympus Kernel Project
+ *  <http://forum.xda-developers.com/showthread.php?t=2016837>
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or (at

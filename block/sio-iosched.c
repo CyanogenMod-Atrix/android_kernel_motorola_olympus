@@ -3,7 +3,8 @@
  * Based on Noop, Deadline and V(R) IO schedulers.
  *
  * Copyright (C) 2012 Miguel Boton <mboton@gmail.com>
- *
+ * Copyright 2013: Olympus Kernel Project
+ * <http://forum.xda-developers.com/showthread.php?t=2016837>
  *
  * This algorithm does not do any kind of sorting, as it is aimed for
  * aleatory access devices, but it does some basic merging. We try to

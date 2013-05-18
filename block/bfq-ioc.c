@@ -8,6 +8,9 @@
  *		      Paolo Valente <paolo.valente@unimore.it>
  *
  * Copyright (C) 2010 Paolo Valente <paolo.valente@unimore.it>
+ *
+ * Copyright 2013: Olympus Kernel Project
+ * <http://forum.xda-developers.com/showthread.php?t=2016837>
  */
 
 /**

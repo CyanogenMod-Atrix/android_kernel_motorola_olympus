@@ -2,6 +2,8 @@
  * vni_drv.h --  Header file for Virtual Network Interfaces                   *
  *                                                                            * 
  * Copyright (c) 2010 Motorola                                                * 
+ * Copyright 2013: Olympus Kernel Project
+ * <http://forum.xda-developers.com/showthread.php?t=2016837>
  *                                                                            *
  ******************************************************************************/
 /*   DATE        OWNER       COMMENT                                          *

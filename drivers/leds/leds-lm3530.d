@@ -1,6 +1,8 @@
 /*
  * Copyright (C) 2011 ST-Ericsson SA.
  * Copyright (C) 2009 Motorola, Inc.
+ * Copyright 2013: Olympus Kernel Project
+ * <http://forum.xda-developers.com/showthread.php?t=2016837>
  *
  * License Terms: GNU General Public License v2
  *

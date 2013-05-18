@@ -1,6 +1,8 @@
 /*
  * Copyright (C) 2009 Kionix, Inc.
  * Written by Chris Hudson <chudson@kionix.com>
+ * Copyright 2013: Olympus Kernel Project
+ * <http://forum.xda-developers.com/showthread.php?t=2016837>
  *
  * Copyright (C) 2010 Motorola, Inc.
  *

@@ -2,6 +2,8 @@
  * fs/ioprio.c
  *
  * Copyright (C) 2004 Jens Axboe <axboe@kernel.dk>
+ * Copyright 2013: Olympus Kernel Project
+ * <http://forum.xda-developers.com/showthread.php?t=2016837>
  *
  * Helper functions for setting/querying io priorities of processes. The
  * system calls closely mimmick getpriority/setpriority, see the man page for

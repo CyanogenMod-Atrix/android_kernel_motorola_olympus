@@ -2,6 +2,8 @@
  *  include/linux/mmc/sdio_func.h
  *
  *  Copyright 2007-2008 Pierre Ossman
+ *  Copyright 2013: Olympus Kernel Project
+ *  <http://forum.xda-developers.com/showthread.php?t=2016837>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

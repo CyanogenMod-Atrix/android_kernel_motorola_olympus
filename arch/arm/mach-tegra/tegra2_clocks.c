@@ -2,9 +2,12 @@
  * arch/arm/mach-tegra/tegra2_clocks.c
  *
  * Copyright (C) 2010 Google, Inc.
+ * Copyright 2013: Olympus Kernel Project
+ * <http://forum.xda-developers.com/showthread.php?t=2016837>
  *
  * Author:
  *	Colin Cross <ccross@google.com>
+ *      Olympus Kernel Project
  *
  * Copyright (C) 2010-2012 NVIDIA Corporation
  *

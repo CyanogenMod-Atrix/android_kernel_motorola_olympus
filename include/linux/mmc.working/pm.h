@@ -1,6 +1,9 @@
 /*
  * linux/include/linux/mmc/pm.h
  *
+ * Copyright 2013: Olympus Kernel Project
+ * <http://forum.xda-developers.com/showthread.php?t=2016837>
+ *
  * Author:	Nicolas Pitre
  * Copyright:	(C) 2009 Marvell Technology Group Ltd.
  *

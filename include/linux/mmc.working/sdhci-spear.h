@@ -5,6 +5,8 @@
  *
  * Copyright (C) 2010 ST Microelectronics
  * Viresh Kumar<viresh.kumar@st.com>
+ * Copyright 2013: Olympus Kernel Project
+ * <http://forum.xda-developers.com/showthread.php?t=2016837>
  *
  * This file is licensed under the terms of the GNU General Public
  * License version 2. This program is licensed "as is" without any

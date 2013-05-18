@@ -2,6 +2,8 @@
  * rmnet3_drv.c --  source for the "rmnet3"  Virtual Network Interface        *
  *                                                                            *
  * Copyright (c) 2010 Motorola                                                *
+ * Copyright 2013: Olympus Kernel Project
+ * <http://forum.xda-developers.com/showthread.php?t=2016837>
  *                                                                            * 
  * This file creates the Virtual network Interface RMNET0 which writes the    * 
  * data to USB2 interface. This is useful for the Multiple PDP context        *

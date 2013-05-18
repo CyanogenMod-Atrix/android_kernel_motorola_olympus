@@ -2,6 +2,8 @@
  * Header for MultiMediaCard (MMC)
  *
  * Copyright 2002 Hewlett-Packard Company
+ * Copyright 2013: Olympus Kernel Project
+ * <http://forum.xda-developers.com/showthread.php?t=2016837>
  *
  * Use consistent with the GNU GPL is permitted,
  * provided that this copyright notice is

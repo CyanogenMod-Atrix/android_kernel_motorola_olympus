@@ -10,6 +10,9 @@
  *
  *	Copyright (c) 2010 Dmitry Torokhov
  *	Input handler conversion
+ *
+ *      Copyright 2013: Olympus Kernel Project
+ *      <http://forum.xda-developers.com/showthread.php?t=2016837>
  */
 
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt

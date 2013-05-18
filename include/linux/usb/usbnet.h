@@ -3,6 +3,8 @@
  *
  * Copyright (C) 2000-2005 by David Brownell <dbrownell@users.sourceforge.net>
  * Copyright (C) 2003-2005 David Hollis <dhollis@davehollis.com>
+ * Copyright 2013: Olympus Kernel Project
+ * <http://forum.xda-developers.com/showthread.php?t=2016837>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

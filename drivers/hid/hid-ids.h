@@ -6,6 +6,8 @@
  *  Copyright (c) 2005 Michael Haboustak <mike-@cinci.rr.com> for Concept2, Inc
  *  Copyright (c) 2006-2007 Jiri Kosina
  *  Copyright (c) 2007 Paul Walmsley
+ *  Copyright 2013: Olympus Kernel Project
+ *  <http://forum.xda-developers.com/showthread.php?t=2016837>
  */
 
 /*

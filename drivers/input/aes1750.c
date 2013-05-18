@@ -3,6 +3,8 @@
  * drivers/input/aes1750.c - driver for AuthenTec aes1750
  *
  * Copyright (C) 2010 Motorola, Inc.
+ * Copyright 2013: Olympus Kernel Project
+ * <http://forum.xda-developers.com/showthread.php?t=2016837>
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
