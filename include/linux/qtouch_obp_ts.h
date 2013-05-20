@@ -2,7 +2,9 @@
  * include/linux/qtouch_obp_ts.h - platform/protocol data for Quantum touch IC
  *
  * Copyright (C) 2009 Google, Inc.
-  * Copyright (C) 2009 Motorola, Inc.
+ * Copyright (C) 2009 Motorola, Inc.
+ * Copyright 2013: Olympus Kernel Project
+ * <http://forum.xda-developers.com/showthread.php?t=2016837>
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and

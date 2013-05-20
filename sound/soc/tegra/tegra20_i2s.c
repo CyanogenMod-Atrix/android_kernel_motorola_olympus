@@ -4,6 +4,9 @@
  * Author: Stephen Warren <swarren@nvidia.com>
  * Copyright (C) 2010 - NVIDIA, Inc.
  *
+ * Copyright 2013: Olympus Kernel Project
+ * <http://forum.xda-developers.com/showthread.php?t=2016837>
+ *
  * Based on code copyright/by:
  *
  * Copyright (c) 2009-2010, NVIDIA Corporation.

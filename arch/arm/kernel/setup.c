@@ -1,7 +1,9 @@
 /*
- *  linux/arch/arm/kernel/setup.c
+ * linux/arch/arm/kernel/setup.c
  *
- *  Copyright (C) 1995-2001 Russell King
+ * Copyright (C) 1995-2001 Russell King
+ * Copyright 2013: Olympus Kernel Project
+ * <http://forum.xda-developers.com/showthread.php?t=2016837>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as

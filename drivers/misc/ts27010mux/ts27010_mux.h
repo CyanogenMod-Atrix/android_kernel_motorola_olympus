@@ -2,6 +2,8 @@
  * ts27010_mux.h
  *
  * Copyright (C) 2002, 2004, 2009 Motorola, Inc.
+ * Copyright 2013: Olympus Kernel Project
+ * <http://forum.xda-developers.com/showthread.php?t=2016837>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

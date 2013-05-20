@@ -3,6 +3,9 @@
  *
  * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
  *
+ * Copyright 2013: Olympus Kernel Project
+ * <http://forum.xda-developers.com/showthread.php?t=2016837>
+ *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
  * may be copied, distributed, and modified under those terms.

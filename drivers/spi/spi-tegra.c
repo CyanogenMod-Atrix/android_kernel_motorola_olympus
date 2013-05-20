@@ -2,9 +2,12 @@
  * Driver for Nvidia TEGRA spi controller.
  *
  * Copyright (C) 2010 Google, Inc.
+ * Copyright 2013: Olympus Kernel Project
+ * <http://forum.xda-developers.com/showthread.php?t=2016837>
  *
  * Author:
  *     Erik Gilling <konkers@android.com>
+ *     Olympus Kernel Project
  *
  * Copyright (C) 2010-2011 NVIDIA Corporation
  *

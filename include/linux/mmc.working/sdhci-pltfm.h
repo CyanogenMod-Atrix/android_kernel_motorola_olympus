@@ -2,6 +2,8 @@
  * Platform data declarations for the sdhci-pltfm driver.
  *
  * Copyright (c) 2010 MontaVista Software, LLC.
+ * Copyright 2013: Olympus Kernel Project
+ * <http://forum.xda-developers.com/showthread.php?t=2016837>
  *
  * Author: Anton Vorontsov <avorontsov@ru.mvista.com>
  *

@@ -8,6 +8,8 @@
  * Copyright (c) 2004 Oliver Neukum	<oliver@neukum.name>
  * Copyright (c) 2005 David Kubicek	<dave@awk.cz>
  * Copyright (c) 2011 Johan Hovold	<jhovold@gmail.com>
+ * Copyright 2013: Olympus Kernel Project
+ * <http://forum.xda-developers.com/showthread.php?t=2016837>
  *
  * USB Abstract Control Model driver for USB modems and ISDN adapters
  *

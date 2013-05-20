@@ -5,6 +5,8 @@
  *
  * Copyright (C) 2000, 2001  Axis Communications AB
  * Copyright (C) 2002, 2004, 2009 Motorola
+ * Copyright 2013: Olympus Kernel Project
+ * <http://forum.xda-developers.com/showthread.php?t=2016837>
  *
  * Author: Mats Friden <mats.friden@axis.com>
  *

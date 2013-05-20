@@ -3,9 +3,12 @@
  *
  * Copyright (C) 2010 Google, Inc.
  * Copyright (C) 2010-2012 NVIDIA Corporation
+ * Copyright 2013: Olympus Kernel Project
+ * <http://forum.xda-developers.com/showthread.php?t=2016837>
  *
  * Author:
  *	Colin Cross <ccross@android.com>
+ *      Olympus Kernel Project
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and

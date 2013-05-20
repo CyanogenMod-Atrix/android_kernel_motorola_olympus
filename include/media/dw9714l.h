@@ -1,5 +1,7 @@
 /*
  * Copyright (C) 2010 Motorola, Inc.
+ * Copyright 2013: Olympus Kernel Project
+ * <http://forum.xda-developers.com/showthread.php?t=2016837>
  *
  * Contributors:
  *      Andrei Warkentin <andreiw@motorola.com>

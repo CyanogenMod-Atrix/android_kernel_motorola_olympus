@@ -2,6 +2,8 @@
  * ov5650.c - ov5650 sensor driver
  *
  * Copyright (C) 2011 Google Inc.
+ * Copyright 2013: Olympus Kernel Project
+ * <http://forum.xda-developers.com/showthread.php?t=2016837>
  *
  * Contributors:
  *      Rebecca Schultz Zavin <rebecca@android.com>

@@ -1,5 +1,7 @@
 /*
  * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright 2013: Olympus Kernel Project
+ * <http://forum.xda-developers.com/showthread.php?t=2016837>
  *
  * Description:
  * High-speed USB device controller driver.
