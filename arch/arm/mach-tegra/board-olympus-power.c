@@ -888,7 +888,7 @@ static struct regulator_init_data cpcap_regulator[CPCAP_NUM_REGULATORS] = {
 			.min_uV			= 1800000,
 			.max_uV			= 2900000,
 			.valid_ops_mask		= 0,
-			.always_on		= 0, //1
+			.always_on		= 1,
 		},
 		.num_consumer_supplies	= ARRAY_SIZE(cpcap_vsimcard_consumers),
 		.consumer_supplies	= cpcap_vsimcard_consumers,
@@ -909,7 +909,7 @@ static struct regulator_init_data cpcap_regulator[CPCAP_NUM_REGULATORS] = {
 			.max_uV			= 3300000,
 			.valid_ops_mask		= REGULATOR_CHANGE_STATUS,
 			.apply_uV		= 1,
-			.always_on		= 0, //1
+			.always_on		= 1,
 		},
 		.num_consumer_supplies	= ARRAY_SIZE(cpcap_vusb_consumers),
 		.consumer_supplies	= cpcap_vusb_consumers,
@@ -1032,7 +1032,7 @@ static void olympus_board_suspend(int lp_state, enum suspend_stage stg)
 		tegra_console_uart_suspend();
 	if (lp_state == TEGRA_SUSPEND_LP0)
 			{
-				tegra_gpio_disable(TEGRA_GPIO_PF3); //sdcard ext
+				gpio_set_value(TEGRA_GPIO_PF3, 0); //external sdcard
 			};
 };
 
@@ -1042,7 +1042,7 @@ static void olympus_board_resume(int lp_state, enum resume_stage stg)
 		tegra_console_uart_resume();
 	if (lp_state == TEGRA_SUSPEND_LP0)
 			{
-				tegra_gpio_enable(TEGRA_GPIO_PF3);
+				gpio_set_value(TEGRA_GPIO_PF3, 1);
 			};
 };
 
