@@ -908,6 +908,28 @@ config CC_OPTIMIZE_FOR_SIZE
 	  resulting in a smaller kernel.
 
 	  If unsure, say Y.
+	  
+config GCC_48_OPTIMIZE
+	bool "Optimize for gcc 4.8 (EXPERIMENTAL)"
+	default y
+	depends on CC_OPTIMIZE_FOR_SIZE && GCC_48_FIXES
+	help
+	  gcc 4.8 adds some new flags that are not really stable
+	  when using Opimize for size.  This fixes that.
+
+	  If unsure, say N.
+
+config GCC_48_FIXES
+	bool "Implement gcc-4.8 fixes (EXPERIMENTAL)"
+	default n
+	help
+	  gcc 4.8 adds some new flags that are not really stable
+	  This fixes that.
+
+	  If unsure, say N.
+
+config CC_OPTIMIZE_FAST
+	bool "Use -Ofast"
 
 config SYSCTL
 	bool
