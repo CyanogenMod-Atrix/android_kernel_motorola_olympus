@@ -302,7 +302,8 @@ extern int wl_control_wl_start(struct net_device *dev);
 extern int net_os_send_hang_message(struct net_device *dev);
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27))
 struct semaphore dhd_registration_sem;
-#define DHD_REGISTRATION_TIMEOUT  12000  /* msec : allowed time to finished dhd registration */
+//#define DHD_REGISTRATION_TIMEOUT  12000  /* msec : allowed time to finished dhd registration */
+#define DHD_REGISTRATION_TIMEOUT  60000  /* msec : allowed time to finished dhd registration */
 #endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)) */
 
 /* Spawn a thread for system ioctls (set mac, set mcast) */

@@ -443,12 +443,12 @@ static void __init tegra_olympus_init(void)
 	   as needed. When SPDIF_OUT is enabled and if HDMI is connected, it
 	   can interefere with CPCAP ID pin, as SPDIF_OUT and ID are coupled.
 	*/
-/*
+
 	tegra_gpio_enable(TEGRA_GPIO_PD4);
 	gpio_request(TEGRA_GPIO_PD4, "spdif_enable");
 	gpio_direction_output(TEGRA_GPIO_PD4, 0);
 	gpio_export(TEGRA_GPIO_PD4, false);
-*/
+
 	if ((HWREV_TYPE_IS_PORTABLE(system_rev) || HWREV_TYPE_IS_FINAL(system_rev)))
 		{
 			if (HWREV_REV(system_rev) >= HWREV_REV_1 && HWREV_REV(system_rev) < HWREV_REV_2)

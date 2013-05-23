@@ -236,9 +236,9 @@ int olympus_wifi_status_register(
 	.set_power     = olympus_wifi_power,
 	.set_reset      = olympus_wifi_reset,
 	.set_carddetect = olympus_wifi_set_carddetect,
-	.mem_prealloc   = olympus_wifi_mem_prealloc,
-	.get_mac_addr   = olympus_wifi_get_mac_addr,
-	.get_country_code = olympus_wifi_get_country_code,
+//	.mem_prealloc   = olympus_wifi_mem_prealloc,
+//	.get_mac_addr   = olympus_wifi_get_mac_addr,
+//	.get_country_code = olympus_wifi_get_country_code,
  };
 
  static struct platform_device olympus_wifi_device = {
@@ -257,7 +257,7 @@ int olympus_wifi_status_register(
 	pr_debug("%s Enter\n", __func__);
 
 	tegra_gpio_enable(WLAN_RESET_GPIO);
-	ret = gpio_request(WLAN_RESET_GPIO, "wlan_reset_pin");
+	ret = gpio_request(WLAN_RESET_GPIO, "wlan_rst");
 	if (ret)
 		pr_err("%s: %d gpio_reqest reset\n", __func__, ret);
 	else
@@ -268,7 +268,7 @@ int olympus_wifi_status_register(
 	}
 
 	tegra_gpio_enable(WLAN_REG_ON_GPIO);
-	ret = gpio_request(WLAN_REG_ON_GPIO, "wlan_reg_on_pin");
+	ret = gpio_request(WLAN_REG_ON_GPIO, "wlan_power");
 	if (ret)
 		pr_err("%s: Err %d gpio_reqest reg\n", __func__, ret);
 	 else
@@ -279,7 +279,7 @@ int olympus_wifi_status_register(
 	}
 
 	tegra_gpio_enable(WLAN_IRQ_GPIO);
-	ret = gpio_request(WLAN_IRQ_GPIO, "wlan_irq_pin");
+	ret = gpio_request(WLAN_IRQ_GPIO, "bcmsdh_sdmmc");
 	if (ret)
 		pr_err("%s: Error (%d) - gpio_reqest irq\n", __func__, ret);
 	else
@@ -296,15 +296,15 @@ int olympus_wifi_status_register(
 	int ret;
 	pr_debug("%s: start\n", __func__);
 	olympus_wlan_gpio_init();
-	olympus_init_wifi_mem();
-	olympus_locales_table_ptr = olympus_locales_table;
-	olympus_locales_table_size = ARRAY_SIZE(olympus_locales_table);
+//	olympus_init_wifi_mem();
+//	olympus_locales_table_ptr = olympus_locales_table;
+//	olympus_locales_table_size = ARRAY_SIZE(olympus_locales_table);
 	ret = platform_device_register(&olympus_wifi_device);
 	wlan_ctrl_ready = (ret == 0);
 	return ret;
  }
 
-#ifdef CONFIG_WIFI_CONTROL_EXPORT
+#ifdef CONFIG_BCMDHD_WIFI_CONTROL_FUNC
 
  void bcm_wlan_power_on(int mode)
  {
@@ -317,7 +317,7 @@ int olympus_wifi_status_register(
 	gpio_set_value(WLAN_RESET_GPIO, 0x1);
 	msleep_interruptible(100);
 	if (1 == mode){
-		sdhci_tegra_wlan_detect();
+		//sdhci_tegra_wlan_detect();
 		msleep_interruptible(100);
 	}
  }
@@ -334,7 +334,7 @@ int olympus_wifi_status_register(
 	gpio_set_value(WLAN_REG_ON_GPIO, 0x0);
 	msleep_interruptible(100);
 	if (1 == mode){
-		sdhci_tegra_wlan_detect();
+		//sdhci_tegra_wlan_detect();
 		msleep_interruptible(100);
 	}
  }
@@ -349,7 +349,7 @@ int olympus_wifi_status_register(
  char *bcm_wlan_mac = olympus_wlan_mac;
  EXPORT_SYMBOL(bcm_wlan_mac);
 
-#endif /*  CONFIG_WIFI_CONTROL_EXPORT */
+#endif /*  CONFIG_BCMDHD_WIFI_CONTROL_FUNC */
 
  /*
   * Parse the WLAN MAC ATAG

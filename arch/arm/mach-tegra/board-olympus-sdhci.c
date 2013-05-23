@@ -130,11 +130,15 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data0 = {
 	.mmc_data = {
 		.register_status_notify	= olympus_wifi_status_register,
 		.embedded_sdio = &embedded_sdio_data0,
+		.built_in = 0,
 	},
+#ifndef CONFIG_MMC_EMBEDDED_SDIO
+	.pm_flags = MMC_PM_KEEP_POWER,
+#endif
 	.cd_gpio = -1,
 	.wp_gpio = -1,
 	.power_gpio = -1,
-	//.max_power_class = 15,
+	.max_clk_limit = 46000000,
 };
 
 static struct tegra_sdhci_platform_data tegra_sdhci_platform_data1 = {

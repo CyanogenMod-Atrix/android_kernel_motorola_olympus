@@ -353,25 +353,29 @@ static struct tegra_dsi_out olympus_dsi_out = {
 		//.phy_timing = ???,
 };
 
-static struct tegra_dsi_out buggy_olympus_dsi_out = {
+static struct tegra_dsi_out very_buggy_olympus_dsi_out = {
 		.dsi_instance = 0,
 		.n_data_lanes = 2,
-		.refresh_rate = 60,
-		.lp_cmd_mode_freq_khz = 229500,
-		.panel_reset = true,	/* resend the init sequence on each resume */
-		.panel_reset_timeout_msec = 202,
+//		.refresh_rate = 50,
+		.refresh_rate = 59,
+		.lp_cmd_mode_freq_khz = 10000,
+		.panel_reset = true,
+		.panel_reset_timeout_msec = 402, //added
 		.panel_has_frame_buffer = true,
 		.power_saving_suspend = true,	/* completely shutdown the panel */
+//		.enable_hs_clock_on_lp_cmd_mode = true,
 		.pixel_format = TEGRA_DSI_PIXEL_FORMAT_24BIT_P,
-		.video_burst_mode = TEGRA_DSI_VIDEO_NONE_BURST_MODE,
 		.video_clock_mode = TEGRA_DSI_VIDEO_CLOCK_TX_ONLY,
+		.video_burst_mode = TEGRA_DSI_VIDEO_NONE_BURST_MODE,
+//		.video_clock_mode = TEGRA_DSI_VIDEO_CLOCK_CONTINUOUS,
 		.video_data_type = TEGRA_DSI_VIDEO_TYPE_COMMAND_MODE,
 		.virtual_channel = TEGRA_DSI_VIRTUAL_CHANNEL_0,
-		.dsi_init_cmd = dsi_olympus_init_cmd,
+		.dsi_init_cmd = dsi_olympus_init_cmd, /*init cmd*/
 		.n_init_cmd = ARRAY_SIZE(dsi_olympus_init_cmd),
 		.dsi_suspend_cmd = dsi_suspend_cmd,
 		.n_suspend_cmd = ARRAY_SIZE(dsi_suspend_cmd),
-		//.phy_timing = ???,
+//		.lp_read_cmd_mode_freq_khz = 230000,
+//		.te_polarity_low = true,
 };
 
 static struct tegra_dc_out olympus_disp1_out = {
@@ -402,7 +406,7 @@ static struct tegra_fb_data olympus_fb_data = {
 
 static struct tegra_dc_platform_data olympus_disp1_pdata = {
 	.flags			= TEGRA_DC_FLAG_ENABLED,
-	.emc_clk_rate	= 300000000,
+//	.emc_clk_rate	= 300000000,
 	.default_out	= &olympus_disp1_out,
 	.fb				= &olympus_fb_data,
 };
@@ -427,9 +431,9 @@ static int olympus_panel_setup_dc(void)
 	gpio_request(35, "disp_reset_n");
 	gpio_direction_output(35, 1);
 
-	tegra_gpio_enable(46);
+/*	tegra_gpio_enable(46);
 	gpio_request(46, "hdmi_5v_en");
-	gpio_direction_output(47, 1);
+	gpio_direction_output(46, 1);*/
 
 	return 0;
 }
@@ -475,7 +479,7 @@ static struct tegra_dc_out olympus_disp2_out = {
 	.flags = TEGRA_DC_OUT_HOTPLUG_HIGH,
 
 	.dcc_bus = 1,
-	.hotplug_gpio = TEGRA_GPIO_PN7,
+	.hotplug_gpio = HDMI_HPD_GPIO,
 
 	.max_pixclock	= KHZ2PICOS(148500),
 
@@ -487,11 +491,11 @@ static struct tegra_dc_out olympus_disp2_out = {
 };
 
 static struct tegra_fb_data olympus_disp2_fb_data = {
-	.win			= 0,
-	.xres			= 1280,
-	.yres			= 720,
-	.bits_per_pixel	= 32,
-	.flags			= TEGRA_FB_FLIP_ON_PROBE,
+		.win		= 0,
+		.xres		= 800,
+		.yres		= 480,
+		.bits_per_pixel	= 32,
+		.flags		= TEGRA_FB_FLIP_ON_PROBE,
 };
 
 static struct tegra_dc_platform_data olympus_disp2_pdata = {
@@ -580,14 +584,15 @@ int __init olympus_panel_init(void)
 	struct resource *res;
 	int err;
 
-	tegra_gpio_enable(HDMI_HPD_GPIO);
+/*	tegra_gpio_enable(HDMI_HPD_GPIO);
 	gpio_request(HDMI_HPD_GPIO, "hdmi_hpd");
-	gpio_direction_input(HDMI_HPD_GPIO);
+	gpio_direction_input(HDMI_HPD_GPIO);*/
 
 	// Lets check if we have buggy tegra
 	if ((s_MotorolaDispInfo >> 31) & 0x01) {
 		printk(KERN_INFO "%s: Bad news dude, have to lower refresh rate:/",__func__);
-			olympus_dsi_out.refresh_rate = 60;
+			olympus_dsi_out.refresh_rate = 50;
+	//	olympus_disp1_out.dsi = &very_buggy_olympus_dsi_out;
 	}
 
 	olympus_panel_setup_dc();

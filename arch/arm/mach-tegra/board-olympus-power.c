@@ -956,17 +956,22 @@ struct cpcap_platform_data tegra_cpcap_data =
 	.hwcfg = {
 		(CPCAP_HWCFG0_SEC_STBY_SW3 |
 		 CPCAP_HWCFG0_SEC_STBY_SW4 |
+		 CPCAP_HWCFG0_SEC_STBY_SW5 | //added
 		 CPCAP_HWCFG0_SEC_STBY_VAUDIO |
 		 CPCAP_HWCFG0_SEC_STBY_VCAM |
-		 CPCAP_HWCFG0_SEC_STBY_VCSI |
-		 CPCAP_HWCFG0_SEC_STBY_VHVIO |
-/*		 CPCAP_HWCFG0_SEC_STBY_VDIG |	//added
 		 CPCAP_HWCFG0_SEC_STBY_VDAC | //added
-		 CPCAP_HWCFG0_SEC_STBY_VRF1 | //added
-		 CPCAP_HWCFG0_SEC_STBY_VRF2 | //added*/
+		 CPCAP_HWCFG0_SEC_STBY_VCSI |
+		 CPCAP_HWCFG0_SEC_STBY_VDIG |	//added
+		 CPCAP_HWCFG0_SEC_STBY_VHVIO |
 		 CPCAP_HWCFG0_SEC_STBY_VPLL |
+		 CPCAP_HWCFG0_SEC_STBY_VRF1 | //added
+		 CPCAP_HWCFG0_SEC_STBY_VRF2 | //added
+		 CPCAP_HWCFG0_SEC_STBY_VRFREF | //added
 		 CPCAP_HWCFG0_SEC_STBY_VSDIO),
 		(CPCAP_HWCFG1_SEC_STBY_VWLAN1 |    /* WLAN1 may be reset in olympus_setup_power(). */
+		 CPCAP_HWCFG1_SEC_STBY_VWLAN2 | //added
+		 CPCAP_HWCFG1_SEC_STBY_VUSB | //added
+		 CPCAP_HWCFG1_SEC_STBY_VSIM | //added
 		 CPCAP_HWCFG1_SEC_STBY_VSIMCARD)},
 	.spdif_gpio = TEGRA_GPIO_PD4,
 	.uartmux = 1,
@@ -975,7 +980,6 @@ struct cpcap_platform_data tegra_cpcap_data =
 
 struct regulator_consumer_supply fixed_sdio_en_consumers[] = {
 	REGULATOR_SUPPLY("vddio_sdmmc", "sdhci-tegra.2"),
-
 };
 
 static struct regulator_init_data fixed_sdio_regulator = {
@@ -1030,9 +1034,15 @@ static void olympus_board_suspend(int lp_state, enum suspend_stage stg)
 {
 	if ((lp_state == TEGRA_SUSPEND_LP1) && (stg == TEGRA_SUSPEND_BEFORE_CPU))
 		tegra_console_uart_suspend();
-	if (lp_state == TEGRA_SUSPEND_LP0)
+	if ((lp_state == TEGRA_SUSPEND_LP0) && (stg == TEGRA_SUSPEND_BEFORE_CPU))
 			{
+				printk(KERN_INFO "%s: entering...\n", __func__);
+				printk(KERN_INFO "%s: TEGRA_GPIO_PF3 = 0",__func__);
 				gpio_set_value(TEGRA_GPIO_PF3, 0); //external sdcard
+				printk(KERN_INFO "%s: TEGRA_GPIO_PI5 = 0",__func__);
+				gpio_set_value(TEGRA_GPIO_PI5, 0);
+				//disable_nonboot_cpus();
+				printk(KERN_INFO "%s: exiting...\n", __func__);
 			};
 };
 
@@ -1040,10 +1050,16 @@ static void olympus_board_resume(int lp_state, enum resume_stage stg)
 {
 	if ((lp_state == TEGRA_SUSPEND_LP1) && (stg == TEGRA_RESUME_AFTER_CPU))
 		tegra_console_uart_resume();
-	if (lp_state == TEGRA_SUSPEND_LP0)
-			{
-				gpio_set_value(TEGRA_GPIO_PF3, 1);
-			};
+
+	if ((lp_state == TEGRA_SUSPEND_LP0) && (stg == TEGRA_RESUME_AFTER_CPU))
+		printk(KERN_INFO "%s: entering...\n", __func__);
+		printk(KERN_INFO "%s: TEGRA_GPIO_PF3 = 1",__func__);
+		gpio_set_value(TEGRA_GPIO_PF3, 1); //external sdcard
+		printk(KERN_INFO "%s: TEGRA_GPIO_PI5 = 1",__func__);
+		gpio_set_value(TEGRA_GPIO_PI5, 1);
+		//enable_nonboot_cpus();
+		printk(KERN_INFO "%s: exiting...\n", __func__);
+
 };
 
 static struct tegra_suspend_platform_data olympus_suspend_data = {
@@ -1072,14 +1088,14 @@ static struct tegra_suspend_platform_data olympus_suspend_data = {
 void __init olympus_suspend_init(void)
 {
 
-	tegra_pm_irq_set_wake_type(tegra_wake_to_irq(TEGRA_WAKE_GPIO_PL1), WAKE_LOW);
+/*	tegra_pm_irq_set_wake_type(tegra_wake_to_irq(TEGRA_WAKE_GPIO_PL1), WAKE_LOW);
 	tegra_pm_irq_set_wake_type(tegra_wake_to_irq(TEGRA_WAKE_GPIO_PA0), WAKE_HI);
 	tegra_pm_irq_set_wake_type(tegra_wake_to_irq(TEGRA_WAKE_KBC_EVENT), WAKE_HI);
 	tegra_pm_irq_set_wake_type(tegra_wake_to_irq(TEGRA_WAKE_PWR_INT), WAKE_HI);
 
 	tegra_pm_irq_set_wake_type(tegra_wake_to_irq(TEGRA_WAKE_GPIO_PU5), WAKE_ANY);
 	tegra_pm_irq_set_wake_type(tegra_wake_to_irq(TEGRA_WAKE_GPIO_PU6), WAKE_ANY);
-	tegra_pm_irq_set_wake_type(tegra_wake_to_irq(TEGRA_WAKE_GPIO_PV2), WAKE_ANY);
+	tegra_pm_irq_set_wake_type(tegra_wake_to_irq(TEGRA_WAKE_GPIO_PV2), WAKE_ANY);*/
 
 	tegra_init_suspend(&olympus_suspend_data);
 }
@@ -1148,7 +1164,7 @@ void __init olympus_power_init(void)
 		 (HWREV_REV(system_rev) >= HWREV_REV_3))) {
 		pr_info("Detected P3 Olympus hardware.\n");
 		tegra_cpcap_data.hwcfg[1] |= CPCAP_HWCFG1_SEC_STBY_VWLAN2;
-		tegra_cpcap_data.hwcfg[1] &= ~CPCAP_HWCFG1_SEC_STBY_VWLAN1;
+		//tegra_cpcap_data.hwcfg[1] &= ~CPCAP_HWCFG1_SEC_STBY_VWLAN1;
 		cpcap_regulator[CPCAP_VWLAN2].constraints.always_on = 0;
 	} else {
 		/* Currently only Olympus P3 or greater can handle turning off the
