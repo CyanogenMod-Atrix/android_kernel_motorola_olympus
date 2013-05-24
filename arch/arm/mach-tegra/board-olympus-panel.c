@@ -591,7 +591,7 @@ int __init olympus_panel_init(void)
 	// Lets check if we have buggy tegra
 	if ((s_MotorolaDispInfo >> 31) & 0x01) {
 		printk(KERN_INFO "%s: Bad news dude, have to lower refresh rate:/",__func__);
-			olympus_dsi_out.refresh_rate = 50;
+			olympus_dsi_out.refresh_rate = 60;
 	//	olympus_disp1_out.dsi = &very_buggy_olympus_dsi_out;
 	}
 
