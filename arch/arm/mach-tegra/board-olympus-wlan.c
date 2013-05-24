@@ -236,9 +236,9 @@ int olympus_wifi_status_register(
 	.set_power     = olympus_wifi_power,
 	.set_reset      = olympus_wifi_reset,
 	.set_carddetect = olympus_wifi_set_carddetect,
-//	.mem_prealloc   = olympus_wifi_mem_prealloc,
-//	.get_mac_addr   = olympus_wifi_get_mac_addr,
-//	.get_country_code = olympus_wifi_get_country_code,
+	.mem_prealloc   = olympus_wifi_mem_prealloc,
+	.get_mac_addr   = olympus_wifi_get_mac_addr,
+	.get_country_code = olympus_wifi_get_country_code,
  };
 
  static struct platform_device olympus_wifi_device = {

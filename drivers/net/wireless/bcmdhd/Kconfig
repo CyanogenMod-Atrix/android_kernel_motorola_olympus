@@ -112,3 +112,11 @@ config BCMDHD_CUSTOM_REGULATORY_DOMAIN
 	default y
 	---help---
 	Use Custom Regulatory Domain set by driver.
+
+config BCMDHD_GET_CUSTOM_MAC_ENABLE
+	bool "Use custom mac address"
+	depends on BCMDHD
+	default n
+	---help---
+	   Use mac address provided by bcm4329_wlan platform device.
+
