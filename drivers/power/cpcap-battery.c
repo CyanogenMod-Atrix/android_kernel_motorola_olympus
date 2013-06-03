@@ -448,10 +448,12 @@ static int cpcap_batt_get_property(struct power_supply *psy,
 
 	return ret;
 }
+struct attribute	attr;
+
 #ifdef CONFIG_MOT_CHARGING_DIS
 #define CPCAP_BATTERY_ATTR(_name)					\
 {									\
-	.attr = { .name = #_name, .mode = 0666, .owner = THIS_MODULE },	\
+	.attr = { .name = #_name, .mode = 0666 },	\
 	.show = cpcap_battery_show_property,				\
 	.store = cpcap_battery_store_property,				\
 }

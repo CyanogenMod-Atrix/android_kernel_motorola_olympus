@@ -2115,17 +2115,9 @@ static const struct audio_sources {
 #endif
 	{ 0, 0 }
 };
-/*
-static struct clk tegra_clk_audio = {
-	.name      = "audio",
-	.inputs    = mux_audio_sync_clk,
-	.reg       = 0x38,
-	.max_rate  = 73728000,
-	.ops       = &tegra_audio_sync_clk_ops
-};*/
 
 static struct clk tegra_clk_audio = {
-	.name      = "soc-audio",
+	.name      = "audio",
 	.inputs    = mux_audio_sync_clk,
 	.reg       = 0x38,
 	.max_rate  = 73728000,
@@ -2146,7 +2138,7 @@ static struct clk tegra_clk_audio_2x = {
 };
 
 struct clk_lookup tegra_audio_clk_lookups[] = {
-	{ .con_id = "soc-audio", .clk = &tegra_clk_audio },
+	{ .con_id = "audio", .clk = &tegra_clk_audio },
 	{ .con_id = "audio_2x", .clk = &tegra_clk_audio_2x }
 };
 

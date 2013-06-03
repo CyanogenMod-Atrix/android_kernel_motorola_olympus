@@ -52,6 +52,7 @@
 #include <linux/mmc/host.h>
 
 #define OLYMPUS_EXT_SDCARD_DETECT	TEGRA_GPIO_PI5
+#define MMC_OCR_1V8_MASK    0x8
 
 /*
  * SDHCI init
@@ -71,19 +72,6 @@ static struct resource sdhci_resource0[] = {
 		.flags	= IORESOURCE_MEM,
 	},
 };
-static struct resource sdhci_resource1[] = {
-	[0] = {
-		.start  = INT_SDMMC2,
-		.end    = INT_SDMMC2,
-		.flags  = IORESOURCE_IRQ,
-	},
-	[1] = {
-		.start	= TEGRA_SDMMC2_BASE,
-		.end	= TEGRA_SDMMC2_BASE + TEGRA_SDMMC2_SIZE-1,
-		.flags	= IORESOURCE_MEM,
-	},
-};
-
 
 static struct resource sdhci_resource2[] = {
 	[0] = {
@@ -130,41 +118,39 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data0 = {
 	.mmc_data = {
 		.register_status_notify	= olympus_wifi_status_register,
 		.embedded_sdio = &embedded_sdio_data0,
-		.built_in = 0,
-	},
-#ifndef CONFIG_MMC_EMBEDDED_SDIO
-	.pm_flags = MMC_PM_KEEP_POWER,
-#endif
-	.cd_gpio = -1,
-	.wp_gpio = -1,
-	.power_gpio = -1,
-	.max_clk_limit = 46000000,
-};
-
-static struct tegra_sdhci_platform_data tegra_sdhci_platform_data1 = {
-	.mmc_data = {
-		.built_in = 1,
+	//	.built_in = 1,
+	//	.card_present = 1,
+		.ocr_mask = MMC_OCR_1V8_MASK,
 	},
 	.cd_gpio = -1,
 	.wp_gpio = -1,
 	.power_gpio = -1,
+	.is_8bit = 0,
+	//.max_clk_limit = 50000000,
 };
 
 static struct tegra_sdhci_platform_data tegra_sdhci_platform_data2 = {
+	.mmc_data = {
+		.built_in = 0,
+		.card_present = 0,
+	},
 	.cd_gpio = OLYMPUS_EXT_SDCARD_DETECT,
 	.wp_gpio = -1,
 	.power_gpio = -1,
-	//.max_power_class = 15,
+	.is_8bit = 0,
+	.max_clk_limit = 50000000,
 };
 
 static struct tegra_sdhci_platform_data tegra_sdhci_platform_data3 = {
 	.mmc_data = {
 		.built_in = 1,
+		.card_present = 1,
 	},
 	.cd_gpio = -1,
 	.wp_gpio = -1,
 	.power_gpio = -1,
-	//.max_power_class = 15,
+	.is_8bit = 1,
+	.max_clk_limit = 50000000,
 };
 
 static struct platform_device tegra_sdhci_device0 = {
@@ -174,16 +160,6 @@ static struct platform_device tegra_sdhci_device0 = {
 	.num_resources	= ARRAY_SIZE(sdhci_resource0),
 	.dev = {
 		.platform_data = &tegra_sdhci_platform_data0,
-	},
-};
-
-static struct platform_device tegra_sdhci_device1 = {
-	.name		= "sdhci-tegra",
-	.id		= 1,
-	.resource	= sdhci_resource1,
-	.num_resources	= ARRAY_SIZE(sdhci_resource1),
-	.dev = {
-		.platform_data = &tegra_sdhci_platform_data1,
 	},
 };
 
@@ -216,10 +192,12 @@ void __init olympus_sdhci_init(void)
 
 	printk(KERN_INFO "pICS_%s: Starting...",__func__);
 
+	tegra_gpio_enable(OLYMPUS_EXT_SDCARD_DETECT);
+
 	for (i=0; i<tegra_nand_plat.nr_parts; i++) {
 		if (strcmp("mbr", tegra_nand_plat.parts[i].name))
 			continue;
-		tegra_sdhci_platform_data3.startoffset =
+		tegra_sdhci_platform_data3.start_offset =
 				tegra_nand_plat.parts[i].offset;	
 		}
 
@@ -228,24 +206,4 @@ void __init olympus_sdhci_init(void)
 
 	platform_device_register(&tegra_sdhci_device0);
 	platform_device_register(&tegra_sdhci_device2);
-}
-
-void tegra_system_power_off(void)
-{
-	struct regulator *regulator = regulator_get(NULL, "soc_main");
-
-	if (!IS_ERR(regulator)) {
-		int rc;
-		regulator_enable(regulator);
-		rc = regulator_disable(regulator);
-		pr_err("%s: regulator_disable returned %d\n", __func__, rc);
-	} else {
-		pr_err("%s: regulator_get returned %ld\n", __func__,
-		       PTR_ERR(regulator));
-	}
-	local_irq_disable();
-	while (1) {
-		dsb();
-		__asm__ ("wfi");
-	}
 }

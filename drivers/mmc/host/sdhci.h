@@ -282,9 +282,6 @@ struct sdhci_ops {
 	int	(*resume)(struct sdhci_host *host);
 	int	(*switch_signal_voltage)(struct sdhci_host *host,
 				unsigned int signal_voltage);
-#ifdef CONFIG_EMBEDDED_MMC_START_OFFSET
-	unsigned int	(*get_startoffset)(struct sdhci_host *host);
-#endif
 	int	(*execute_freq_tuning)(struct sdhci_host *sdhci);
 };
 

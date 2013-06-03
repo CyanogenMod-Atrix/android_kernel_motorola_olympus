@@ -160,6 +160,9 @@ check_partition(struct gendisk *hd, struct block_device *bdev)
 {
 	struct parsed_partitions *state;
 	int i, res, err;
+#ifdef CONFIG_MACH_OLYMPUS
+	char mmcstr[] = "mmcblk0boot";
+#endif
 
 	state = kzalloc(sizeof(struct parsed_partitions), GFP_KERNEL);
 	if (!state)
@@ -176,10 +179,15 @@ check_partition(struct gendisk *hd, struct block_device *bdev)
 	snprintf(state->pp_buf, PAGE_SIZE, " %s:", state->name);
 	if (isdigit(state->name[strlen(state->name)-1]))
 		sprintf(state->name, "p");
-
 	state->limit = disk_max_parts(hd);
 	i = res = err = 0;
+#ifdef CONFIG_MACH_OLYMPUS
+	if (strstr(state->pp_buf,mmcstr)) {
+			res = 0; err = -1;
+	} else {
+#endif
 	while (!res && check_part[i]) {
+
 		memset(&state->parts, 0, sizeof(state->parts));
 		res = check_part[i++](state);
 		if (res < 0) {
@@ -189,8 +197,11 @@ check_partition(struct gendisk *hd, struct block_device *bdev)
 			err = res;
 			res = 0;
 		}
-
 	}
+#ifdef CONFIG_MACH_OLYMPUS
+	}
+#endif
+
 	if (res > 0) {
 		printk(KERN_INFO "%s", state->pp_buf);
 
@@ -577,8 +588,10 @@ rescan:
 		disk->fops->revalidate_disk(disk);
 	check_disk_size_change(disk, bdev);
 	bdev->bd_invalidated = 0;
+
 	if (!get_capacity(disk) || !(state = check_partition(disk, bdev)))
 		return 0;
+
 	if (IS_ERR(state)) {
 		/*
 		 * I/O error reading the partition table.  If any

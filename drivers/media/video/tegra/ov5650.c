@@ -125,7 +125,7 @@ static struct ov5650_reg mode_start[] = {
 	{0x4000, 0x01},
 	{0x401c, 0x48},
 	{0x401d, 0x08},
-	{0x5000, 0x06},
+	{0x5000, 0x00},
 	{0x5001, 0x00},
 	{0x5002, 0x00},
 	{0x503d, 0x00},
@@ -298,6 +298,7 @@ static struct ov5650_reg mode_2080x1164[] = {
 	{0x401d, 0x08},
 	{0x4001, 0x02},
 
+	{0x5000, 0x00},
 	{0x5001, 0x00},
 	{0x5002, 0x00},
 	{0x503d, 0x00},
@@ -420,6 +421,7 @@ static struct ov5650_reg mode_1920x1080[] = {
 	{0x401d, 0x08},
 	{0x4001, 0x02},
 
+	{0x5000, 0x00},
 	{0x5001, 0x00},
 	{0x5002, 0x00},
 	{0x503d, 0x00},
@@ -669,6 +671,7 @@ static struct ov5650_reg mode_320x240[] = {
 	{0x3810, 0x40},
 	{0x3836, 0x41},
 	{0x505f, 0x04},
+	{0x5000, 0x06},
 	{0x5001, 0x00},
 	{0x5002, 0x02},
 	{0x503d, 0x00},
@@ -1126,7 +1129,7 @@ static int ov5650_set_group_hold(struct ov5650_info *info, struct ov5650_ae *ae)
 static int ov5650_set_binning(struct ov5650_info *info, u8 enable)
 {
 	s32 ret;
-	u8  array_ctrl_reg, analog_ctrl_reg, timing_reg;
+	u8  array_ctrl_reg = 0, analog_ctrl_reg = 0, timing_reg = 0;
 	u32 val;
 
 	if (info->mode == OV5650_MODE_2592x1944
@@ -1300,7 +1303,7 @@ static int ov5650_get_sensor_id(struct ov5650_info *info)
 {
 	int ret = 0;
 	int i;
-	u8  bak;
+	u8  bak = 0;
 
 	pr_info("%s\n", __func__);
 	if (info->sensor_data.fuse_id_size)
@@ -1328,11 +1331,9 @@ static long ov5650_ioctl(struct file *file,
 	int err;
 	struct ov5650_info *info = file->private_data;
 
-	printk (KERN_INFO "%s: cmd = 0x%8x", __func__,  cmd);
 	switch (cmd) {
 	case OV5650_IOCTL_SET_CAMERA_MODE:
 	{
-		printk (KERN_INFO "%s: doing OV5650_IOCTL_SET_CAMERA_MODE", __func__);
 		if (info->camera_mode != arg) {
 			err = ov5650_set_power(info, 0);
 			if (err) {
@@ -1347,16 +1348,12 @@ static long ov5650_ioctl(struct file *file,
 		return 0;
 	}
 	case OV5650_IOCTL_SYNC_SENSORS:
-	{
-		printk (KERN_INFO "%s: doing OV5650_IOCTL_SYNC_SENSORS", __func__);
 		if (info->right.pdata->synchronize_sensors)
 			info->right.pdata->synchronize_sensors();
 		return 0;
-	}
 	case OV5650_IOCTL_SET_MODE:
 	{
 		struct ov5650_mode mode;
-		printk (KERN_INFO "%s: doing OV5650_IOCTL_SET_MODE", __func__);
 		if (copy_from_user(&mode,
 				   (const void __user *)arg,
 				   sizeof(struct ov5650_mode))) {
@@ -1367,29 +1364,16 @@ static long ov5650_ioctl(struct file *file,
 		return ov5650_set_mode(info, &mode);
 	}
 	case OV5650_IOCTL_SET_FRAME_LENGTH:
-	{
-		printk (KERN_INFO "%s: doing OV5650_IOCTL_SET_FRAME_LENGTH", __func__);
 		return ov5650_set_frame_length(info, (u32)arg);
-	}
 	case OV5650_IOCTL_SET_COARSE_TIME:
-	{
-		printk (KERN_INFO "%s: doing OV5650_IOCTL_SET_COARSE_TIME", __func__);
 		return ov5650_set_coarse_time(info, (u32)arg);
-	}
 	case OV5650_IOCTL_SET_GAIN:
-	{
-		printk (KERN_INFO "%s: doing OV5650_IOCTL_SET_GAIN", __func__);
 		return ov5650_set_gain(info, (u16)arg);
-	}
 	case OV5650_IOCTL_SET_BINNING:
-	{
-		printk (KERN_INFO "%s: doing OV5650_IOCTL_SET_BINNING", __func__);
 		return ov5650_set_binning(info, (u8)arg);
-	}
 	case OV5650_IOCTL_GET_STATUS:
 	{
 		u16 status = 0;
-		printk (KERN_INFO "%s: doing OV5650_IOCTL_GET_STATUS", __func__);
 		if (copy_to_user((void __user *)arg, &status,
 				 2)) {
 			pr_info("%s %d\n", __func__, __LINE__);
@@ -1399,7 +1383,6 @@ static long ov5650_ioctl(struct file *file,
 	}
 	case OV5650_IOCTL_TEST_PATTERN:
 	{
-		printk (KERN_INFO "%s: doing OV5650_IOCTL_TEST_PATTERN", __func__);
 		err = ov5650_test_pattern(info, (enum ov5650_test_pattern) arg);
 		if (err)
 			pr_err("%s %d %d\n", __func__, __LINE__, err);
@@ -1408,7 +1391,6 @@ static long ov5650_ioctl(struct file *file,
 	case OV5650_IOCTL_SET_GROUP_HOLD:
 	{
 		struct ov5650_ae ae;
-		printk (KERN_INFO "%s: doing OV5650_IOCTL_SET_GROUP_HOLD", __func__);
 		if (copy_from_user(&ae,
 				(const void __user *)arg,
 				sizeof(struct ov5650_ae))) {
@@ -1419,7 +1401,6 @@ static long ov5650_ioctl(struct file *file,
 	}
 	case OV5650_IOCTL_GET_SENSORDATA:
 	{
-		printk (KERN_INFO "%s: doing OV5650_IOCTL_GET_SENSORDATA", __func__);
 		err = ov5650_get_sensor_id(info);
 		if (err) {
 			pr_err("%s %d %d\n", __func__, __LINE__, err);
@@ -1437,8 +1418,8 @@ static long ov5650_ioctl(struct file *file,
 		printk (KERN_INFO "%s: bad command", __func__);
 		return -EINVAL;
 	}
-	}
 	return 0;
+	}
 }
 
 static int ov5650_open(struct inode *inode, struct file *file)

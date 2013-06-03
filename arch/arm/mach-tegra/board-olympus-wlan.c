@@ -39,6 +39,7 @@
 #include "board-olympus.h"
 #include "gpio-names.h"
 
+#define WLAN_WOW_GPIO 		TEGRA_GPIO_PU1
 #define WLAN_RESET_GPIO 	TEGRA_GPIO_PU2
 #define WLAN_REG_ON_GPIO 	TEGRA_GPIO_PU3
 #define WLAN_IRQ_GPIO 		TEGRA_GPIO_PU5
@@ -236,9 +237,9 @@ int olympus_wifi_status_register(
 	.set_power     = olympus_wifi_power,
 	.set_reset      = olympus_wifi_reset,
 	.set_carddetect = olympus_wifi_set_carddetect,
-//	.mem_prealloc   = olympus_wifi_mem_prealloc,
-//	.get_mac_addr   = olympus_wifi_get_mac_addr,
-//	.get_country_code = olympus_wifi_get_country_code,
+	.mem_prealloc   = olympus_wifi_mem_prealloc,
+	.get_mac_addr   = olympus_wifi_get_mac_addr,
+	.get_country_code = olympus_wifi_get_country_code,
  };
 
  static struct platform_device olympus_wifi_device = {
@@ -279,13 +280,24 @@ int olympus_wifi_status_register(
 	}
 
 	tegra_gpio_enable(WLAN_IRQ_GPIO);
-	ret = gpio_request(WLAN_IRQ_GPIO, "bcmsdh_sdmmc");
+		ret = gpio_request(WLAN_IRQ_GPIO, "wlan_irq");
+		if (ret)
+			pr_err("%s: Error (%d) - gpio_reqest irq\n", __func__, ret);
+		else
+			ret = gpio_direction_input(WLAN_IRQ_GPIO);
+		if (ret) {
+			pr_err("%s: Err %d gpio_direction irq\n", __func__, ret);
+			return -1;
+		}
+	tegra_gpio_enable(WLAN_IRQ_GPIO);
+
+	ret = gpio_request(WLAN_WOW_GPIO, "bcmsdh_sdmmc");
 	if (ret)
-		pr_err("%s: Error (%d) - gpio_reqest irq\n", __func__, ret);
+		pr_err("%s: Error (%d) - gpio_reqest wow\n", __func__, ret);
 	else
-		ret = gpio_direction_input(WLAN_IRQ_GPIO);
+		ret = gpio_direction_input(WLAN_WOW_GPIO);
 	if (ret) {
-		pr_err("%s: Err %d gpio_direction irq\n", __func__, ret);
+		pr_err("%s: Err %d gpio_direction wow\n", __func__, ret);
 		return -1;
 	}
 	return 0;
@@ -296,9 +308,9 @@ int olympus_wifi_status_register(
 	int ret;
 	pr_debug("%s: start\n", __func__);
 	olympus_wlan_gpio_init();
-//	olympus_init_wifi_mem();
-//	olympus_locales_table_ptr = olympus_locales_table;
-//	olympus_locales_table_size = ARRAY_SIZE(olympus_locales_table);
+	olympus_init_wifi_mem();
+	olympus_locales_table_ptr = olympus_locales_table;
+	olympus_locales_table_size = ARRAY_SIZE(olympus_locales_table);
 	ret = platform_device_register(&olympus_wifi_device);
 	wlan_ctrl_ready = (ret == 0);
 	return ret;

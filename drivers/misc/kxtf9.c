@@ -718,7 +718,7 @@ static int kxtf9_enable(struct kxtf9_data *tf9)
 	if (!atomic_read(&tf9->req_enabled))
 		return 0;
 
-	pr_debug("%s\n", __func__);
+	/*pr_debug*/pr_info("%s\n", __func__);
 	if (!atomic_cmpxchg(&tf9->enabled, 0, 1)) {
 		is_enabled = atomic_read(&tf9->enabled);
 		err = kxtf9_device_power_on(tf9);
@@ -739,7 +739,7 @@ static int kxtf9_enable(struct kxtf9_data *tf9)
 
 static int kxtf9_disable(struct kxtf9_data *tf9)
 {
-	pr_debug("%s\n", __func__);
+	/*pr_debug*/pr_info("%s\n", __func__);
 	if (atomic_cmpxchg(&tf9->enabled, 1, 0)) {
 		is_enabled = atomic_read(&tf9->enabled);
 		cancel_delayed_work_sync(&tf9->force_tilt);
@@ -1340,16 +1340,24 @@ static int kxtf9_suspend(struct i2c_client *client, pm_message_t mesg)
 static void kxtf9_early_suspend(struct early_suspend *handler)
 {
 	struct kxtf9_data *tf9;
+
+	printk(KERN_INFO "%s: enter\n",__func__);
+
 	tf9 = container_of(handler, struct kxtf9_data, early_suspend);
 
 	tf9->was_polling_at_suspend = atomic_read(&tf9->is_polling);
 	kxtf9_suspend(tf9->client, PMSG_SUSPEND);
+
+	printk(KERN_INFO "%s: exit\n",__func__);
 }
 
 static void kxtf9_late_resume(struct early_suspend *handler)
 {
 	struct kxtf9_data *tf9;
 	int err = -1;
+
+	printk(KERN_INFO "%s: enter\n",__func__);
+
 	tf9 = container_of(handler, struct kxtf9_data, early_suspend);
 
 	kxtf9_resume(tf9->client);
@@ -1359,6 +1367,8 @@ static void kxtf9_late_resume(struct early_suspend *handler)
 			dev_err(&tf9->client->dev,
 				"odr kickoff failed: %d\n", err);
 	}
+
+	printk(KERN_INFO "%s: exit\n",__func__);
 }
 #endif
 

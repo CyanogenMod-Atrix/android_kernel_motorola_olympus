@@ -36,9 +36,9 @@
 #include <linux/akm8975.h>
 #include <linux/earlysuspend.h>
 
-#define AKM8975_DEBUG		0
-#define AKM8975_DEBUG_MSG	0
-#define AKM8975_DEBUG_FUNC	0
+#define AKM8975_DEBUG		1
+#define AKM8975_DEBUG_MSG	1
+#define AKM8975_DEBUG_FUNC	1
 #define AKM8975_DEBUG_DATA	0
 #define MAX_FAILURE_COUNT	3
 #define AKM8975_RETRY_COUNT	10
@@ -763,9 +763,9 @@ static void akm8975_early_suspend(struct early_suspend *handler)
 	AKMDBG("suspended with flag=%d", open_state);
 }
 
-static void akm8975_early_resume(struct early_suspend *handler)
+static void akm8975_late_resume(struct early_suspend *handler)
 {
-	AKMFUNC("akm8975_early_resume");
+	AKMFUNC("akm8975_late_resume");
 	mutex_lock(&state_mutex);
 	if (e_flag)
 		akm8975_power_on();
@@ -944,8 +944,9 @@ int akm8975_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	a_flag = 0;
 	mv_flag = 0;
 
+	akm->akm_early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN + 1;
 	akm->akm_early_suspend.suspend = akm8975_early_suspend;
-	akm->akm_early_suspend.resume = akm8975_early_resume;
+	akm->akm_early_suspend.resume = akm8975_late_resume;
 	register_early_suspend(&akm->akm_early_suspend);
 
 	akmd_accel[AKM_ACCEL_X] = 0.0f;

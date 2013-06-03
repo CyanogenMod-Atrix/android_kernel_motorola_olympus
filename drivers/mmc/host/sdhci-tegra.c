@@ -65,12 +65,7 @@
 #define SDHOST_LOW_VOLT_MIN	1800000
 #define SDHOST_LOW_VOLT_MAX	1800000
 
-#ifdef CONFIG_ARCH_TEGRA_2x_SOC
-#define TEGRA_SDHOST_MIN_FREQ	12000000 // From K36
-#else
 #define TEGRA_SDHOST_MIN_FREQ	50000000
-#endif
-
 #define TEGRA2_SDHOST_STD_FREQ	50000000
 #define TEGRA3_SDHOST_STD_FREQ	104000000
 
@@ -97,9 +92,6 @@ struct tegra_sdhci_hw_ops{
 
 struct tegra_sdhci_host {
 	bool	clk_enabled;
-#ifdef CONFIG_EMBEDDED_MMC_START_OFFSET
-	unsigned int StartOffset;
-#endif
 	struct regulator *vdd_io_reg;
 	struct regulator *vdd_slot_reg;
 	/* Pointer to the chip specific HW ops */
@@ -131,17 +123,6 @@ static struct tegra_sdhci_hw_ops tegra_3x_sdhci_ops = {
 	.set_card_clock = tegra_3x_sdhci_set_card_clock,
 	.sdhost_init = tegra3_sdhci_post_reset_init,
 };
-#endif
-
-#ifdef CONFIG_EMBEDDED_MMC_START_OFFSET
-static unsigned int tegra_sdhci_get_StartOffset(struct sdhci_host *host)
-{
-	struct tegra_sdhci_host *t_sdhci_host;
-
-	t_sdhci_host = ((struct sdhci_pltfm_host *)sdhci_priv(host))->priv;
-
-	return t_sdhci_host->StartOffset;
-}
 #endif
 
 static u32 tegra_sdhci_readl(struct sdhci_host *host, int reg)
@@ -344,18 +325,24 @@ static irqreturn_t carddetect_irq(int irq, void *data)
 
 	if (tegra_host->card_present) {
 		if (!tegra_host->is_rail_enabled) {
-			if (tegra_host->vdd_slot_reg)
+			if (tegra_host->vdd_slot_reg) {
 				regulator_enable(tegra_host->vdd_slot_reg);
+				printk(KERN_INFO "%s: enabling vddio_sd_slot regulator\n", __func__);
+			}
 			if (tegra_host->vdd_io_reg)
 				regulator_enable(tegra_host->vdd_io_reg);
 			tegra_host->is_rail_enabled = 1;
 		}
 	} else {
 		if (tegra_host->is_rail_enabled) {
-			if (tegra_host->vdd_io_reg)
+			if (tegra_host->vdd_io_reg) {
 				regulator_disable(tegra_host->vdd_io_reg);
-			if (tegra_host->vdd_slot_reg)
+				printk(KERN_INFO "%s: disabling vddio_sd_slot regulator\n", __func__);
+			}
+			if (tegra_host->vdd_slot_reg) {
 				regulator_disable(tegra_host->vdd_slot_reg);
+				printk(KERN_INFO "%s: disabling vddio_sd_slot regulator\n", __func__);
+			}
 			tegra_host->is_rail_enabled = 0;
                 }
 	}
@@ -882,8 +869,10 @@ static int tegra_sdhci_suspend(struct sdhci_host *sdhci, pm_message_t state)
 		if (tegra_host->is_rail_enabled) {
 			if (tegra_host->vdd_io_reg)
 				regulator_disable(tegra_host->vdd_io_reg);
-			if (tegra_host->vdd_slot_reg)
+			if (tegra_host->vdd_slot_reg) {
 				regulator_disable(tegra_host->vdd_slot_reg);
+				printk(KERN_INFO "%s: disabling vddio_sd_slot regulator\n", __func__);
+			}
 			tegra_host->is_rail_enabled = 0;
 		}
 	}
@@ -899,8 +888,10 @@ static int tegra_sdhci_resume(struct sdhci_host *sdhci)
 	/* Enable the power rails if any */
 	if (tegra_host->card_present) {
 		if (!tegra_host->is_rail_enabled) {
-			if (tegra_host->vdd_slot_reg)
+			if (tegra_host->vdd_slot_reg) {
 				regulator_enable(tegra_host->vdd_slot_reg);
+				printk(KERN_INFO "%s: enabling vddio_sd_slot regulator\n", __func__);
+			}
 			if (tegra_host->vdd_io_reg) {
 				regulator_enable(tegra_host->vdd_io_reg);
 				tegra_sdhci_signal_voltage_switch(sdhci, MMC_SIGNAL_VOLTAGE_330);
@@ -990,6 +981,10 @@ static int __devinit sdhci_tegra_probe(struct platform_device *pdev)
 		rc = -ENOMEM;
 		goto err_no_mem;
 	}
+
+#ifdef CONFIG_MMC_START_OFFSET
+	host->start_offset = plat->start_offset;
+#endif
 
 #ifdef CONFIG_MMC_EMBEDDED_SDIO
 	if (plat->mmc_data.embedded_sdio)
@@ -1101,17 +1096,15 @@ static int __devinit sdhci_tegra_probe(struct platform_device *pdev)
 		}
 
 		if (tegra_host->card_present) {
-			if (tegra_host->vdd_slot_reg)
+			if (tegra_host->vdd_slot_reg) {
 				regulator_enable(tegra_host->vdd_slot_reg);
+				printk(KERN_INFO "%s: enabling vddio_sd_slot regulator\n", __func__);
+			}
 			if (tegra_host->vdd_io_reg)
 				regulator_enable(tegra_host->vdd_io_reg);
 			tegra_host->is_rail_enabled = 1;
 		}
 	}
-#ifdef CONFIG_EMBEDDED_MMC_START_OFFSET
-	tegra_host->StartOffset = plat->startoffset;
-	printk(KERN_INFO "tegra_sdhci_probe: host->StartOffset: %d\n", tegra_host->StartOffset);
-#endif
 
 	clk = clk_get(mmc_dev(host->mmc), NULL);
 	if (IS_ERR(clk)) {

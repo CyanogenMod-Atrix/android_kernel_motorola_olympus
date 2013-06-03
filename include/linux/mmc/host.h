@@ -149,7 +149,7 @@ struct mmc_host_ops {
 
 	int	(*start_signal_voltage_switch)(struct mmc_host *host, struct mmc_ios *ios);
 
-#ifdef CONFIG_EMBEDDED_MMC_START_OFFSET
+#ifdef CONFIG_MMC_START_OFFSET
 	unsigned int (*get_host_offset)(struct mmc_host *host);
 #endif
 

@@ -109,9 +109,9 @@ static int olympus_rear_cam_power_on(unsigned power_id)
 {
 	pr_info("%s: (mask=%x) ++++\n", __func__, rear_cam.pwr_mask);
 
-if ((power_id==POWER_ID_FOCUSER) && (rear_cam.pwr_mask==0)) {
-	pr_info("%s: power_id 0x%x skiping powering on due to mask=%x", __func__, power_id, rear_cam.pwr_mask);
-} else {
+	if ((power_id==POWER_ID_FOCUSER) && (rear_cam.pwr_mask==0)) {
+		pr_info("%s: power_id 0x%x skiping powering on due to mask=%x", __func__, power_id, rear_cam.pwr_mask);
+	} else {
 
 	mutex_lock(&rear_cam.pwr_lock);
 	if (!rear_cam.pwr_mask) {
@@ -160,7 +160,8 @@ if ((power_id==POWER_ID_FOCUSER) && (rear_cam.pwr_mask==0)) {
 
 	rear_cam.pwr_mask |= power_id;
 	mutex_unlock(&rear_cam.pwr_lock);
-}
+
+	}
 	pr_info("%s: (mask=%x) ----\n", __func__, rear_cam.pwr_mask);
 
 	return 0;

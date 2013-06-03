@@ -30,7 +30,6 @@
 #include <linux/regulator/machine.h>
 #include <linux/reboot.h>
 #include <linux/serial_8250.h>
-#include <linux/tegra_uart.h>
 
 #include <asm/mach/time.h>
 #include <asm/mach-types.h>
@@ -41,6 +40,8 @@
 #include <mach/iomap.h>
 #include <mach/irqs.h>
 #include <mach/i2s.h>
+#include <mach/i2s.h>
+#include <mach/tegra_hsuart.h>
 
 #include "clock.h"
 #include "devices.h"
@@ -49,6 +50,14 @@
 #include "board.h"
 #include "hwrev.h"
 #include "board-olympus.h"
+
+/*
+ * UART configuration for Olympus:
+ *   UARTA - whisper (/dev/ttyHS0)
+ *   UARTB - serial debug console (/dev/tty0)
+ *   UARTC - bluetooth (/dev/ttyHS2)
+ *   UARTD - modem; configured in board-olympus-modem.c (/dev/ttyHS3)
+ */
 
 static struct plat_serial8250_port debug_uart_platform_data[] = {
 	{
@@ -77,8 +86,7 @@ static struct platform_device *olympus_uart_devices[] __initdata = {
 	&tegra_uarta_device,
 	&tegra_uartb_device,
 	&tegra_uartc_device,
-  //      &tegra_uartd_device,
-//	&tegra_uarte_device,
+//	&tegra_uartd_device,
 };
 
 struct uart_clk_parent uart_parent_clk[] = {
@@ -86,8 +94,6 @@ struct uart_clk_parent uart_parent_clk[] = {
 	[1] = {.name = "pll_m"},
 	[2] = {.name = "clk_m"},
 };
-
-static struct tegra_uart_platform_data olympus_uart_pdata;
 
 static void __init uart_debug_init(void)
 {
@@ -119,15 +125,7 @@ static void __init uart_debug_init(void)
 	}
 }
 
-static struct tegra_uart_platform_data ipc_olympus_pdata = 
-{
-	.uart_ipc = 1,
-	.uart_wake_host = TEGRA_GPIO_PA0,
-	.uart_wake_request = TEGRA_GPIO_PF1,
-#ifdef CONFIG_MDM_CTRL
-	.peer_register = olympus_mdm_ctrl_peer_register,
-#endif
-};
+static struct tegra_hsuart_platform_data olympus_uart_pdata[4];
 
 void __init olympus_uart_init(void)
 {
@@ -144,17 +142,24 @@ void __init olympus_uart_init(void)
 		uart_parent_clk[i].parent_clk = c;
 		uart_parent_clk[i].fixed_clk_rate = clk_get_rate(c);
 	}
-	olympus_uart_pdata.parent_clk_list = uart_parent_clk;
-	olympus_uart_pdata.parent_clk_count = ARRAY_SIZE(uart_parent_clk);
+	olympus_uart_pdata[0].parent_clk_list = uart_parent_clk;
+	olympus_uart_pdata[0].parent_clk_count = ARRAY_SIZE(uart_parent_clk);
 
-	ipc_olympus_pdata.parent_clk_list = uart_parent_clk;
-	ipc_olympus_pdata.parent_clk_count = ARRAY_SIZE(uart_parent_clk);
+	olympus_uart_pdata[1].parent_clk_list = uart_parent_clk;
+	olympus_uart_pdata[1].parent_clk_count = ARRAY_SIZE(uart_parent_clk);
 
-	tegra_uarta_device.dev.platform_data = &olympus_uart_pdata;
-	tegra_uartb_device.dev.platform_data = &olympus_uart_pdata;
-	tegra_uartc_device.dev.platform_data = &olympus_uart_pdata;
-	tegra_uartd_device.dev.platform_data = &ipc_olympus_pdata;
-//        tegra_uartd_device.dev.platform_data = &olympus_uart_pdata;
+	olympus_uart_pdata[2].parent_clk_list = uart_parent_clk;
+	olympus_uart_pdata[2].parent_clk_count = ARRAY_SIZE(uart_parent_clk);
+	olympus_uart_pdata[2].exit_lpm_cb = bcm_bt_lpm_exit_lpm_locked;
+	olympus_uart_pdata[2].rx_done_cb = bcm_bt_rx_done_locked;
+
+	olympus_uart_pdata[3].parent_clk_list = uart_parent_clk;
+	olympus_uart_pdata[3].parent_clk_count = ARRAY_SIZE(uart_parent_clk);
+
+	tegra_uarta_device.dev.platform_data = &olympus_uart_pdata[0];
+	tegra_uartb_device.dev.platform_data = &olympus_uart_pdata[1];
+	tegra_uartc_device.dev.platform_data = &olympus_uart_pdata[2];
+	tegra_uartd_device.dev.platform_data = &olympus_uart_pdata[3];
 
 	if (!is_tegra_debug_uartport_hs())
 		uart_debug_init();

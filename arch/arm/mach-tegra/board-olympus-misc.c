@@ -73,7 +73,7 @@ int __init board_boot_mode_init(char *s)
 }
 __setup("androidboot.mode=", board_boot_mode_init);
 
-#if defined(CONFIG_MTD_NAND_TEGRA) || defined(CONFIG_EMBEDDED_MMC_START_OFFSET)
+#if defined(CONFIG_MTD_NAND_TEGRA) || defined(CONFIG_MMC_START_OFFSET)
 #define MAX_MTD_PARTNR 16
 static struct mtd_partition tegra_mtd_partitions[MAX_MTD_PARTNR];
 

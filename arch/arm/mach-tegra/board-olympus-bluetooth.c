@@ -31,320 +31,46 @@
 
 #include "gpio-names.h"
 
-#define BT_SHUTDOWN_GPIO TEGRA_GPIO_PI7
-#define BT_RESET_GPIO TEGRA_GPIO_PU0
-
-#define BT_WAKE_GPIO TEGRA_GPIO_PU1
-#define BT_HOST_WAKE_GPIO TEGRA_GPIO_PU6
-
-extern void change_power_brcm_4329(bool);
-static struct rfkill *bt_rfkill;
-
-struct bcm_bt_lpm {
-	int wake;
-	int host_wake;
-	bool irq_disabled;
-	bool rx_wake_lock_released;
-
-	struct hrtimer enter_lpm_timer;
-	ktime_t enter_lpm_delay;
-
-	struct uart_port *uport;
-
-	struct wake_lock wake_lock_tx;
-	struct wake_lock wake_lock_rx;
-} bt_lpm;
-
-static int bcm4329_bt_rfkill_set_power(void *data, bool blocked)
-{
-	int irq;
-	irq = gpio_to_irq(BT_HOST_WAKE_GPIO);
-
-	// rfkill_ops callback. Turn transmitter on when blocked is false
-	if (!blocked) {
-		if (bt_lpm.irq_disabled) {
-			enable_irq(irq);
-			enable_irq_wake(irq);
-			bt_lpm.irq_disabled = false;
-		}
-
-		change_power_brcm_4329(true);
-		gpio_direction_output(BT_RESET_GPIO, 1);
-		gpio_direction_output(BT_SHUTDOWN_GPIO, 0);
-	} else {
-		change_power_brcm_4329(false);
-		gpio_direction_output(BT_SHUTDOWN_GPIO, 0);
-		gpio_direction_output(BT_RESET_GPIO, 0);
-
-		// There is no resistor associated with this GPIO
-		// so the value can float. Disable and release the
-		// wakelock.
-		if (!bt_lpm.irq_disabled) {
-			disable_irq(irq);
-			disable_irq_wake(irq);
-			bt_lpm.irq_disabled = true;
-		}
-
-		if (bt_lpm.host_wake && !bt_lpm.rx_wake_lock_released)
-			wake_lock_timeout(&bt_lpm.wake_lock_rx, HZ/2);
-	}
-
-	return 0;
-}
-
-static const struct rfkill_ops bcm4329_bt_rfkill_ops = {
-	.set_block = bcm4329_bt_rfkill_set_power,
+static struct resource olympus_bcm4329_rfkill_resources[] = {
+	{
+		.name	= "bcm4329_nreset_gpio",
+		.start	= 0,
+		.end	= 0,
+		.flags	= IORESOURCE_IO,
+	},
+	{
+		.name	= "bcm4329_nshutdown_gpio",
+		.start	= TEGRA_GPIO_PU0,
+		.end	= TEGRA_GPIO_PU0,
+		.flags	= IORESOURCE_IO,
+	},
+	{
+		.name	= "bcm4329_wake_gpio",
+		.start	= TEGRA_GPIO_PU1,
+		.end	= TEGRA_GPIO_PU1,
+		.flags	= IORESOURCE_IO,
+	},
+	{
+		.name	= "bcm4329_host_wake_gpio",
+		.start	= TEGRA_GPIO_PU6,
+		.end	= TEGRA_GPIO_PU6,
+		.flags	= IORESOURCE_IO,
+	},
 };
 
-static void set_wake_locked(int wake)
-{
-	bt_lpm.wake = wake;
-
-	if (!wake)
-		wake_unlock(&bt_lpm.wake_lock_tx);
-
-	gpio_set_value(BT_WAKE_GPIO, wake);
-}
-
-static enum hrtimer_restart enter_lpm(struct hrtimer *timer) {
-	unsigned long flags;
-	spin_lock_irqsave(&bt_lpm.uport->lock, flags);
-	set_wake_locked(0);
-	spin_unlock_irqrestore(&bt_lpm.uport->lock, flags);
-
-	return HRTIMER_NORESTART;
-}
-
-void bcm_bt_lpm_exit_lpm_locked(struct uart_port *uport) {
-	bt_lpm.uport = uport;
-
-	hrtimer_try_to_cancel(&bt_lpm.enter_lpm_timer);
-
-	set_wake_locked(1);
-
-	hrtimer_start(&bt_lpm.enter_lpm_timer, bt_lpm.enter_lpm_delay,
-		HRTIMER_MODE_REL);
-}
-EXPORT_SYMBOL(bcm_bt_lpm_exit_lpm_locked);
-
-void bcm_bt_rx_done_locked(struct uart_port *uport) {
-	if (bt_lpm.host_wake) {
-		// Release wake in 500 ms so that higher layers can take it.
-		wake_lock_timeout(&bt_lpm.wake_lock_rx, HZ/2);
-		bt_lpm.rx_wake_lock_released = true;
-	}
-}
-EXPORT_SYMBOL(bcm_bt_rx_done_locked);
-
-static void update_host_wake_locked(int host_wake)
-{
-	if (host_wake == bt_lpm.host_wake)
-		return;
-
-	bt_lpm.host_wake = host_wake;
-
-	if (host_wake) {
-		bt_lpm.rx_wake_lock_released = false;
-		wake_lock(&bt_lpm.wake_lock_rx);
-	} else if (!bt_lpm.rx_wake_lock_released) {
-		// Failsafe timeout of wakelock.
-		// If the host wake pin is asserted and no data is sent,
-		// when its deasserted we will enter this path
-		wake_lock_timeout(&bt_lpm.wake_lock_rx, HZ/2);
-	}
-
-}
-
-static irqreturn_t host_wake_isr(int irq, void *dev)
-{
-	int host_wake;
-	unsigned long flags;
-
-	host_wake = gpio_get_value(BT_HOST_WAKE_GPIO);
-	irq_set_irq_type(irq, host_wake ? IRQF_TRIGGER_LOW : IRQF_TRIGGER_HIGH);
-
-	if (!bt_lpm.uport) {
-		bt_lpm.host_wake = host_wake;
-		return IRQ_HANDLED;
-	}
-
-	spin_lock_irqsave(&bt_lpm.uport->lock, flags);
-	update_host_wake_locked(host_wake);
-	spin_unlock_irqrestore(&bt_lpm.uport->lock, flags);
-
-	return IRQ_HANDLED;
-}
-
-static int bcm_bt_lpm_init(struct platform_device *pdev)
-{
-	int irq;
-	int ret;
-	int rc;
-
-	tegra_gpio_enable(BT_WAKE_GPIO);
-	rc = gpio_request(BT_WAKE_GPIO, "bcm4329_wake_gpio");
-	if (unlikely(rc)) {
-		tegra_gpio_disable(BT_WAKE_GPIO);
-		return rc;
-	}
-
-	tegra_gpio_enable(BT_HOST_WAKE_GPIO);
-	rc = gpio_request(BT_HOST_WAKE_GPIO, "bcm4329_host_wake_gpio");
-	if (unlikely(rc)) {
-		tegra_gpio_disable(BT_WAKE_GPIO);
-		tegra_gpio_disable(BT_HOST_WAKE_GPIO);
-		gpio_free(BT_WAKE_GPIO);
-		return rc;
-	}
-
-	hrtimer_init(&bt_lpm.enter_lpm_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
-	bt_lpm.enter_lpm_delay = ktime_set(1, 0);  /* 1 sec */
-	bt_lpm.enter_lpm_timer.function = enter_lpm;
-
-	bt_lpm.host_wake = 0;
-
-	irq = gpio_to_irq(BT_HOST_WAKE_GPIO);
-	ret = request_irq(irq, host_wake_isr, IRQF_TRIGGER_HIGH,
-		"bt host_wake", NULL);
-	if (ret) {
-		tegra_gpio_disable(BT_WAKE_GPIO);
-		tegra_gpio_disable(BT_HOST_WAKE_GPIO);
-
-		gpio_free(BT_WAKE_GPIO);
-		gpio_free(BT_HOST_WAKE_GPIO);
-		return ret;
-	}
-
-	ret = irq_set_irq_wake(irq, 1);
-	if (ret) {
-		tegra_gpio_disable(BT_WAKE_GPIO);
-		tegra_gpio_disable(BT_HOST_WAKE_GPIO);
-
-		gpio_free(BT_WAKE_GPIO);
-		gpio_free(BT_HOST_WAKE_GPIO);
-		return ret;
-	}
-
-	bt_lpm.irq_disabled = false;
-
-	gpio_direction_output(BT_WAKE_GPIO, 0);
-	gpio_direction_input(BT_HOST_WAKE_GPIO);
-
-	wake_lock_init(&bt_lpm.wake_lock_tx, WAKE_LOCK_SUSPEND, "BTLowPowerTx");
-	wake_lock_init(&bt_lpm.wake_lock_rx, WAKE_LOCK_SUSPEND, "BTLowPowerRx");
-	return 0;
-}
-
-static int bcm4329_bluetooth_probe(struct platform_device *pdev)
-{
-	int rc = 0;
-	int ret = 0;
-
-	tegra_gpio_enable(BT_RESET_GPIO);
-	rc = gpio_request(BT_RESET_GPIO, "bcm4329_nreset_gpip");
-	if (unlikely(rc)) {
-		tegra_gpio_disable(BT_RESET_GPIO);
-		return rc;
-	}
-
-	tegra_gpio_enable(BT_SHUTDOWN_GPIO);
-	rc = gpio_request(BT_SHUTDOWN_GPIO, "bcm4329_nshutdown_gpio");
-	if (unlikely(rc)) {
-		tegra_gpio_disable(BT_RESET_GPIO);
-		tegra_gpio_disable(BT_SHUTDOWN_GPIO);
-		gpio_free(BT_RESET_GPIO);
-		return rc;
-	}
-
-
-	bcm4329_bt_rfkill_set_power(NULL, true);
-
-	bt_rfkill = rfkill_alloc("bcm4329 Bluetooth", &pdev->dev,
-				RFKILL_TYPE_BLUETOOTH, &bcm4329_bt_rfkill_ops,
-				NULL);
-
-	if (unlikely(!bt_rfkill)) {
-		tegra_gpio_disable(BT_RESET_GPIO);
-		tegra_gpio_disable(BT_SHUTDOWN_GPIO);
-
-		gpio_free(BT_RESET_GPIO);
-		gpio_free(BT_SHUTDOWN_GPIO);
-		return -ENOMEM;
-	}
-
-	rfkill_set_states(bt_rfkill, true, false);
-
-	rc = rfkill_register(bt_rfkill);
-
-	if (unlikely(rc)) {
-		rfkill_destroy(bt_rfkill);
-		tegra_gpio_disable(BT_RESET_GPIO);
-		tegra_gpio_disable(BT_SHUTDOWN_GPIO);
-
-		gpio_free(BT_RESET_GPIO);
-		gpio_free(BT_SHUTDOWN_GPIO);
-		return -1;
-	}
-
-	ret = bcm_bt_lpm_init(pdev);
-	if (ret) {
-		rfkill_unregister(bt_rfkill);
-		rfkill_destroy(bt_rfkill);
-
-		tegra_gpio_disable(BT_RESET_GPIO);
-		tegra_gpio_disable(BT_SHUTDOWN_GPIO);
-
-		gpio_free(BT_RESET_GPIO);
-		gpio_free(BT_SHUTDOWN_GPIO);
-	}
-
-	return ret;
-}
-
-static int bcm4329_bluetooth_remove(struct platform_device *pdev)
-{
-	rfkill_unregister(bt_rfkill);
-	rfkill_destroy(bt_rfkill);
-
-	tegra_gpio_disable(BT_SHUTDOWN_GPIO);
-	tegra_gpio_disable(BT_RESET_GPIO);
-	tegra_gpio_disable(BT_WAKE_GPIO);
-	tegra_gpio_disable(BT_HOST_WAKE_GPIO);
-
-	gpio_free(BT_SHUTDOWN_GPIO);
-	gpio_free(BT_RESET_GPIO);
-	gpio_free(BT_WAKE_GPIO);
-	gpio_free(BT_HOST_WAKE_GPIO);
-
-	wake_lock_destroy(&bt_lpm.wake_lock_rx);
-	wake_lock_destroy(&bt_lpm.wake_lock_tx);
-	return 0;
-}
-
-static struct platform_driver bcm4329_bluetooth_platform_driver = {
-	.probe = bcm4329_bluetooth_probe,
-	.remove = bcm4329_bluetooth_remove,
-	.driver = {
-		   .name = "bcm4329_bluetooth",
-		   .owner = THIS_MODULE,
-		   },
+static struct platform_device olympus_bcm4329_rfkill_device = {
+	.name		= "bcm4329_rfkill",
+	.id		= -1,
+	.num_resources	= ARRAY_SIZE(olympus_bcm4329_rfkill_resources),
+	.resource	= olympus_bcm4329_rfkill_resources,
 };
 
-static int __init bcm4329_bluetooth_init(void)
+static noinline void __init olympus_bt_rfkill(void)
 {
-	return platform_driver_register(&bcm4329_bluetooth_platform_driver);
+	olympus_bcm4329_rfkill_resources[0].start =
+	olympus_bcm4329_rfkill_resources[0].end = TEGRA_GPIO_PU4;
+	printk("%s: registering bcm4329_rfkill device...\n", __func__);
+
+	platform_device_register(&olympus_bcm4329_rfkill_device);
+	return;
 }
-
-static void __exit bcm4329_bluetooth_exit(void)
-{
-	platform_driver_unregister(&bcm4329_bluetooth_platform_driver);
-}
-
-
-module_init(bcm4329_bluetooth_init);
-module_exit(bcm4329_bluetooth_exit);
-
-MODULE_ALIAS("platform:bcm4329");
-MODULE_DESCRIPTION("bcm4329_bluetooth");
-MODULE_AUTHOR("Jaikumar Ganesh <jaikumar@google.com>");
-MODULE_LICENSE("GPL");

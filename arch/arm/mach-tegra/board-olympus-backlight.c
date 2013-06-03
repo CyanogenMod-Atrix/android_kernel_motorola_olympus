@@ -94,6 +94,7 @@ static int disp_backlight_power_off(void)
     pr_info("%s: display backlight is powered off\n", __func__);
     gpio_set_value(TEGRA_BACKLIGHT_EN_GPIO, 0);
     gpio_set_value(TEGRA_KEY_BACKLIGHT_EN_GPIO, 0);
+    msleep_interruptible(25);
     return 0;
 }
 

@@ -969,11 +969,14 @@ static void sdhci_send_command(struct sdhci_host *host, struct mmc_command *cmd)
 
 	sdhci_prepare_data(host, cmd);
 
-#ifdef CONFIG_EMBEDDED_MMC_START_OFFSET
-	if (cmd->data) {
-		/* It is assumed that the device is block addressed. */
-		sdhci_writel(host, cmd->arg + (host->start_offset >> 9),
-			SDHCI_ARGUMENT);
+#ifdef CONFIG_MMC_START_OFFSET
+	if (cmd->data ||
+	   (cmd->opcode == MMC_ERASE_GROUP_START) ||
+	   (cmd->opcode == MMC_ERASE_GROUP_END)) {
+		unsigned long offset = host->start_offset;
+		if (likely(mmc_card_blockaddr(host->mmc->card)))
+			offset >>= 9;
+		sdhci_writel(host, cmd->arg + offset, SDHCI_ARGUMENT);
 	} else {
 		sdhci_writel(host, cmd->arg, SDHCI_ARGUMENT);
 	}
@@ -1527,6 +1530,14 @@ out:
 	spin_unlock_irqrestore(&host->lock, flags);
 }
 
+#ifdef CONFIG_MMC_START_OFFSET
+static unsigned int sdhci_get_host_offset(struct mmc_host *mmc) {
+	struct sdhci_host *host;
+	host = mmc_priv(mmc);
+	return host->start_offset;
+}
+#endif
+
 static int sdhci_start_signal_voltage_switch(struct mmc_host *mmc,
 	struct mmc_ios *ios)
 {
@@ -1633,14 +1644,6 @@ static int sdhci_start_signal_voltage_switch(struct mmc_host *mmc,
 		/* No signal voltage switch required */
 		return 0;
 }
-
-#ifdef CONFIG_EMBEDDED_MMC_START_OFFSET
-static unsigned int sdhci_get_host_offset(struct mmc_host *mmc) {
-	struct sdhci_host *host;
-	host = mmc_priv(mmc);
-	return host->start_offset;
-}
-#endif
 
 static int sdhci_execute_tuning(struct mmc_host *mmc)
 {
@@ -1914,10 +1917,10 @@ static const struct mmc_host_ops sdhci_ops = {
 	.enable		= sdhci_enable,
 	.disable	= sdhci_disable,
 	.enable_sdio_irq = sdhci_enable_sdio_irq,
-	.start_signal_voltage_switch	= sdhci_start_signal_voltage_switch,
-#ifdef CONFIG_EMBEDDED_MMC_START_OFFSET
+#ifdef CONFIG_MMC_START_OFFSET
 	.get_host_offset = sdhci_get_host_offset,
 #endif
+	.start_signal_voltage_switch	= sdhci_start_signal_voltage_switch,
 	.execute_tuning			= sdhci_execute_tuning,
 	.enable_preset_value		= sdhci_enable_preset_value,
 };
@@ -2584,14 +2587,6 @@ int sdhci_add_host(struct sdhci_host *host)
 	else
 		host->max_clk = (caps[0] & SDHCI_CLOCK_BASE_MASK)
 			>> SDHCI_CLOCK_BASE_SHIFT;
-
-#ifdef CONFIG_EMBEDDED_MMC_START_OFFSET
-	if (host->ops->get_startoffset)
-		host->start_offset = host->ops->get_startoffset(host);
-	else
-		host->start_offset = 0;
-	printk(KERN_INFO "sdhci_add_host: host->start_offset: %d\n", host->start_offset);
-#endif
 
 	host->max_clk *= 1000000;
 	if (host->max_clk == 0 || host->quirks &

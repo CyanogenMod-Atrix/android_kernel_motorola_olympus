@@ -388,10 +388,9 @@ static int config_unused_pins(char *pins, int num)
 
 static void __init tegra_olympus_init(void)
 {
-	
 	tegra_clk_init_from_table(olympus_clk_init_table);
 
-	tegra_ram_console_debug_init();
+	//tegra_ram_console_debug_init();
 
 	olympus_pinmux_init();
 
@@ -423,7 +422,7 @@ static void __init tegra_olympus_init(void)
 
 	olympus_touch_init();
 
-	olympus_bt_rfkill();
+//	olympus_bt_rfkill();
 
 	olympus_usb_init();
 
@@ -436,19 +435,17 @@ static void __init tegra_olympus_init(void)
 	olympus_wlan_init();
 
 	olympus_w1_init();
-	
-	//tegra_setup_bluesleep();
 
 	/* Configure SPDIF_OUT as GPIO by default, it can be later controlled
 	   as needed. When SPDIF_OUT is enabled and if HDMI is connected, it
 	   can interefere with CPCAP ID pin, as SPDIF_OUT and ID are coupled.
 	*/
-
+/*
 	tegra_gpio_enable(TEGRA_GPIO_PD4);
 	gpio_request(TEGRA_GPIO_PD4, "spdif_enable");
 	gpio_direction_output(TEGRA_GPIO_PD4, 0);
 	gpio_export(TEGRA_GPIO_PD4, false);
-
+*/
 	if ((HWREV_TYPE_IS_PORTABLE(system_rev) || HWREV_TYPE_IS_FINAL(system_rev)))
 		{
 			if (HWREV_REV(system_rev) >= HWREV_REV_1 && HWREV_REV(system_rev) < HWREV_REV_2)
@@ -541,7 +538,8 @@ void __init tegra_olympus_reserve(void)
 		pr_warn("Cannot reserve first 4K of memory for safety\n");
 
 	tegra_reserve(SZ_128M + SZ_64M, SZ_8M, SZ_8M);
-	tegra_ram_console_debug_reserve(SZ_1M);
+	//tegra_reserve(SZ_256M, SZ_16M, SZ_16M);
+	//tegra_ram_console_debug_reserve(SZ_1M);
 
 }
 

@@ -707,11 +707,14 @@ int cpcap_irq_suspend(struct cpcap_device *cpcap)
 	struct cpcap_irqdata *data = cpcap->irqdata;
 	struct pwrkey_data *pwrkey_data = NULL;
 
+	printk(KERN_INFO "%s: enter\n",__func__);
+
 	disable_irq(spi->irq);
 	flush_work(&data->work);
 	cpcap_irq_get_data(cpcap, CPCAP_IRQ_ON, (void **)&pwrkey_data);
 	if (pwrkey_data)
 		cancel_delayed_work_sync(&pwrkey_data->pwrkey_delayed_work);
+	printk(KERN_INFO "%s: exit\n",__func__);
 	return 0;
 }
 

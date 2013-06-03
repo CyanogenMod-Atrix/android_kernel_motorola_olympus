@@ -114,9 +114,8 @@ static int mmc_decode_csd(struct mmc_card *card)
 		e = UNSTUFF_BITS(resp, 47, 3);
 		m = UNSTUFF_BITS(resp, 62, 12);
 		csd->capacity	  = (1 + m) << (e + 2);
-
-#ifdef CONFIG_EMBEDDED_MMC_START_OFFSET
-		BUG_ON(card->host->ops->get_host_offset(card->host) >=
+#ifdef CONFIG_MMC_START_OFFSET
+		BUG_ON(card->host->ops->get_host_offset(card->host) >
 			csd->capacity);
 		csd->capacity -= card->host->ops->get_host_offset(card->host);
 #endif
@@ -160,9 +159,8 @@ static int mmc_decode_csd(struct mmc_card *card)
 
 		m = UNSTUFF_BITS(resp, 48, 22);
 		csd->capacity     = (1 + m) << 10;
-
-#ifdef CONFIG_EMBEDDED_MMC_START_OFFSET
-		BUG_ON((card->host->ops->get_host_offset(card->host) >> 9) >=
+#ifdef CONFIG_MMC_START_OFFSET
+		BUG_ON((card->host->ops->get_host_offset(card->host) >> 9) >
 			csd->capacity);
 		csd->capacity -=
 			(card->host->ops->get_host_offset(card->host) >> 9);
@@ -959,6 +957,9 @@ static int mmc_sd_init_card(struct mmc_host *host, u32 ocr,
 
 		card->type = MMC_TYPE_SD;
 		memcpy(card->raw_cid, cid, sizeof(card->raw_cid));
+#ifdef CONFIG_MMC_START_OFFSET
+		host->card = card;
+#endif
 	}
 
 	/*
@@ -1040,6 +1041,9 @@ static int mmc_sd_init_card(struct mmc_host *host, u32 ocr,
 	return 0;
 
 free_card:
+#ifdef CONFIG_MMC_START_OFFSET
+	host->card = NULL;
+#endif
 	if (!oldcard)
 		mmc_remove_card(card);
 

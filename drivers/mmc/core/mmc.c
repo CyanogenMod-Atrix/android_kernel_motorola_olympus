@@ -158,8 +158,7 @@ static int mmc_decode_csd(struct mmc_card *card)
 	e = UNSTUFF_BITS(resp, 47, 3);
 	m = UNSTUFF_BITS(resp, 62, 12);
 	csd->capacity	  = (1 + m) << (e + 2);
-
-#ifdef CONFIG_EMBEDDED_MMC_START_OFFSET
+#ifdef CONFIG_MMC_START_OFFSET
 	/* for sector-addressed cards, this will cause csd->capacity to wrap */
 	if (mmc_card_blockaddr(card))
 		csd->capacity -= card->host->ops->get_host_offset(card->host);
@@ -289,15 +288,12 @@ static int mmc_read_ext_csd(struct mmc_card *card, u8 *ext_csd)
 
 		/* Cards with density > 2GiB are sector addressed */
 		if (card->ext_csd.sectors > (2u * 1024 * 1024 * 1024) / 512) {
-#ifdef CONFIG_EMBEDDED_MMC_START_OFFSET
-			unsigned offs;
-			offs = card->host->ops->get_host_offset(card->host);
-			offs >>= 9;
-			BUG_ON(offs >= card->ext_csd.sectors);
-			card->ext_csd.sectors -= offs;
-
-			offs = ext_csd[EXT_CSD_BOOT_MULT] * 512;
-			card->ext_csd.sectors -= offs;
+#ifdef CONFIG_MMC_START_OFFSET
+			unsigned boot_sectors;
+			boot_sectors = card->host->ops->get_host_offset(card->host);
+			boot_sectors >>= 9;
+			BUG_ON(boot_sectors > card->ext_csd.sectors);
+			card->ext_csd.sectors -= boot_sectors;
 #endif
 			mmc_card_set_blockaddr(card);
 		}
@@ -649,6 +645,15 @@ static int mmc_init_card(struct mmc_host *host, u32 ocr,
 		card->type = MMC_TYPE_MMC;
 		card->rca = 1;
 		memcpy(card->raw_cid, cid, sizeof(card->raw_cid));
+
+#ifdef CONFIG_MMC_START_OFFSET
+		/*
+		 * This is needed during detection for the start offset hack
+		 */
+		if (rocr & MMC_CARD_ACCESS_MODE)
+			mmc_card_set_blockaddr(card);
+		host->card = card;
+#endif
 	}
 
 	/*
@@ -943,6 +948,9 @@ static int mmc_init_card(struct mmc_host *host, u32 ocr,
 free_card:
 	if (!oldcard)
 		mmc_remove_card(card);
+#ifdef CONFIG_MMC_START_OFFSET
+	host->card = NULL;
+#endif
 err:
 	mmc_free_ext_csd(ext_csd);
 

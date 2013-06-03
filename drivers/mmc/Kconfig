@@ -19,7 +19,7 @@ config MMC_DEBUG
 	  This is an option for use by developers; most people should
 	  say N here.  This enables MMC core and driver debugging.
 
-config EMBEDDED_MMC_START_OFFSET
+config MMC_START_OFFSET
     bool "MMC start sector offset"
     depends on MMC != n
     help

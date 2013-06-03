@@ -928,7 +928,7 @@ config GCC_48_FIXES
 
 	  If unsure, say N.
 
-config CC_OPTIMIZE_FAST
+config CC_OPTIMIZE_MORE
 	bool "Use -Ofast"
 
 config SYSCTL

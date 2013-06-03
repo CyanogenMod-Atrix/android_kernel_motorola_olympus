@@ -24,10 +24,6 @@
 
 #include <linux/clk.h>
 
-#ifdef CONFIG_MDM_CTRL
-# include <mach/mdm_ctrl.h>
-#endif
-
 struct uart_clk_parent {
 	const char	*name;
 	struct clk	*parent_clk;
@@ -39,14 +35,12 @@ struct tegra_uart_platform_data {
 	struct uart_clk_parent *parent_clk_list;
 	int parent_clk_count;
 	bool is_loopback;
-#ifdef CONFIG_MACH_OLYMPUS
-	unsigned		uart_wake_host;
-	unsigned		uart_wake_request;
-	bool			uart_ipc;
-# ifdef CONFIG_MDM_CTRL
-	mdm_ctrl_peer_register_t peer_register;
-# endif
-#endif
+	bool is_irda;
+	int (*irda_init)(void);
+	int (*irda_mode_switch)(int);
+	void (*irda_start)(void);
+	void (*irda_shutdown)(void);
+	void (*irda_remove)(void);
 };
 
 int tegra_uart_is_tx_empty(struct uart_port *);

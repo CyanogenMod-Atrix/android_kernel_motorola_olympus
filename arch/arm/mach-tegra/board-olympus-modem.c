@@ -17,7 +17,6 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-
 #include <linux/delay.h>
 #include <linux/gpio.h>
 #include <linux/kernel.h>
@@ -363,7 +362,7 @@ static struct tegra_spi_platform_data mdm6600_spi_slave_platform_data = {
 };
 
 static struct tegra_clk_init_table mdm6600_spi_clk_table[] = {
-	/* spi slave controller clock @ 4 x 13000 Khz interface clock */
+	/* spi slave controller clock @ 4 x 13 Mhz interface clock */
 	{ "sbc1",	"pll_m",	104000000,	true},
 	{ NULL,		NULL,		0,		0},
 };
@@ -415,6 +414,8 @@ static int __init olympus_setup_mdm6600_spi_ipc(void)
 	tegra_clk_init_from_table(mdm6600_spi_clk_table);
 	platform_device_register(&mdm6600_spi_slave_device);
 
+//	return spi_slave_register_board_info(mdm6600_spi_slave_devices,
+//				ARRAY_SIZE(mdm6600_spi_slave_devices));
 	return spi_register_board_info(mdm6600_spi_slave_devices,
 				ARRAY_SIZE(mdm6600_spi_slave_devices));
 }
@@ -457,30 +458,85 @@ static int __init olympus_setup_mdm6600_usb_ipc(int irq)
 	return platform_device_register(&mdm6600_usb_platform_device);
 }
 
+/*
+ * Interim Wrigley host wake support.
+ */
+#define WRIGLEY_HOST_WAKE_GPIO TEGRA_GPIO_PC7
+
+static struct wake_lock wrigley_host_wakelock;
+
+static irqreturn_t wrigley_host_wake_irq_handler(int irq, void *ptr)
+{
+	/* Keep us awake for a bit until USB gets going */
+	wake_lock_timeout(&wrigley_host_wakelock, (HZ * 1));
+	return IRQ_HANDLED;
+}
+
+static void __init olympus_setup_wrigley_host_wake(void)
+{
+	int irq, err;
+
+	wake_lock_init(&wrigley_host_wakelock, WAKE_LOCK_SUSPEND,
+		"WAN Host Wakelock");
+
+	gpio_request(WRIGLEY_HOST_WAKE_GPIO, "WAN Wake Host");
+	gpio_direction_input(WRIGLEY_HOST_WAKE_GPIO);
+	irq = gpio_to_irq(WRIGLEY_HOST_WAKE_GPIO);
+	pr_info("%s: irq: %d, value: %d\n", __func__, irq,
+				gpio_get_value(WRIGLEY_HOST_WAKE_GPIO));
+
+	irq_set_irq_type(irq, IRQ_TYPE_EDGE_FALLING);
+	err = request_irq(irq, wrigley_host_wake_irq_handler,
+			IRQF_DISABLED, "wan_wake_host", NULL);
+	if (err < 0) {
+		pr_err("%s: failed to register WAN BP AP WAKE interrupt "
+		       "handler, errno = %d\n", __func__, -err);
+	}
+}
+
 int __init olympus_modem_init(void)
 {
 	char bp_ctrl_bus[40] = "UART";
 	char bp_data_bus[20] = "only";
 
-	printk("%s: machine_is_olympus: %s\n", __func__, machine_is_olympus()?"TRUE":"FALSE"); 
-	printk("%s: system_rev: 0x%x", __func__, HWREV_REV(system_rev));
-	if ((machine_is_olympus() /*&&
-	      HWREV_REV(system_rev) <= HWREV_REV_1))*/))
-	    {
+	if ((machine_is_olympus() &&
+	     !(HWREV_TYPE_IS_MORTABLE(system_rev) &&
+	       HWREV_REV(system_rev) <= HWREV_REV_1)) ||
+	    (machine_is_etna() &&
+	     ((HWREV_TYPE_IS_PORTABLE(system_rev) &&
+	       HWREV_REV(system_rev) >= HWREV_REV_2C) ||
+	      (HWREV_TYPE_IS_BRASSBOARD(system_rev) &&
+	       HWREV_REV(system_rev) >= HWREV_REV_3))) ||
+	    machine_is_tegra_daytona() ||
+	    machine_is_sunfire()) {
 		strcat(bp_ctrl_bus, " (with mdm_ctrl)");
 		olympus_mdm_ctrl_init();
 		olympus_mdm6600_agent_init();
 	} else
 		strcat(bp_ctrl_bus, " (NO mdm_ctrl)");
 
-	olympus_setup_mdm6600_uart_ipc();
+	/* The modem is dead on Etna S2, which makes the UART angry. */
+	if(!(machine_is_etna() && HWREV_TYPE_IS_BRASSBOARD(system_rev)))
+		olympus_setup_mdm6600_uart_ipc();
 
-	strcpy(bp_data_bus, "and SPI");
-	olympus_setup_mdm6600_spi_ipc();
-	olympus_setup_mdm6600_usb_ipc(0);
-	
+	if (machine_is_olympus() || machine_is_tegra_daytona() || machine_is_sunfire()) {
+		strcpy(bp_data_bus, "and SPI");
+		olympus_setup_mdm6600_spi_ipc();
+		olympus_setup_mdm6600_usb_ipc(0);
+	} else if (machine_is_etna()) {
+		strcpy(bp_data_bus, "and USB");
+		olympus_setup_mdm6600_usb_ipc(MDM6600_DATA_HOST_WAKE_GPIO);
+	}
+
 	/* All hardware at least has MDM6x00 at the moment. */
 	pr_info("%s: MDM6x00 on %s %s\n", __func__, bp_ctrl_bus, bp_data_bus);
+
+	if (machine_is_etna() &&
+	    ((HWREV_TYPE_IS_PORTABLE(system_rev) &&
+	      HWREV_REV(system_rev) >= HWREV_REV_2C) ||
+	     (HWREV_TYPE_IS_BRASSBOARD(system_rev) &&
+	      HWREV_REV(system_rev) >= HWREV_REV_3)))
+		olympus_setup_wrigley_host_wake();
 
 	return 0;
 }

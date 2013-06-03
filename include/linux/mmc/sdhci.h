@@ -161,8 +161,8 @@ struct sdhci_host {
 	unsigned int            ocr_avail_sd;
 	unsigned int            ocr_avail_mmc;
 
-#ifdef CONFIG_EMBEDDED_MMC_START_OFFSET
-	unsigned int		start_offset;   /* Zero-offset for MBR */
+#ifdef CONFIG_MMC_START_OFFSET
+	unsigned int		start_offset;	/* Zero-offset for MBR */
 #endif
 
 	wait_queue_head_t	buf_ready_int;	/* Waitqueue for Buffer Read Ready interrupt */

@@ -87,7 +87,26 @@ void olympus_pm_restart(char mode, const char *cmd)
 	outer_disable();
 	arm_machine_restart(mode,cmd);
 }
+/*
+void tegra_system_power_off(void)
+{
+	struct regulator *regulator = regulator_get(NULL, "soc_main");
 
+	if (!IS_ERR(regulator)) {
+		int rc;
+		regulator_enable(regulator);
+		rc = regulator_disable(regulator);
+		pr_err("%s: regulator_disable returned %d\n", __func__, rc);
+	} else {
+		pr_err("%s: regulator_get returned %ld\n", __func__,
+		       PTR_ERR(regulator));
+	}
+	local_irq_disable();
+	while (1) {
+		dsb();
+		__asm__ ("wfi");
+	}
+}*/
 
 void olympus_system_power_off(void)
 {
@@ -239,12 +258,6 @@ static struct platform_device cpcap_batt_device = {
         },
 };
 
-static struct platform_device cpcap_usb_device = {
-	.name           = "cpcap_usb",
-	.id             = -1,
-	.dev.platform_data = NULL,
-};
-
 static struct platform_device cpcap_audio_device = {
 	.name   = "cpcap_audio",
 	.id     = -1,
@@ -289,10 +302,12 @@ static struct platform_device *cpcap_devices[] = {
 	&cpcap_disp_button_led,
 	&cpcap_3mm5_device,
 	&cpcap_audio_device,
-//	&cpcap_usb_device,
 	&cpcap_usb_det_device,
 	&cpcap_batt_device,
-//	&cpcap_wdt_device,
+	/*
+#ifdef CONFIG_CPCAP_WATCHDOG
+	&cpcap_wdt_device,
+#endif*/
 };
 
 static int is_olympus_ge_p0(struct cpcap_device *cpcap)
@@ -631,7 +646,7 @@ struct regulator_consumer_supply cpcap_sw1_consumers[] = {
 struct regulator_consumer_supply cpcap_sw2_consumers[] = {
 	REGULATOR_CONSUMER("sw2", NULL /* core */),
 	REGULATOR_CONSUMER("vdd_core", NULL),
-	REGULATOR_CONSUMER("vdd_aon", NULL),
+//	REGULATOR_CONSUMER("vdd_aon", NULL),
 };
 
 struct regulator_consumer_supply cpcap_sw3_consumers[] = {
@@ -640,7 +655,7 @@ struct regulator_consumer_supply cpcap_sw3_consumers[] = {
 
 struct regulator_consumer_supply cpcap_sw4_consumers[] = {
 	REGULATOR_CONSUMER("sw4", NULL /* core */),
-//	REGULATOR_CONSUMER("vdd_aon", NULL),
+	REGULATOR_CONSUMER("vdd_aon", NULL),
 };
 
 struct regulator_consumer_supply cpcap_sw5_consumers[] = {
@@ -667,6 +682,7 @@ struct regulator_consumer_supply cpcap_vhvio_consumers[] = {
 
 struct regulator_consumer_supply cpcap_vsdio_consumers[] = {
 	REGULATOR_CONSUMER("vsdio", NULL),
+	REGULATOR_CONSUMER("vdd_vcore_temp", NULL),
 };
 
 struct regulator_consumer_supply cpcap_vpll_consumers[] = {
@@ -682,14 +698,13 @@ struct regulator_consumer_supply cpcap_vwlan1_consumers[] = {
 };
 
 struct regulator_consumer_supply cpcap_vwlan2_consumers[] = {
-	REGULATOR_CONSUMER("vwlan2", NULL),
+	//REGULATOR_CONSUMER("vwlan2", NULL),
 	/* Powers the tegra usb block, cannot be named vusb, since
 	   this name already exists in regulator-cpcap.c. */
 	REGULATOR_CONSUMER("avdd_usb", NULL), /* usb */
 	REGULATOR_CONSUMER("vusb_modem_flash", NULL),
 	REGULATOR_CONSUMER("vusb_modem_ipc", NULL),
 	REGULATOR_CONSUMER("avdd_hdmi", NULL),
-	REGULATOR_CONSUMER("vdd_vcore_temp", NULL),
 };
 
 struct regulator_consumer_supply cpcap_vsimcard_consumers[] = {
@@ -956,22 +971,13 @@ struct cpcap_platform_data tegra_cpcap_data =
 	.hwcfg = {
 		(CPCAP_HWCFG0_SEC_STBY_SW3 |
 		 CPCAP_HWCFG0_SEC_STBY_SW4 |
-		 CPCAP_HWCFG0_SEC_STBY_SW5 | //added
 		 CPCAP_HWCFG0_SEC_STBY_VAUDIO |
 		 CPCAP_HWCFG0_SEC_STBY_VCAM |
-		 CPCAP_HWCFG0_SEC_STBY_VDAC | //added
 		 CPCAP_HWCFG0_SEC_STBY_VCSI |
-		 CPCAP_HWCFG0_SEC_STBY_VDIG |	//added
 		 CPCAP_HWCFG0_SEC_STBY_VHVIO |
 		 CPCAP_HWCFG0_SEC_STBY_VPLL |
-		 CPCAP_HWCFG0_SEC_STBY_VRF1 | //added
-		 CPCAP_HWCFG0_SEC_STBY_VRF2 | //added
-		 CPCAP_HWCFG0_SEC_STBY_VRFREF | //added
 		 CPCAP_HWCFG0_SEC_STBY_VSDIO),
 		(CPCAP_HWCFG1_SEC_STBY_VWLAN1 |    /* WLAN1 may be reset in olympus_setup_power(). */
-		 CPCAP_HWCFG1_SEC_STBY_VWLAN2 | //added
-		 CPCAP_HWCFG1_SEC_STBY_VUSB | //added
-		 CPCAP_HWCFG1_SEC_STBY_VSIM | //added
 		 CPCAP_HWCFG1_SEC_STBY_VSIMCARD)},
 	.spdif_gpio = TEGRA_GPIO_PD4,
 	.uartmux = 1,
@@ -979,7 +985,7 @@ struct cpcap_platform_data tegra_cpcap_data =
 };
 
 struct regulator_consumer_supply fixed_sdio_en_consumers[] = {
-	REGULATOR_SUPPLY("vddio_sdmmc", "sdhci-tegra.2"),
+	REGULATOR_SUPPLY("vddio_sd_slot", "sdhci-tegra.2"),
 };
 
 static struct regulator_init_data fixed_sdio_regulator = {
@@ -1037,11 +1043,11 @@ static void olympus_board_suspend(int lp_state, enum suspend_stage stg)
 	if ((lp_state == TEGRA_SUSPEND_LP0) && (stg == TEGRA_SUSPEND_BEFORE_CPU))
 			{
 				printk(KERN_INFO "%s: entering...\n", __func__);
-				printk(KERN_INFO "%s: TEGRA_GPIO_PF3 = 0",__func__);
+			/*	printk(KERN_INFO "%s: TEGRA_GPIO_PF3 = 0",__func__);
 				gpio_set_value(TEGRA_GPIO_PF3, 0); //external sdcard
 				printk(KERN_INFO "%s: TEGRA_GPIO_PI5 = 0",__func__);
 				gpio_set_value(TEGRA_GPIO_PI5, 0);
-				//disable_nonboot_cpus();
+				//disable_nonboot_cpus();*/
 				printk(KERN_INFO "%s: exiting...\n", __func__);
 			};
 };
@@ -1051,27 +1057,29 @@ static void olympus_board_resume(int lp_state, enum resume_stage stg)
 	if ((lp_state == TEGRA_SUSPEND_LP1) && (stg == TEGRA_RESUME_AFTER_CPU))
 		tegra_console_uart_resume();
 
-	if ((lp_state == TEGRA_SUSPEND_LP0) && (stg == TEGRA_RESUME_AFTER_CPU))
+	if ((lp_state == TEGRA_SUSPEND_LP0) && (stg == TEGRA_RESUME_AFTER_CPU)) {
 		printk(KERN_INFO "%s: entering...\n", __func__);
-		printk(KERN_INFO "%s: TEGRA_GPIO_PF3 = 1",__func__);
+		/*printk(KERN_INFO "%s: TEGRA_GPIO_PF3 = 1",__func__);
 		gpio_set_value(TEGRA_GPIO_PF3, 1); //external sdcard
 		printk(KERN_INFO "%s: TEGRA_GPIO_PI5 = 1",__func__);
-		gpio_set_value(TEGRA_GPIO_PI5, 1);
-		//enable_nonboot_cpus();
+		gpio_set_value(TEGRA_GPIO_PI5, 1); //sdcard detect
+		//enable_nonboot_cpus();*/
 		printk(KERN_INFO "%s: exiting...\n", __func__);
-
+	}
 };
 
 static struct tegra_suspend_platform_data olympus_suspend_data = {
-	.cpu_timer 	= 800,
+	.cpu_timer 		= 800,
 	.cpu_off_timer	= 600,
 	.suspend_mode	= TEGRA_SUSPEND_LP0,
-	.core_timer	= 1842,
+	.core_timer		= 1842,
 	.core_off_timer = 31,
 	.corereq_high	= true,
 	.sysclkreq_high	= true,
-	.board_suspend = olympus_board_suspend,
-	.board_resume = olympus_board_resume,
+	.combined_req 	= false,
+	.board_suspend	= olympus_board_suspend,
+	.board_resume 	= olympus_board_resume,
+
 /*	.cpu_timer	= 2000,
 	.cpu_off_timer	= 0,
 	.suspend_mode	= TEGRA_SUSPEND_LP0,
@@ -1129,21 +1137,6 @@ void __init olympus_power_init(void)
 		olympus_suspend_data.suspend_mode = TEGRA_SUSPEND_LP1;
 	}
 
-	/* Enable CORE_PWR_REQ signal from T20. The signal must be enabled
-	 * before the CPCAP uC firmware is started. */
-	pmc_cntrl_0 = readl(IO_ADDRESS(TEGRA_PMC_BASE));
-	pmc_cntrl_0 |= 0x00000200;
-	writel(pmc_cntrl_0, IO_ADDRESS(TEGRA_PMC_BASE));
-
-/*	tegra_gpio_enable(154);
-	gpio_request(154, "usb_host_pwr_en");
-	gpio_direction_output(154,0);
-
-	tegra_gpio_enable(174);
-	gpio_request(174, "usb_data_en");
-	gpio_direction_output(174,0);
-	gpio_set_value(174,1);*/
-
 	/* CPCAP standby lines connected to CPCAP GPIOs on Etna P1B & Olympus P2 */
 	if ( HWREV_TYPE_IS_FINAL(system_rev) ||
 	     (machine_is_etna() &&
@@ -1164,7 +1157,7 @@ void __init olympus_power_init(void)
 		 (HWREV_REV(system_rev) >= HWREV_REV_3))) {
 		pr_info("Detected P3 Olympus hardware.\n");
 		tegra_cpcap_data.hwcfg[1] |= CPCAP_HWCFG1_SEC_STBY_VWLAN2;
-		//tegra_cpcap_data.hwcfg[1] &= ~CPCAP_HWCFG1_SEC_STBY_VWLAN1;
+		tegra_cpcap_data.hwcfg[1] &= ~CPCAP_HWCFG1_SEC_STBY_VWLAN1;
 		cpcap_regulator[CPCAP_VWLAN2].constraints.always_on = 0;
 	} else {
 		/* Currently only Olympus P3 or greater can handle turning off the

@@ -59,6 +59,9 @@ int olympus_wifi_status_register(
 		void (*sdhcicallback)(int card_present, void *dev_id),
 		void *dev_id);
 
+extern void bcm_bt_rx_done_locked(struct uart_port *uport);
+extern void bcm_bt_lpm_exit_lpm_locked(struct uart_port *uport);
+
 extern int olympus_keymap_update_init(void);
 
 extern void cpcap_set_dock_switch(int state);
