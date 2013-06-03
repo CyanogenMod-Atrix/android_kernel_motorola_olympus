@@ -12,15 +12,29 @@ config BCMDHD
 
 config BCMDHD_FW_DIR
 	depends on BCMDHD
-	string "Firmware path"
+	string "Firmware directory"
 	default "/system/vendor/firmware"
 	---help---
 	  Path to the firmware file.
 
 config BCMDHD_NVRAM_DIR
 	depends on BCMDHD
-	string "NVRAM path"
+	string "NVRAM directory"
 	default "/system/etc"
+	---help---
+	  Path to the calibration file.
+
+config BCMDHD_FW_PATH
+	depends on BCMDHD
+	string "Firmware path"
+	default "/system/vendor/firmware/bcm4329/fw_bcmdhd.bin"
+	---help---
+	  Path to the firmware file.
+
+config BCMDHD_NVRAM_PATH
+	depends on BCMDHD
+	string "NVRAM path"
+	default "/system/etc/nvram_4329.txt"
 	---help---
 	  Path to the calibration file.
 
@@ -98,3 +112,11 @@ config BCMDHD_CUSTOM_REGULATORY_DOMAIN
 	default y
 	---help---
 	Use Custom Regulatory Domain set by driver.
+
+config BCMDHD_GET_CUSTOM_MAC_ENABLE
+	bool "Use custom mac address"
+	depends on BCMDHD
+	default n
+	---help---
+	   Use mac address provided by bcm4329_wlan platform device.
+
