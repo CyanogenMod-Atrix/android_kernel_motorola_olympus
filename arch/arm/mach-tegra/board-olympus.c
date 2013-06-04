@@ -276,7 +276,7 @@ static char oly_unused_pins_p1[] = {
         TEGRA_GPIO_PT6,
         TEGRA_GPIO_PC7,
         TEGRA_GPIO_PV7,
-        TEGRA_GPIO_PD1,
+        TEGRA_GPIO_PD1, //battery charging gpio
 };
 
 static __initdata struct tegra_clk_init_table olympus_clk_init_table[] = {
