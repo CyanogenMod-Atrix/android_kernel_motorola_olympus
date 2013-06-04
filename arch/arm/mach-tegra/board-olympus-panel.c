@@ -130,7 +130,7 @@ static struct resource olympus_disp2_resources[] = {
 
 static struct tegra_dc_mode olympus_panel_modes[] = {
 	{
-		.pclk = 27000000,
+		.pclk = 30456000, //27000000 (pixclock for 50 refresh rate)
 		.h_ref_to_sync = 4,
 		.v_ref_to_sync = 1,
 		.h_sync_width = 16,
@@ -328,8 +328,8 @@ static struct tegra_dsi_out olympus_dsi_out = {
 static struct tegra_dsi_out olympus_dsi_out = {
 		.dsi_instance = 0,
 		.n_data_lanes = 2,
-		.refresh_rate = 64,
-		.lp_cmd_mode_freq_khz = 229500,
+		.refresh_rate = 60,
+		.lp_cmd_mode_freq_khz = 214500,
 		.panel_reset = true,	/* resend the init sequence on each resume */
 		.panel_reset_timeout_msec = 120,
 		.panel_has_frame_buffer = true,
