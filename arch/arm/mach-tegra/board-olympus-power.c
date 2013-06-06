@@ -763,7 +763,7 @@ static struct regulator_init_data cpcap_regulator[CPCAP_NUM_REGULATORS] = {
 			.max_uV			= 1475000,
 			.valid_ops_mask		= REGULATOR_CHANGE_STATUS |
                                                   REGULATOR_CHANGE_VOLTAGE,
-       //     .always_on		= 1,
+            .always_on		= 1,
 		},
 		.num_consumer_supplies	= ARRAY_SIZE(cpcap_sw4_consumers),
 		.consumer_supplies	= cpcap_sw4_consumers,
