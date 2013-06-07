@@ -147,7 +147,7 @@ struct adt7461_platform_data olympus_adt7461_pdata = {
 	.shutdown_local_limit = 120,
 	.throttling_ext_limit = 90,
 	.alarm_fn = tegra_throttling_enable,
-	.irq_gpio = TEGRA_ADT7461_IRQ_GPIO,
+//	.irq_gpio = TEGRA_ADT7461_IRQ_GPIO,
 };
 
 /*
