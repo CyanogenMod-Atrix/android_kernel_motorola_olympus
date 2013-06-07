@@ -20,15 +20,17 @@
 #include "clock.h"
 
 static __initdata struct tegra_clk_init_table olympus_clk_init_table[] = {
-	/* name		parent		rate		enabled */
-	{"sbc1",	"pll_c",	60000000,	true},
-	{"sbc2",	"pll_c",	60000000,	true},
-	{"pwm",		"clk_32k",	32768,		false},
-	{"kbc",		"clk_32k",	32768,		true},
-	{"sdmmc2",	"pll_p",	25000000,	false},
-	{"i2s1",	"pll_a_out0",	0,		false},
-	{"spdif_out",	"pll_a_out0",	0,		false},
-	{ NULL,		NULL,		0,		0},
+			/* name			parent			rate		enabled */
+			{"sbc1",		"pll_c",		60000000,	true},
+		    {"sclk",		"pll_p_out4",	108000000,	true},
+			{"sbc2",		"pll_c",		60000000,	true},
+			{"pwm",			"clk_32k",		32768,		false},
+			{"kbc",			"clk_32k",		32768,		true},
+		    {"blink",		"clk_32k",		32768,		false},
+			{"sdmmc2",		"pll_p",		25000000,	false},
+			{"i2s1",		"pll_a_out0",	0,			false},
+			{"spdif_out",	"pll_a_out0",	0,			false},
+			{ NULL,			NULL,			0,			0},
 };
 
 void __init olympus_clks_init(void)

@@ -279,20 +279,6 @@ static char oly_unused_pins_p1[] = {
         TEGRA_GPIO_PD1, //battery charging gpio
 };
 
-static __initdata struct tegra_clk_init_table olympus_clk_init_table[] = {
-	/* name		parent		rate		enabled */  
-	{"sbc1",	"pll_c",	60000000,	true},
-    {"sclk",	"pll_p_out4",	108000000,	true},
-	{"sbc2",	"pll_c",	60000000,	true},
-	{"pwm",		"clk_32k",	32768,		false},
-	{"kbc",		"clk_32k",	32768,		true},
-    {"blink",		"clk_32k",	32768,		false},
-	{"sdmmc2",	"pll_p",	25000000,	false},
-	{"i2s1",	"pll_a_out0",	0,		false},
-	{"spdif_out",	"pll_a_out0",	0,		false},
-	{ NULL,		NULL,		0,		0},
-};
-
 static struct resource olympus_bcm4329_rfkill_resources[] = {
 	{
 		.name	= "bcm4329_nreset_gpio",
@@ -390,7 +376,7 @@ static int config_unused_pins(char *pins, int num)
 
 static void __init tegra_olympus_init(void)
 {
-	tegra_clk_init_from_table(olympus_clk_init_table);
+	olympus_clks_init();
 
 	//tegra_ram_console_debug_init();
 
@@ -424,7 +410,7 @@ static void __init tegra_olympus_init(void)
 
 	olympus_touch_init();
 
-//	olympus_bt_rfkill();
+	olympus_bt_rfkill();
 
 	olympus_usb_init();
 
@@ -447,7 +433,7 @@ static void __init tegra_olympus_init(void)
 	gpio_request(TEGRA_GPIO_PD4, "spdif_enable");
 	gpio_direction_output(TEGRA_GPIO_PD4, 0);
 	gpio_export(TEGRA_GPIO_PD4, false);
-*/
+
 	if ((HWREV_TYPE_IS_PORTABLE(system_rev) || HWREV_TYPE_IS_FINAL(system_rev)))
 		{
 			if (HWREV_REV(system_rev) >= HWREV_REV_1 && HWREV_REV(system_rev) < HWREV_REV_2)
@@ -468,7 +454,7 @@ static void __init tegra_olympus_init(void)
 			// Olympus P3 and newer
 				config_unused_pins(oly_unused_pins_p3, ARRAY_SIZE(oly_unused_pins_p3));
 			}
-		}
+		}*/
 	tegra_release_bootloader_fb();	
 }
 

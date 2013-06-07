@@ -147,7 +147,7 @@ struct adt7461_platform_data olympus_adt7461_pdata = {
 	.shutdown_local_limit = 120,
 	.throttling_ext_limit = 90,
 	.alarm_fn = tegra_throttling_enable,
-	//.irq_gpio = TEGRA_ADT7461_IRQ_GPIO,
+	.irq_gpio = TEGRA_ADT7461_IRQ_GPIO,
 };
 
 /*
@@ -458,7 +458,8 @@ static struct tegra_spi_device_controller_data aes1750_spi_controller_data = {
     .is_hw_based_cs = 0,
 };
 
-static struct spi_board_info aes1750_spi_device __initdata = {
+static struct spi_board_info aes1750_spi_device[] __initdata = {
+	[0] = {
 		.modalias = "aes1750",
 		.bus_num = 1,
 		.chip_select = 2,
@@ -467,6 +468,7 @@ static struct spi_board_info aes1750_spi_device __initdata = {
 		.controller_data = &aes1750_spi_controller_data,
 		.platform_data = &aes1750_spi_slave_platform_data,
 		.irq = 0,
+	},
 };
 #endif
 static struct i2c_board_info olympus_i2c1_board_info[] = {
@@ -518,9 +520,9 @@ void __init olympus_sensors_init(void)
 	i2c_register_board_info(3, olympus_i2c4_board_info, 
 				ARRAY_SIZE(olympus_i2c4_board_info));
 #ifdef CONFIG_INPUT_AES1750
-        aes1750_spi_device.irq = gpio_to_irq(aes1750_interrupt);
-        spi_register_board_info(&aes1750_spi_device,
-					sizeof(aes1750_spi_device));
+        aes1750_spi_device[0].irq = gpio_to_irq(aes1750_interrupt);
+        spi_register_board_info(aes1750_spi_device,
+					ARRAY_SIZE(aes1750_spi_device));
 #endif
 }
 

@@ -302,6 +302,7 @@ int tegra_pinmux_set_tristate(enum tegra_pingroup pg,
 	unsigned long reg;
 	unsigned long flags;
 
+	printk(KERN_INFO "%s: setting %s to %s", __func__, pingroup_name(pg), tri_name(tristate));
 	if (pg < 0 || pg >=  TEGRA_MAX_PINGROUP)
 		return -ERANGE;
 
@@ -876,6 +877,54 @@ void tegra_pinmux_config_pullupdown_table(const struct tegra_pingroup_config *co
 		}
 	}
 }
+
+void pinmux_show(void)
+{
+	int i;
+
+	for (i = 0; i < TEGRA_MAX_PINGROUP; i++) {
+		unsigned long tri;
+		unsigned long mux;
+		unsigned long pupd;
+
+		printk(KERN_INFO "\t{TEGRA_PINGROUP_%s", pingroups[i].name);
+
+		if (pingroups[i].mux_reg <= 0) {
+			printk(KERN_INFO "TEGRA_MUX_NONE");
+		} else {
+			mux = (pg_readl(pingroups[i].mux_reg) >>
+			       pingroups[i].mux_bit) & 0x3;
+			BUG_ON(pingroups[i].funcs[mux] == 0);
+			if (pingroups[i].funcs[mux] ==  TEGRA_MUX_INVALID) {
+				printk(KERN_INFO  "TEGRA_MUX_INVALID");
+			} else if (pingroups[i].funcs[mux] & TEGRA_MUX_RSVD) {
+				printk(KERN_INFO "TEGRA_MUX_RSVD%1lu", mux+1);
+			} else {
+				BUG_ON(!tegra_mux_names[pingroups[i].funcs[mux]]);
+				printk(KERN_INFO "TEGRA_MUX_%s",
+					   tegra_mux_names[pingroups[i].funcs[mux]]);
+			}
+		}
+		if (pingroups[i].pupd_reg <= 0) {
+			printk(KERN_INFO "TEGRA_PUPD_NORMAL");
+		} else {
+			pupd = (pg_readl(pingroups[i].pupd_reg) >>
+				pingroups[i].pupd_bit) & 0x3;
+			printk(KERN_INFO  "TEGRA_PUPD_%s", pupd_name(pupd));
+		}
+
+		if (pingroups[i].tri_reg <= 0) {
+			printk(KERN_INFO  "TEGRA_TRI_NORMAL");
+		} else {
+			tri = (pg_readl(pingroups[i].tri_reg) >>
+			       pingroups[i].tri_bit) & 0x1;
+
+			printk(KERN_INFO  "TEGRA_TRI_%s", tri_name(tri));
+		}
+		printk(KERN_INFO  "},\n");
+	}
+}
+
 
 #ifdef	CONFIG_DEBUG_FS
 

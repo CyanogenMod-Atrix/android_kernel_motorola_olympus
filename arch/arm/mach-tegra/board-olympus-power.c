@@ -763,7 +763,7 @@ static struct regulator_init_data cpcap_regulator[CPCAP_NUM_REGULATORS] = {
 			.max_uV			= 1475000,
 			.valid_ops_mask		= REGULATOR_CHANGE_STATUS |
                                                   REGULATOR_CHANGE_VOLTAGE,
-       //     .always_on		= 1,
+            .always_on		= 1,
 		},
 		.num_consumer_supplies	= ARRAY_SIZE(cpcap_sw4_consumers),
 		.consumer_supplies	= cpcap_sw4_consumers,
@@ -1034,7 +1034,8 @@ struct spi_board_info tegra_spi_devices[] __initdata = {
     },
 
 };
-
+extern void get_gpio_settings(void);
+extern void	pinmux_show(void);
 
 static void olympus_board_suspend(int lp_state, enum suspend_stage stg)
 {
@@ -1043,6 +1044,8 @@ static void olympus_board_suspend(int lp_state, enum suspend_stage stg)
 	if ((lp_state == TEGRA_SUSPEND_LP0) && (stg == TEGRA_SUSPEND_BEFORE_CPU))
 			{
 				printk(KERN_INFO "%s: entering...\n", __func__);
+				get_gpio_settings();
+				pinmux_show();
 			/*	printk(KERN_INFO "%s: TEGRA_GPIO_PF3 = 0",__func__);
 				gpio_set_value(TEGRA_GPIO_PF3, 0); //external sdcard
 				printk(KERN_INFO "%s: TEGRA_GPIO_PI5 = 0",__func__);

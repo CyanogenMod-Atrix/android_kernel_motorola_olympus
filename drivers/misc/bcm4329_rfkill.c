@@ -59,20 +59,27 @@ static int bcm4329_bt_rfkill_set_power(void *data, bool blocked)
 		if (bcm4329_rfkill->bt_32k_clk)
 			clk_disable(bcm4329_rfkill->bt_32k_clk);
 	} else {
+		printk(KERN_INFO "%s: else\n", __func__);
 		if (bcm4329_rfkill->bt_32k_clk)
 			clk_enable(bcm4329_rfkill->bt_32k_clk);
 		if (bcm4329_rfkill->gpio_shutdown)
 		{
-			gpio_direction_output(bcm4329_rfkill->gpio_shutdown, 0);
+			printk(KERN_INFO "%s: gpio_shutdown: %d \n", __func__, bcm4329_rfkill->gpio_shutdown);
+			//gpio_direction_output(bcm4329_rfkill->gpio_shutdown, 0);
+			gpio_direction_output(160, 0);
 			msleep(100);
-			gpio_direction_output(bcm4329_rfkill->gpio_shutdown, 1);
+			//gpio_direction_output(bcm4329_rfkill->gpio_shutdown, 1);
+			gpio_direction_output(160, 1);
 			msleep(100);
 		}
 		if (bcm4329_rfkill->gpio_reset)
 		{
-			gpio_direction_output(bcm4329_rfkill->gpio_reset, 0);
+			printk(KERN_INFO "%s: gpio_reset: %d \n", __func__, bcm4329_rfkill->gpio_reset);
+			//gpio_direction_output(bcm4329_rfkill->gpio_reset, 0);
+			gpio_direction_output(164, 0);
 			msleep(100);
-			gpio_direction_output(bcm4329_rfkill->gpio_reset, 1);
+			//gpio_direction_output(bcm4329_rfkill->gpio_reset, 1);
+			gpio_direction_output(164, 1);
 			msleep(100);
 		}
 	}
@@ -189,16 +196,15 @@ static int bcm4329_bt_lpm_init(struct platform_device *pdev)
 
 	tegra_gpio_enable(bcm4329_rfkill->gpio_wake);
 	rc = gpio_request(bcm4329_rfkill->gpio_wake, "bcm4329_wake_gpio");
-	pr_info("%s: bcm4329_wake_gpio request: rc=%d\n",__func__,rc);
+	pr_info("%s: bcm4329_wake_gpio (%d) request: rc=%d\n",__func__, bcm4329_rfkill->gpio_wake, rc);
 	if (unlikely(rc)) {
 		tegra_gpio_disable(bcm4329_rfkill->gpio_wake);
 		return rc;
 	}
-
 	tegra_gpio_enable(bcm4329_rfkill->gpio_host_wake);
 	rc = gpio_request(bcm4329_rfkill->gpio_host_wake,
 				"bcm4329_host_wake_gpio");
-	pr_info("%s: bcm4329_host_wake_gpio request: rc=%d\n",__func__,rc);
+	pr_info("%s: bcm4329_host_wake_gpio (%d) request: rc=%d\n",__func__, bcm4329_rfkill->gpio_host_wake, rc);
 	if (unlikely(rc)) {
 		tegra_gpio_disable(bcm4329_rfkill->gpio_wake);
 		tegra_gpio_disable(bcm4329_rfkill->gpio_host_wake);
@@ -268,6 +274,7 @@ static int bcm4329_rfkill_probe(struct platform_device *pdev)
 						"bcm4329_nreset_gpio");
 	if (res) {
 		bcm4329_rfkill->gpio_reset = res->start;
+		printk(KERN_INFO "%s: gpio_reset: %d \n", __func__, bcm4329_rfkill->gpio_reset);
 		tegra_gpio_enable(bcm4329_rfkill->gpio_reset);
 		ret = gpio_request(bcm4329_rfkill->gpio_reset,
 						"bcm4329_nreset_gpio");
@@ -280,6 +287,7 @@ static int bcm4329_rfkill_probe(struct platform_device *pdev)
 						"bcm4329_nshutdown_gpio");
 	if (res) {
 		bcm4329_rfkill->gpio_shutdown = res->start;
+		printk(KERN_INFO "%s: gpio_shutdown: %d \n", __func__, bcm4329_rfkill->gpio_shutdown);
 		tegra_gpio_enable(bcm4329_rfkill->gpio_shutdown);
 		ret = gpio_request(bcm4329_rfkill->gpio_shutdown,
 						"bcm4329_nshutdown_gpio");

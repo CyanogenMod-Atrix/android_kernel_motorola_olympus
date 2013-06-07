@@ -65,10 +65,12 @@ static struct platform_device olympus_bcm4329_rfkill_device = {
 	.resource	= olympus_bcm4329_rfkill_resources,
 };
 
-static noinline void __init olympus_bt_rfkill(void)
+void __init olympus_bt_rfkill(void)
 {
 	olympus_bcm4329_rfkill_resources[0].start =
 	olympus_bcm4329_rfkill_resources[0].end = TEGRA_GPIO_PU4;
+
+	tegra_gpio_enable (TEGRA_GPIO_PU4);
 	printk("%s: registering bcm4329_rfkill device...\n", __func__);
 
 	platform_device_register(&olympus_bcm4329_rfkill_device);
