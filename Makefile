@@ -347,10 +347,18 @@ CHECK		= sparse
 
 CHECKFLAGS     := -D__linux__ -Dlinux -D__STDC__ -Dunix -D__unix__ \
 		  -Wbitwise -Wno-return-void $(CF)
-CFLAGS_MODULE   =
-AFLAGS_MODULE   =
-LDFLAGS_MODULE  =
-CFLAGS_KERNEL	=
+ifdef LINARO
+   MODFLAGS	= -DMODULE -fgcse-lm -fgcse-sm -fsched-spec-load -fforce-addr -ffast-math -fsingle-precision-constant -mcpu=cortex-a9 -mfloat-abi=hard -mfpu=vfpv3-d16-fp16 -funroll-loops -Ofast
+   CFLAGS_MODULE   = $(MODFLAGS)
+   AFLAGS_MODULE   = $(MODFLAGS)
+   LDFLAGS_MODULE  = -T $(srctree)/scripts/module-common.lds
+   CFLAGS_KERNEL	= -fgcse-lm -fgcse-sm -fsched-spec-load -fforce-addr -ffast-math -fsingle-precision-constant -mcpu=cortex-a9 -mfloat-abi=hard -mfpu=vfpv3-d16-fp16 -funroll-loops -Ofast
+else
+   CFLAGS_MODULE   =
+   AFLAGS_MODULE   =
+   LDFLAGS_MODULE  =
+   CFLAGS_KERNEL   =
+endif
 AFLAGS_KERNEL	=
 CFLAGS_GCOV	= -fprofile-arcs -ftest-coverage
 
@@ -364,14 +372,42 @@ LINUXINCLUDE    := -I$(srctree)/arch/$(hdr-arch)/include \
 
 KBUILD_CPPFLAGS := -D__KERNEL__
 
-KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
+ifdef LINARO
+   ifdef CONFIG_GCC_48_FIXES
+      KBUILD_CPPFLAGS       +=      -Wno-sizeof-pointer-memaccess
+   endif
+endif
+
+ifdef LINARO
+   KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
+		   -fno-strict-aliasing -fno-common \
+		   -Werror-implicit-function-declaration \
+		   -Wno-format-security \
+		   -fno-delete-null-pointer-checks \
+ 		   -Ofast -mcpu=cortex-a9  \
+ 		   -D__ARM_ARCH_7__ -D__ARM_ARCH_7A__ -D__VFP_FP__ -D__ARM_HAVE_VFP -mfloat-abi=hard -mfpu=vfpv3-d16-fp16 \
+ 		   -funswitch-loops -fpredictive-commoning \
+ 		   -fmodulo-sched -fmodulo-sched-allow-regmoves
+   ifdef CONFIG_GCC_48_FIXES
+      KBUILD_CFLAGS +=      -Wno-sizeof-pointer-memaccess
+   endif
+else
+   KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 		   -fno-strict-aliasing -fno-common \
 		   -Werror-implicit-function-declaration \
 		   -Wno-format-security \
 		   -fno-delete-null-pointer-checks
+endif
+
 KBUILD_AFLAGS_KERNEL :=
 KBUILD_CFLAGS_KERNEL :=
-KBUILD_AFLAGS   := -D__ASSEMBLY__
+
+ifdef LINARO
+   KBUILD_AFLAGS   := -D__ASSEMBLY__ -Ofast -mcpu=cortex-a9 -D__ARM_ARCH_7__ -D__ARM_ARCH_7A__ -D__VFP_FP__ -D__ARM_HAVE_VFP -mfloat-abi=hard -mfpu=vfpv3-d16-fp16
+else
+   KBUILD_AFLAGS   := -D__ASSEMBLY__
+endif
+
 KBUILD_AFLAGS_MODULE  := -DMODULE
 KBUILD_CFLAGS_MODULE  := -DMODULE
 KBUILD_LDFLAGS_MODULE := -T $(srctree)/scripts/module-common.lds
@@ -559,9 +595,24 @@ endif # $(dot-config)
 all: vmlinux
 
 ifdef CONFIG_CC_OPTIMIZE_FOR_SIZE
-KBUILD_CFLAGS	+= -Os
+   KBUILD_CFLAGS	+= -Os
+   ifdef LINARO
+      ifdef CONFIG_GCC_48_OPTIMIZE
+          KBUILD_CFLAGS       +=      -Wno-maybe-uninitialized \
+                                      -Wno-sizeof-pointer-memaccess
+      endif
+   endif
 else
 KBUILD_CFLAGS	+= -O2
+endif
+
+ifdef LINARO
+   ifdef CONFIG_CC_OPTIMIZE_ALOT
+      KBUILD_CFLAGS   += -O3
+   endif
+   ifdef CONFIG_CC_OPTIMIZE_MORE
+      KBUILD_CFLAGS   += -Ofast
+   endif
 endif
 
 include $(srctree)/arch/$(SRCARCH)/Makefile
@@ -593,8 +644,13 @@ endif
 endif
 
 ifdef CONFIG_DEBUG_INFO
-KBUILD_CFLAGS	+= -g
-KBUILD_AFLAGS	+= -gdwarf-2
+   KBUILD_CFLAGS	+= -g
+   ifdef LINARO
+      ifdef CONFIG_GCC_48_FIXES
+         KBUILD_CFLAGS   += -gdwarf-2
+      endif
+   endif
+   KBUILD_AFLAGS	+= -gdwarf-2
 endif
 
 ifdef CONFIG_DEBUG_INFO_REDUCED
