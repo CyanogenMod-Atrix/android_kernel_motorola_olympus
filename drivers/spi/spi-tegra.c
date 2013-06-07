@@ -1623,10 +1623,41 @@ static int spi_tegra_resume(struct device *dev)
 }
 #endif
 
+#if defined(CONFIG_PM_RUNTIME)
+
+static int tegra_spi_runtime_idle(struct device *dev)
+{
+	struct spi_master	*master;
+	struct spi_tegra_data	*tspi;
+	master = dev_get_drvdata(dev);
+	tspi = spi_master_get_devdata(master);
+
+	clk_disable(tspi->clk);
+	clk_disable(tspi->sclk);
+	return 0;
+}
+
+static int tegra_spi_runtime_resume(struct device *dev)
+{
+	struct spi_master	*master;
+	struct spi_tegra_data	*tspi;
+	master = dev_get_drvdata(dev);
+	tspi = spi_master_get_devdata(master);
+
+	clk_enable(tspi->sclk);
+	clk_enable(tspi->clk);
+	return 0;
+}
+#endif
+
 static const struct dev_pm_ops tegra_spi_dev_pm_ops = {
 #ifdef CONFIG_PM
 	.suspend = spi_tegra_suspend,
 	.resume = spi_tegra_resume,
+#endif
+#if defined(CONFIG_PM_RUNTIME)
+	.runtime_idle = tegra_spi_runtime_idle,
+	.runtime_resume = tegra_spi_runtime_resume,
 #endif
 };
 
@@ -1641,6 +1672,7 @@ MODULE_DEVICE_TABLE(of, spi_tegra_of_match_table);
 #else /* CONFIG_OF */
 #define spi_tegra_of_match_table NULL
 #endif /* CONFIG_OF */
+
 
 static struct platform_driver spi_tegra_driver = {
 	.driver = {
