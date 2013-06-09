@@ -115,8 +115,10 @@ static void hs_handler(enum cpcap_irqs irq, void *data)
 		audio_low_power_set(data_3mm5, &data_3mm5->audio_low_pwr_det);
 
 		cpcap_irq_mask(data_3mm5->cpcap, CPCAP_IRQ_MB2);
+		cpcap_irq_mask(data_3mm5->cpcap, CPCAP_IRQ_UC_PRIMACRO_5); //added
 
 		cpcap_irq_clear(data_3mm5->cpcap, CPCAP_IRQ_MB2);
+		cpcap_irq_clear(data_3mm5->cpcap, CPCAP_IRQ_UC_PRIMACRO_5); //added
 
 		cpcap_irq_unmask(data_3mm5->cpcap, CPCAP_IRQ_HS);
 
@@ -153,7 +155,14 @@ static void hs_handler(enum cpcap_irqs irq, void *data)
 					      msecs_to_jiffies(200));
 		}
 
+		cpcap_irq_clear(data_3mm5->cpcap, CPCAP_IRQ_MB2); //added
+		cpcap_irq_clear(data_3mm5->cpcap, CPCAP_IRQ_UC_PRIMACRO_5); //added
+
 		cpcap_irq_unmask(data_3mm5->cpcap, CPCAP_IRQ_HS);
+		cpcap_irq_unmask(data_3mm5->cpcap, CPCAP_IRQ_MB2);
+		cpcap_irq_unmask(data_3mm5->cpcap, CPCAP_IRQ_UC_PRIMACRO_5);
+
+		cpcap_uc_start(data_3mm5->cpcap, CPCAP_BANK_PRIMARY, CPCAP_MACRO_5);
 	}
 
 	switch_set_state(&data_3mm5->sdev, new_state);
@@ -168,7 +177,7 @@ static void key_handler(enum cpcap_irqs irq, void *data)
 {
 	struct cpcap_3mm5_data *data_3mm5 = data;
 
-	if (irq != CPCAP_IRQ_MB2)
+	if ((irq != CPCAP_IRQ_MB2) && (irq != CPCAP_IRQ_UC_PRIMACRO_5))
 		return;
 
 	if ((cpcap_irq_sense(data_3mm5->cpcap, CPCAP_IRQ_HS, 1) == 1) ||
@@ -184,6 +193,7 @@ static void key_handler(enum cpcap_irqs irq, void *data)
 		send_key_event(data_3mm5, 0);
 
 	cpcap_irq_unmask(data_3mm5->cpcap, CPCAP_IRQ_MB2);
+	cpcap_irq_unmask(data_3mm5->cpcap, CPCAP_IRQ_UC_PRIMACRO_5);
 }
 
 static void mb2_work(struct work_struct *work)
@@ -268,6 +278,7 @@ static int cpcap_3mm5_probe(struct platform_device *pdev)
 
 	retval  = cpcap_irq_clear(data->cpcap, CPCAP_IRQ_HS);
 	retval |= cpcap_irq_clear(data->cpcap, CPCAP_IRQ_MB2);
+	retval |= cpcap_irq_clear(data->cpcap, CPCAP_IRQ_UC_PRIMACRO_5);
 	retval |= cpcap_irq_clear(data->cpcap, CPCAP_IRQ_UC_PRIMACRO_13);
 	if (retval)
 		goto reg_put;
@@ -282,12 +293,17 @@ static int cpcap_3mm5_probe(struct platform_device *pdev)
 	if (retval)
 		goto free_hs;
 
+	retval = cpcap_irq_register(data->cpcap, CPCAP_IRQ_UC_PRIMACRO_5,
+				    key_handler, data);
+	if (retval)
+		goto free_mb2;
+
 	if (data->cpcap->vendor == CPCAP_VENDOR_ST) {
 		retval = cpcap_irq_register(data->cpcap,
 					    CPCAP_IRQ_UC_PRIMACRO_13,
 					    mac13_handler, data);
 		if (retval)
-			goto free_mb2;
+			goto free_mac5;
 
 		cpcap_uc_start(data->cpcap, CPCAP_BANK_PRIMARY, CPCAP_MACRO_13);
 	}
@@ -296,6 +312,8 @@ static int cpcap_3mm5_probe(struct platform_device *pdev)
 
 	return 0;
 
+free_mac5:
+	cpcap_irq_free(data->cpcap, CPCAP_IRQ_UC_PRIMACRO_5);
 free_mb2:
 	cpcap_irq_free(data->cpcap, CPCAP_IRQ_MB2);
 free_hs:
@@ -317,6 +335,7 @@ static int __exit cpcap_3mm5_remove(struct platform_device *pdev)
 
 	cpcap_irq_free(data->cpcap, CPCAP_IRQ_MB2);
 	cpcap_irq_free(data->cpcap, CPCAP_IRQ_HS);
+	cpcap_irq_free(data->cpcap, CPCAP_IRQ_UC_PRIMACRO_5);
 	cpcap_irq_free(data->cpcap, CPCAP_IRQ_UC_PRIMACRO_13);
 
 	switch_dev_unregister(&data->sdev);

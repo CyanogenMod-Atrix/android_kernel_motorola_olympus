@@ -2,12 +2,9 @@
  * Driver for Nvidia TEGRA spi controller.
  *
  * Copyright (C) 2010 Google, Inc.
- * Copyright 2013: Olympus Kernel Project
- * <http://forum.xda-developers.com/showthread.php?t=2016837>
  *
  * Author:
  *     Erik Gilling <konkers@android.com>
- *     Olympus Kernel Project
  *
  * Copyright (C) 2010-2011 NVIDIA Corporation
  *
@@ -173,8 +170,6 @@ static const unsigned long spi_tegra_req_sels[] = {
 #define MAX_CHIP_SELECT		4
 #define SLINK_FIFO_DEPTH	32
 
-static int pm_chk;
-
 struct spi_tegra_data {
 	struct spi_master	*master;
 	struct platform_device	*pdev;
@@ -242,7 +237,6 @@ struct spi_tegra_data {
 	u32			dma_control_reg;
 	u32			def_command_reg;
 	u32			def_command2_reg;
-	bool		is_suspend_failed; //20111101 ws.yang@lge.com	
 
 	struct spi_clk_parent	*parent_clk_list;
 	int			parent_clk_count;
@@ -253,17 +247,6 @@ struct spi_tegra_data {
 	struct work_struct spi_transfer_work;
 };
 
-//20110905 ws.yang@lge.com add to init of spi [S]
-#include <mach/iomap.h>
-//20110905 ws.yang@lge.com add to init of spi [E]
-//20110808 ws.yang@lge.com add to debug [S]
-#define SPI_TEGRA_ERROR
-#ifdef SPI_TEGRA_ERROR
-#define TEGRA_ERR_LOG(format, args...) printk("[TEGRA SPI] : %s (%d line): " format "\n", __FUNCTION__, __LINE__, ## args)
-#else
-#define TEGRA_ERR_LOG(format, args...) 
-#endif
-//20110808 ws.yang@lge.com add to debug [E]
 static inline unsigned long spi_tegra_readl(struct spi_tegra_data *tspi,
 		    unsigned long reg)
 {
@@ -271,10 +254,8 @@ static inline unsigned long spi_tegra_readl(struct spi_tegra_data *tspi,
 	unsigned long val;
 
 	spin_lock_irqsave(&tspi->reg_lock, flags);
-	if (tspi->clk_state < 1) {
-TEGRA_ERR_LOG("spi clock off"); 
+	if (tspi->clk_state < 1)
 		BUG();
-	}
 	val = readl(tspi->base + reg);
 	spin_unlock_irqrestore(&tspi->reg_lock, flags);
 	return val;
@@ -286,10 +267,8 @@ static inline void spi_tegra_writel(struct spi_tegra_data *tspi,
 	unsigned long flags;
 
 	spin_lock_irqsave(&tspi->reg_lock, flags);
-	if (tspi->clk_state < 1) {
-		TEGRA_ERR_LOG("spi clock off"); 	
+	if (tspi->clk_state < 1)
 		BUG();
-	}
 	writel(val, tspi->base + reg);
 
 	/* Synchronize write by reading back the register */
@@ -615,7 +594,6 @@ static int spi_tegra_start_dma_based_transfer(
 		if (ret < 0) {
 			dev_err(&tspi->pdev->dev,
 				"Error in starting tx dma error = %d\n", ret);
-			TEGRA_ERR_LOG("Error in starting tx dma error = %d\n", ret); 				
 			return ret;
 		}
 
@@ -637,7 +615,6 @@ static int spi_tegra_start_dma_based_transfer(
 				"Error in starting rx dma error = %d\n", ret);
 			if (tspi->cur_direction & DATA_DIR_TX)
 				cancel_dma(tspi->tx_dma, &tspi->tx_dma_req);
-			TEGRA_ERR_LOG("%s: Error in starting rx dma ret = %d\n", __func__, ret); 	
 			return ret;
 		}
 	}
@@ -690,28 +667,6 @@ static int spi_tegra_start_cpu_based_transfer(
 	val |= SLINK_DMA_EN;
 	spi_tegra_writel(tspi, val, SLINK_DMA_CTL);
 	return 0;
-}
-
-
-//20110721 ws.yang@lge.com add to check suspend of  ifx_n721_spi.c [S]
-bool spi_tegra_is_suspend(struct spi_device *spi)
-{
-	struct spi_tegra_data *tspi = spi_master_get_devdata(spi->master);
-
-	return tspi->is_suspended;
-}
-//20110721 ws.yang@lge.com add to check suspend of  ifx_n721_spi.c [E]
-
-
-//20111101 ws.yang@lge.com .. to test
-bool spi_tegra_suspend_failed(struct spi_device *spi)
-{
-	struct spi_tegra_data *tspi = spi_master_get_devdata(spi->master);
-
-	if (tspi->is_suspend_failed == true)
-        	TEGRA_ERR_LOG("tspi->is_suspend_failed=%d", tspi->is_suspend_failed);
-	
-	return tspi->is_suspend_failed;
 }
 
 static void set_best_clk_source(struct spi_tegra_data *tspi,
@@ -903,10 +858,8 @@ static int spi_tegra_setup(struct spi_device *spi)
 	unsigned long val;
 	unsigned long flags;
 
-	
-	dev_info(&spi->dev, "setup %d bpw, %scs_high, %scpol, %scpha, %dHz\n",
+	dev_dbg(&spi->dev, "setup %d bpw, %scpol, %scpha, %dHz\n",
 		spi->bits_per_word,
-		(spi->mode & SPI_CS_HIGH) ? "" : "~",
 		spi->mode & SPI_CPOL ? "" : "~",
 		spi->mode & SPI_CPHA ? "" : "~",
 		spi->max_speed_hz);
@@ -933,7 +886,6 @@ static int spi_tegra_setup(struct spi_device *spi)
 		return -EINVAL;
 	}
 
-	
 	pm_runtime_get_sync(&tspi->pdev->dev);
 	tegra_spi_clk_enable(tspi);
 
@@ -943,7 +895,6 @@ static int spi_tegra_setup(struct spi_device *spi)
 		val |= cs_bit;
 	else
 		val &= ~cs_bit;
-	dev_info(&spi->dev, "setup chipselect %d (0x%lx)\n", spi->chip_select, val);
 	tspi->def_command_reg = val;
 	spi_tegra_writel(tspi, tspi->def_command_reg, SLINK_COMMAND);
 	spin_unlock_irqrestore(&tspi->lock, flags);
@@ -995,16 +946,12 @@ static int spi_tegra_transfer(struct spi_device *spi, struct spi_message *m)
 	int was_empty;
 	int bytes_per_word;
 
-	if (list_empty(&m->transfers) || !m->complete) {
-		TEGRA_ERR_LOG("return -EINVAL !!! list empty");			
+	if (list_empty(&m->transfers) || !m->complete)
 		return -EINVAL;
-	}
 
 	list_for_each_entry(t, &m->transfers, transfer_list) {
-		if (t->bits_per_word < 0 || t->bits_per_word > 32) {
-		TEGRA_ERR_LOG("-EINVAL: t->bits_per_word=%d",t->bits_per_word);					
+		if (t->bits_per_word < 0 || t->bits_per_word > 32)
 			return -EINVAL;
-		}
 
 		if (t->len == 0)
 			return -EINVAL;
@@ -1018,17 +965,14 @@ static int spi_tegra_transfer(struct spi_device *spi, struct spi_message *m)
 		if (t->len % bytes_per_word != 0)
 			return -EINVAL;
 
-		if (!t->rx_buf && !t->tx_buf) {
-			TEGRA_ERR_LOG("-EINVAL: buf null");							
+		if (!t->rx_buf && !t->tx_buf)
 			return -EINVAL;
-		}
 	}
 
 	spin_lock_irqsave(&tspi->lock, flags);
 
 	if (WARN_ON(tspi->is_suspended)) {
 		spin_unlock_irqrestore(&tspi->lock, flags);
-		TEGRA_ERR_LOG("return -EBUSY!!!  tspi->is_suspended=%d\n", tspi->is_suspended);				
 		return -EBUSY;
 	}
 
@@ -1066,8 +1010,6 @@ static void spi_tegra_curr_transfer_complete(struct spi_tegra_data *tspi,
 		m->status = -EIO;
 	spi = m->state;
 
-	if(m->status != 0)
-		TEGRA_ERR_LOG("m->status = %d\n", m->status); 
 	m->actual_length += cur_xfer_size;
 
 	if (!list_is_last(&tspi->cur->transfer_list, &m->transfers)) {
@@ -1147,7 +1089,6 @@ static void handle_cpu_based_xfer(void *context_data)
 		dev_err(&tspi->pdev->dev, "%s 0x%08x:0x%08x:0x%08x\n",
 				__func__, tspi->command_reg, tspi->command2_reg,
 				tspi->dma_control_reg);
-		TEGRA_ERR_LOG("ERROR bit set 0x%x\n", tspi->status_reg); 		
 		tegra_periph_reset_assert(tspi->clk);
 		udelay(2);
 		tegra_periph_reset_deassert(tspi->clk);
@@ -1211,7 +1152,6 @@ static irqreturn_t spi_tegra_isr_thread(int irq, void *context_data)
 				cancel_dma(tspi->tx_dma, &tspi->tx_dma_req);
 				dev_err(&tspi->pdev->dev,
 					"Error in Dma Tx transfer\n");
-				TEGRA_ERR_LOG("Error in Dma Tx transfer\n");			
 				err += 1;
 			}
 		}
@@ -1228,7 +1168,6 @@ static irqreturn_t spi_tegra_isr_thread(int irq, void *context_data)
 				cancel_dma(tspi->rx_dma, &tspi->rx_dma_req);
 				dev_err(&tspi->pdev->dev,
 					"Error in Dma Rx transfer\n");
-				TEGRA_ERR_LOG("Error in Dma Rx transfer\n");									
 				err += 2;
 			}
 		}
@@ -1241,7 +1180,6 @@ static irqreturn_t spi_tegra_isr_thread(int irq, void *context_data)
 		dev_err(&tspi->pdev->dev, "%s 0x%08x:0x%08x:0x%08x\n",
 				__func__, tspi->command_reg, tspi->command2_reg,
 				tspi->dma_control_reg);
-		TEGRA_ERR_LOG("Error  bit set 0x%x\n", tspi->status_reg); 						
 		tegra_periph_reset_assert(tspi->clk);
 		udelay(2);
 		tegra_periph_reset_deassert(tspi->clk);
@@ -1473,8 +1411,7 @@ static int __init spi_tegra_probe(struct platform_device *pdev)
 		tspi->parent_clk_list = pdata->parent_clk_list;
 		tspi->max_rate = pdata->max_rate;
 	} else {
-		//tspi->is_clkon_always = false;
-		tspi->is_clkon_always = true;
+		tspi->is_clkon_always = false;
 		tspi->is_dma_allowed = true;
 		tspi->dma_buf_size = DEFAULT_SPI_DMA_BUF_LEN;
 		tspi->parent_clk_count = 0;
@@ -1542,9 +1479,8 @@ skip_dma_alloc:
 	if (ret < 0) {
 		dev_err(&pdev->dev, "can not register to master err %d\n", ret);
 		goto exit_destry_wq;
-	} else {
-		dev_info(&pdev->dev, "on bus %d\n", master->bus_num);
 	}
+
 	return ret;
 
 exit_destry_wq:
@@ -1670,8 +1606,6 @@ static int spi_tegra_resume(struct device *dev)
 
 	tspi->cur_speed = 0;
 	tspi->is_suspended = false;
-	tspi->is_suspend_failed = false;	//20111101 ws.yang@lge.com .. to test		
-
 	if (!list_empty(&tspi->queue)) {
 		m = list_first_entry(&tspi->queue, struct spi_message, queue);
 		spi = m->state;
@@ -1689,10 +1623,41 @@ static int spi_tegra_resume(struct device *dev)
 }
 #endif
 
+#if defined(CONFIG_PM_RUNTIME)
+
+static int tegra_spi_runtime_idle(struct device *dev)
+{
+	struct spi_master	*master;
+	struct spi_tegra_data	*tspi;
+	master = dev_get_drvdata(dev);
+	tspi = spi_master_get_devdata(master);
+
+	clk_disable(tspi->clk);
+	clk_disable(tspi->sclk);
+	return 0;
+}
+
+static int tegra_spi_runtime_resume(struct device *dev)
+{
+	struct spi_master	*master;
+	struct spi_tegra_data	*tspi;
+	master = dev_get_drvdata(dev);
+	tspi = spi_master_get_devdata(master);
+
+	clk_enable(tspi->sclk);
+	clk_enable(tspi->clk);
+	return 0;
+}
+#endif
+
 static const struct dev_pm_ops tegra_spi_dev_pm_ops = {
 #ifdef CONFIG_PM
 	.suspend = spi_tegra_suspend,
 	.resume = spi_tegra_resume,
+#endif
+#if defined(CONFIG_PM_RUNTIME)
+	.runtime_idle = tegra_spi_runtime_idle,
+	.runtime_resume = tegra_spi_runtime_resume,
 #endif
 };
 
@@ -1707,6 +1672,7 @@ MODULE_DEVICE_TABLE(of, spi_tegra_of_match_table);
 #else /* CONFIG_OF */
 #define spi_tegra_of_match_table NULL
 #endif /* CONFIG_OF */
+
 
 static struct platform_driver spi_tegra_driver = {
 	.driver = {

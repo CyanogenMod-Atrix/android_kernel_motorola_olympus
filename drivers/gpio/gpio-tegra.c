@@ -378,7 +378,8 @@ static int tegra_gpio_suspend(void)
 	unsigned long flags;
 	int b;
 	int p;
-
+	
+	printk(KERN_INFO "%s\n", __func__);
 	local_irq_save(flags);
 	for (b = 0; b < ARRAY_SIZE(tegra_gpio_banks); b++) {
 		struct tegra_gpio_bank *bank = &tegra_gpio_banks[b];
@@ -553,6 +554,31 @@ void __init tegra_gpio_config(struct tegra_gpio_table *table, int num)
 			tegra_gpio_enable(gpio);
 		else
 			tegra_gpio_disable(gpio);
+	}
+}
+
+void get_gpio_settings(void)
+{
+	unsigned long pmc_ctrl;
+	int i;
+	int j;
+
+	pmc_ctrl = readl(IO_ADDRESS(TEGRA_PMC_BASE));	
+	printk(KERN_INFO "%s: pmc_ctrl = 0x%lX...\n",__func__,pmc_ctrl);
+	printk(KERN_INFO "Bank:Port CNF OE OUT IN INT_STA INT_ENB INT_LVL\n");
+	for (i = 0; i < ARRAY_SIZE(tegra_gpio_banks); i++) {
+		for (j = 0; j < 4; j++) {
+			int gpio = tegra_gpio_compose(i, j, 0);
+			printk(KERN_INFO "%d:%d %02x %02x %02x %02x %02x %02x %06x\n",
+				i, j,
+			       __raw_readl(GPIO_CNF(gpio)),
+			       __raw_readl(GPIO_OE(gpio)),
+			       __raw_readl(GPIO_OUT(gpio)),
+			       __raw_readl(GPIO_IN(gpio)),
+			       __raw_readl(GPIO_INT_STA(gpio)),
+			       __raw_readl(GPIO_INT_ENB(gpio)),
+			       __raw_readl(GPIO_INT_LVL(gpio)));
+		}
 	}
 }
 

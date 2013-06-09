@@ -42,6 +42,7 @@
 #include <mach/irqs.h>
 #include <mach/i2s.h>
 
+#include "clock.h"
 #include "devices.h"
 #include "gpio-names.h"
 #include "pm.h"
@@ -52,12 +53,19 @@
 /*
  * SPI
  */
-/*
+
 static struct tegra_spi_platform_data olympus_spi_pdata = {
 	.is_dma_based		= true,
 	.max_dma_buffer		= (16 * 1024),
 	.is_clkon_always	= false,
-	.max_rate		= 100000000,
+	.max_rate			= 100000000,
+};
+
+static struct tegra_spi_platform_data olympus_spi_cpcap_pdata = {
+	.is_dma_based		= true,
+	.max_dma_buffer		= (16 * 1024),
+	.is_clkon_always	= true,
+	.max_rate			= 100000000,
 };
 
 struct spi_clk_parent spi_parent_clk[] = {
@@ -68,11 +76,11 @@ struct spi_clk_parent spi_parent_clk[] = {
 #else
 	[1] = {.name = "clk_m"},
 #endif
-};*/
+};
 
 void __init olympus_spi_init(void)
 {
-/*
+
 	int i;
 	struct clk *clk;
 
@@ -90,10 +98,10 @@ void __init olympus_spi_init(void)
 	olympus_spi_pdata.parent_clk_count = ARRAY_SIZE(spi_parent_clk);
 
 	tegra_spi_device1.dev.platform_data = &olympus_spi_pdata;
-	tegra_spi_device2.dev.platform_data = &olympus_spi_pdata;
+	tegra_spi_device2.dev.platform_data = &olympus_spi_cpcap_pdata;
 	tegra_spi_device3.dev.platform_data = &olympus_spi_pdata;
 	tegra_spi_device4.dev.platform_data = &olympus_spi_pdata;
-*/
+
 //	platform_device_register(&tegra_spi_slave_device1);
 	platform_device_register(&tegra_spi_device2);
 	platform_device_register(&tegra_spi_device3);

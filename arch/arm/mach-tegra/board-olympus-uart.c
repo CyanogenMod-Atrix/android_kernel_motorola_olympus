@@ -59,6 +59,9 @@
  *   UARTD - modem; configured in board-olympus-modem.c (/dev/ttyHS3)
  */
 
+extern void bcm_bt_rx_done_locked(struct uart_port *uport);
+extern void bcm_bt_lpm_exit_lpm_locked(struct uart_port *uport);
+
 static struct plat_serial8250_port debug_uart_platform_data[] = {
 	{
 		.membase	= IO_ADDRESS(TEGRA_UARTB_BASE),

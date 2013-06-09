@@ -763,7 +763,7 @@ static struct regulator_init_data cpcap_regulator[CPCAP_NUM_REGULATORS] = {
 			.max_uV			= 1475000,
 			.valid_ops_mask		= REGULATOR_CHANGE_STATUS |
                                                   REGULATOR_CHANGE_VOLTAGE,
-       //     .always_on		= 1,
+            .always_on		= 1,
 		},
 		.num_consumer_supplies	= ARRAY_SIZE(cpcap_sw4_consumers),
 		.consumer_supplies	= cpcap_sw4_consumers,
@@ -1034,7 +1034,8 @@ struct spi_board_info tegra_spi_devices[] __initdata = {
     },
 
 };
-
+extern void get_gpio_settings(void);
+extern void	pinmux_show(void);
 
 static void olympus_board_suspend(int lp_state, enum suspend_stage stg)
 {
@@ -1043,6 +1044,8 @@ static void olympus_board_suspend(int lp_state, enum suspend_stage stg)
 	if ((lp_state == TEGRA_SUSPEND_LP0) && (stg == TEGRA_SUSPEND_BEFORE_CPU))
 			{
 				printk(KERN_INFO "%s: entering...\n", __func__);
+				get_gpio_settings();
+				pinmux_show();
 			/*	printk(KERN_INFO "%s: TEGRA_GPIO_PF3 = 0",__func__);
 				gpio_set_value(TEGRA_GPIO_PF3, 0); //external sdcard
 				printk(KERN_INFO "%s: TEGRA_GPIO_PI5 = 0",__func__);
@@ -1096,14 +1099,20 @@ static struct tegra_suspend_platform_data olympus_suspend_data = {
 void __init olympus_suspend_init(void)
 {
 
-/*	tegra_pm_irq_set_wake_type(tegra_wake_to_irq(TEGRA_WAKE_GPIO_PL1), WAKE_LOW);
-	tegra_pm_irq_set_wake_type(tegra_wake_to_irq(TEGRA_WAKE_GPIO_PA0), WAKE_HI);
-	tegra_pm_irq_set_wake_type(tegra_wake_to_irq(TEGRA_WAKE_KBC_EVENT), WAKE_HI);
-	tegra_pm_irq_set_wake_type(tegra_wake_to_irq(TEGRA_WAKE_PWR_INT), WAKE_HI);
+/*	enable_irq_wake(wakepad_irq[2]);
+	enable_irq_wake(wakepad_irq[5]);
+	enable_irq_wake(wakepad_irq[6]);
+	enable_irq_wake(wakepad_irq[7]);
+	enable_irq_wake(wakepad_irq[17]);
+	enable_irq_wake(wakepad_irq[18]);
+	enable_irq_wake(wakepad_irq[24]);
 
-	tegra_pm_irq_set_wake_type(tegra_wake_to_irq(TEGRA_WAKE_GPIO_PU5), WAKE_ANY);
-	tegra_pm_irq_set_wake_type(tegra_wake_to_irq(TEGRA_WAKE_GPIO_PU6), WAKE_ANY);
-	tegra_pm_irq_set_wake_type(tegra_wake_to_irq(TEGRA_WAKE_GPIO_PV2), WAKE_ANY);*/
+	tegra_suspend_platform.wake_low 	= 4;		//0x0000004
+	tegra_suspend_platform.wake_high 	= 393248;	//0x0060020
+	tegra_suspend_platform.wake_any 	= 16777408;	//0x10000C0
+	tegra_suspend_platform.wake_enb 	= 17170660;	//0x10600E4
+
+	*/
 
 	tegra_init_suspend(&olympus_suspend_data);
 }

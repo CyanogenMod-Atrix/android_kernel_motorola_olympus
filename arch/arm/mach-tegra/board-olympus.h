@@ -38,6 +38,7 @@ extern void __init olympus_backlight_init(void);
 extern void __init olympus_sensors_init(void);
 extern void __init olympus_camera_init(void);
 extern void __init olympus_usb_gadget_init(void);
+extern void __init olympus_clks_init(void);
 
 extern int olympus_mdm_ctrl_shutdown(void);
 extern int olympus_mdm_ctrl_peer_register(void (*)(void*),
@@ -58,9 +59,6 @@ extern void tegra_otg_set_mode(int);
 int olympus_wifi_status_register(
 		void (*sdhcicallback)(int card_present, void *dev_id),
 		void *dev_id);
-
-extern void bcm_bt_rx_done_locked(struct uart_port *uport);
-extern void bcm_bt_lpm_exit_lpm_locked(struct uart_port *uport);
 
 extern int olympus_keymap_update_init(void);
 

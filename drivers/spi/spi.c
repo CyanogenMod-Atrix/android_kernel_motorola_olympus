@@ -2,8 +2,6 @@
  * SPI init/core code
  *
  * Copyright (C) 2005 David Brownell
- * Copyright 2013: Olympus Kernel Project
- * <http://forum.xda-developers.com/showthread.php?t=2016837>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -424,34 +422,26 @@ struct spi_device *spi_new_device(struct spi_master *master,
 	 * suggests syslogged diagnostics are best here (ugh).
 	 */
 
-	printk("%s: modalias 1 %s\n", __func__, chip->modalias);
-
 	proxy = spi_alloc_device(master);
 	if (!proxy)
 		return NULL;
-	printk("%s: modalias 2 %s\n", __func__, chip->modalias);
 
 	WARN_ON(strlen(chip->modalias) >= sizeof(proxy->modalias));
 
 	proxy->chip_select = chip->chip_select;
 	proxy->max_speed_hz = chip->max_speed_hz;
-	printk("%s: modalias 21 %s\n", __func__, chip->modalias);
 	proxy->mode = chip->mode;
 	proxy->irq = chip->irq;
 	strlcpy(proxy->modalias, chip->modalias, sizeof(proxy->modalias));
-	printk("%s: modalias 22 %s\n", __func__, chip->modalias);
 	proxy->dev.platform_data = (void *) chip->platform_data;
 	proxy->controller_data = chip->controller_data;
-	printk("%s: modalias 23 %s\n", __func__, chip->modalias);
 	proxy->controller_state = NULL;
-	printk("%s: modalias 3 %s\n", __func__, chip->modalias);
 
 	status = spi_add_device(proxy);
 	if (status < 0) {
 		spi_dev_put(proxy);
 		return NULL;
 	}
-	printk("%s: modalias 4 %s\n", __func__, chip->modalias);
 
 	return proxy;
 }
@@ -753,7 +743,7 @@ int spi_setup(struct spi_device *spi)
 
 	status = spi->master->setup(spi);
 
-	dev_info(&spi->dev, "setup mode %d, %s%s%s%s"
+	dev_dbg(&spi->dev, "setup mode %d, %s%s%s%s"
 				"%u bits/w, %u Hz max --> %d\n",
 			(int) (spi->mode & (SPI_CPOL | SPI_CPHA)),
 			(spi->mode & SPI_CS_HIGH) ? "cs_high, " : "",
@@ -1149,4 +1139,3 @@ err0:
  * include needing to have boardinfo data structures be much more public.
  */
 postcore_initcall(spi_init);
-
