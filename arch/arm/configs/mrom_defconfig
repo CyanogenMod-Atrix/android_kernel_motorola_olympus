@@ -526,7 +526,7 @@ CONFIG_CPU_IDLE_GOV_MENU=y
 #
 CONFIG_VFP=y
 CONFIG_VFPv3=y
-CONFIG_NEON=y
+# CONFIG_NEON is not set
 
 #
 # Userspace binary formats
