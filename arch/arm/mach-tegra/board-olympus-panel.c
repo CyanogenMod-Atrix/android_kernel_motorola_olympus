@@ -560,8 +560,8 @@ int __init olympus_panel_init(void)
 	// Lets check if we have weak tegra
 	if ((s_MotorolaDispInfo >> 31) & 0x01) {
 		printk(KERN_INFO "%s: Bad news dude, have to lower refresh rate:/",__func__);
-			//olympus_dsi_out.panel_reset_timeout_msec = 250;
-			//olympus_dsi_out.refresh_rate = 59;
+		//	olympus_dsi_out.panel_reset_timeout_msec = 250;
+		//	olympus_dsi_out.refresh_rate = 59;
 	}
 
 	olympus_panel_setup_dc();

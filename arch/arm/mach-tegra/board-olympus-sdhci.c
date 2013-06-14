@@ -51,9 +51,6 @@
 #include "board-olympus.h"
 #include <linux/mmc/host.h>
 
-#define OLYMPUS_EXT_SDCARD_DETECT	TEGRA_GPIO_PI5
-#define MMC_OCR_1V8_MASK    0x8
-
 /*
  * SDHCI init
  */

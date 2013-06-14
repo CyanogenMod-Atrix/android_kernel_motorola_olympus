@@ -42,18 +42,6 @@
 #include "board-olympus.h"
 #include "cpu-tegra.h"
 
-#define TEGRA_PROX_INT_GPIO		TEGRA_GPIO_PE1
-#define TEGRA_HF_NORTH_GPIO		TEGRA_GPIO_PS2
-#define TEGRA_HF_SOUTH_GPIO		TEGRA_GPIO_PS0
-#define TEGRA_HF_KICKSTAND_GPIO		TEGRA_GPIO_PW3
-#define TEGRA_VIBRATOR_GPIO		TEGRA_GPIO_PD0
-#define TEGRA_KXTF9_INT_GPIO		TEGRA_GPIO_PV3
-#define TEGRA_L3G4200D_IRQ_GPIO		TEGRA_GPIO_PH2
-#define TEGRA_AKM8975_IRQ_GPIO		TEGRA_GPIO_PE2
-#define TEGRA_AKM8975_RESET_GPIO	TEGRA_GPIO_PK5
-#define TEGRA_ADT7461_IRQ_GPIO		TEGRA_GPIO_PE5
-#define PWRUP_BAREBOARD            	0x00100000 /* Bit 20 */
-
 /*
  * Vibrator
  */
@@ -147,7 +135,7 @@ struct adt7461_platform_data olympus_adt7461_pdata = {
 	.shutdown_local_limit = 120,
 	.throttling_ext_limit = 90,
 	.alarm_fn = tegra_throttling_enable,
-//	.irq_gpio = TEGRA_ADT7461_IRQ_GPIO,
+	.irq_gpio = TEGRA_ADT7461_IRQ_GPIO,
 };
 
 /*
@@ -483,7 +471,7 @@ static struct i2c_board_info olympus_i2c1_board_info[] = {
 static struct i2c_board_info olympus_i2c4_board_info[] = {
 	{
 		I2C_BOARD_INFO("adt7461", 0x4C),
-		.irq = TEGRA_GPIO_TO_IRQ(TEGRA_GPIO_PE5),
+		.irq = TEGRA_GPIO_TO_IRQ(TEGRA_ADT7461_IRQ_GPIO),
 		.platform_data = &olympus_adt7461_pdata,
 	},
 	{

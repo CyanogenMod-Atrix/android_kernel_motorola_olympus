@@ -137,7 +137,7 @@ static void mdm6600_spi_slave_config_gpio(struct mdm6600_spi_device *spi_dev)
 			gpio_get_value(spi_dev->mrdy_gpio));
 
 	trigger_level = IRQF_TRIGGER_LOW;
-	irq_set_irq_wake(spi_dev->mrdy_irq, 1);
+	//irq_set_irq_wake(spi_dev->mrdy_irq, 1);
 	err = request_irq(spi_dev->mrdy_irq,
 			mdm6600_spi_mrdy_irq_handler,
 			trigger_level,

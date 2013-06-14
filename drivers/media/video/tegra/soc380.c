@@ -172,6 +172,8 @@ static struct soc380_reg mode_640x480[] = {
 	{0x0990, 0x0005},
 	{SOC380_TABLE_WAIT_MS, 50},
 
+	{ 0x3400, 0x7A30 },			// enable MIPI
+
 	{SOC380_TABLE_END, 0x0000}
 };
 

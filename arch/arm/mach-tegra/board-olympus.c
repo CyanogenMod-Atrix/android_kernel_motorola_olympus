@@ -82,7 +82,7 @@ static char oly_unused_pins_p3[] = {
         TEGRA_GPIO_PW1,
         TEGRA_GPIO_PB3,
         TEGRA_GPIO_PJ3,
-        /* TEGRA_GPIO_PE5, (used by ...)*/
+        TEGRA_GPIO_PE5,/* (is it used by temp sensor??)*/
         TEGRA_GPIO_PE6,
         TEGRA_GPIO_PE7,
         TEGRA_GPIO_PF0,
