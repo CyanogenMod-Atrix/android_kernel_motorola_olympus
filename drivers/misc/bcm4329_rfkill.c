@@ -51,6 +51,13 @@ static 	struct rfkill *bt_rfkill;
 
 static int bcm4329_bt_rfkill_set_power(void *data, bool blocked)
 {
+	/*
+	 * check if BT gpio_shutdown line status and current request are same.
+	 * If same, then return, else perform requested operation.
+	 */
+	if (gpio_get_value(bcm4329_rfkill->gpio_shutdown) && !blocked)
+		return 0;
+
 	if (blocked) {
 		if (bcm4329_rfkill->gpio_shutdown)
 			gpio_direction_output(bcm4329_rfkill->gpio_shutdown, 0);
@@ -59,27 +66,20 @@ static int bcm4329_bt_rfkill_set_power(void *data, bool blocked)
 		if (bcm4329_rfkill->bt_32k_clk)
 			clk_disable(bcm4329_rfkill->bt_32k_clk);
 	} else {
-		printk(KERN_INFO "%s: else\n", __func__);
 		if (bcm4329_rfkill->bt_32k_clk)
 			clk_enable(bcm4329_rfkill->bt_32k_clk);
 		if (bcm4329_rfkill->gpio_shutdown)
 		{
-			printk(KERN_INFO "%s: gpio_shutdown: %d \n", __func__, bcm4329_rfkill->gpio_shutdown);
-			//gpio_direction_output(bcm4329_rfkill->gpio_shutdown, 0);
-			gpio_direction_output(160, 0);
+			gpio_direction_output(bcm4329_rfkill->gpio_shutdown, 0);
 			msleep(100);
-			//gpio_direction_output(bcm4329_rfkill->gpio_shutdown, 1);
-			gpio_direction_output(160, 1);
+			gpio_direction_output(bcm4329_rfkill->gpio_shutdown, 1);
 			msleep(100);
 		}
 		if (bcm4329_rfkill->gpio_reset)
 		{
-			printk(KERN_INFO "%s: gpio_reset: %d \n", __func__, bcm4329_rfkill->gpio_reset);
-			//gpio_direction_output(bcm4329_rfkill->gpio_reset, 0);
-			gpio_direction_output(164, 0);
+			gpio_direction_output(bcm4329_rfkill->gpio_reset, 0);
 			msleep(100);
-			//gpio_direction_output(bcm4329_rfkill->gpio_reset, 1);
-			gpio_direction_output(164, 1);
+			gpio_direction_output(bcm4329_rfkill->gpio_reset, 1);
 			msleep(100);
 		}
 	}
@@ -254,6 +254,7 @@ static int bcm4329_bt_lpm_init(struct platform_device *pdev)
 
 static int bcm4329_rfkill_probe(struct platform_device *pdev)
 {
+	struct rfkill *bt_rfkill;
 	struct resource *res;
 	int ret;
 	bool enable = false;  /* off */
@@ -323,7 +324,7 @@ static int bcm4329_rfkill_probe(struct platform_device *pdev)
 		rfkill_destroy(bt_rfkill);
 		goto free_bcm_res;
 	}
-
+/*
 	res = platform_get_resource_byname(pdev, IORESOURCE_IO,
 						"bcm4329_wake_gpio");
 	if (res) {
@@ -347,15 +348,15 @@ static int bcm4329_rfkill_probe(struct platform_device *pdev)
 	if (unlikely(ret)) {
 		goto free_lpm_res;
 	}
-
+*/
 	return 0;
-
+/*
 free_lpm_res:
 	if (bcm4329_rfkill->gpio_wake)
 		gpio_free(bcm4329_rfkill->gpio_wake);
 	if (bcm4329_rfkill->gpio_host_wake)
 		gpio_free(bcm4329_rfkill->gpio_host_wake);
-
+*/
 free_bcm_res:
 	if (bcm4329_rfkill->gpio_shutdown)
 		gpio_free(bcm4329_rfkill->gpio_shutdown);
@@ -381,10 +382,12 @@ static int bcm4329_rfkill_remove(struct platform_device *pdev)
 		gpio_free(bcm4329_rfkill->gpio_shutdown);
 	if (bcm4329_rfkill->gpio_reset)
 		gpio_free(bcm4329_rfkill->gpio_reset);
+/*
 	if (bcm4329_rfkill->gpio_wake)
 		gpio_free(bcm4329_rfkill->gpio_wake);
 	if (bcm4329_rfkill->gpio_host_wake)
 		gpio_free(bcm4329_rfkill->gpio_host_wake);
+*/
 	kfree(bcm4329_rfkill);
 
 	return 0;
