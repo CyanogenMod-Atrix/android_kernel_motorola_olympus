@@ -212,7 +212,8 @@ static int dvfs_rail_set_voltage(struct dvfs_rail *rail, int millivolts)
 			rail->updating = true;
 			ret = regulator_set_voltage(rail->reg,
 				rail->new_millivolts * 1000,
-				rail->max_millivolts * 1000);
+				//rail->max_millivolts * 1000);
+				rail->new_millivolts * 1000);
 			rail->updating = false;
 		}
 		if (ret) {

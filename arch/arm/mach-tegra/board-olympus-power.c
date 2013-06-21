@@ -639,28 +639,24 @@ struct cpcap_mode_value *cpcap_regulator_off_mode_values[] = {
 	{ .supply = name, .dev = device, }
 
 struct regulator_consumer_supply cpcap_sw1_consumers[] = {
-	REGULATOR_CONSUMER("sw1", NULL /* core */),
-	REGULATOR_CONSUMER("vdd_cpu", NULL),
+	REGULATOR_CONSUMER("vdd_cpu", NULL), /* core */
 };
 
 struct regulator_consumer_supply cpcap_sw2_consumers[] = {
-	REGULATOR_CONSUMER("sw2", NULL /* core */),
-	REGULATOR_CONSUMER("vdd_core", NULL),
+	REGULATOR_CONSUMER("vdd_core", NULL),/* core */
 };
 
 struct regulator_consumer_supply cpcap_sw3_consumers[] = {
-	REGULATOR_CONSUMER("sw3", NULL /* VIO */),
+	REGULATOR_CONSUMER("sw3", NULL ),/* VIO */
 };
 
 struct regulator_consumer_supply cpcap_sw4_consumers[] = {
-	REGULATOR_CONSUMER("sw4", NULL /* core */),
-	REGULATOR_CONSUMER("vdd_aon", NULL),
+	REGULATOR_CONSUMER("vdd_aon", NULL),/* core */
 };
 
 struct regulator_consumer_supply cpcap_sw5_consumers[] = {
 	REGULATOR_SUPPLY("sw5", "button-backlight"),
 	REGULATOR_SUPPLY("sw5", "notification-led"),
-//	REGULATOR_CONSUMER("odm-kit-sw5", NULL),
 	REGULATOR_SUPPLY("sw5", NULL),
 };
 
@@ -681,7 +677,7 @@ struct regulator_consumer_supply cpcap_vhvio_consumers[] = {
 
 struct regulator_consumer_supply cpcap_vsdio_consumers[] = {
 	REGULATOR_CONSUMER("vsdio", NULL),
-	REGULATOR_CONSUMER("vdd_vcore_temp", NULL),
+
 };
 
 struct regulator_consumer_supply cpcap_vpll_consumers[] = {
@@ -698,12 +694,14 @@ struct regulator_consumer_supply cpcap_vwlan1_consumers[] = {
 
 struct regulator_consumer_supply cpcap_vwlan2_consumers[] = {
 	//REGULATOR_CONSUMER("vwlan2", NULL),
+	REGULATOR_CONSUMER("vddio_sdmmc", "sdhci-tegra.0"),
 	/* Powers the tegra usb block, cannot be named vusb, since
 	   this name already exists in regulator-cpcap.c. */
 	REGULATOR_CONSUMER("avdd_usb", NULL), /* usb */
 	REGULATOR_CONSUMER("vusb_modem_flash", NULL),
 	REGULATOR_CONSUMER("vusb_modem_ipc", NULL),
 	REGULATOR_CONSUMER("avdd_hdmi", NULL),
+	REGULATOR_CONSUMER("vdd_vcore_temp", NULL),
 };
 
 struct regulator_consumer_supply cpcap_vsimcard_consumers[] = {
@@ -1062,7 +1060,6 @@ static void olympus_board_suspend(int lp_state, enum suspend_stage stg)
 				tegra_pinmux_set_tristate(77 /*TEGRA_PINGROUP_LVS*/, TEGRA_TRI_TRISTATE);
 				tegra_pinmux_set_tristate(104/*TEGRA_PINGROUP_UCA*/, TEGRA_TRI_TRISTATE);
 				tegra_pinmux_set_tristate(105/*TEGRA_PINGROUP_UCB*/, TEGRA_TRI_TRISTATE);
-				tegra_pinmux_set_pullupdown(79 /*TEGRA_PINGROUP_PMC*/, TEGRA_PUPD_PULL_UP);
 				tegra_pinmux_set_pullupdown(108/*TEGRA_PINGROUP_DDRC*/, TEGRA_PUPD_PULL_UP);
 
 				printk(KERN_INFO "%s: TEGRA_GPIO_PI5 disable irq",__func__);
@@ -1100,7 +1097,6 @@ static void olympus_board_resume(int lp_state, enum resume_stage stg)
 		tegra_pinmux_set_tristate(77 /*TEGRA_PINGROUP_LVS*/, TEGRA_TRI_NORMAL);
 		tegra_pinmux_set_tristate(104/*TEGRA_PINGROUP_UCA*/, TEGRA_TRI_NORMAL);
 		tegra_pinmux_set_tristate(105/*TEGRA_PINGROUP_UCB*/, TEGRA_TRI_NORMAL);
-		tegra_pinmux_set_pullupdown(79 /*TEGRA_PINGROUP_PMC*/, TEGRA_PUPD_NORMAL);
 		tegra_pinmux_set_pullupdown(108/*TEGRA_PINGROUP_DDRC*/, TEGRA_PUPD_NORMAL);
 		printk(KERN_INFO "%s: TEGRA_GPIO_PI5 enable irq",__func__);
 		enable_irq(gpio_to_irq(TEGRA_GPIO_PI5));

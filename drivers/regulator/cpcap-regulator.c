@@ -437,6 +437,34 @@ static struct {
                             0},
 };
 
+static struct {
+	const char *name;
+} r_names[CPCAP_NUM_REGULATORS] = {
+	[CPCAP_SW1]      = {"sw1"},
+	[CPCAP_SW2]      = {"sw2"},
+	[CPCAP_SW3]      = {"sw3"},
+	[CPCAP_SW4]      = {"sw4"},
+	[CPCAP_SW5]      = {"sw5"},
+	[CPCAP_VCAM]     = {"vcam"},
+	[CPCAP_VCSI]     = {"vcsi"},
+	[CPCAP_VDAC]     = {"vdac"},
+	[CPCAP_VDIG]     = {"vdig"},
+	[CPCAP_VFUSE]    = {"vfuse"},
+	[CPCAP_VHVIO]    = {"vhvio"},
+	[CPCAP_VSDIO]    = {"vsdio"},
+	[CPCAP_VPLL]     = {"vpll"},
+	[CPCAP_VRF1]     = {"vrf1"},
+	[CPCAP_VRF2]     = {"vrf2"},
+	[CPCAP_VRFREF]   = {"vrfref"},
+	[CPCAP_VWLAN1]   = {"vwlan1"},
+	[CPCAP_VWLAN2]   = {"vwlan2"},
+	[CPCAP_VSIM]     = {"vsim"},
+	[CPCAP_VSIMCARD] = {"vsimcard"},
+	[CPCAP_VVIB]     = {"vvib"},
+	[CPCAP_VUSB]     = {"vusb"},
+	[CPCAP_VAUDIO]   = {"vaudio"},
+};
+
 static int cpcap_regulator_set_voltage(struct regulator_dev *rdev,
 				       int min_uV, int max_uV, unsigned int *selector)
 {
@@ -452,6 +480,7 @@ static int cpcap_regulator_set_voltage(struct regulator_dev *rdev,
 	if (regltr_id >= CPCAP_NUM_REGULATORS)
 		return -EINVAL;
 
+	printk(KERN_INFO "%s: Regulator: %s, min_uV: %d, max_uV: %d\n", __func__, r_names[regltr_id].name, min_uV, max_uV);
 	regnr = cpcap_regltr_data[regltr_id].reg;
 
 	if (regltr_id == CPCAP_VRF1) {
@@ -511,6 +540,7 @@ static int cpcap_regulator_get_voltage(struct regulator_dev *rdev)
 
 	shift = cpcap_regltr_data[regltr_id].volt_shft;
 
+	printk(KERN_INFO "%s: Regulator: %s, uV: %d\n", __func__, r_names[regltr_id].name, cpcap_regltr_data[regltr_id].val_tbl[volt_bits >> shift]);
 	return cpcap_regltr_data[regltr_id].val_tbl[volt_bits >> shift];
 }
 
@@ -525,6 +555,7 @@ static int cpcap_regulator_enable(struct regulator_dev *rdev)
 	if (regltr_id >= CPCAP_NUM_REGULATORS)
 		return -EINVAL;
 
+	printk(KERN_INFO "%s: Regulator: %s\n", __func__, r_names[regltr_id].name);
 	regnr = cpcap_regltr_data[regltr_id].reg;
 
 	retval = cpcap_regacc_write(cpcap, regnr,
@@ -555,6 +586,7 @@ static int cpcap_regulator_disable(struct regulator_dev *rdev)
 	if (regltr_id >= CPCAP_NUM_REGULATORS)
 		return -EINVAL;
 
+	printk(KERN_INFO "%s: Regulator: %s\n", __func__, r_names[regltr_id].name);
 	regnr = cpcap_regltr_data[regltr_id].reg;
 
 	retval = 0;
@@ -582,7 +614,7 @@ static int cpcap_regulator_is_enabled(struct regulator_dev *rdev)
 	regltr_id = rdev_get_id(rdev);
 	if (regltr_id >= CPCAP_NUM_REGULATORS)
 		return -EINVAL;
-
+	printk(KERN_INFO "%s: Regulator: %s\n", __func__, r_names[regltr_id].name);
 	regnr = cpcap_regltr_data[regltr_id].reg;
 
 	if (cpcap_regacc_read(cpcap, regnr, &value))
@@ -606,6 +638,7 @@ static int cpcap_regulator_set_mode(struct regulator_dev *rdev,
 	regnr = cpcap_regltr_data[regltr_id].reg;
 
 	if (mode == REGULATOR_MODE_NORMAL) {
+	printk(KERN_INFO "%s: Regulator: %s, mode: %s\n", __func__, r_names[regltr_id].name, "MODE_NORMAL");
 		if (cpcap_regltr_data[regltr_id].mode_cntr == 0) {
 			ret = cpcap_regacc_write(cpcap, regnr,
 						 0,
@@ -614,6 +647,7 @@ static int cpcap_regulator_set_mode(struct regulator_dev *rdev,
 		if (ret == 0)
 			cpcap_regltr_data[regltr_id].mode_cntr++;
 	} else if (mode == REGULATOR_MODE_STANDBY) {
+	printk(KERN_INFO "%s: Regulator: %s, mode: %s\n", __func__, r_names[regltr_id].name, "MODE_STANDBY");
 		if (cpcap_regltr_data[regltr_id].mode_cntr == 1) {
 			ret = cpcap_regacc_write(cpcap, regnr,
 						 CPCAP_BIT_AUDIO_LOW_PWR,
@@ -625,6 +659,7 @@ static int cpcap_regulator_set_mode(struct regulator_dev *rdev,
 		if (ret == 0)
 			cpcap_regltr_data[regltr_id].mode_cntr--;
 	}else if (mode == REGULATOR_MODE_IDLE ) {
+	printk(KERN_INFO "%s: Regulator: %s, mode: %s\n", __func__, r_names[regltr_id].name, "MODE_IDLE");
              /*For case of  audio manager restart   set regulator to low power mode and reset counter */
 			ret = cpcap_regacc_write(cpcap, regnr,
 						 CPCAP_BIT_AUDIO_LOW_PWR,

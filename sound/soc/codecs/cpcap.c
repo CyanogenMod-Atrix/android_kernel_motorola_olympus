@@ -1068,7 +1068,8 @@ static int snd_soc_set_emu_antipop(struct snd_kcontrol *kcontrol,
 		    (cache[CPCAP_AUDIO_REG_INDEX(CPCAP_REG_CC)] &
 			(CPCAP_BIT_CDC_EN_RX | CPCAP_BIT_MIC1_CDC_EN |
 					CPCAP_BIT_MIC2_CDC_EN)) == 0) {
-			vaudio_mode(REGULATOR_MODE_STANDBY);
+		//	vaudio_mode(REGULATOR_MODE_STANDBY);
+			vaudio_mode(REGULATOR_MODE_IDLE);
 		}
 	}
 	return 0;
@@ -1555,7 +1556,8 @@ static void cpcap_mm_shutdown(struct snd_pcm_substream *substream,
 		if (state->codec_strm_cnt == 0) {
 			if (emu_analog_antipop == 0) {
 				cpcap_audio_reg_write(codec, 7, 0);
-				if (vaudio_mode(REGULATOR_MODE_STANDBY) != 0)
+				//if (vaudio_mode(REGULATOR_MODE_STANDBY) != 0)
+					if (vaudio_mode(REGULATOR_MODE_IDLE) != 0)
 					return;
 				else
 					goto aok;
@@ -1568,7 +1570,8 @@ static void cpcap_mm_shutdown(struct snd_pcm_substream *substream,
 		  thanks to the condition above.*/
 		else if (vaudio.bt_call && state->codec_strm_cnt == 2 &&
 				emu_analog_antipop == 0) {
-			if (vaudio_mode(REGULATOR_MODE_STANDBY) != 0)
+			//if (vaudio_mode(REGULATOR_MODE_STANDBY) != 0)
+			if (vaudio_mode(REGULATOR_MODE_IDLE) != 0)
 				return;
 		}
 	}
@@ -1881,7 +1884,8 @@ static void cpcap_voice_shutdown(struct snd_pcm_substream *substream,
 			 */
 			if (!strstr(dai->name, "bt") &&
 			    emu_analog_antipop == 0)
-				if (vaudio_mode(REGULATOR_MODE_STANDBY) != 0)
+			//	if (vaudio_mode(REGULATOR_MODE_STANDBY) != 0)
+				if (vaudio_mode(REGULATOR_MODE_IDLE) != 0)
 					return;
 		}
 
@@ -2290,7 +2294,8 @@ static int cpcap_btcall_hw_params(struct snd_pcm_substream *substream,
 		}
 		/* Clocks can still be generated in low power mode */
 		if (emu_analog_antipop == 0)
-			vaudio_mode(REGULATOR_MODE_STANDBY);
+		//	vaudio_mode(REGULATOR_MODE_STANDBY);
+			vaudio_mode(REGULATOR_MODE_IDLE);
 	}
 
 	return 0;
@@ -2339,7 +2344,8 @@ static int cpcap_btvoice_hw_params(struct snd_pcm_substream *substream,
 		}
 		/* Clocks can still be generated in low power mode */
 		if (emu_analog_antipop == 0)
-			vaudio_mode(REGULATOR_MODE_STANDBY);
+		//	vaudio_mode(REGULATOR_MODE_STANDBY);
+			vaudio_mode(REGULATOR_MODE_IDLE);
 	}
 
 	return 0;

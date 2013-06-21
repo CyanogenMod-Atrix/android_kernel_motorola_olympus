@@ -861,7 +861,29 @@ static int tegra_sdhci_suspend(struct sdhci_host *sdhci, pm_message_t state)
 {
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
 	struct tegra_sdhci_host *tegra_host = pltfm_host->priv;
+#if defined (CONFIG_MACH_OLYMPUS)
+	if (sdhci->mmc->pm_flags & MMC_PM_KEEP_POWER) {
+		int div = 0;
+		u16 clk;
+		unsigned int clock = 100000;
 
+		/* reduce host controller clk and card clk to 100 KHz */
+		tegra_sdhci_set_clock(sdhci, clock);
+		sdhci_writew(sdhci, 0, SDHCI_CLOCK_CONTROL);
+
+		if (sdhci->max_clk > clock) {
+			div =  1 << (fls(sdhci->max_clk / clock) - 2);
+			if (div > 128)
+				div = 128;
+		}
+
+		clk = div << SDHCI_DIVIDER_SHIFT;
+		clk |= SDHCI_CLOCK_INT_EN | SDHCI_CLOCK_CARD_EN;
+		sdhci_writew(sdhci, clk, SDHCI_CLOCK_CONTROL);
+
+		return 0;
+	}
+#endif
 	tegra_sdhci_set_clock(sdhci, 0);
 
 	/* Disable the power rails if any */

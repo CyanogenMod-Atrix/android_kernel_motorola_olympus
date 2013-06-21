@@ -307,6 +307,7 @@ static int olympus_panel_disable(void)
 		printk(KERN_INFO "%s: DSI regulator SW5 disabled\n",__func__);
 	}
 
+
 	return 0;
 }
 
@@ -398,9 +399,9 @@ static int olympus_panel_setup_dc(void)
 	gpio_request(35, "disp_reset_n");
 	gpio_direction_output(35, 1);
 
-	tegra_gpio_enable(46);
+/*	tegra_gpio_enable(46);
 	gpio_request(46, "hdmi_5v_en");
-	gpio_direction_output(46, 1);
+	gpio_direction_output(46, 1);*/
 
 	return 0;
 }
@@ -553,9 +554,9 @@ int __init olympus_panel_init(void)
 	struct resource *res;
 	int err;
 
-	tegra_gpio_enable(HDMI_HPD_GPIO);
+/*	tegra_gpio_enable(HDMI_HPD_GPIO);
 	gpio_request(HDMI_HPD_GPIO, "hdmi_hpd");
-	gpio_direction_input(HDMI_HPD_GPIO);
+	gpio_direction_input(HDMI_HPD_GPIO);*/
 
 	// Lets check if we have weak tegra
 	if ((s_MotorolaDispInfo >> 31) & 0x01) {
