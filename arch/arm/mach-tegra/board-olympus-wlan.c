@@ -55,6 +55,8 @@
 
 #define WLAN_SKB_BUF_NUM        16
 
+static struct clk *wifi_32k_clk;
+
 static bool wlan_ctrl_ready = false;
 
 static struct sk_buff *wlan_static_skb[WLAN_SKB_BUF_NUM];
@@ -195,6 +197,11 @@ int olympus_wifi_status_register(
 
  int olympus_wifi_power(int on)
  {
+	if (on)
+			clk_enable(wifi_32k_clk);
+	else
+			clk_disable(wifi_32k_clk);
+
 	pr_debug("%s: %d\n", __func__, on);
 	gpio_set_value(WLAN_REG_ON_GPIO, on);
 	mdelay(100);
@@ -307,6 +314,12 @@ int olympus_wifi_status_register(
  {
 	int ret;
 	pr_debug("%s: start\n", __func__);
+	wifi_32k_clk = clk_get_sys(NULL, "blink");
+	if (IS_ERR(wifi_32k_clk)) {
+		pr_err("%s: unable to get blink clock\n", __func__);
+		return PTR_ERR(wifi_32k_clk);
+	}
+		clk_enable(wifi_32k_clk);
 	olympus_wlan_gpio_init();
 	olympus_init_wifi_mem();
 	olympus_locales_table_ptr = olympus_locales_table;
