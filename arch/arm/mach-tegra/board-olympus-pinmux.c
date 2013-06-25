@@ -65,7 +65,7 @@
 		.slew_rising = TEGRA_SLEW_SLOWEST,		\
 		.slew_falling = TEGRA_SLEW_SLOWEST,		\
 	}
-
+#if 0
 static __initdata struct tegra_drive_pingroup_config olympus_drive_pinmux[] = {
 	DEFAULT_DRIVE(VI1),
 	DEFAULT_DRIVE(SDIO1),
@@ -77,8 +77,8 @@ static __initdata struct tegra_drive_pingroup_config olympus_drive_pinmux[] = {
 	SET_DRIVE(VI2, DISABLE, ENABLE, DIV_1, 31, 31, FASTEST, FASTEST),  /* I2C3 */
 	SET_DRIVE(AO1, DISABLE, ENABLE, DIV_1, 31, 31, FASTEST, FASTEST),  /* DVC */
 };
+#endif
 
-/*
 static __initdata struct tegra_drive_pingroup_config olympus_drive_pinmux[] = {
 	{TEGRA_DRIVE_PINGROUP_DBG,     TEGRA_HSM_DISABLE, TEGRA_SCHMITT_ENABLE,  TEGRA_DRIVE_DIV_1, TEGRA_PULL_31, TEGRA_PULL_31, TEGRA_SLEW_SLOWEST, TEGRA_SLEW_SLOWEST},
 	{TEGRA_DRIVE_PINGROUP_VI1,     TEGRA_HSM_DISABLE, TEGRA_SCHMITT_ENABLE,  TEGRA_DRIVE_DIV_1, TEGRA_PULL_31, TEGRA_PULL_31, TEGRA_SLEW_SLOWEST, TEGRA_SLEW_SLOWEST},
@@ -86,7 +86,7 @@ static __initdata struct tegra_drive_pingroup_config olympus_drive_pinmux[] = {
 	{TEGRA_DRIVE_PINGROUP_SDIO1,   TEGRA_HSM_DISABLE, TEGRA_SCHMITT_ENABLE,  TEGRA_DRIVE_DIV_1, TEGRA_PULL_31, TEGRA_PULL_31, TEGRA_SLEW_SLOWEST, TEGRA_SLEW_SLOWEST},
 	{TEGRA_DRIVE_PINGROUP_DDC,     TEGRA_HSM_DISABLE, TEGRA_SCHMITT_ENABLE,  TEGRA_DRIVE_DIV_1, TEGRA_PULL_31, TEGRA_PULL_31, TEGRA_SLEW_SLOWEST, TEGRA_SLEW_SLOWEST},
 };
-*/
+
 static __initdata struct tegra_pingroup_config olympus_pinmux[] = {
 	{TEGRA_PINGROUP_ATA,             TEGRA_MUX_SAFE,           TEGRA_PUPD_PULL_UP,   TEGRA_TRI_NORMAL},
 	{TEGRA_PINGROUP_ATB,             TEGRA_MUX_SDIO4,         TEGRA_PUPD_PULL_UP,   TEGRA_TRI_NORMAL},

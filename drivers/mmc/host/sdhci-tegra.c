@@ -37,6 +37,11 @@
 #include "sdhci-pltfm.h"
 #include "sdhci.h"
 
+#ifdef CONFIG_MACH_OLYMPUS
+#define TEGRA_GPIO_PI5		69			//card detect gpio
+#define TEGRA_GPIO_PT3 		155			//gpio for external sdcard power
+#endif
+
 #define SDHCI_VENDOR_CLOCK_CNTRL	0x100
 #define SDHCI_VENDOR_CLOCK_CNTRL_SDMMC_CLK	0x1
 #define SDHCI_VENDOR_CLOCK_CNTRL_PADPIPE_CLKEN_OVERRIDE	0x8
@@ -71,6 +76,8 @@
 
 #define SD_SEND_TUNING_PATTERN	19
 #define MAX_TAP_VALUES	256
+
+
 
 static unsigned int tegra_sdhost_min_freq;
 static unsigned int tegra_sdhost_std_freq;
@@ -861,7 +868,7 @@ static int tegra_sdhci_suspend(struct sdhci_host *sdhci, pm_message_t state)
 {
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
 	struct tegra_sdhci_host *tegra_host = pltfm_host->priv;
-#if defined (CONFIG_MACH_OLYMPUS)
+#ifdef CONFIG_MACH_OLYMPUS
 	if (sdhci->mmc->pm_flags & MMC_PM_KEEP_POWER) {
 		int div = 0;
 		u16 clk;
@@ -893,7 +900,13 @@ static int tegra_sdhci_suspend(struct sdhci_host *sdhci, pm_message_t state)
 				regulator_disable(tegra_host->vdd_io_reg);
 			if (tegra_host->vdd_slot_reg) {
 				regulator_disable(tegra_host->vdd_slot_reg);
+#ifdef CONFIG_MACH_OLYMPUS
+				printk(KERN_INFO "%s: TEGRA_GPIO_PI5 disable irq",__func__);
+				disable_irq_nosync(gpio_to_irq(TEGRA_GPIO_PI5));
 				printk(KERN_INFO "%s: disabling vddio_sd_slot regulator\n", __func__);
+				printk(KERN_INFO "%s: TEGRA_GPIO_PT3 = 0 (sdcard ext off)",__func__);
+				gpio_set_value(TEGRA_GPIO_PT3, 0);
+#endif
 			}
 			tegra_host->is_rail_enabled = 0;
 		}
@@ -911,8 +924,14 @@ static int tegra_sdhci_resume(struct sdhci_host *sdhci)
 	if (tegra_host->card_present) {
 		if (!tegra_host->is_rail_enabled) {
 			if (tegra_host->vdd_slot_reg) {
-				regulator_enable(tegra_host->vdd_slot_reg);
+#ifdef CONFIG_MACH_OLYMPUS
+				printk(KERN_INFO "%s: TEGRA_GPIO_PT3 = 1 (sdcard ext on)",__func__);
+				gpio_set_value(TEGRA_GPIO_PT3, 1);
 				printk(KERN_INFO "%s: enabling vddio_sd_slot regulator\n", __func__);
+				printk(KERN_INFO "%s: TEGRA_GPIO_PI5 enable irq",__func__);
+				enable_irq(gpio_to_irq(TEGRA_GPIO_PI5));
+#endif
+				regulator_enable(tegra_host->vdd_slot_reg);
 			}
 			if (tegra_host->vdd_io_reg) {
 				regulator_enable(tegra_host->vdd_io_reg);
@@ -1125,7 +1144,14 @@ static int __devinit sdhci_tegra_probe(struct platform_device *pdev)
 			if (tegra_host->vdd_io_reg)
 				regulator_enable(tegra_host->vdd_io_reg);
 			tegra_host->is_rail_enabled = 1;
+#ifdef CONFIG_MACH_OLYMPUS
+		} else {
+				printk(KERN_INFO "%s: TEGRA_GPIO_PT3 = 0 (sdcard ext off)",__func__);
+				gpio_set_value(TEGRA_GPIO_PT3, 0);
 		}
+#else
+		}
+#endif
 	}
 
 	clk = clk_get(mmc_dev(host->mmc), NULL);

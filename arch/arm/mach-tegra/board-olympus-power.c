@@ -693,8 +693,8 @@ struct regulator_consumer_supply cpcap_vwlan1_consumers[] = {
 };
 
 struct regulator_consumer_supply cpcap_vwlan2_consumers[] = {
-	//REGULATOR_CONSUMER("vwlan2", NULL),
-	REGULATOR_CONSUMER("vddio_sdmmc", "sdhci-tegra.0"),
+	REGULATOR_CONSUMER("vwlan2", NULL),
+//	REGULATOR_CONSUMER("vddio_sdmmc", "sdhci-tegra.0"),
 	/* Powers the tegra usb block, cannot be named vusb, since
 	   this name already exists in regulator-cpcap.c. */
 	REGULATOR_CONSUMER("avdd_usb", NULL), /* usb */
@@ -1041,7 +1041,9 @@ static void olympus_board_suspend(int lp_state, enum suspend_stage stg)
 		tegra_console_uart_suspend();
 	if ((lp_state == TEGRA_SUSPEND_LP0) && (stg == TEGRA_SUSPEND_BEFORE_CPU))
 			{
-				printk(KERN_INFO "%s: entering...\n", __func__);
+		printk(KERN_INFO "%s: entering...\n", __func__);
+#if 0
+
 				tegra_pinmux_set_tristate(5 /*TEGRA_PINGROUP_CDEV*/, TEGRA_TRI_TRISTATE);
 				tegra_pinmux_set_tristate(8 /*TEGRA_PINGROUP_CSUS*/, TEGRA_TRI_TRISTATE);
 				tegra_pinmux_set_tristate(9 /*TEGRA_PINGROUP_DAP1*/, TEGRA_TRI_TRISTATE);
@@ -1062,23 +1064,27 @@ static void olympus_board_suspend(int lp_state, enum suspend_stage stg)
 				tegra_pinmux_set_tristate(105/*TEGRA_PINGROUP_UCB*/, TEGRA_TRI_TRISTATE);
 				tegra_pinmux_set_pullupdown(108/*TEGRA_PINGROUP_DDRC*/, TEGRA_PUPD_PULL_UP);
 
-				printk(KERN_INFO "%s: TEGRA_GPIO_PI5 disable irq",__func__);
-				disable_irq_nosync(gpio_to_irq(TEGRA_GPIO_PI5));
-
-				get_gpio_settings();
+//				printk(KERN_INFO "%s: TEGRA_GPIO_PM2 = 0",__func__);
+//				gpio_set_value(TEGRA_GPIO_PM2, 0);
+#endif
 				pinmux_show();
+				get_gpio_settings();
 				printk(KERN_INFO "%s: exiting...\n", __func__);
 			};
+
 };
 
 static void olympus_board_resume(int lp_state, enum resume_stage stg)
 {
 	int rc;
+	printk(KERN_INFO "%s: entering...\n", __func__);
 	if ((lp_state == TEGRA_SUSPEND_LP1) && (stg == TEGRA_RESUME_AFTER_CPU))
 		tegra_console_uart_resume();
-
 	if ((lp_state == TEGRA_SUSPEND_LP0) && (stg == TEGRA_RESUME_AFTER_CPU)) {
 		printk(KERN_INFO "%s: entering...\n", __func__);
+		//				printk(KERN_INFO "%s: TEGRA_GPIO_PM2 = 0",__func__);
+		//				gpio_set_value(TEGRA_GPIO_PM2, 1);
+#if 0
 		tegra_pinmux_set_tristate(5 /*TEGRA_PINGROUP_CDEV*/, TEGRA_TRI_NORMAL);
 		tegra_pinmux_set_tristate(8 /*TEGRA_PINGROUP_CSUS*/, TEGRA_TRI_NORMAL);
 		tegra_pinmux_set_tristate(9 /*TEGRA_PINGROUP_DAP1*/, TEGRA_TRI_NORMAL);
@@ -1098,8 +1104,7 @@ static void olympus_board_resume(int lp_state, enum resume_stage stg)
 		tegra_pinmux_set_tristate(104/*TEGRA_PINGROUP_UCA*/, TEGRA_TRI_NORMAL);
 		tegra_pinmux_set_tristate(105/*TEGRA_PINGROUP_UCB*/, TEGRA_TRI_NORMAL);
 		tegra_pinmux_set_pullupdown(108/*TEGRA_PINGROUP_DDRC*/, TEGRA_PUPD_NORMAL);
-		printk(KERN_INFO "%s: TEGRA_GPIO_PI5 enable irq",__func__);
-		enable_irq(gpio_to_irq(TEGRA_GPIO_PI5));
+#endif
 		get_gpio_settings();
 		printk(KERN_INFO "%s: exiting...\n", __func__);
 	}

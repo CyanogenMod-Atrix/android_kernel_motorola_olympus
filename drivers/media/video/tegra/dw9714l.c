@@ -29,7 +29,8 @@
 #define SETTLETIME_MS (50)
 #define FOCAL_LENGTH (4.42f)
 #define FNUMBER (2.8f)
-#define DEFAULT_MODE (MODE_LSC);
+//#define DEFAULT_MODE (MODE_LSC);
+#define DEFAULT_MODE (MODE_DIRECT);
 
 #define PROT_OFF (0xECA3)
 #define PROT_ON (0xDC51)

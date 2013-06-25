@@ -315,6 +315,9 @@ static struct platform_device olympus_bcm4329_rfkill_device = {
 
 static noinline void __init olympus_bt_rfkill(void)
 {
+	clk_add_alias("bcm4329_32k_clk", olympus_bcm4329_rfkill_device.name, \
+					"blink", NULL);
+
 	olympus_bcm4329_rfkill_resources[0].start =
 		olympus_bcm4329_rfkill_resources[0].end = TEGRA_GPIO_PU4;
 	printk("%s: registering bcm4329_rfkill device...\n", __func__);

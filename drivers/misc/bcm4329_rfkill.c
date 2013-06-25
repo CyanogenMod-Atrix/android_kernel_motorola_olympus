@@ -265,6 +265,7 @@ static int bcm4329_rfkill_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	bcm4329_rfkill->bt_32k_clk = clk_get(&pdev->dev, "bcm4329_32k_clk");
+	bcm4329_rfkill->bt_32k_clk = clk_get(&pdev->dev, "blink");
 	if (IS_ERR(bcm4329_rfkill->bt_32k_clk)) {
 		pr_warn("%s: can't find bcm4329_32k_clk.\
 				assuming 32k clock to chip\n", __func__);
