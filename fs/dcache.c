@@ -36,6 +36,7 @@
 #include <linux/bit_spinlock.h>
 #include <linux/rculist_bl.h>
 #include <linux/prefetch.h>
+#include <linux/earlysuspend.h>
 #include "internal.h"
 
 /*
@@ -2928,6 +2929,22 @@ ino_t find_inode_number(struct dentry *dir, struct qstr *name)
 }
 EXPORT_SYMBOL(find_inode_number);
 
+static void cpressure_early_suspend(struct early_suspend *handler)
+{
+	sysctl_vfs_cache_pressure = 10;
+}
+
+static void cpressure_late_resume(struct early_suspend *handler)
+{
+	sysctl_vfs_cache_pressure = CONFIG_VFS_CACHE_PRESSURE;
+}
+
+static struct early_suspend cpressure_suspend = {
+	.suspend = cpressure_early_suspend,
+	.resume = cpressure_late_resume,
+};
+
+
 static __initdata unsigned long dhash_entries;
 static int __init set_dhash_entries(char *str)
 {
@@ -3023,4 +3040,6 @@ void __init vfs_caches_init(unsigned long mempages)
 	mnt_init();
 	bdev_cache_init();
 	chrdev_init();
+
+	register_early_suspend(&cpressure_suspend);
 }
