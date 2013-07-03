@@ -817,17 +817,15 @@ static int cpufreq_add_dev_interface(unsigned int cpu,
 		if (ret)
 			goto err_out_kobj_put;
 	}
+#ifndef CONFIG_MACH_OLYMPUS
 	if (cpufreq_driver->target) {
+#endif
 		ret = sysfs_create_file(&policy->kobj, &scaling_cur_freq.attr);
 		if (ret)
 			goto err_out_kobj_put;
+#ifndef CONFIG_MACH_OLYMPUS
 	}
-	if (cpufreq_driver->bios_limit) {
-		ret = sysfs_create_file(&policy->kobj, &bios_limit.attr);
-		if (ret)
-			goto err_out_kobj_put;
-	}
-
+#endif
 	spin_lock_irqsave(&cpufreq_driver_lock, flags);
 	for_each_cpu(j, policy->cpus) {
 		if (!cpu_online(j))

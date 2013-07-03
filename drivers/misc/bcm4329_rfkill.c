@@ -47,7 +47,7 @@ struct bcm4329_rfkill_data {
 };
 
 static struct bcm4329_rfkill_data *bcm4329_rfkill;
-static 	struct rfkill *bt_rfkill;
+static struct rfkill *bt_rfkill;
 
 static int bcm4329_bt_rfkill_set_power(void *data, bool blocked)
 {
@@ -129,23 +129,28 @@ static enum hrtimer_restart enter_lpm(struct hrtimer *timer)
 void bcm_bt_lpm_exit_lpm_locked(struct uart_port *uport)
 {
 	bt_lpm.uport = uport;
-
+	printk(KERN_INFO "%s", __func__);
+#if 0
 	hrtimer_try_to_cancel(&bt_lpm.enter_lpm_timer);
 
 	set_wake_locked(1);
 
 	hrtimer_start(&bt_lpm.enter_lpm_timer, bt_lpm.enter_lpm_delay,
 		HRTIMER_MODE_REL);
+#endif
 }
 EXPORT_SYMBOL(bcm_bt_lpm_exit_lpm_locked);
 
 void bcm_bt_rx_done_locked(struct uart_port *uport)
 {
+	printk(KERN_INFO "%s", __func__);
+#if 0
 	if (bt_lpm.host_wake) {
 		/* Release wake in 500 ms so that higher layers can take it */
 		wake_lock_timeout(&bt_lpm.wake_lock, HZ/2);
 		bt_lpm.rx_wake_lock_taken = true;
 	}
+#endif
 }
 EXPORT_SYMBOL(bcm_bt_rx_done_locked);
 
@@ -223,6 +228,7 @@ static int bcm4329_bt_lpm_init(struct platform_device *pdev)
 	ret = request_irq(irq, host_wake_isr, IRQF_TRIGGER_HIGH,
 				"bt host_wake", NULL);
 	if (ret) {
+		pr_info("%s: request_irq problem, ret=%d\n",__func__, ret);
 		tegra_gpio_disable(bcm4329_rfkill->gpio_wake);
 		tegra_gpio_disable(bcm4329_rfkill->gpio_host_wake);
 
@@ -233,6 +239,7 @@ static int bcm4329_bt_lpm_init(struct platform_device *pdev)
 
 	ret = irq_set_irq_wake(irq, 1);
 	if (ret) {
+		pr_info("%s: irq_set_irq_wake problem, ret=%d\n",__func__, ret);
 		tegra_gpio_disable(bcm4329_rfkill->gpio_wake);
 		tegra_gpio_disable(bcm4329_rfkill->gpio_host_wake);
 
@@ -254,7 +261,7 @@ static int bcm4329_bt_lpm_init(struct platform_device *pdev)
 
 static int bcm4329_rfkill_probe(struct platform_device *pdev)
 {
-	struct rfkill *bt_rfkill;
+	//struct rfkill *bt_rfkill;
 	struct resource *res;
 	int ret;
 	bool enable = false;  /* off */
@@ -325,7 +332,7 @@ static int bcm4329_rfkill_probe(struct platform_device *pdev)
 		rfkill_destroy(bt_rfkill);
 		goto free_bcm_res;
 	}
-/*
+
 	res = platform_get_resource_byname(pdev, IORESOURCE_IO,
 						"bcm4329_wake_gpio");
 	if (res) {
@@ -349,15 +356,15 @@ static int bcm4329_rfkill_probe(struct platform_device *pdev)
 	if (unlikely(ret)) {
 		goto free_lpm_res;
 	}
-*/
+
 	return 0;
-/*
+
 free_lpm_res:
 	if (bcm4329_rfkill->gpio_wake)
 		gpio_free(bcm4329_rfkill->gpio_wake);
 	if (bcm4329_rfkill->gpio_host_wake)
 		gpio_free(bcm4329_rfkill->gpio_host_wake);
-*/
+
 free_bcm_res:
 	if (bcm4329_rfkill->gpio_shutdown)
 		gpio_free(bcm4329_rfkill->gpio_shutdown);
@@ -383,12 +390,12 @@ static int bcm4329_rfkill_remove(struct platform_device *pdev)
 		gpio_free(bcm4329_rfkill->gpio_shutdown);
 	if (bcm4329_rfkill->gpio_reset)
 		gpio_free(bcm4329_rfkill->gpio_reset);
-/*
+
 	if (bcm4329_rfkill->gpio_wake)
 		gpio_free(bcm4329_rfkill->gpio_wake);
 	if (bcm4329_rfkill->gpio_host_wake)
 		gpio_free(bcm4329_rfkill->gpio_host_wake);
-*/
+
 	kfree(bcm4329_rfkill);
 
 	return 0;

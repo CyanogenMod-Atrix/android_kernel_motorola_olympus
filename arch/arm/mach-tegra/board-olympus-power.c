@@ -441,7 +441,7 @@ struct cpcap_leds tegra_cpcap_leds = {
 	.rgb_led = {
 		.rgb_on = 0x0053,
 		.regulator = "sw5",  /* set to NULL below for products with RGB LED on B+ */
-		.regulator_macro_controlled = true,
+		.regulator_macro_controlled = false,
 	},
 };
 
@@ -648,6 +648,7 @@ struct regulator_consumer_supply cpcap_sw2_consumers[] = {
 
 struct regulator_consumer_supply cpcap_sw3_consumers[] = {
 	REGULATOR_CONSUMER("sw3", NULL ),/* VIO */
+	REGULATOR_SUPPLY("vddio_sys", NULL),
 };
 
 struct regulator_consumer_supply cpcap_sw4_consumers[] = {
@@ -727,7 +728,7 @@ static struct regulator_init_data cpcap_regulator[CPCAP_NUM_REGULATORS] = {
 			.max_uV			= 1475000,
 			.valid_ops_mask		= REGULATOR_CHANGE_STATUS |
                                                   REGULATOR_CHANGE_VOLTAGE,
-            .always_on		= 1,
+       //     .always_on		= 1,
 		},
 		.num_consumer_supplies	= ARRAY_SIZE(cpcap_sw1_consumers),
 		.consumer_supplies	= cpcap_sw1_consumers,
@@ -738,7 +739,7 @@ static struct regulator_init_data cpcap_regulator[CPCAP_NUM_REGULATORS] = {
 			.max_uV			= 1475000,
 			.valid_ops_mask		= REGULATOR_CHANGE_STATUS |
                                                   REGULATOR_CHANGE_VOLTAGE,
-            .always_on		= 1,
+          //  .always_on		= 1,
 		},
 		.num_consumer_supplies	= ARRAY_SIZE(cpcap_sw2_consumers),
 		.consumer_supplies	= cpcap_sw2_consumers,
@@ -749,7 +750,7 @@ static struct regulator_init_data cpcap_regulator[CPCAP_NUM_REGULATORS] = {
 			.max_uV			= 1875000,
 			.valid_ops_mask		= REGULATOR_CHANGE_STATUS |
                                                  REGULATOR_CHANGE_VOLTAGE,
-            .always_on		= 1,
+        //    .always_on		= 1,
 		},
 		.num_consumer_supplies	= ARRAY_SIZE(cpcap_sw3_consumers),
 		.consumer_supplies	= cpcap_sw3_consumers,
@@ -760,7 +761,7 @@ static struct regulator_init_data cpcap_regulator[CPCAP_NUM_REGULATORS] = {
 			.max_uV			= 1475000,
 			.valid_ops_mask		= REGULATOR_CHANGE_STATUS |
                                                   REGULATOR_CHANGE_VOLTAGE,
-            .always_on		= 1,
+         //   .always_on		= 1,
 		},
 		.num_consumer_supplies	= ARRAY_SIZE(cpcap_sw4_consumers),
 		.consumer_supplies	= cpcap_sw4_consumers,
@@ -832,7 +833,7 @@ static struct regulator_init_data cpcap_regulator[CPCAP_NUM_REGULATORS] = {
 			.min_uV			= 1500000,
 			.max_uV			= 3000000,
 			.valid_ops_mask		= REGULATOR_CHANGE_STATUS,
-            .always_on		= 1,
+         //   .always_on		= 1,
 		},
 		.num_consumer_supplies	= ARRAY_SIZE(cpcap_vsdio_consumers),
 		.consumer_supplies	= cpcap_vsdio_consumers,
@@ -843,7 +844,7 @@ static struct regulator_init_data cpcap_regulator[CPCAP_NUM_REGULATORS] = {
 			.max_uV			= 1800000,
 			.valid_ops_mask		= 0,
 			.apply_uV		= 1,
-            .always_on		= 1,
+       //     .always_on		= 1,
 		},
 		.num_consumer_supplies = ARRAY_SIZE(cpcap_vpll_consumers),
 		.consumer_supplies = cpcap_vpll_consumers,
@@ -900,7 +901,7 @@ static struct regulator_init_data cpcap_regulator[CPCAP_NUM_REGULATORS] = {
 			.min_uV			= 1800000,
 			.max_uV			= 2900000,
 			.valid_ops_mask		= 0,
-			.always_on		= 1,
+		//	.always_on		= 1,
 		},
 		.num_consumer_supplies	= ARRAY_SIZE(cpcap_vsimcard_consumers),
 		.consumer_supplies	= cpcap_vsimcard_consumers,
@@ -921,7 +922,7 @@ static struct regulator_init_data cpcap_regulator[CPCAP_NUM_REGULATORS] = {
 			.max_uV			= 3300000,
 			.valid_ops_mask		= REGULATOR_CHANGE_STATUS,
 			.apply_uV		= 1,
-			.always_on		= 1,
+		//	.always_on		= 1,
 		},
 		.num_consumer_supplies	= ARRAY_SIZE(cpcap_vusb_consumers),
 		.consumer_supplies	= cpcap_vusb_consumers,
@@ -1043,7 +1044,6 @@ static void olympus_board_suspend(int lp_state, enum suspend_stage stg)
 			{
 		printk(KERN_INFO "%s: entering...\n", __func__);
 #if 0
-
 				tegra_pinmux_set_tristate(5 /*TEGRA_PINGROUP_CDEV*/, TEGRA_TRI_TRISTATE);
 				tegra_pinmux_set_tristate(8 /*TEGRA_PINGROUP_CSUS*/, TEGRA_TRI_TRISTATE);
 				tegra_pinmux_set_tristate(9 /*TEGRA_PINGROUP_DAP1*/, TEGRA_TRI_TRISTATE);
@@ -1064,10 +1064,10 @@ static void olympus_board_suspend(int lp_state, enum suspend_stage stg)
 				tegra_pinmux_set_tristate(105/*TEGRA_PINGROUP_UCB*/, TEGRA_TRI_TRISTATE);
 				tegra_pinmux_set_pullupdown(108/*TEGRA_PINGROUP_DDRC*/, TEGRA_PUPD_PULL_UP);
 
-//				printk(KERN_INFO "%s: TEGRA_GPIO_PM2 = 0",__func__);
-//				gpio_set_value(TEGRA_GPIO_PM2, 0);
+				printk(KERN_INFO "%s: TEGRA_GPIO_PM2 = 0",__func__);
+				gpio_set_value(TEGRA_GPIO_PM2, 0);
 #endif
-				pinmux_show();
+				//pinmux_show();
 				get_gpio_settings();
 				printk(KERN_INFO "%s: exiting...\n", __func__);
 			};
@@ -1077,14 +1077,14 @@ static void olympus_board_suspend(int lp_state, enum suspend_stage stg)
 static void olympus_board_resume(int lp_state, enum resume_stage stg)
 {
 	int rc;
-	printk(KERN_INFO "%s: entering...\n", __func__);
 	if ((lp_state == TEGRA_SUSPEND_LP1) && (stg == TEGRA_RESUME_AFTER_CPU))
 		tegra_console_uart_resume();
 	if ((lp_state == TEGRA_SUSPEND_LP0) && (stg == TEGRA_RESUME_AFTER_CPU)) {
 		printk(KERN_INFO "%s: entering...\n", __func__);
-		//				printk(KERN_INFO "%s: TEGRA_GPIO_PM2 = 0",__func__);
-		//				gpio_set_value(TEGRA_GPIO_PM2, 1);
 #if 0
+		printk(KERN_INFO "%s: TEGRA_GPIO_PM2 = 1",__func__);
+		gpio_set_value(TEGRA_GPIO_PM2, 1);
+
 		tegra_pinmux_set_tristate(5 /*TEGRA_PINGROUP_CDEV*/, TEGRA_TRI_NORMAL);
 		tegra_pinmux_set_tristate(8 /*TEGRA_PINGROUP_CSUS*/, TEGRA_TRI_NORMAL);
 		tegra_pinmux_set_tristate(9 /*TEGRA_PINGROUP_DAP1*/, TEGRA_TRI_NORMAL);
@@ -1105,7 +1105,6 @@ static void olympus_board_resume(int lp_state, enum resume_stage stg)
 		tegra_pinmux_set_tristate(105/*TEGRA_PINGROUP_UCB*/, TEGRA_TRI_NORMAL);
 		tegra_pinmux_set_pullupdown(108/*TEGRA_PINGROUP_DDRC*/, TEGRA_PUPD_NORMAL);
 #endif
-		get_gpio_settings();
 		printk(KERN_INFO "%s: exiting...\n", __func__);
 	}
 };

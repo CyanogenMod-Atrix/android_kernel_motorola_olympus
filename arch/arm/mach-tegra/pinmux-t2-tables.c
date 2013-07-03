@@ -288,7 +288,7 @@ static int tegra_pinmux_suspend(void)
 {
 	unsigned int i;
 	u32 *ctx = pinmux_reg;
-
+	printk(KERN_INFO "%s\n", __func__);
 	for (i = 0; i < PIN_MUX_CTL_REG_NUM; i++)
 		*ctx++ = pg_readl(PIN_MUX_CTL_REG_A + i*4);
 
@@ -308,7 +308,7 @@ static void tegra_pinmux_resume(void)
 {
 	unsigned int i;
 	u32 *ctx = pinmux_reg;
-
+	printk(KERN_INFO "%s\n", __func__);
 	for (i = 0; i < PIN_MUX_CTL_REG_NUM; i++)
 		pg_writel(*ctx++, PIN_MUX_CTL_REG_A + i*4);
 

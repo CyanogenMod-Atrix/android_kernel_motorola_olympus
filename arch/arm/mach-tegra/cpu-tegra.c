@@ -754,23 +754,27 @@ static struct cpufreq_driver tegra_cpufreq_driver = {
 static void tegra_cpu_early_suspend(struct early_suspend *h)
 {
 	tegra_cpu_user_cap_set(456000);
+#if 0
 	mutex_lock(&early_mutex);
 	/* turn off 2nd cpu ALWAYS */
 	if (num_online_cpus() > 1)
 		cpu_down(1);
 
 	mutex_unlock(&early_mutex);
+#endif
 }
 
 static void tegra_cpu_late_resume(struct early_suspend *h)
 {
 	tegra_cpu_user_cap_set(1000000);
+#if 0
 	mutex_lock(&early_mutex);
 	/* restore dual core operations */
 	if (num_online_cpus() < 2)
 		cpu_up(1);
 
 	mutex_unlock(&early_mutex);
+#endif
 }
 
 static struct early_suspend tegra_cpu_early_suspend_handler = {

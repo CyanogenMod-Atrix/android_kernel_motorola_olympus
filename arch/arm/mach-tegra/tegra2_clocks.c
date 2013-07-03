@@ -2555,6 +2555,7 @@ struct clk_duplicate tegra_clk_duplicates[] = {
 	CLK_DUPLICATE("usbd", "tegra-otg", NULL),
 	CLK_DUPLICATE("hdmi", "tegradc.0", "hdmi"),
 	CLK_DUPLICATE("hdmi", "tegradc.1", "hdmi"),
+	CLK_DUPLICATE("dsia", "tegradc.0", "dsia"),
 	CLK_DUPLICATE("dsia", "tegradc.1", "dsia"),
 	CLK_DUPLICATE("pwm", "tegra_pwm.0", NULL),
 	CLK_DUPLICATE("pwm", "tegra_pwm.1", NULL),
@@ -2568,9 +2569,9 @@ struct clk_duplicate tegra_clk_duplicates[] = {
 	CLK_DUPLICATE("cop", "tegra-avp", "cop"),
 	CLK_DUPLICATE("vde", "tegra-aes", "vde"),
 	CLK_DUPLICATE("twd", "smp_twd", NULL),
+	CLK_DUPLICATE("sbc1", "spi_slave_tegra.0", NULL),
 	CLK_DUPLICATE("bsea", "tegra-aes", "bsea"),
-	CLK_DUPLICATE("usbd", "cpcap-otg", NULL), //added
-	CLK_DUPLICATE("sbc1", "spi_slave_tegra.0", NULL), //added
+	CLK_DUPLICATE("usbd", "cpcap-otg", NULL),
 };
 
 #define CLK(dev, con, ck)	\

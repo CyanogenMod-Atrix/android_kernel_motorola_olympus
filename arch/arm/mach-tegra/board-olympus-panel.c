@@ -43,6 +43,7 @@
 
 #include "board.h"
 #include "board-olympus.h"
+#include "cpu-tegra.h"
 #include "devices.h"
 #include "gpio-names.h"
 #include "fuse.h"
@@ -322,7 +323,7 @@ static struct tegra_dsi_out olympus_dsi_out = {
 		.t_clkpost_ns = 10,
 		//.t_clkzero_ns = 13,
 		.t_clkzero_ns = 10,  //WAR
-		.t_tlpx_ns =  2,
+		.t_tlpx_ns =  3,
 	},
 };*/
 
@@ -330,9 +331,12 @@ static struct tegra_dsi_out olympus_dsi_out = {
 		.dsi_instance = 0,
 		.n_data_lanes = 2,
 		.refresh_rate = 60,
-		.lp_cmd_mode_freq_khz = 214500,
+		//.lp_cmd_mode_freq_khz = 214500,
+		.lp_cmd_mode_freq_khz = 20000,
+		.lp_read_cmd_mode_freq_khz = 200000,
+		//.max_panel_freq_khz = 229500,
 		.panel_reset = true,	/* resend the init sequence on each resume */
-		.panel_reset_timeout_msec = 120,
+		.panel_reset_timeout_msec = 202,
 		.panel_has_frame_buffer = true,
 		.power_saving_suspend = true,	/* completely shutdown the panel */
 		.pixel_format = TEGRA_DSI_PIXEL_FORMAT_24BIT_P,
@@ -344,6 +348,10 @@ static struct tegra_dsi_out olympus_dsi_out = {
 		.n_init_cmd = ARRAY_SIZE(dsi_olympus_init_cmd),
 		.dsi_suspend_cmd = dsi_suspend_cmd,
 		.n_suspend_cmd = ARRAY_SIZE(dsi_suspend_cmd),
+		//.panel_send_dc_frames = true,
+		.hs_cmd_mode_supported = true,
+		.hs_cmd_mode_on_blank_supported = true,
+		//.suspend_aggr = 1,
 		//.phy_timing = ???,
 };
 
@@ -527,6 +535,7 @@ static void olympus_panel_early_suspend(struct early_suspend *h)
 	int i;
 
 	printk(KERN_INFO "%s: here...\n", __func__);
+	tegra2_enable_autoplug();
 	for (i = 0; i < num_registered_fb; i++)
 		fb_blank(registered_fb[i], FB_BLANK_POWERDOWN);
 
@@ -546,6 +555,7 @@ static void olympus_panel_late_resume(struct early_suspend *h)
 	printk(KERN_INFO "%s: here...\n", __func__);
 	for (i = 0; i < num_registered_fb; i++)
 		fb_blank(registered_fb[i], FB_BLANK_UNBLANK);
+	tegra2_disable_autoplug();
 }
 #endif
 
@@ -554,9 +564,9 @@ int __init olympus_panel_init(void)
 	struct resource *res;
 	int err;
 
-/*	tegra_gpio_enable(HDMI_HPD_GPIO);
+	tegra_gpio_enable(HDMI_HPD_GPIO);
 	gpio_request(HDMI_HPD_GPIO, "hdmi_hpd");
-	gpio_direction_input(HDMI_HPD_GPIO);*/
+	gpio_direction_input(HDMI_HPD_GPIO);
 
 	// Lets check if we have weak tegra
 	if ((s_MotorolaDispInfo >> 31) & 0x01) {

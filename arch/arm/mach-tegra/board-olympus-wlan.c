@@ -297,9 +297,8 @@ int olympus_wifi_status_register(
 			pr_err("%s: Err %d gpio_direction irq\n", __func__, ret);
 			return -1;
 		}
-	tegra_gpio_enable(WLAN_IRQ_GPIO);
 
-	ret = gpio_request(WLAN_WOW_GPIO, "bcmsdh_sdmmc");
+/*	ret = gpio_request(WLAN_WOW_GPIO, "bcmsdh_sdmmc");
 	if (ret)
 		pr_err("%s: Error (%d) - gpio_reqest wow\n", __func__, ret);
 	else
@@ -307,7 +306,7 @@ int olympus_wifi_status_register(
 	if (ret) {
 		pr_err("%s: Err %d gpio_direction wow\n", __func__, ret);
 		return -1;
-	}
+	}*/
 	return 0;
  }
 
@@ -329,53 +328,6 @@ int olympus_wifi_status_register(
 	wlan_ctrl_ready = (ret == 0);
 	return ret;
  }
-
-#ifdef CONFIG_BCMDHD_WIFI_CONTROL_FUNC
-
- void bcm_wlan_power_on(int mode)
- {
-	if (0 == wlan_ctrl_ready) {
-		pr_err("%s WLAN control not ready\n", __func__);
-		return;
-	}
-	gpio_set_value(WLAN_REG_ON_GPIO, 0x1);
-	msleep_interruptible(100);
-	gpio_set_value(WLAN_RESET_GPIO, 0x1);
-	msleep_interruptible(100);
-	if (1 == mode){
-		//sdhci_tegra_wlan_detect();
-		msleep_interruptible(100);
-	}
- }
- EXPORT_SYMBOL(bcm_wlan_power_on);
-
- void bcm_wlan_power_off(int mode)
- {
-	if (0 == wlan_ctrl_ready) {
-		pr_err("%s WLAN control not ready\n", __func__);
-		return;
-	}
-	gpio_set_value(WLAN_RESET_GPIO, 0x0);
-	msleep_interruptible(100);
-	gpio_set_value(WLAN_REG_ON_GPIO, 0x0);
-	msleep_interruptible(100);
-	if (1 == mode){
-		//sdhci_tegra_wlan_detect();
-		msleep_interruptible(100);
-	}
- }
- EXPORT_SYMBOL(bcm_wlan_power_off);
-
- int bcm_wlan_get_irq(void)
- {
-	return gpio_to_irq(WLAN_IRQ_GPIO);
- }
- EXPORT_SYMBOL(bcm_wlan_get_irq);
-
- char *bcm_wlan_mac = olympus_wlan_mac;
- EXPORT_SYMBOL(bcm_wlan_mac);
-
-#endif /*  CONFIG_BCMDHD_WIFI_CONTROL_FUNC */
 
  /*
   * Parse the WLAN MAC ATAG

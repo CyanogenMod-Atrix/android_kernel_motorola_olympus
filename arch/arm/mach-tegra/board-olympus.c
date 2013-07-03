@@ -322,6 +322,9 @@ static noinline void __init olympus_bt_rfkill(void)
 		olympus_bcm4329_rfkill_resources[0].end = TEGRA_GPIO_PU4;
 	printk("%s: registering bcm4329_rfkill device...\n", __func__);
 
+	tegra_gpio_enable(TEGRA_GPIO_PU1);
+	tegra_gpio_enable(TEGRA_GPIO_PU6);
+
 	platform_device_register(&olympus_bcm4329_rfkill_device);
 	return;
 }

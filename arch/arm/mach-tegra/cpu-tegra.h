@@ -53,19 +53,68 @@ static inline void tegra_throttling_enable(bool enable)
 {}
 #endif /* CONFIG_TEGRA_THERMAL_THROTTLE */
 
-#if defined(CONFIG_TEGRA_AUTO_HOTPLUG) && !defined(CONFIG_ARCH_TEGRA_2x_SOC)
-int tegra_auto_hotplug_init(struct mutex *cpu_lock);
-void tegra_auto_hotplug_exit(void);
-void tegra_auto_hotplug_governor(unsigned int cpu_freq, bool suspend);
+#if defined(CONFIG_TEGRA_AUTO_HOTPLUG)
+
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+int tegra2_auto_hotplug_init(struct mutex *cpu_lock);
+void tegra2_auto_hotplug_exit(void);
+void tegra2_auto_hotplug_governor(unsigned int cpu_freq, bool suspend);
 #else
-static inline int tegra_auto_hotplug_init(struct mutex *cpu_lock)
-{ return 0; }
-static inline void tegra_auto_hotplug_exit(void)
-{ }
-static inline void tegra_auto_hotplug_governor(unsigned int cpu_freq,
-					       bool suspend)
-{ }
+int tegra3_auto_hotplug_init(struct mutex *cpu_lock);
+void tegra3_auto_hotplug_exit(void);
+void tegra3_auto_hotplug_governor(unsigned int cpu_freq, bool suspend);
 #endif
+
+static inline int tegra_auto_hotplug_init(struct mutex *cpu_lock)
+{
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+	return tegra2_auto_hotplug_init(cpu_lock);
+#else
+	return tegra3_auto_hotplug_init(cpu_lock);
+#endif
+}
+
+static inline void tegra_auto_hotplug_exit(void)
+{
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+	tegra2_auto_hotplug_exit();
+#else
+	tegra3_auto_hotplug_exit();
+#endif
+}
+
+static inline void tegra_auto_hotplug_governor(unsigned int cpu_freq,
+	bool suspend)
+{
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+	tegra2_auto_hotplug_governor(cpu_freq, suspend);
+#else
+	tegra3_auto_hotplug_governor(cpu_freq, suspend);
+#endif
+}
+
+#ifdef CONFIG_ARCH_TEGRA_2x_SOC
+void tegra2_enable_autoplug(void);
+void tegra2_disable_autoplug(void);
+#endif
+
+#else /* CONFIG_TEGRA_AUTO_HOTPLUG */
+
+static inline int tegra_auto_hotplug_init(struct mutex *cpu_lock)
+{
+	return 0;
+}
+
+static inline void tegra_auto_hotplug_exit(void)
+{
+}
+
+static inline void tegra_auto_hotplug_governor(unsigned int cpu_freq,
+	bool suspend)
+{
+}
+
+#endif /* CONFIG_TEGRA_AUTO_HOTPLUG */
 
 #ifdef CONFIG_TEGRA_EDP_LIMITS
 bool tegra_cpu_edp_favor_up(unsigned int n, int mp_overhead);
