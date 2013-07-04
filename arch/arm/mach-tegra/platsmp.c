@@ -173,6 +173,11 @@ fail:
 	flowctrl_writel(0, FLOW_CTRL_CPU_CSR(cpu));
 	return ret;
 }
+#ifdef CONFIG_TEGRA_AUTO_HOTPLUG
+static DEFINE_SPINLOCK(boot_lock);
+static DEFINE_PER_CPU(struct completion, cpu_killed);
+extern void tegra_hotplug_startup(void);
+#endif
 
 void __cpuinit platform_secondary_init(unsigned int cpu)
 {
@@ -182,6 +187,21 @@ void __cpuinit platform_secondary_init(unsigned int cpu)
 	if (!tegra_all_cpus_booted)
 		if (cpumask_equal(tegra_cpu_init_mask, cpu_present_mask))
 			tegra_all_cpus_booted = true;
+#ifdef CONFIG_TEGRA_AUTO_HOTPLUG
+	spin_lock(&boot_lock);
+	cpu_set(cpu, tegra_cpu_init_map);
+	INIT_COMPLETION(per_cpu(cpu_killed, cpu));
+	spin_unlock(&boot_lock);
+	printk(KERN_INFO "%s: after spin_lock...\n", __func__);
+#endif
+}
+
+unsigned long wfct(unsigned int cpu) {
+	return wait_for_completion_timeout(&per_cpu(cpu_killed, cpu), 100);
+}
+
+void compl(unsigned int cpu) {
+	complete(&per_cpu(cpu_killed, cpu));
 }
 
 int boot_secondary(unsigned int cpu, struct task_struct *idle)
@@ -276,6 +296,7 @@ void __init smp_init_cpus(void)
 
 void __init platform_smp_prepare_cpus(unsigned int max_cpus)
 {
+	int i;
 
 	/* Always mark the boot CPU as initialized. */
 	cpumask_set_cpu(0, to_cpumask(tegra_cpu_init_bits));
@@ -287,6 +308,12 @@ void __init platform_smp_prepare_cpus(unsigned int max_cpus)
 	   smp_init_cpus() which also means that it did not initialize the
 	   reset handler. Do it now before the secondary CPUs are started. */
 	tegra_cpu_reset_handler_init();
+
+#ifdef CONFIG_TEGRA_AUTO_HOTPLUG
+	for_each_present_cpu(i) {
+		init_completion(&per_cpu(cpu_killed, i));
+	}
+#endif
 
 #if defined(CONFIG_HAVE_ARM_SCU)
 	{

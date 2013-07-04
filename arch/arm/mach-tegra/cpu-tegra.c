@@ -529,7 +529,30 @@ int tegra_update_cpu_speed(unsigned long rate)
 		clk_set_rate(emc_clk, tegra_emc_to_cpu_ratio(freqs.new));
 		tegra_update_mselect_rate(freqs.new);
 	}
+#if 0
+	if (freqs.old > freqs.new) {
+		if (freqs.new<300000) {
+		//	mutex_lock(&early_mutex);
+			/* turn off 2nd cpu */
+			if (num_online_cpus() > 1) {
+				pr_info("%s: cpu frequency %d kHz, turning off second core\n",
+									__func__, freqs.new);
+				cpu_down(1);
+			}
+//			mutex_unlock(&early_mutex);
+		}
 
+	} else if (freqs.new>800000) {
+//		mutex_lock(&early_mutex);
+		/* turn on 2nd cpu */
+		if (num_online_cpus() < 2) {
+			pr_info("%s: cpu frequency %d kHz, turning on second core\n",
+							__func__, freqs.new);
+			cpu_up(1);
+		}
+//		mutex_unlock(&early_mutex);
+	}
+#endif
 	return 0;
 }
 
@@ -754,27 +777,25 @@ static struct cpufreq_driver tegra_cpufreq_driver = {
 static void tegra_cpu_early_suspend(struct early_suspend *h)
 {
 	tegra_cpu_user_cap_set(456000);
-#if 0
+
 	mutex_lock(&early_mutex);
 	/* turn off 2nd cpu ALWAYS */
 	if (num_online_cpus() > 1)
 		cpu_down(1);
 
 	mutex_unlock(&early_mutex);
-#endif
 }
 
 static void tegra_cpu_late_resume(struct early_suspend *h)
 {
 	tegra_cpu_user_cap_set(1000000);
-#if 0
+
 	mutex_lock(&early_mutex);
 	/* restore dual core operations */
 	if (num_online_cpus() < 2)
 		cpu_up(1);
 
 	mutex_unlock(&early_mutex);
-#endif
 }
 
 static struct early_suspend tegra_cpu_early_suspend_handler = {

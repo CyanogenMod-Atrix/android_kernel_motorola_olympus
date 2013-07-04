@@ -331,9 +331,9 @@ static struct tegra_dsi_out olympus_dsi_out = {
 		.dsi_instance = 0,
 		.n_data_lanes = 2,
 		.refresh_rate = 60,
-		.lp_cmd_mode_freq_khz = 214500,
-		//.lp_cmd_mode_freq_khz = 20000,
-		.//lp_read_cmd_mode_freq_khz = 200000,
+		//.lp_cmd_mode_freq_khz = 214500,
+		.lp_cmd_mode_freq_khz = 20000,
+		.lp_read_cmd_mode_freq_khz = 200000,
 		//.max_panel_freq_khz = 229500,
 		.panel_reset = true,	/* resend the init sequence on each resume */
 		.panel_reset_timeout_msec = 202,
@@ -535,7 +535,7 @@ static void olympus_panel_early_suspend(struct early_suspend *h)
 	int i;
 
 	printk(KERN_INFO "%s: here...\n", __func__);
-	tegra2_enable_autoplug();
+//	tegra2_enable_autoplug();
 	for (i = 0; i < num_registered_fb; i++)
 		fb_blank(registered_fb[i], FB_BLANK_POWERDOWN);
 
@@ -555,7 +555,7 @@ static void olympus_panel_late_resume(struct early_suspend *h)
 	printk(KERN_INFO "%s: here...\n", __func__);
 	for (i = 0; i < num_registered_fb; i++)
 		fb_blank(registered_fb[i], FB_BLANK_UNBLANK);
-	tegra2_disable_autoplug();
+//	tegra2_disable_autoplug();
 }
 #endif
 

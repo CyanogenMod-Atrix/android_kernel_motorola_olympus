@@ -39,6 +39,7 @@
 #include "clock.h"
 
 #define INITIAL_STATE		TEGRA_HP_DISABLED
+//#define INITIAL_STATE		TEGRA_HP_IDLE
 #define DELAY_MS		1
 
 static struct mutex *tegra2_cpu_lock;
@@ -162,6 +163,7 @@ int tegra2_auto_hotplug_init(struct mutex *cpu_lock)
 	 * Not bound to the issuer CPU (=> high-priority), has rescue worker
 	 * task, single-threaded, freezable.
 	 */
+#if 0
 	hotplug_wq = alloc_workqueue("cpu-tegra2",
 		WQ_UNBOUND | WQ_RESCUER | WQ_FREEZABLE, 1);
 	if (!hotplug_wq)
@@ -186,7 +188,7 @@ int tegra2_auto_hotplug_init(struct mutex *cpu_lock)
 	hp_state = INITIAL_STATE;
 	pr_info("Tegra auto-hotplug initialized: %s\n",
 		(hp_state == TEGRA_HP_DISABLED) ? "disabled" : "enabled");
-
+#endif
 	return 0;
 }
 
