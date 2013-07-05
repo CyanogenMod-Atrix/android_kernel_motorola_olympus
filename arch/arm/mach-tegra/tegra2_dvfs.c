@@ -51,7 +51,7 @@ static const int cpu_speedo_nominal_millivolts[] =
 
 static const int core_speedo_nominal_millivolts[] =
 /* spedo_id  0,    1,    2 */
-	{ 1225, 1200, 1300 };
+	{ 1225, 1100, 1300 };
 
 #define KHZ 1000
 #define MHZ 1000000
@@ -73,7 +73,7 @@ static struct dvfs_rail tegra2_dvfs_rail_vdd_core = {
 
 static struct dvfs_rail tegra2_dvfs_rail_vdd_aon = {
 	.reg_id = "vdd_aon",
-	.max_millivolts = 1300,
+	.max_millivolts = 1200,
 	.min_millivolts = 950,
 	.nominal_millivolts = 1100,
 #ifndef CONFIG_TEGRA_CORE_DVFS
