@@ -18,12 +18,13 @@
 
 #include <linux/serial_core.h>
 #include <linux/clk.h>
-
+#include <linux/tegra_uart.h>
+/*
 struct uart_clk_parent {
 	const char	*name;
 	struct clk	*parent_clk;
 	unsigned long	fixed_clk_rate;
-};
+};*/
 
 struct tegra_hsuart_platform_data {
 	void (*wake_peer)(struct uart_port *);

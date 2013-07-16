@@ -1037,13 +1037,13 @@ extern void	pinmux_show(void);
 
 static void olympus_board_suspend(int lp_state, enum suspend_stage stg)
 {
-	int rc;
+	int rc,ret;
 	if ((lp_state == TEGRA_SUSPEND_LP1) && (stg == TEGRA_SUSPEND_BEFORE_CPU))
 		tegra_console_uart_suspend();
 	if ((lp_state == TEGRA_SUSPEND_LP0) && (stg == TEGRA_SUSPEND_BEFORE_CPU))
 			{
-		printk(KERN_INFO "%s: entering...\n", __func__);
-#if 0
+				printk(KERN_INFO "%s: entering...\n", __func__);
+
 				tegra_pinmux_set_tristate(5 /*TEGRA_PINGROUP_CDEV*/, TEGRA_TRI_TRISTATE);
 				tegra_pinmux_set_tristate(8 /*TEGRA_PINGROUP_CSUS*/, TEGRA_TRI_TRISTATE);
 				tegra_pinmux_set_tristate(9 /*TEGRA_PINGROUP_DAP1*/, TEGRA_TRI_TRISTATE);
@@ -1066,7 +1066,37 @@ static void olympus_board_suspend(int lp_state, enum suspend_stage stg)
 
 				printk(KERN_INFO "%s: TEGRA_GPIO_PM2 = 0",__func__);
 				gpio_set_value(TEGRA_GPIO_PM2, 0);
-#endif
+
+				printk(KERN_INFO "%s: TEGRA_AKM8975_IRQ_GPIO",__func__);
+				tegra_gpio_disable(TEGRA_AKM8975_IRQ_GPIO);
+
+				printk(KERN_INFO "%s: TEGRA_GPIO_PT3 = 0",__func__);
+				gpio_set_value(TEGRA_GPIO_PT3, 0);
+
+				printk(KERN_INFO "%s: TEGRA_GPIO_PM5 disabling",__func__);
+				tegra_gpio_disable(TEGRA_GPIO_PM5);
+
+//				printk(KERN_INFO "%s: TEGRA_GPIO_PU1 = 0",__func__);
+//				gpio_set_value(TEGRA_GPIO_PU1, 0);
+
+//				printk(KERN_INFO "%s: disable_irq_wake(gpio_to_irq(TEGRA_GPIO_PU6))",__func__);
+//				ret = irq_set_irq_wake(gpio_to_irq(TEGRA_GPIO_PU6), 0);
+//				if (ret) pr_info("%s: irq_set_irq_wake problem, ret=%d\n",__func__, ret);
+
+//				printk(KERN_INFO "%s: TEGRA_GPIO_PU6 = 0",__func__);
+//				gpio_set_value(TEGRA_GPIO_PU6, 0);
+
+//				printk(KERN_INFO "%s: disable_irq_wake(gpio_to_irq(TEGRA_GPIO_PV2))",__func__);
+
+//				ret = irq_set_irq_wake(gpio_to_irq(TEGRA_GPIO_PV2), 0);
+//				if (ret) pr_info("%s: irq_set_irq_wake problem, ret=%d\n",__func__, ret);
+
+//				printk(KERN_INFO "%s: TEGRA_GPIO_PU0 = 0",__func__);
+//				gpio_set_value(TEGRA_GPIO_PU0, 0);
+
+//				printk(KERN_INFO "%s: TEGRA_GPIO_PU4 = 0",__func__);
+//				gpio_set_value(TEGRA_GPIO_PU4, 0);
+
 				//pinmux_show();
 				get_gpio_settings();
 				printk(KERN_INFO "%s: exiting...\n", __func__);
@@ -1081,9 +1111,6 @@ static void olympus_board_resume(int lp_state, enum resume_stage stg)
 		tegra_console_uart_resume();
 	if ((lp_state == TEGRA_SUSPEND_LP0) && (stg == TEGRA_RESUME_AFTER_CPU)) {
 		printk(KERN_INFO "%s: entering...\n", __func__);
-#if 0
-		printk(KERN_INFO "%s: TEGRA_GPIO_PM2 = 1",__func__);
-		gpio_set_value(TEGRA_GPIO_PM2, 1);
 
 		tegra_pinmux_set_tristate(5 /*TEGRA_PINGROUP_CDEV*/, TEGRA_TRI_NORMAL);
 		tegra_pinmux_set_tristate(8 /*TEGRA_PINGROUP_CSUS*/, TEGRA_TRI_NORMAL);
@@ -1104,7 +1131,35 @@ static void olympus_board_resume(int lp_state, enum resume_stage stg)
 		tegra_pinmux_set_tristate(104/*TEGRA_PINGROUP_UCA*/, TEGRA_TRI_NORMAL);
 		tegra_pinmux_set_tristate(105/*TEGRA_PINGROUP_UCB*/, TEGRA_TRI_NORMAL);
 		tegra_pinmux_set_pullupdown(108/*TEGRA_PINGROUP_DDRC*/, TEGRA_PUPD_NORMAL);
-#endif
+
+		printk(KERN_INFO "%s: TEGRA_GPIO_PM2 = 1",__func__);
+		gpio_set_value(TEGRA_GPIO_PM2, 1);
+
+		printk(KERN_INFO "%s: TEGRA_AKM8975_IRQ_GPIO",__func__);
+		tegra_gpio_enable(TEGRA_AKM8975_IRQ_GPIO);
+
+		printk(KERN_INFO "%s: TEGRA_GPIO_PT3 = 1",__func__);
+		gpio_set_value(TEGRA_GPIO_PT3, 1);
+
+		printk(KERN_INFO "%s: TEGRA_GPIO_PM5 disabling",__func__);
+		tegra_gpio_enable(TEGRA_GPIO_PM5);
+
+/*		printk(KERN_INFO "%s: TEGRA_GPIO_PU1 = 1",__func__);
+		gpio_set_value(TEGRA_GPIO_PU1, 1);
+
+		printk(KERN_INFO "%s: TEGRA_GPIO_PU6 = 1",__func__);
+		gpio_set_value(TEGRA_GPIO_PU6, 1);
+		printk(KERN_INFO "%s: enable_irq_wake(gpio_to_irq(TEGRA_GPIO_PU6))",__func__);
+		enable_irq_wake(gpio_to_irq(TEGRA_GPIO_PU6));
+
+		printk(KERN_INFO "%s: enable_irq_wake(gpio_to_irq(TEGRA_GPIO_PV2))",__func__);
+		enable_irq_wake(gpio_to_irq(TEGRA_GPIO_PV2));
+
+		printk(KERN_INFO "%s: enable_irq_wake(gpio_to_irq(TEGRA_GPIO_PI5))",__func__);
+		enable_irq_wake(gpio_to_irq(TEGRA_GPIO_PI5));
+
+		for (rc=0;rc<255;rc++) printk("gpio = %d => irq = %d\n", rc, gpio_to_irq(rc));*/
+
 		printk(KERN_INFO "%s: exiting...\n", __func__);
 	}
 };
@@ -1166,7 +1221,6 @@ void __init olympus_power_init(void)
 {
 	unsigned int i;
 	int error;
-	unsigned long pmc_cntrl_0;
 
 	void __iomem *chip_id = IO_ADDRESS(TEGRA_APB_MISC_BASE) + 0x804;
 	u32 minor;

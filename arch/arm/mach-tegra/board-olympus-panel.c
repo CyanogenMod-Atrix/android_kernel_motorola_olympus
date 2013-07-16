@@ -131,17 +131,30 @@ static struct resource olympus_disp2_resources[] = {
 
 static struct tegra_dc_mode olympus_panel_modes[] = {
 	{
-		.pclk = 30456000, //27000000 (pixclock for 50 refresh rate)
+/*
+		.pclk = 14720000, //30456000, //27000000 (pixclock for 50 refresh rate)		(h = 592 * v = 965 * 64)
 		.h_ref_to_sync = 4,
 		.v_ref_to_sync = 1,
 		.h_sync_width = 16,
 		.v_sync_width = 1,
-		.h_back_porch = 32,
+		.h_back_porch = 16,
 		.v_back_porch = 1,
 		.h_active = 540,
 		.v_active = 960,
-		.h_front_porch = 32,
+		.h_front_porch = 16,
 		.v_front_porch = 2,
+*/
+			.pclk = 32000000, //13788800,	// (64 * 215450)		// (4+52+60+540 = 656 ) * (8+12+12+960 = 992) * 64
+			.h_ref_to_sync = 4,
+			.v_ref_to_sync = 4,
+			.h_sync_width = 4,
+			.v_sync_width = 8,
+			.h_back_porch = 52,
+			.v_back_porch = 12,
+			.h_active = 540,
+			.v_active = 960,
+			.h_front_porch = 60,
+			.v_front_porch = 12,
 	},
 };
 
@@ -330,11 +343,8 @@ static struct tegra_dsi_out olympus_dsi_out = {
 static struct tegra_dsi_out olympus_dsi_out = {
 		.dsi_instance = 0,
 		.n_data_lanes = 2,
-		.refresh_rate = 60,
-		.lp_cmd_mode_freq_khz = 214500,
-		//.lp_cmd_mode_freq_khz = 20000,
-		.//lp_read_cmd_mode_freq_khz = 200000,
-		//.max_panel_freq_khz = 229500,
+		.refresh_rate = 64,
+		.lp_cmd_mode_freq_khz = 218000,
 		.panel_reset = true,	/* resend the init sequence on each resume */
 		.panel_reset_timeout_msec = 202,
 		.panel_has_frame_buffer = true,
@@ -348,11 +358,6 @@ static struct tegra_dsi_out olympus_dsi_out = {
 		.n_init_cmd = ARRAY_SIZE(dsi_olympus_init_cmd),
 		.dsi_suspend_cmd = dsi_suspend_cmd,
 		.n_suspend_cmd = ARRAY_SIZE(dsi_suspend_cmd),
-		//.panel_send_dc_frames = true,
-		//.hs_cmd_mode_supported = true,
-		//.hs_cmd_mode_on_blank_supported = true,
-		//.suspend_aggr = 1,
-		//.phy_timing = ???,
 };
 
 static struct tegra_dc_out olympus_disp1_out = {
@@ -361,8 +366,8 @@ static struct tegra_dc_out olympus_disp1_out = {
 	.align		= TEGRA_DC_ALIGN_MSB, //0
 	.order		= TEGRA_DC_ORDER_RED_BLUE, //0
 
-	.height		= 91, /* mm */
-	.width 		= 51, /* mm */
+	.height		= 101, /* mm */
+	.width 		= 58, /* mm */
 
 	.modes 		= olympus_panel_modes,
 	.n_modes 	= ARRAY_SIZE(olympus_panel_modes),
@@ -535,7 +540,7 @@ static void olympus_panel_early_suspend(struct early_suspend *h)
 	int i;
 
 	printk(KERN_INFO "%s: here...\n", __func__);
-	tegra2_enable_autoplug();
+//	tegra2_enable_autoplug();
 	for (i = 0; i < num_registered_fb; i++)
 		fb_blank(registered_fb[i], FB_BLANK_POWERDOWN);
 
@@ -555,7 +560,7 @@ static void olympus_panel_late_resume(struct early_suspend *h)
 	printk(KERN_INFO "%s: here...\n", __func__);
 	for (i = 0; i < num_registered_fb; i++)
 		fb_blank(registered_fb[i], FB_BLANK_UNBLANK);
-	tegra2_disable_autoplug();
+//	tegra2_disable_autoplug();
 }
 #endif
 
@@ -564,9 +569,9 @@ int __init olympus_panel_init(void)
 	struct resource *res;
 	int err;
 
-	tegra_gpio_enable(HDMI_HPD_GPIO);
+/*	tegra_gpio_enable(HDMI_HPD_GPIO);
 	gpio_request(HDMI_HPD_GPIO, "hdmi_hpd");
-	gpio_direction_input(HDMI_HPD_GPIO);
+	gpio_direction_input(HDMI_HPD_GPIO);*/
 
 	// Lets check if we have weak tegra
 	if ((s_MotorolaDispInfo >> 31) & 0x01) {
