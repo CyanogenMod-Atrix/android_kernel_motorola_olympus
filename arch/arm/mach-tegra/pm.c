@@ -1036,7 +1036,7 @@ static ssize_t suspend_mode_store(struct kobject *kobj,
 		goto bad_name;
 	/* TEGRA_SUSPEND_NONE not allowed as suspend state */
 	if (!(strncmp(buf, tegra_suspend_name[TEGRA_SUSPEND_NONE], len))
-		/*|| !(strncmp(buf, tegra_suspend_name[TEGRA_SUSPEND_LP2], len))*/) {
+		|| !(strncmp(buf, tegra_suspend_name[TEGRA_SUSPEND_LP2], len))) {
 		pr_info("Illegal tegra suspend state: %s\n", buf);
 		goto bad_name;
 	}
@@ -1101,10 +1101,10 @@ void __init tegra_init_suspend(struct tegra_suspend_platform_data *plat)
 	pdata = plat;
 	(void)reg;
 	(void)mode;
-/*
+
 	if (plat->suspend_mode == TEGRA_SUSPEND_LP2)
 		plat->suspend_mode = TEGRA_SUSPEND_LP0;
-*/
+
 #ifndef CONFIG_PM_SLEEP
 	if (plat->suspend_mode != TEGRA_SUSPEND_NONE) {
 		pr_warning("%s: Suspend requires CONFIG_PM_SLEEP -- "

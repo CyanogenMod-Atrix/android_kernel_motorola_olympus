@@ -40,6 +40,7 @@
 #include <linux/workqueue.h>
 #include <linux/tegra_uart.h>
 
+#include <mach/tegra_hsuart.h>
 #include <mach/dma.h>
 #include <mach/clk.h>
 
@@ -254,9 +255,13 @@ static void tegra_start_tx(struct uart_port *u)
 {
 	struct tegra_uart_port *t;
 	struct circ_buf *xmit;
+	struct tegra_hsuart_platform_data *pdata = u->dev->platform_data;
 
 	t = container_of(u, struct tegra_uart_port, uport);
 	xmit = &u->state->xmit;
+
+	if (pdata && pdata->exit_lpm_cb)
+		pdata->exit_lpm_cb(u);
 
 	if (!uart_circ_empty(xmit) && !t->tx_in_progress)
 		tegra_start_next_tx(t);
@@ -304,6 +309,7 @@ static void tegra_rx_dma_complete_callback(struct tegra_dma_req *req)
 	struct tegra_uart_port *t = req->dev;
 	struct uart_port *u = &t->uport;
 	struct tty_struct *tty = u->state->port.tty;
+	struct tegra_hsuart_platform_data *pdata = u->dev->platform_data;
 	int copied;
 
 	/* If we are here, DMA is stopped */
@@ -336,16 +342,22 @@ static void tegra_rx_dma_complete_callback(struct tegra_dma_req *req)
 	spin_unlock(&u->lock);
 	tty_flip_buffer_push(u->state->port.tty);
 	spin_lock(&u->lock);
+	if (pdata && pdata->rx_done_cb)
+		pdata->rx_done_cb(u);
 }
 
 /* Lock already taken */
 static void do_handle_rx_dma(struct tegra_uart_port *t)
 {
 	struct uart_port *u = &t->uport;
+	struct tegra_hsuart_platform_data *pdata = u->dev->platform_data;
+
 	if (t->rts_active)
 		set_rts(t, false);
 	tegra_dma_dequeue_req(t->rx_dma, &t->rx_dma_req);
 	tty_flip_buffer_push(u->state->port.tty);
+	if (pdata && pdata->rx_done_cb)
+		pdata->rx_done_cb(u);
 	/* enqueue the request again */
 	tegra_start_dma_rx(t);
 	if (t->rts_active)
@@ -533,6 +545,7 @@ static irqreturn_t tegra_uart_isr(int irq, void *data)
 	unsigned char ier;
 	bool is_rx_int = false;
 	unsigned long flags;
+	struct tegra_hsuart_platform_data *pdata = u->dev->platform_data;
 
 	spin_lock_irqsave(&u->lock, flags);
 	t  = container_of(u, struct tegra_uart_port, uport);
@@ -586,6 +599,9 @@ static irqreturn_t tegra_uart_isr(int irq, void *data)
 				spin_unlock_irqrestore(&u->lock, flags);
 				tty_flip_buffer_push(u->state->port.tty);
 				spin_lock_irqsave(&u->lock, flags);
+
+				if (pdata && pdata->rx_done_cb)
+					pdata->rx_done_cb(u);
 			}
 			break;
 		case 3: /* Receive error */
@@ -893,12 +909,14 @@ static int tegra_startup(struct uart_port *u)
 	ret = tegra_uart_hw_init(t);
 	if (ret)
 		goto fail;
-
+#ifndef CONFIG_MACH_OLYMPUS
 	pdata = u->dev->platform_data;
 	if (pdata && pdata->is_loopback)
 		t->mcr_shadow |= UART_MCR_LOOP;
-
+#endif
 	dev_dbg(u->dev, "Requesting IRQ %d\n", u->irq);
+	msleep(1);
+
 	ret = request_irq(u->irq, tegra_uart_isr, IRQF_DISABLED,
 				t->port_name, t);
 	if (ret) {

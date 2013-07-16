@@ -129,28 +129,28 @@ static enum hrtimer_restart enter_lpm(struct hrtimer *timer)
 void bcm_bt_lpm_exit_lpm_locked(struct uart_port *uport)
 {
 	bt_lpm.uport = uport;
-	printk(KERN_INFO "%s", __func__);
-#if 0
+
+
 	hrtimer_try_to_cancel(&bt_lpm.enter_lpm_timer);
 
 	set_wake_locked(1);
 
 	hrtimer_start(&bt_lpm.enter_lpm_timer, bt_lpm.enter_lpm_delay,
 		HRTIMER_MODE_REL);
-#endif
+
 }
 EXPORT_SYMBOL(bcm_bt_lpm_exit_lpm_locked);
 
 void bcm_bt_rx_done_locked(struct uart_port *uport)
 {
-	printk(KERN_INFO "%s", __func__);
-#if 0
+
+
 	if (bt_lpm.host_wake) {
 		/* Release wake in 500 ms so that higher layers can take it */
 		wake_lock_timeout(&bt_lpm.wake_lock, HZ/2);
 		bt_lpm.rx_wake_lock_taken = true;
 	}
-#endif
+
 }
 EXPORT_SYMBOL(bcm_bt_rx_done_locked);
 
@@ -180,6 +180,7 @@ static irqreturn_t host_wake_isr(int irq, void *dev)
 
 	host_wake = gpio_get_value(bcm4329_rfkill->gpio_host_wake);
 	irq_set_irq_type(irq, host_wake ? IRQF_TRIGGER_LOW : IRQF_TRIGGER_HIGH);
+//	irq_set_irq_type(irq, IRQF_TRIGGER_FALLING);
 
 	if (!bt_lpm.uport) {
 		bt_lpm.host_wake = host_wake;
@@ -226,6 +227,7 @@ static int bcm4329_bt_lpm_init(struct platform_device *pdev)
 
 	irq = gpio_to_irq(bcm4329_rfkill->gpio_host_wake);
 	ret = request_irq(irq, host_wake_isr, IRQF_TRIGGER_HIGH,
+//	ret = request_irq(irq, host_wake_isr, IRQF_TRIGGER_FALLING,
 				"bt host_wake", NULL);
 	if (ret) {
 		pr_info("%s: request_irq problem, ret=%d\n",__func__, ret);
@@ -261,7 +263,6 @@ static int bcm4329_bt_lpm_init(struct platform_device *pdev)
 
 static int bcm4329_rfkill_probe(struct platform_device *pdev)
 {
-	//struct rfkill *bt_rfkill;
 	struct resource *res;
 	int ret;
 	bool enable = false;  /* off */

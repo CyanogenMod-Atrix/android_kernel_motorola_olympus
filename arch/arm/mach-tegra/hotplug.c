@@ -36,37 +36,17 @@
 	(IO_ADDRESS(TEGRA_CLK_RESET_BASE) + 0x470)
 #endif
 
-#ifdef CONFIG_TEGRA_AUTO_HOTPLUG
-static DEFINE_SPINLOCK(boot_lock);
-extern unsigned long wfct(unsigned int cpu);
-extern void compl(unsigned int cpu);
-#endif
-
 int platform_cpu_kill(unsigned int cpu)
 {
 	unsigned int reg;
-	int e;
-	printk(KERN_INFO "%s: before wftc...\n", __func__);
-	e = wfct(cpu);
-	printk(KERN_INFO "%s: after wftc...\n", __func__);
-	printk(KERN_NOTICE "%s: CPU%u: %s shutdown\n", __func__, cpu, (e) ? "clean":"forced");
 
-	if (e) {
-		do {
-			reg = readl(CLK_RST_CONTROLLER_CPU_CMPLX_STATUS);
-			cpu_relax();
-		} while (!(reg & (1<<cpu)));
-	} else {
-		writel(0x1111<<cpu, CLK_RST_CONTROLLER_CPU_CMPLX_STATUS);
-		/* put flow controller in WAIT_EVENT mode */
-		writel(2<<29, IO_ADDRESS(TEGRA_FLOW_CTRL_BASE)+0x14 + 0x8*(cpu-1));
-	}
-	printk(KERN_INFO "%s: before spinlock...\n", __func__);
-	spin_lock(&boot_lock);
+	do {
+		reg = readl(CLK_RST_CONTROLLER_CPU_CMPLX_STATUS);
+		cpu_relax();
+	} while (!(reg & (1<<cpu)));
+
 	reg = readl(CLK_RST_CONTROLLER_CLK_CPU_CMPLX);
-	writel(reg | (1<<(8+cpu)), CLK_RST_CONTROLLER_CLK_CPU_CMPLX);
-	spin_unlock(&boot_lock);
-	printk(KERN_INFO "%s: after spinlock...\n", __func__);
+	writel(reg | CPU_CLOCK(cpu), CLK_RST_CONTROLLER_CLK_CPU_CMPLX);
 
 	return 1;
 }
@@ -74,17 +54,9 @@ int platform_cpu_kill(unsigned int cpu)
 void platform_cpu_die(unsigned int cpu)
 {
 #ifdef CONFIG_ARCH_TEGRA_2x_SOC
-	printk(KERN_INFO "%s: tegra_gic_cpu_disable()...", __func__);
-	/* Disable GIC CPU interface for this CPU. */
-	tegra_gic_cpu_disable();
-	printk(KERN_INFO "%s: compl(cpu)...", __func__);
-#ifdef CONFIG_TEGRA_AUTO_HOTPLUG
-	compl(cpu);
-#endif
-	printk(KERN_INFO "%s: flush_cache_all()...", __func__);
 	/* Flush the L1 data cache. */
 	flush_cache_all();
-	printk(KERN_INFO "%s: tegra2_hotplug_shutdown()...", __func__);
+
 	/* Place the current CPU in reset. */
 	tegra2_hotplug_shutdown();
 #else

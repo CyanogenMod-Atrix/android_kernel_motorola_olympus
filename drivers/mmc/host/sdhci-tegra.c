@@ -39,7 +39,7 @@
 
 #ifdef CONFIG_MACH_OLYMPUS
 #define TEGRA_GPIO_PI5		69			//card detect gpio
-#define TEGRA_GPIO_PT3 		155			//gpio for external sdcard power
+#define TEGRA_GPIO_PF3 		43			//gpio for external sdcard power
 #endif
 
 #define SDHCI_VENDOR_CLOCK_CNTRL	0x100
@@ -868,29 +868,8 @@ static int tegra_sdhci_suspend(struct sdhci_host *sdhci, pm_message_t state)
 {
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
 	struct tegra_sdhci_host *tegra_host = pltfm_host->priv;
-#ifdef CONFIG_MACH_OLYMPUS
-	if (sdhci->mmc->pm_flags & MMC_PM_KEEP_POWER) {
-		int div = 0;
-		u16 clk;
-		unsigned int clock = 100000;
+	int ret;
 
-		/* reduce host controller clk and card clk to 100 KHz */
-		tegra_sdhci_set_clock(sdhci, clock);
-		sdhci_writew(sdhci, 0, SDHCI_CLOCK_CONTROL);
-
-		if (sdhci->max_clk > clock) {
-			div =  1 << (fls(sdhci->max_clk / clock) - 2);
-			if (div > 128)
-				div = 128;
-		}
-
-		clk = div << SDHCI_DIVIDER_SHIFT;
-		clk |= SDHCI_CLOCK_INT_EN | SDHCI_CLOCK_CARD_EN;
-		sdhci_writew(sdhci, clk, SDHCI_CLOCK_CONTROL);
-
-		return 0;
-	}
-#endif
 	tegra_sdhci_set_clock(sdhci, 0);
 
 	/* Disable the power rails if any */
@@ -900,18 +879,23 @@ static int tegra_sdhci_suspend(struct sdhci_host *sdhci, pm_message_t state)
 				regulator_disable(tegra_host->vdd_io_reg);
 			if (tegra_host->vdd_slot_reg) {
 				regulator_disable(tegra_host->vdd_slot_reg);
-#ifdef CONFIG_MACH_OLYMPUS
-				printk(KERN_INFO "%s: TEGRA_GPIO_PI5 disable irq",__func__);
-				disable_irq_nosync(gpio_to_irq(TEGRA_GPIO_PI5));
-				printk(KERN_INFO "%s: disabling vddio_sd_slot regulator\n", __func__);
-				printk(KERN_INFO "%s: TEGRA_GPIO_PT3 = 0 (sdcard ext off)",__func__);
-				gpio_set_value(TEGRA_GPIO_PT3, 0);
-#endif
 			}
 			tegra_host->is_rail_enabled = 0;
 		}
 	}
+#ifdef CONFIG_MACH_OLYMPUS
+	/* Disabling power gpio and irq wakeup in deepsleep for external sdcard */
+	if (!strcmp(mmc_hostname(sdhci->mmc), "mmc2")) {
+		printk(KERN_INFO "%s: device: %s, mmc_hostname(sdhci->mmc): %s\n", __func__, sdhci->hw_name, mmc_hostname(sdhci->mmc));
 
+		printk(KERN_INFO "%s: disabling vddio_sd_slot regulator\n", __func__);
+		printk(KERN_INFO "%s: TEGRA_GPIO_PF3 = 0 (sdcard ext off)",__func__);
+		gpio_set_value(TEGRA_GPIO_PF3, 0);
+
+		ret = irq_set_irq_wake(gpio_to_irq(TEGRA_GPIO_PI5), 0);
+		if (ret) pr_info("%s: irq_set_irq_wake problem, ret=%d\n",__func__, ret);
+	}
+#endif
 	return 0;
 }
 
@@ -919,18 +903,12 @@ static int tegra_sdhci_resume(struct sdhci_host *sdhci)
 {
 	struct sdhci_pltfm_host *pltfm_host = sdhci_priv(sdhci);
 	struct tegra_sdhci_host *tegra_host = pltfm_host->priv;
+	int ret;
 
 	/* Enable the power rails if any */
 	if (tegra_host->card_present) {
 		if (!tegra_host->is_rail_enabled) {
 			if (tegra_host->vdd_slot_reg) {
-#ifdef CONFIG_MACH_OLYMPUS
-				printk(KERN_INFO "%s: TEGRA_GPIO_PT3 = 1 (sdcard ext on)",__func__);
-				gpio_set_value(TEGRA_GPIO_PT3, 1);
-				printk(KERN_INFO "%s: enabling vddio_sd_slot regulator\n", __func__);
-				printk(KERN_INFO "%s: TEGRA_GPIO_PI5 enable irq",__func__);
-				enable_irq(gpio_to_irq(TEGRA_GPIO_PI5));
-#endif
 				regulator_enable(tegra_host->vdd_slot_reg);
 			}
 			if (tegra_host->vdd_io_reg) {
@@ -949,6 +927,16 @@ static int tegra_sdhci_resume(struct sdhci_host *sdhci)
 		sdhci_writeb(sdhci, SDHCI_POWER_ON, SDHCI_POWER_CONTROL);
 		sdhci->pwr = 0;
 	}
+
+#ifdef CONFIG_MACH_OLYMPUS
+	/* Enabling irq wakeup in deepsleep for external sdcard */
+	if (!strcmp(mmc_hostname(sdhci->mmc), "mmc2")) {
+		printk(KERN_INFO "%s: device: %s, mmc_hostname(sdhci->mmc): %s\n", __func__, sdhci->hw_name, mmc_hostname(sdhci->mmc));
+
+		ret = irq_set_irq_wake(gpio_to_irq(TEGRA_GPIO_PI5), 1);
+		if (ret) pr_info("%s: irq_set_irq_wake problem, ret=%d\n",__func__, ret);
+	}
+#endif
 
 	return 0;
 }
@@ -1146,8 +1134,8 @@ static int __devinit sdhci_tegra_probe(struct platform_device *pdev)
 			tegra_host->is_rail_enabled = 1;
 #ifdef CONFIG_MACH_OLYMPUS
 		} else {
-				printk(KERN_INFO "%s: TEGRA_GPIO_PT3 = 0 (sdcard ext off)",__func__);
-				gpio_set_value(TEGRA_GPIO_PT3, 0);
+				printk(KERN_INFO "%s: TEGRA_GPIO_PF3 = 0 (sdcard ext off)",__func__);
+				gpio_set_value(TEGRA_GPIO_PF3, 0);
 		}
 #else
 		}
