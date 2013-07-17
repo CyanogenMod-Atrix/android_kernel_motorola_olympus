@@ -120,8 +120,8 @@ static void olympus_vibrator_init(void)
 static void olympus_adt7461_init(void)
 {
 	tegra_gpio_enable(TEGRA_ADT7461_IRQ_GPIO);
-	gpio_request(TEGRA_ADT7461_IRQ_GPIO, "adt7461");
-	gpio_direction_input(TEGRA_ADT7461_IRQ_GPIO);
+//	gpio_request(TEGRA_ADT7461_IRQ_GPIO, "adt7461");
+//	gpio_direction_input(TEGRA_ADT7461_IRQ_GPIO);
 }
 
 struct adt7461_platform_data olympus_adt7461_pdata = {
@@ -131,9 +131,9 @@ struct adt7461_platform_data olympus_adt7461_pdata = {
 	.conv_rate = 5,
 	.offset = 0,
 	.hysteresis = 0,
-	.shutdown_ext_limit = 115,
-	.shutdown_local_limit = 120,
-	.throttling_ext_limit = 90,
+	.shutdown_ext_limit = 80,
+	.shutdown_local_limit = 90,
+	.throttling_ext_limit = 50,
 	.alarm_fn = tegra_throttling_enable,
 	.irq_gpio = TEGRA_ADT7461_IRQ_GPIO,
 };
@@ -286,8 +286,6 @@ struct platform_device kxtf9_platform_device = {
 
 static void __init olympus_akm8975_init(void)
 {
-	tegra_gpio_enable(TEGRA_AKM8975_IRQ_GPIO);
-
 	tegra_gpio_enable(TEGRA_AKM8975_RESET_GPIO);
 	gpio_request(TEGRA_AKM8975_RESET_GPIO, "akm8975 reset");
 	gpio_direction_output(TEGRA_AKM8975_RESET_GPIO, 1);
@@ -313,6 +311,7 @@ static int akm8975_init(void)
 		}
 	}
 
+	tegra_gpio_enable(TEGRA_AKM8975_IRQ_GPIO);
 	gpio_request(TEGRA_AKM8975_IRQ_GPIO, "akm8975_irq");
 	gpio_direction_input(TEGRA_AKM8975_IRQ_GPIO);
 
