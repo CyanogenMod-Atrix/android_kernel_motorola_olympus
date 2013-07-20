@@ -131,30 +131,17 @@ static struct resource olympus_disp2_resources[] = {
 
 static struct tegra_dc_mode olympus_panel_modes[] = {
 	{
-/*
-		.pclk = 14720000, //30456000, //27000000 (pixclock for 50 refresh rate)		(h = 592 * v = 965 * 64)
+		.pclk = 27000000,
 		.h_ref_to_sync = 4,
-		.v_ref_to_sync = 1,
-		.h_sync_width = 16,
-		.v_sync_width = 1,
-		.h_back_porch = 16,
-		.v_back_porch = 1,
+		.v_ref_to_sync = 4,
+		.h_sync_width = 4,
+		.v_sync_width = 8,
+		.h_back_porch = 52,
+		.v_back_porch = 12,
 		.h_active = 540,
 		.v_active = 960,
-		.h_front_porch = 16,
-		.v_front_porch = 2,
-*/
-			.pclk = 32000000, //13788800,	// (64 * 215450)		// (4+52+60+540 = 656 ) * (8+12+12+960 = 992) * 64
-			.h_ref_to_sync = 4,
-			.v_ref_to_sync = 4,
-			.h_sync_width = 4,
-			.v_sync_width = 8,
-			.h_back_porch = 52,
-			.v_back_porch = 12,
-			.h_active = 540,
-			.v_active = 960,
-			.h_front_porch = 60,
-			.v_front_porch = 12,
+		.h_front_porch = 52,
+		.v_front_porch = 12,
 	},
 };
 
