@@ -367,6 +367,11 @@ void tegra_init_cache(bool init)
 }
 #endif
 
+static struct platform_device tegra_pm_irq_resume_complete_device = {
+	.name = "pm_irq_pm_ops",
+	.id = -1,
+};
+
 static void __init tegra_init_power(void)
 {
 #ifdef CONFIG_ARCH_TEGRA_HAS_SATA
@@ -964,6 +969,11 @@ void __init tegra_ram_console_debug_init(void)
 	if (err) {
 		pr_err("%s: ram console registration failed (%d)!\n", __func__, err);
 	}
+	err = platform_device_register(
+		&tegra_pm_irq_resume_complete_device);
+	if (err)
+		pr_err("%s: pm_irq_resume_complete registration "
+		"failed (%d)!\n", __func__, err);
 }
 
 void __init tegra_release_bootloader_fb(void)
