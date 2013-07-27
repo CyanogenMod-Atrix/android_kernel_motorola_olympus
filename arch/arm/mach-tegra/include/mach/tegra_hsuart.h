@@ -19,12 +19,11 @@
 #include <linux/serial_core.h>
 #include <linux/clk.h>
 #include <linux/tegra_uart.h>
-/*
-struct uart_clk_parent {
-	const char	*name;
-	struct clk	*parent_clk;
-	unsigned long	fixed_clk_rate;
-};*/
+
+#ifdef CONFIG_MDM_CTRL
+# include <mach/mdm_ctrl.h>
+#endif
+
 
 struct tegra_hsuart_platform_data {
 	void (*wake_peer)(struct uart_port *);
@@ -32,6 +31,14 @@ struct tegra_hsuart_platform_data {
 	int parent_clk_count;
 	void (*exit_lpm_cb)(struct uart_port *);
 	void (*rx_done_cb)(struct uart_port *);
+#ifdef CONFIG_MACH_OLYMPUS
+	unsigned		uart_wake_host;
+	unsigned		uart_wake_request;
+	bool			uart_ipc;
+#ifdef CONFIG_MDM_CTRL
+	mdm_ctrl_peer_register_t peer_register;
+#endif
+#endif
 };
 
 int tegra_uart_is_tx_empty(struct uart_port *);
