@@ -480,7 +480,7 @@ static int cpcap_regulator_set_voltage(struct regulator_dev *rdev,
 	if (regltr_id >= CPCAP_NUM_REGULATORS)
 		return -EINVAL;
 
-	//if (regltr_id>3) printk(KERN_INFO "%s: Regulator: %s, min_uV: %d, max_uV: %d\n", __func__, r_names[regltr_id].name, min_uV, max_uV);
+	if ((regltr_id>1) && (regltr_id!=3)) printk(KERN_INFO "%s: Regulator: %s, min_uV: %d, max_uV: %d\n", __func__, r_names[regltr_id].name, min_uV, max_uV);
 	regnr = cpcap_regltr_data[regltr_id].reg;
 
 	if (regltr_id == CPCAP_VRF1) {
@@ -801,9 +801,19 @@ static int regulator_suspend(struct platform_device *pdev, pm_message_t mesg)
 {
 	struct regulator_dev *rdev = platform_get_drvdata(pdev);
 	int regltr_id;
+	int curr_volt;
+	int select;
+
+	regltr_id = rdev_get_id(rdev);
+	if (regltr_id >= CPCAP_NUM_REGULATORS)
+		return -EINVAL;
 
 	if (cpcap_regulator_is_enabled(rdev)) {
-			cpcap_regulator_get_voltage(rdev);
+		if ((regltr_id>1) && (regltr_id!=3))
+		{
+				//curr_volt = cpcap_regulator_get_voltage(rdev);
+				//if (cpcap_regltr_data[regltr_id].val_tbl[0] < curr_volt) cpcap_regulator_set_voltage(rdev, cpcap_regltr_data[regltr_id].val_tbl[0], cpcap_regltr_data[regltr_id].val_tbl[0], &select);
+		}
 	}
 
 	return 0;
@@ -813,9 +823,19 @@ static int regulator_resume(struct platform_device *pdev)
 {
 	struct regulator_dev *rdev = platform_get_drvdata(pdev);
 	int regltr_id;
+	int curr_volt;
+	int select;
+
+	regltr_id = rdev_get_id(rdev);
+	if (regltr_id >= CPCAP_NUM_REGULATORS)
+		return -EINVAL;
 
 	if (cpcap_regulator_is_enabled(rdev)) {
-		cpcap_regulator_get_voltage(rdev);
+		if ((regltr_id>1) && (regltr_id!=3))
+		{
+				//curr_volt = cpcap_regulator_get_voltage(rdev);
+				//if (cpcap_regltr_data[regltr_id].val_tbl[cpcap_regltr_data[regltr_id].val_tbl_sz - 1] > curr_volt) cpcap_regulator_set_voltage(rdev, cpcap_regltr_data[regltr_id].val_tbl[cpcap_regltr_data[regltr_id].val_tbl_sz - 1], cpcap_regltr_data[regltr_id].val_tbl[cpcap_regltr_data[regltr_id].val_tbl_sz - 1], &select);
+		}
 	}
 
 	return 0;

@@ -218,6 +218,7 @@ struct spi_tegra_data {
 	int			clk_state;
 	bool			is_suspended;
 
+	unsigned		active_chip_selects;
 	bool			is_hw_based_cs;
 
 	struct completion	rx_dma_complete;
@@ -805,6 +806,16 @@ static void spi_tegra_start_transfer(struct spi_device *spi,
 #endif
 			}
 		}
+		/* If the driver switched CS lines, update the polarity bits */
+		if (!(cs_pol_bit[spi->chip_select] &
+				tspi->active_chip_selects)) {
+			dev_dbg(&tspi->pdev->dev, "switch chip select: %d\n",
+				spi->chip_select);
+			if (spi->mode & SPI_CS_HIGH)
+				command |= cs_pol_bit[spi->chip_select];
+			else
+				command &= ~cs_pol_bit[spi->chip_select];
+		}
 		if (!tspi->is_hw_based_cs) {
 			command |= SLINK_CS_SW;
 			command ^= cs_pol_bit[spi->chip_select];
@@ -885,6 +896,10 @@ static int spi_tegra_setup(struct spi_device *spi)
 	default:
 		return -EINVAL;
 	}
+
+	tspi->active_chip_selects |= cs_bit;
+	dev_info(&spi->dev, "setup chip select: %d (0x%08X)\n",
+		spi->chip_select, tspi->active_chip_selects);
 
 	pm_runtime_get_sync(&tspi->pdev->dev);
 	tegra_spi_clk_enable(tspi);
