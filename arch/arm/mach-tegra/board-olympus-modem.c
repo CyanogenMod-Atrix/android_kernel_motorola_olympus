@@ -297,14 +297,15 @@ static int __init olympus_mdm_ctrl_init(void)
  */
 extern struct uart_clk_parent uart_parent_clk[3];
 
-static struct wake_lock mdm6600_host_wakelock;
-
+//static struct wake_lock mdm6600_host_wakelock;
+#if 0
 static irqreturn_t mdm6600_host_wake_irq_handler(int irq, void *ptr)
 {
 	/* Keep us awake for a bit until RIL gets going */
 	wake_lock_timeout(&mdm6600_host_wakelock, (HZ * 1));
 	return IRQ_HANDLED;
 }
+#endif
 
 static void mdm6600_wake_peer(struct uart_port *uport)
 {
@@ -314,14 +315,21 @@ static void mdm6600_wake_peer(struct uart_port *uport)
 	udelay(35);
 }
 
+
 static struct tegra_hsuart_platform_data olympus_mdm6600_uart_pdata = {
 	.wake_peer = mdm6600_wake_peer,
 	.parent_clk_list = uart_parent_clk,
 	.parent_clk_count = ARRAY_SIZE(uart_parent_clk),
+	.uart_ipc = 1,
+	.uart_wake_host = TEGRA_GPIO_PA0,
+	.uart_wake_request = TEGRA_GPIO_PF1,
+	.peer_register = olympus_mdm_ctrl_peer_register,
+
 };
 
 static int olympus_setup_mdm6600_uart_ipc(void)
 {
+#if 0
 	int irq, err;
 
 	/* Host wake */
@@ -330,15 +338,17 @@ static int olympus_setup_mdm6600_uart_ipc(void)
 
 	gpio_request(MDM6600_UART_HOST_WAKE_GPIO, "mdm6600 wake host");
 	gpio_direction_input(MDM6600_UART_HOST_WAKE_GPIO);
+	gpio_set_value(MDM6600_UART_HOST_WAKE_GPIO, 0);
+
 	irq = gpio_to_irq(MDM6600_UART_HOST_WAKE_GPIO);
 	pr_info("%s: irq: %d, value: %d\n", __func__, irq,
 				gpio_get_value(MDM6600_UART_HOST_WAKE_GPIO));
 
-	//irq_set_irq_wake(irq, 1);
-	irq_set_irq_type(irq, IRQ_TYPE_EDGE_RISING);
-	//irq_set_irq_type(irq, IRQ_TYPE_EDGE_FALLING);
+	irq_set_irq_wake(irq, 1);
+	//irq_set_irq_type(irq, IRQ_TYPE_EDGE_RISING);
+	irq_set_irq_type(irq, IRQ_TYPE_EDGE_FALLING);
 	err = request_irq(irq, mdm6600_host_wake_irq_handler,
-			IRQF_DISABLED, "mdm6600_wake_host", NULL);
+			IRQF_DISABLED | IRQ_TYPE_EDGE_FALLING , "mdm6600_wake_host", NULL);
 	if (err < 0) {
 		pr_err("%s: failed to register MDM6600 BP AP WAKE "
 		       "interrupt handler, errno = %d\n", __func__, -err);
@@ -348,6 +358,7 @@ static int olympus_setup_mdm6600_uart_ipc(void)
 	gpio_request(MDM6600_UART_PEER_WAKE_GPIO, "mdm6600 wake peer");
 	gpio_direction_output(MDM6600_UART_PEER_WAKE_GPIO, 1);
 	gpio_set_value(MDM6600_UART_PEER_WAKE_GPIO, 0);
+#endif
 
 	tegra_uartd_device.dev.platform_data = &olympus_mdm6600_uart_pdata;
 	return platform_device_register(&tegra_uartd_device);

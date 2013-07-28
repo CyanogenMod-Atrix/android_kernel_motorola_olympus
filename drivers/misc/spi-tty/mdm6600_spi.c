@@ -81,6 +81,10 @@ static irqreturn_t mdm6600_spi_mrdy_irq_handler(int irq, void *data)
         }
 
 	/* Pseudo edge-trigger workaround for AP20 wake interrupts */
+    	// This is a hack solution for AP20 wakeup by gpio
+    	// PL1 can wakeup AP20 but falling edge irq before low level is missed
+    	// If use low level trigger, we will get many irq, so here we
+    	// toggle trigger level in irq so that we will only get one time triggered
 	trigger_level = (value == 0 ? IRQF_TRIGGER_HIGH : IRQF_TRIGGER_LOW);
 	irq_set_irq_type(spi_dev->mrdy_irq, trigger_level);
 
@@ -137,7 +141,7 @@ static void mdm6600_spi_slave_config_gpio(struct mdm6600_spi_device *spi_dev)
 			gpio_get_value(spi_dev->mrdy_gpio));
 
 	trigger_level = IRQF_TRIGGER_LOW;
-	//irq_set_irq_wake(spi_dev->mrdy_irq, 1);
+	irq_set_irq_wake(spi_dev->mrdy_irq, 1);
 	err = request_irq(spi_dev->mrdy_irq,
 			mdm6600_spi_mrdy_irq_handler,
 			trigger_level,
