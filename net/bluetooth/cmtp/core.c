@@ -292,24 +292,25 @@ static int cmtp_session(void *arg)
 
 	init_waitqueue_entry(&wait, current);
 	add_wait_queue(sk_sleep(sk), &wait);
-	while (1) {
+	while (!kthread_should_stop()) {
 		set_current_state(TASK_INTERRUPTIBLE);
 
-		if (atomic_read(&session->terminate))
-			break;
 		if (sk->sk_state != BT_CONNECTED)
 			break;
 
 		while ((skb = skb_dequeue(&sk->sk_receive_queue))) {
 			skb_orphan(skb);
-			cmtp_recv_frame(session, skb);
+			if (!skb_linearize(skb))
+				cmtp_recv_frame(session, skb);
+			else
+				kfree_skb(skb);
 		}
 
 		cmtp_process_transmit(session);
 
 		schedule();
 	}
-	__set_current_state(TASK_RUNNING);
+	set_current_state(TASK_RUNNING);
 	remove_wait_queue(sk_sleep(sk), &wait);
 
 	down_write(&cmtp_session_sem);
@@ -348,8 +349,7 @@ int cmtp_add_connection(struct cmtp_connadd_req *req, struct socket *sock)
 
 	bacpy(&session->bdaddr, &bt_sk(sock->sk)->dst);
 
-	session->mtu = min_t(uint, l2cap_pi(sock->sk)->chan->omtu,
-					l2cap_pi(sock->sk)->chan->imtu);
+	session->mtu = min_t(uint, l2cap_pi(sock->sk)->omtu, l2cap_pi(sock->sk)->imtu);
 
 	BT_DBG("mtu %d", session->mtu);
 
@@ -382,16 +382,15 @@ int cmtp_add_connection(struct cmtp_connadd_req *req, struct socket *sock)
 
 	if (!(session->flags & (1 << CMTP_LOOPBACK))) {
 		err = cmtp_attach_device(session);
-		if (err < 0) {
-			atomic_inc(&session->terminate);
-			wake_up_process(session->task);
-			up_write(&cmtp_session_sem);
-			return err;
-		}
+		if (err < 0)
+			goto detach;
 	}
 
 	up_write(&cmtp_session_sem);
 	return 0;
+
+detach:
+	cmtp_detach_device(session);
 
 unlink:
 	__cmtp_unlink_session(session);
@@ -417,8 +416,7 @@ int cmtp_del_connection(struct cmtp_conndel_req *req)
 		skb_queue_purge(&session->transmit);
 
 		/* Stop session thread */
-		atomic_inc(&session->terminate);
-		wake_up_process(session->task);
+		kthread_stop(session->task);
 	} else
 		err = -ENOENT;
 
