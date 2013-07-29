@@ -129,7 +129,7 @@ static struct resource olympus_disp2_resources[] = {
 	},
 };
 
-static struct tegra_dc_mode olympus_panel_modes[] = {
+static struct tegra_dc_mode olympus_panel_modes_for_0x8[] = {
 	{
 		.pclk = 27000000,
 		.h_ref_to_sync = 4,
@@ -142,6 +142,21 @@ static struct tegra_dc_mode olympus_panel_modes[] = {
 		.v_active = 960,
 		.h_front_porch = 52,
 		.v_front_porch = 12,
+	},
+};
+static struct tegra_dc_mode olympus_panel_modes[] = {
+	{
+		.pclk = 27000000,
+		.h_ref_to_sync = 4,
+		.v_ref_to_sync = 1,
+		.h_sync_width = 16,
+		.v_sync_width = 1,
+		.h_back_porch = 32,
+		.v_back_porch = 1,
+		.h_active = 540,
+		.v_active = 960,
+		.h_front_porch = 32,
+		.v_front_porch = 2,
 	},
 };
 
@@ -312,26 +327,11 @@ static int olympus_panel_disable(void)
 	return 0;
 }
 
-/* TODO: fill with correct Olympus DSI MIPI panel settings
-static struct tegra_dsi_out olympus_dsi_out = {
-	.phy_timing = { //nn
-		.t_hsdexit_ns = 6,
-		.t_hstrail_ns = 7,
-		.t_hsprepare_ns = 4,
-		.t_datzero_ns = 9,
-		.t_clktrail_ns = 4,
-		.t_clkpost_ns = 10,
-		//.t_clkzero_ns = 13,
-		.t_clkzero_ns = 10,  //WAR
-		.t_tlpx_ns =  3,
-	},
-};*/
-
 static struct tegra_dsi_out olympus_dsi_out = {
 		.dsi_instance = 0,
 		.n_data_lanes = 2,
 		.refresh_rate = 64,
-		.lp_cmd_mode_freq_khz = 218000,
+		.lp_cmd_mode_freq_khz = 229500,
 		.panel_reset = true,	/* resend the init sequence on each resume */
 		.panel_reset_timeout_msec = 202,
 		.panel_has_frame_buffer = true,
@@ -353,8 +353,8 @@ static struct tegra_dc_out olympus_disp1_out = {
 	.align		= TEGRA_DC_ALIGN_MSB, //0
 	.order		= TEGRA_DC_ORDER_RED_BLUE, //0
 
-	.height		= 101, /* mm */
-	.width 		= 58, /* mm */
+	.height		= 91, /* mm */
+	.width 		= 51, /* mm */
 
 	.modes 		= olympus_panel_modes,
 	.n_modes 	= ARRAY_SIZE(olympus_panel_modes),
@@ -399,9 +399,9 @@ static int olympus_panel_setup_dc(void)
 	gpio_request(35, "disp_reset_n");
 	gpio_direction_output(35, 1);
 
-/*	tegra_gpio_enable(46);
+	tegra_gpio_enable(46);
 	gpio_request(46, "hdmi_5v_en");
-	gpio_direction_output(46, 1);*/
+	gpio_direction_output(46, 1);
 
 	return 0;
 }
@@ -556,15 +556,14 @@ int __init olympus_panel_init(void)
 	struct resource *res;
 	int err;
 
-/*	tegra_gpio_enable(HDMI_HPD_GPIO);
+	tegra_gpio_enable(HDMI_HPD_GPIO);
 	gpio_request(HDMI_HPD_GPIO, "hdmi_hpd");
-	gpio_direction_input(HDMI_HPD_GPIO);*/
+	gpio_direction_input(HDMI_HPD_GPIO);
 
-	// Lets check if we have weak tegra
+	// Lets check if we have buggy tegra
 	if ((s_MotorolaDispInfo >> 31) & 0x01) {
-		printk(KERN_INFO "%s: Bad news dude, have to lower refresh rate:/",__func__);
-		//	olympus_dsi_out.panel_reset_timeout_msec = 250;
-		//	olympus_dsi_out.refresh_rate = 59;
+		olympus_disp1_out.modes  = olympus_panel_modes_for_0x8;
+		olympus_disp1_out.n_modes = ARRAY_SIZE(olympus_panel_modes_for_0x8);
 	}
 
 	olympus_panel_setup_dc();
