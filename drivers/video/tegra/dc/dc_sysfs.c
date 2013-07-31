@@ -21,6 +21,7 @@
 #include <linux/fb.h>
 #include <linux/platform_device.h>
 #include <linux/kernel.h>
+#include <linux/gpio.h>
 
 #include <mach/dc.h>
 #include <mach/fb.h>
@@ -28,6 +29,9 @@
 #include "dc_reg.h"
 #include "dc_priv.h"
 #include "nvsd.h"
+#ifdef SUPPORT_US_CTRL_OF_HPD
+#include "hdmi.h"
+#endif
 
 static ssize_t mode_show(struct device *device,
 	struct device_attribute *attr, char *buf)
@@ -64,6 +68,94 @@ static ssize_t mode_show(struct device *device,
 }
 
 static DEVICE_ATTR(mode, S_IRUGO, mode_show, NULL);
+
+static ssize_t connected_show(struct device *dev,
+        struct device_attribute *attr, char *buf)
+{
+	struct nvhost_device *ndev = to_nvhost_device(dev);
+	struct tegra_dc *dc = nvhost_get_drvdata(ndev);
+	int connected;
+
+	connected = dc->connected;
+
+	return snprintf(buf, PAGE_SIZE, "%d", connected);
+}
+static DEVICE_ATTR(connected, S_IRUGO|S_IWUSR, connected_show, NULL);
+
+#ifdef SUPPORT_US_CTRL_OF_HPD
+static ssize_t hpd_show(struct device *dev,
+        struct device_attribute *attr, char *buf)
+{
+	struct nvhost_device *ndev = to_nvhost_device(dev);
+	struct tegra_dc *dc = nvhost_get_drvdata(ndev);
+	int hpd;
+
+	hpd = tegra_dc_hdmi_check_hpd_state (dc);
+	return snprintf(buf, PAGE_SIZE, "%d", hpd);
+}
+
+static ssize_t hpd_store(struct device *dev,
+        struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct nvhost_device *ndev = to_nvhost_device(dev);
+	struct tegra_dc *dc = nvhost_get_drvdata(ndev);
+	unsigned long hpd;
+	unsigned long val = 0;
+
+	if (strict_strtoul(buf, 10, &val) < 0)
+		return -EINVAL;
+	if (val) {
+		tegra_dc_enable(dc);
+		hpd = tegra_dc_hdmi_switch_enable(dc, val);
+		if (sscanf(buf, "%d", &hpd) != 1)
+			return -EINVAL;
+	} else {
+		tegra_dc_disable(dc);
+		hpd = tegra_dc_hdmi_switch_enable (dc, val);
+		if (sscanf(buf, "%d", &hpd) != 1)
+			return -EINVAL;
+	}
+	return count;
+}
+
+static DEVICE_ATTR(hpd, S_IRUGO|S_IWUSR, hpd_show, hpd_store);
+#endif
+
+#ifdef SUPPORT_RAW_EDID_READS
+static ssize_t edid_data_show(struct device *dev,
+        struct device_attribute *attr, char *buf)
+{
+	struct nvhost_device *ndev = to_nvhost_device(dev);
+	struct tegra_dc *dc = nvhost_get_drvdata(ndev);
+	int ndx, start, end;
+	ssize_t ret = 0;
+	int block;
+	static u8 sysfs_edid[(0x80 * 4)];
+
+	tegra_edid_get_raw_data (sysfs_edid);
+
+	/* Return no data if HDMI is not connected */
+	if (!dc->connected)
+		return 0;
+
+	/* Read all 4 Blocks of EDID data */
+	for (block = 0; block < 4; block++) {
+		start = 0x80 * block;
+		end = start + (0x80 - 1);
+		for (ndx = start; ndx < end; ndx += 8) {
+			ret += snprintf(buf + ret, PAGE_SIZE - ret,
+				"%02x%02x%02x%02x%02x%02x%02x%02x",
+				sysfs_edid[ndx+0], sysfs_edid[ndx+1],
+				sysfs_edid[ndx+2], sysfs_edid[ndx+3],
+				sysfs_edid[ndx+4], sysfs_edid[ndx+5],
+				sysfs_edid[ndx+6], sysfs_edid[ndx+7]);
+		}
+	}
+	return ret;
+}
+
+static DEVICE_ATTR(edid_data, S_IRUGO, edid_data_show, NULL);
+#endif
 
 static ssize_t stats_enable_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
@@ -324,6 +416,14 @@ void __devexit tegra_dc_remove_sysfs(struct device *dev)
 	device_remove_file(dev, &dev_attr_enable);
 	device_remove_file(dev, &dev_attr_stats_enable);
 	device_remove_file(dev, &dev_attr_crc_checksum_latched);
+	device_remove_file(dev, &dev_attr_connected);
+#ifdef SUPPORT_US_CTRL_OF_HPD
+	device_remove_file(dev, &dev_attr_hpd);
+#endif
+
+#ifdef SUPPORT_RAW_EDID_READS
+	device_remove_file(dev, &dev_attr_edid_data);
+#endif
 
 	if (dc->out->stereo) {
 		device_remove_file(dev, &dev_attr_stereo_orientation);
@@ -346,6 +446,14 @@ void tegra_dc_create_sysfs(struct device *dev)
 	error |= device_create_file(dev, &dev_attr_enable);
 	error |= device_create_file(dev, &dev_attr_stats_enable);
 	error |= device_create_file(dev, &dev_attr_crc_checksum_latched);
+	error |= device_create_file(dev, &dev_attr_connected);
+#ifdef SUPPORT_US_CTRL_OF_HPD
+	error |= device_create_file(dev, &dev_attr_hpd);
+#endif
+
+#ifdef SUPPORT_RAW_EDID_READS
+	error |= device_create_file(dev, &dev_attr_edid_data);
+#endif
 
 	if (dc->out->stereo) {
 		error |= device_create_file(dev, &dev_attr_stereo_orientation);

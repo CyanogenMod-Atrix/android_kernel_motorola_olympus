@@ -265,6 +265,15 @@ int tegra_dc_set_fb_mode(struct tegra_dc *dc,
 	if (!fbmode->pixclock)
 		return -EINVAL;
 
+#ifdef SUPPORT_US_CTRL_OF_HPD
+	if (dc->out->type == TEGRA_DC_OUT_HDMI) {
+		int hpd_state = tegra_dc_hdmi_check_hpd_state (dc);
+		int valid_mode = tegra_dc_hdmi_check_mode (dc, fbmode);
+		if (!hpd_state || !valid_mode)
+			return 0;
+		}
+#endif
+
 	mode.pclk = PICOS2KHZ(fbmode->pixclock) * 1000;
 	mode.h_sync_width = fbmode->hsync_len;
 	mode.v_sync_width = fbmode->vsync_len;
@@ -282,10 +291,15 @@ int tegra_dc_set_fb_mode(struct tegra_dc *dc,
 	} else {
 		calc_ref_to_sync(&mode);
 	}
-	if (!check_ref_to_sync(&mode)) {
+	if (mode.h_active != 1366 ||  mode.v_active != 768) {
+	  if (!check_ref_to_sync(&mode)) {
 		dev_err(&dc->ndev->dev,
 				"Display timing doesn't meet restrictions.\n");
+		dev_err(&dc->ndev->dev, "mode %dx%d mode pclk=%d fbmode pclk=%d "
+			"selection failed\n", mode.h_active, mode.v_active,
+			mode.pclk,fbmode->pixclock);
 		return -EINVAL;
+	  }
 	}
 	dev_info(&dc->ndev->dev, "Using mode %dx%d pclk=%d href=%d vref=%d\n",
 		mode.h_active, mode.v_active, mode.pclk,

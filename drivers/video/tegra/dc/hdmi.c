@@ -119,6 +119,9 @@ struct tegra_dc_hdmi_data {
 	bool				audio_inject_null;
 
 	bool				dvi;
+#ifdef SUPPORT_US_CTRL_OF_HPD
+	int				hpd;
+#endif
 };
 
 struct tegra_dc_hdmi_data *dc_hdmi;
@@ -269,6 +272,50 @@ const struct fb_videomode tegra_dc_hdmi_supported_modes[] = {
 		.sync = FB_SYNC_HOR_HIGH_ACT | FB_SYNC_VERT_HIGH_ACT,
 	},
 
+        /* 1366x768p @ webtop pixelclock 69290000*/
+        {
+                .xres =         1366,
+                .yres =         768,
+                .pixclock =     KHZ2PICOS(69290),
+                .hsync_len =    32,     // h_sync_width /
+                .vsync_len =    2,      /* v_sync_width */
+                .left_margin =  48,    /* h_back_porch */
+                .upper_margin = 5,     /* v_back_porch */
+                .right_margin = 34,    /* h_front_porch */
+                .lower_margin = 5,      /* v_front_porch */
+                .vmode = FB_VMODE_NONINTERLACED,
+                .sync = 0,
+        },
+
+        /* 1366x768p @ webtop pixelclock 72000000*/
+        {
+                .xres =         1366,
+                .yres =         768,
+                .pixclock =     KHZ2PICOS(72000),
+                .hsync_len =    56,     // h_sync_width /
+                .vsync_len =    3,      /* v_sync_width */
+                .left_margin =  64,    /* h_back_porch */
+                .upper_margin = 28,     /* v_back_porch */
+                .right_margin = 14,    /* h_front_porch */
+                .lower_margin = 1,      /* v_front_porch */
+                .vmode = FB_VMODE_NONINTERLACED,
+                .sync = 0,
+        },
+
+        /* 1366x768p @ webtop pixelclock 75500000*/
+        {
+                .xres =         1366,
+                .yres =         768,
+                .pixclock =     KHZ2PICOS(75500),
+                .hsync_len =    39,     // h_sync_width /
+                .vsync_len =    5,      /* v_sync_width */
+                .left_margin =  59,    /* h_back_porch */
+                .upper_margin = 9,     /* v_back_porch */
+                .right_margin = 96,    /* h_front_porch */
+                .lower_margin = 24,      /* v_front_porch */
+                .vmode = FB_VMODE_NONINTERLACED,
+                .sync = 0,
+        },
 	/*
 	* Few VGA/SVGA modes to support monitors with lower
 	* resolutions or to support HDMI<->DVI connection
@@ -831,6 +878,37 @@ const struct tdms_config tdms_config[] = {
 		DRIVE_CURRENT_LANE2(DRIVE_CURRENT_7_125_mA) |
 		DRIVE_CURRENT_LANE3(DRIVE_CURRENT_7_125_mA),
 	},
+
+	{ /* 1366x768 */
+	.pclk = PICOS2KHZ(KHZ2PICOS(69290)) * 1000,
+	.pll0 = SOR_PLL_BG_V17_S(3) | SOR_PLL_ICHPMP(2) | SOR_PLL_RESISTORSEL |
+		SOR_PLL_VCOCAP(1) | SOR_PLL_TX_REG_LOAD(3),
+	.pll1 = 0,
+	.pe_current = PE_CURRENT0(PE_CURRENT_0_0_mA) |
+		PE_CURRENT1(PE_CURRENT_0_0_mA) |
+		PE_CURRENT2(PE_CURRENT_0_0_mA) |
+		PE_CURRENT3(PE_CURRENT_0_0_mA),
+	.drive_current = DRIVE_CURRENT_LANE0(DRIVE_CURRENT_5_250_mA) |
+		DRIVE_CURRENT_LANE1(DRIVE_CURRENT_5_250_mA) |
+		DRIVE_CURRENT_LANE2(DRIVE_CURRENT_5_250_mA) |
+		DRIVE_CURRENT_LANE3(DRIVE_CURRENT_5_250_mA),
+	},
+
+	{ /* 1366x768 */
+	.pclk = PICOS2KHZ(KHZ2PICOS(72000)) * 1000,
+	.pll0 = SOR_PLL_BG_V17_S(3) | SOR_PLL_ICHPMP(2) | SOR_PLL_RESISTORSEL |
+		SOR_PLL_VCOCAP(1) | SOR_PLL_TX_REG_LOAD(3),
+	.pll1 = 0,
+	.pe_current = PE_CURRENT0(PE_CURRENT_0_0_mA) |
+		PE_CURRENT1(PE_CURRENT_0_0_mA) |
+		PE_CURRENT2(PE_CURRENT_0_0_mA) |
+		PE_CURRENT3(PE_CURRENT_0_0_mA),
+	.drive_current = DRIVE_CURRENT_LANE0(DRIVE_CURRENT_5_250_mA) |
+		DRIVE_CURRENT_LANE1(DRIVE_CURRENT_5_250_mA) |
+		DRIVE_CURRENT_LANE2(DRIVE_CURRENT_5_250_mA) |
+		DRIVE_CURRENT_LANE3(DRIVE_CURRENT_5_250_mA),
+	},
+
 	{ /* 720p modes */
 	.pclk = 74250000,
 	.pll0 = SOR_PLL_BG_V17_S(3) | SOR_PLL_ICHPMP(1) | SOR_PLL_RESISTORSEL |
@@ -845,6 +923,22 @@ const struct tdms_config tdms_config[] = {
 		DRIVE_CURRENT_LANE2(DRIVE_CURRENT_7_125_mA) |
 		DRIVE_CURRENT_LANE3(DRIVE_CURRENT_7_125_mA),
 	},
+
+	{ /* 1366x768 */
+	.pclk = PICOS2KHZ(KHZ2PICOS(75500)) * 1000,
+	.pll0 = SOR_PLL_BG_V17_S(3) | SOR_PLL_ICHPMP(1) | SOR_PLL_RESISTORSEL |
+		SOR_PLL_VCOCAP(3) | SOR_PLL_TX_REG_LOAD(3),
+	.pll1 = 0,
+	.pe_current = PE_CURRENT0(PE_CURRENT_0_0_mA) |
+		PE_CURRENT1(PE_CURRENT_0_0_mA) |
+		PE_CURRENT2(PE_CURRENT_0_0_mA) |
+		PE_CURRENT3(PE_CURRENT_0_0_mA),
+	.drive_current = DRIVE_CURRENT_LANE0(DRIVE_CURRENT_5_250_mA) |
+		DRIVE_CURRENT_LANE1(DRIVE_CURRENT_5_250_mA) |
+		DRIVE_CURRENT_LANE2(DRIVE_CURRENT_5_250_mA) |
+		DRIVE_CURRENT_LANE3(DRIVE_CURRENT_5_250_mA),
+	},
+
 	{ /* 1080p modes */
 	.pclk = INT_MAX,
 	.pll0 = SOR_PLL_BG_V17_S(3) | SOR_PLL_ICHPMP(1) | SOR_PLL_RESISTORSEL |
@@ -881,7 +975,9 @@ const struct tegra_hdmi_audio_config tegra_hdmi_audio_32k[] = {
 const struct tegra_hdmi_audio_config tegra_hdmi_audio_44_1k[] = {
 	{25200000,	5880,	26250,	25000},
 	{27000000,	5880,	28125,	25000},
+	{72004000,	6272,   80000,  20000},
 	{74250000,	4704,	61875,	20000},
+	{75500000,	4704,	61875,	20000}, /* actual p_clk is 74.25MHz */
 	{148500000,	4704,	123750,	20000},
 	{0,		0,	0},
 };
@@ -1343,13 +1439,24 @@ void tegra_dc_hdmi_detect_config(struct tegra_dc *dc,
 	dc->out->h_size = specs->max_x * 1000;
 	dc->out->v_size = specs->max_y * 1000;
 
-	hdmi->dvi = !(specs->misc & FB_MISC_HDMI);
+	/* If a lapdock is attached, always setup audio for HDMI */
+	if (tegra_edid_lapdock_attached(hdmi->edid)) {
+		hdmi->dvi = 0;
+	} else {
+		hdmi->dvi = !(specs->misc & FB_MISC_HDMI);
+	}
 
 	tegra_fb_update_monspecs(dc->fb, specs, tegra_dc_hdmi_mode_filter);
 #ifdef CONFIG_SWITCH
 	hdmi->hpd_switch.state = 0;
 	switch_set_state(&hdmi->hpd_switch, 1);
 #endif
+
+#ifdef SUPPORT_US_CTRL_OF_HPD
+	if (!hdmi->hpd)
+		switch_set_state(&hdmi->hpd_switch, 0);
+#endif
+
 	dev_info(&dc->ndev->dev, "display detected\n");
 
 	dc->connected = true;
@@ -1394,6 +1501,39 @@ fail:
 	return false;
 }
 EXPORT_SYMBOL(tegra_dc_hdmi_detect_test);
+
+#ifdef SUPPORT_US_CTRL_OF_HPD
+int tegra_dc_hdmi_check_mode (const struct tegra_dc *dc,
+				struct fb_videomode *mode)
+{
+	bool valid_mode = tegra_dc_hdmi_mode_filter (dc, mode);
+	return valid_mode;
+}
+
+int tegra_dc_hdmi_check_hpd_state (struct tegra_dc *dc)
+{
+	struct tegra_dc_hdmi_data *hdmi = tegra_dc_get_outdata(dc);
+	return hdmi->hpd;
+}
+
+int tegra_dc_hdmi_switch_enable (struct tegra_dc *dc, int enable)
+{
+	struct tegra_dc_hdmi_data *hdmi = tegra_dc_get_outdata(dc);
+	if (enable) {
+		hdmi->hpd = 1;
+		int level = gpio_get_value(dc->out->hotplug_gpio);
+		if (level) {
+			hdmi->hpd_switch.state = 0;
+			switch_set_state(&hdmi->hpd_switch, 1);
+		}
+	}
+	else {
+		hdmi->hpd = 0;
+		switch_set_state(&hdmi->hpd_switch, 0);
+	}
+	return hdmi->hpd;
+}
+#endif
 
 static bool tegra_dc_hdmi_detect(struct tegra_dc *dc)
 {

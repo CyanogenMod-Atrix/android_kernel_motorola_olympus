@@ -358,6 +358,8 @@ void tegra_dc_create_sysfs(struct device *dev);
 void tegra_dc_stats_enable(struct tegra_dc *dc, bool enable);
 bool tegra_dc_stats_get(struct tegra_dc *dc);
 
+void tegra_edid_get_raw_data(u8 *buf);
+
 /* defined in dc.c, used by dc_sysfs.c */
 u32 tegra_dc_read_checksum_latched(struct tegra_dc *dc);
 void tegra_dc_enable_crc(struct tegra_dc *dc);
@@ -392,5 +394,10 @@ void tegra_dc_set_csc(struct tegra_dc *dc, struct tegra_dc_csc *csc);
 
 /* defined in window.c, used in dc.c */
 void tegra_dc_trigger_windows(struct tegra_dc *dc);
+
+#ifdef SUPPORT_US_CTRL_OF_HPD
+int tegra_dc_hdmi_check_mode (const struct tegra_dc *dc, struct fb_videomode *mode);
+int tegra_dc_hdmi_check_hpd_state (struct tegra_dc *dc);
+#endif
 
 #endif

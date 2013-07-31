@@ -25,6 +25,7 @@
 #include <linux/vmalloc.h>
 
 #include "edid.h"
+#include "dc_priv.h"
 
 struct tegra_edid_pvt {
 	struct kref			refcnt;
@@ -33,6 +34,7 @@ struct tegra_edid_pvt {
 	bool				support_underscan;
 	/* Note: dc_edid must remain the last member */
 	struct tegra_dc_edid		dc_edid;
+	bool				bIsLapdock;
 };
 
 struct tegra_edid {
@@ -321,8 +323,10 @@ int tegra_edid_mode_support_stereo(struct fb_videomode *mode)
 		((mode->refresh == 60) || (mode->refresh == 50)))
 		return 1;
 
+	/* Disabling 1080p stereo mode due to bug 869099. */
+	/* Must re-enable this to 1 once it is fixed. */
 	if (mode->xres == 1920 && mode->yres == 1080 && mode->refresh == 24)
-		return 1;
+		return 0;
 
 	return 0;
 }
@@ -413,6 +417,15 @@ fail:
 	return ret;
 }
 
+#ifdef SUPPORT_RAW_EDID_READS
+static u8 sysfs_edid[(0x80 * 4)];
+
+void tegra_edid_get_raw_data(u8 *buf)
+{
+	memcpy(buf, sysfs_edid, (0x80 * 4));
+}
+#endif
+
 int tegra_edid_get_monspecs(struct tegra_edid *edid, struct fb_monspecs *specs)
 {
 	int i;
@@ -420,6 +433,7 @@ int tegra_edid_get_monspecs(struct tegra_edid *edid, struct fb_monspecs *specs)
 	int ret;
 	int extension_blocks;
 	struct tegra_edid_pvt *new_data, *old_data;
+	struct tegra_dc_edid *edid_data;
 	u8 *data;
 
 	new_data = vmalloc(SZ_32K + sizeof(struct tegra_edid_pvt));
@@ -488,6 +502,27 @@ int tegra_edid_get_monspecs(struct tegra_edid *edid, struct fb_monspecs *specs)
 	if (old_data)
 		kref_put(&old_data->refcnt, data_release);
 
+#ifdef SUPPORT_RAW_EDID_READS
+	edid_data = tegra_edid_get_data(edid);
+	if (!edid_data) {
+		pr_err("%s: No Raw EDID Data", __func__);
+		return 0;
+	}
+	memcpy(sysfs_edid, edid_data->buf, (0x80 * 4));
+#endif
+
+	/* check if device is a lapdock */
+	if (  edid_data->buf[8] == 0x35 && edid_data->buf[9] == 0xF4 &&
+		edid_data->buf[10] >= 0xC4 && edid_data->buf[10] <= 0xE4 &&
+		edid_data->buf[11] == 0x3D)
+	{
+		edid->data->bIsLapdock = 1;
+	}
+	else
+	{
+		edid->data->bIsLapdock = 0;
+	}
+
 	tegra_edid_dump(edid);
 	return 0;
 
@@ -502,6 +537,14 @@ int tegra_edid_underscan_supported(struct tegra_edid *edid)
 		return 0;
 
 	return edid->data->support_underscan;
+}
+
+int tegra_edid_lapdock_attached(struct tegra_edid *edid)
+{
+	if ((!edid) || (!edid->data))
+		return 0;
+
+	return edid->data->bIsLapdock;
 }
 
 int tegra_edid_get_eld(struct tegra_edid *edid, struct tegra_edid_hdmi_eld *elddata)

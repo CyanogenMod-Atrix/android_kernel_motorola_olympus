@@ -220,3 +220,7 @@ void tegra_hdmi_writel(struct tegra_dc_hdmi_data *hdmi,
 				unsigned long val, unsigned long reg);
 
 #endif
+
+#ifdef SUPPORT_US_CTRL_OF_HPD
+int tegra_dc_hdmi_switch_enable (struct tegra_dc *dc, int enabe);
+#endif

@@ -59,4 +59,5 @@ struct tegra_dc_edid *tegra_edid_get_data(struct tegra_edid *edid);
 void tegra_edid_put_data(struct tegra_dc_edid *data);
 
 int tegra_edid_underscan_supported(struct tegra_edid *edid);
+int tegra_edid_lapdock_attached(struct tegra_edid *edid);
 #endif
