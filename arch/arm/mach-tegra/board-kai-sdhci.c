@@ -106,6 +106,7 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data2 = {
 	.mmc_data = {
 		.register_status_notify	= kai_wifi_status_register,
 		.built_in = 0,
+		.ocr_mask = MMC_OCR_1V8_MASK,
 	},
 #ifndef CONFIG_MMC_EMBEDDED_SDIO
 	.pm_flags = MMC_PM_KEEP_POWER,
@@ -242,9 +243,6 @@ static int __init kai_wifi_init(void)
 	rc = gpio_request(KAI_WLAN_IRQ, "wl12xx");
 	if (rc)
 		pr_err("WLAN_IRQ gpio request failed:%d\n", rc);
-
-	tegra_gpio_enable(KAI_WLAN_EN);
-	tegra_gpio_enable(KAI_WLAN_IRQ);
 
 	rc = gpio_direction_output(KAI_WLAN_EN, 0);
 	if (rc)

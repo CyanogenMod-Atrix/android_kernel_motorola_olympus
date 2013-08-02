@@ -70,37 +70,30 @@ static struct regulator *reg_vddio_vi;  /* LDO18 */
 
 static int whistler_camera_init(void)
 {
-	tegra_gpio_enable(CAMERA1_PWDN_GPIO);
 	gpio_request(CAMERA1_PWDN_GPIO, "camera1_powerdown");
 	gpio_direction_output(CAMERA1_PWDN_GPIO, 0);
 	gpio_export(CAMERA1_PWDN_GPIO, false);
 
-	tegra_gpio_enable(CAMERA1_RESET_GPIO);
 	gpio_request(CAMERA1_RESET_GPIO, "camera1_reset");
 	gpio_direction_output(CAMERA1_RESET_GPIO, 0);
 	gpio_export(CAMERA1_RESET_GPIO, false);
 
-	tegra_gpio_enable(CAMERA2_PWDN_GPIO);
 	gpio_request(CAMERA2_PWDN_GPIO, "camera2_powerdown");
 	gpio_direction_output(CAMERA2_PWDN_GPIO, 0);
 	gpio_export(CAMERA2_PWDN_GPIO, false);
 
-	tegra_gpio_enable(CAMERA2_RESET_GPIO);
 	gpio_request(CAMERA2_RESET_GPIO, "camera2_reset");
 	gpio_direction_output(CAMERA2_RESET_GPIO, 0);
 	gpio_export(CAMERA2_RESET_GPIO, false);
 
-	tegra_gpio_enable(CAMERA_AF_PD_GPIO);
 	gpio_request(CAMERA_AF_PD_GPIO, "camera_autofocus");
 	gpio_direction_output(CAMERA_AF_PD_GPIO, 0);
 	gpio_export(CAMERA_AF_PD_GPIO, false);
 
-	tegra_gpio_enable(CAMERA_FLASH_EN1_GPIO);
 	gpio_request(CAMERA_FLASH_EN1_GPIO, "camera_flash_en1");
 	gpio_direction_output(CAMERA_FLASH_EN1_GPIO, 0);
 	gpio_export(CAMERA_FLASH_EN1_GPIO, false);
 
-	tegra_gpio_enable(CAMERA_FLASH_EN2_GPIO);
 	gpio_request(CAMERA_FLASH_EN2_GPIO, "camera_flash_en2");
 	gpio_direction_output(CAMERA_FLASH_EN2_GPIO, 0);
 	gpio_export(CAMERA_FLASH_EN2_GPIO, false);
@@ -293,14 +286,12 @@ static struct i2c_board_info whistler_i2c3_board_info[] = {
 
 static void whistler_adxl34x_init(void)
 {
-	tegra_gpio_enable(ADXL34X_IRQ_GPIO);
 	gpio_request(ADXL34X_IRQ_GPIO, "adxl34x");
 	gpio_direction_input(ADXL34X_IRQ_GPIO);
 }
 
 static void whistler_isl29018_init(void)
 {
-	tegra_gpio_enable(ISL29018_IRQ_GPIO);
 	gpio_request(ISL29018_IRQ_GPIO, "isl29018");
 	gpio_direction_input(ISL29018_IRQ_GPIO);
 }
@@ -315,11 +306,6 @@ static struct i2c_board_info whistler_i2c1_board_info[] = {
 		.irq = TEGRA_GPIO_TO_IRQ(ISL29018_IRQ_GPIO),
 	},
 };
-
-static void whistler_adt7461_init(void)
-{
-	tegra_gpio_enable(ADT7461_IRQ_GPIO);
-}
 
 static struct adt7461_platform_data whistler_adt7461_pdata = {
 	.supported_hwrev = true,
@@ -354,8 +340,6 @@ int __init whistler_sensors_init(void)
 	whistler_adxl34x_init();
 
 	whistler_isl29018_init();
-
-	whistler_adt7461_init();
 
 	i2c_register_board_info(0, whistler_i2c1_board_info,
 		ARRAY_SIZE(whistler_i2c1_board_info));

@@ -29,7 +29,6 @@ struct tegra_sdhci_platform_data {
 	int pm_flags;
 	int pm_caps;
 	unsigned int max_clk_limit;
-	unsigned int ddr_clk_limit;
 	unsigned int tap_delay;
 	struct mmc_platform_data mmc_data;
 #ifdef CONFIG_MACH_OLYMPUS

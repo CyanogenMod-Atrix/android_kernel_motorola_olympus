@@ -3,7 +3,7 @@
  *
  * Copyright (C) 2010 Google, Inc.
  *
- * Copyright (C) 2012 NVIDIA Corporation
+ * Copyright (c) 2012, NVIDIA Corporation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -35,9 +35,11 @@
 #include "board-p1852.h"
 #include "devices.h"
 
+#define P1852_SD1_CD TEGRA_GPIO_PV2
+
 static struct tegra_sdhci_platform_data tegra_sdhci_platform_data1 = {
-	.cd_gpio = TEGRA_GPIO_PV2,
-	.wp_gpio = TEGRA_GPIO_PD3,
+	.cd_gpio = P1852_SD1_CD,
+	.wp_gpio = -1,
 	.power_gpio = -1,
 	.is_8bit = false,
 };
@@ -47,13 +49,6 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data2 = {
 	.wp_gpio = -1,
 	.power_gpio = -1,
 	.is_8bit = true,
-};
-
-static struct tegra_sdhci_platform_data tegra_sdhci_platform_data3 = {
-	.cd_gpio = TEGRA_GPIO_PV3,
-	.wp_gpio = TEGRA_GPIO_PD4,
-	.power_gpio = -1,
-	.is_8bit = false,
 };
 
 static struct tegra_sdhci_platform_data tegra_sdhci_platform_data4 = {
@@ -67,12 +62,10 @@ int __init p1852_sdhci_init(void)
 {
 	tegra_sdhci_device1.dev.platform_data = &tegra_sdhci_platform_data1;
 	tegra_sdhci_device2.dev.platform_data = &tegra_sdhci_platform_data2;
-	tegra_sdhci_device3.dev.platform_data = &tegra_sdhci_platform_data3;
 	tegra_sdhci_device4.dev.platform_data = &tegra_sdhci_platform_data4;
 
 	platform_device_register(&tegra_sdhci_device1);
 	platform_device_register(&tegra_sdhci_device2);
-	platform_device_register(&tegra_sdhci_device3);
 	platform_device_register(&tegra_sdhci_device4);
 
 	return 0;

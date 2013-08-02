@@ -86,17 +86,7 @@ static struct platform_device kai_keys_device = {
 
 int __init kai_keys_init(void)
 {
-	int i;
-
 	pr_info("Registering gpio keys\n");
-
-	/* Enable gpio mode for other pins */
-	for (i = 0; i < kai_keys_platform_data.nbuttons; i++) {
-		if (kai_keys_platform_data.buttons[i].gpio < 0)
-			continue;
-		tegra_gpio_enable(kai_keys_platform_data.buttons[i].gpio);
-	}
-
 	platform_device_register(&kai_keys_device);
 
 	return 0;

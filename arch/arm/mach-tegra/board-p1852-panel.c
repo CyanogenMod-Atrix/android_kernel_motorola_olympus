@@ -28,6 +28,7 @@
 
 #include "board.h"
 #include "devices.h"
+#include "tegra3_host1x_devices.h"
 
 static int p1852_panel_enable(void)
 {
@@ -39,6 +40,63 @@ static int p1852_panel_disable(void)
 	return 0;
 }
 
+#ifdef CONFIG_TOUCHSCREEN_ATMEL_MXT
+
+static struct tegra_dc_mode p1852_panel_modes[] = {
+	{
+		/* 1366x768@60Hz */
+		.pclk = 74180000,
+		.h_ref_to_sync = 1,
+		.v_ref_to_sync = 1,
+		.h_sync_width = 30,
+		.v_sync_width = 5,
+		.h_back_porch = 52,
+		.v_back_porch = 20,
+		.h_active = 1366,
+		.v_active = 768,
+		.h_front_porch = 64,
+		.v_front_porch = 25,
+	},
+	{
+		/* 1366x768@50Hz */
+		.pclk = 74180000,
+		.h_ref_to_sync = 1,
+		.v_ref_to_sync = 1,
+		.h_sync_width = 30,
+		.v_sync_width = 5,
+		.h_back_porch = 56,
+		.v_back_porch = 80,
+		.h_active = 1366,
+		.v_active = 768,
+		.h_front_porch = 64,
+		.v_front_porch = 125,
+	},
+	{
+		/* 1366x768@48 */
+		.pclk = 74180000,
+		.h_ref_to_sync = 1,
+		.v_ref_to_sync = 1,
+		.h_sync_width = 30,
+		.v_sync_width = 5,
+		.h_back_porch = 52,
+		.v_back_porch = 98,
+		.h_active = 1366,
+		.v_active = 768,
+		.h_front_porch = 64,
+		.v_front_porch = 152,
+	},
+};
+
+static struct tegra_fb_data p1852_fb_data = {
+	.win        = 0,
+	.xres       = 1366,
+	.yres       = 768,
+	.bits_per_pixel = 32,
+};
+
+#else
+
+/* Mode data for primary RGB/LVDS out */
 static struct tegra_dc_mode p1852_panel_modes[] = {
 	{
 		/* 800x480@60 */
@@ -62,6 +120,8 @@ static struct tegra_fb_data p1852_fb_data = {
 	.yres		= 480,
 	.bits_per_pixel	= 32,
 };
+
+#endif
 
 static struct tegra_dc_out p1852_disp1_out = {
 	.align		= TEGRA_DC_ALIGN_MSB,
@@ -126,7 +186,7 @@ int __init p1852_panel_init(void)
 	res->end = tegra_fb_start + tegra_fb_size - 1;
 
 #ifdef CONFIG_TEGRA_GRHOST
-	err = nvhost_device_register(&tegra_grhost_device);
+	err = tegra3_register_host1x_devices();
 	if (err)
 		return err;
 #endif

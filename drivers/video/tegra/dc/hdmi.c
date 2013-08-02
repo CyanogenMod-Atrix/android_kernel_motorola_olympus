@@ -271,6 +271,51 @@ const struct fb_videomode tegra_dc_hdmi_supported_modes[] = {
 		.vmode =	FB_VMODE_NONINTERLACED,
 		.sync = FB_SYNC_HOR_HIGH_ACT | FB_SYNC_VERT_HIGH_ACT,
 	},
+
+        /* 1366x768p @ webtop pixelclock 69290000*/
+        {
+                .xres =         1366,
+                .yres =         768,
+                .pixclock =     KHZ2PICOS(69290),
+                .hsync_len =    32,     // h_sync_width /
+                .vsync_len =    2,      /* v_sync_width */
+                .left_margin =  48,    /* h_back_porch */
+                .upper_margin = 5,     /* v_back_porch */
+                .right_margin = 34,    /* h_front_porch */
+                .lower_margin = 5,      /* v_front_porch */
+                .vmode = FB_VMODE_NONINTERLACED,
+                .sync = 0,
+        },
+
+        /* 1366x768p @ webtop pixelclock 72000000*/
+        {
+                .xres =         1366,
+                .yres =         768,
+                .pixclock =     KHZ2PICOS(72000),
+                .hsync_len =    56,     // h_sync_width /
+                .vsync_len =    3,      /* v_sync_width */
+                .left_margin =  64,    /* h_back_porch */
+                .upper_margin = 28,     /* v_back_porch */
+                .right_margin = 14,    /* h_front_porch */
+                .lower_margin = 1,      /* v_front_porch */
+                .vmode = FB_VMODE_NONINTERLACED,
+                .sync = 0,
+        },
+
+        /* 1366x768p @ webtop pixelclock 75500000*/
+        {
+                .xres =         1366,
+                .yres =         768,
+                .pixclock =     KHZ2PICOS(75500),
+                .hsync_len =    39,     // h_sync_width /
+                .vsync_len =    5,      /* v_sync_width */
+                .left_margin =  59,    /* h_back_porch */
+                .upper_margin = 9,     /* v_back_porch */
+                .right_margin = 96,    /* h_front_porch */
+                .lower_margin = 24,      /* v_front_porch */
+                .vmode = FB_VMODE_NONINTERLACED,
+                .sync = 0,
+        },
 	/*
 	* Few VGA/SVGA modes to support monitors with lower
 	* resolutions or to support HDMI<->DVI connection
@@ -430,51 +475,7 @@ const struct fb_videomode tegra_dc_hdmi_supported_modes[] = {
 		.vmode =	FB_VMODE_NONINTERLACED,
 		.sync = FB_SYNC_HOR_HIGH_ACT | FB_SYNC_VERT_HIGH_ACT,
 	},
-    /* 1366x768p @ webtop pixelclock 69290000*/
-    {
-            .xres =         1366,
-            .yres =         768,
-            .pixclock =     KHZ2PICOS(69290),
-            .hsync_len =    32,     // h_sync_width /
-            .vsync_len =    2,      /* v_sync_width */
-            .left_margin =  48,    /* h_back_porch */
-            .upper_margin = 5,     /* v_back_porch */
-            .right_margin = 34,    /* h_front_porch */
-            .lower_margin = 5,      /* v_front_porch */
-            .vmode = FB_VMODE_NONINTERLACED,
-            .sync = 0,
-    },
-
-    /* 1366x768p @ webtop pixelclock 72000000*/
-    {
-         .xres =         1366,
-         .yres =         768,
-         .pixclock =     KHZ2PICOS(72000),
-         .hsync_len =    56,     // h_sync_width /
-         .vsync_len =    3,      /* v_sync_width */
-         .left_margin =  64,    /* h_back_porch */
-         .upper_margin = 28,     /* v_back_porch */
-         .right_margin = 14,    /* h_front_porch */
-         .lower_margin = 1,      /* v_front_porch */
-         .vmode = FB_VMODE_NONINTERLACED,
-         .sync = 0,
-    },
-
-    /* 1366x768p @ webtop pixelclock 75500000*/
-    {
-         .xres =         1366,
-         .yres =         768,
-         .pixclock =     KHZ2PICOS(75500),
-         .hsync_len =    39,     // h_sync_width /
-         .vsync_len =    5,      /* v_sync_width */
-         .left_margin =  59,    /* h_back_porch */
-         .upper_margin = 9,     /* v_back_porch */
-         .right_margin = 96,    /* h_front_porch */
-         .lower_margin = 24,      /* v_front_porch */
-        .vmode = FB_VMODE_NONINTERLACED,
-        .sync = 0,
-    },
-    /* 1368x768p 60hz */
+	/* 1368x768p 60hz */
 	{
 		.xres =		1368,
 		.yres =		768,
@@ -1377,10 +1378,6 @@ static bool tegra_dc_hdmi_valid_asp_ratio(const struct tegra_dc *dc,
 static bool tegra_dc_hdmi_mode_filter(const struct tegra_dc *dc,
 					struct fb_videomode *mode)
 {
-#ifdef CONFIG_MACH_OLYMPUS
-	struct tegra_dc_hdmi_data *hdmi = tegra_dc_get_outdata(dc);
-#endif
-
 	if (mode->vmode & FB_VMODE_INTERLACED)
 		return false;
 
@@ -1406,11 +1403,7 @@ static bool tegra_dc_hdmi_mode_filter(const struct tegra_dc *dc,
 		mode->lower_margin + mode->vsync_len + mode->upper_margin > 1 &&
 		mode->xres >= 16 && mode->yres >= 16) {
 
-#ifdef CONFIG_MACH_OLYMPUS
-			if ((mode->lower_margin == 1) && !tegra_edid_lapdock_attached(hdmi->edid)) {
-#else
-			if (mode->lower_margin == 1) {
-#endif
+		if (mode->lower_margin == 1) {
 			/* This might be the case for HDMI<->DVI
 			 * where std VESA representation will not
 			 * pass constraint V_FRONT_PORCH >=

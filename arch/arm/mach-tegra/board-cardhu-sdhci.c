@@ -145,6 +145,7 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data2 = {
 		.embedded_sdio = &embedded_sdio_data2,
 #endif
 		.built_in = 0,
+		.ocr_mask = MMC_OCR_1V8_MASK,
 	},
 #ifndef CONFIG_MMC_EMBEDDED_SDIO
 	.pm_flags = MMC_PM_KEEP_POWER,
@@ -279,10 +280,6 @@ static int __init cardhu_wifi_init(void)
 	rc = gpio_request(CARDHU_WLAN_WOW, "bcmsdh_sdmmc");
 	if (rc)
 		pr_err("WLAN_WOW gpio request failed:%d\n", rc);
-
-	tegra_gpio_enable(CARDHU_WLAN_PWR);
-	tegra_gpio_enable(CARDHU_WLAN_RST);
-	tegra_gpio_enable(CARDHU_WLAN_WOW);
 
 	rc = gpio_direction_output(CARDHU_WLAN_PWR, 0);
 	if (rc)

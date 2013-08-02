@@ -805,7 +805,7 @@ void tegra_iovmm_free_client(struct tegra_iovmm_client *client)
 	mutex_unlock(&iovmm_group_list_lock);
 }
 
-struct tegra_iovmm_client *tegra_iovmm_alloc_client(const char *name,
+struct tegra_iovmm_client *__tegra_iovmm_alloc_client(const char *name,
 	const char *share_group, struct miscdevice *misc_dev)
 {
 	struct tegra_iovmm_client *c = kzalloc(sizeof(*c), GFP_KERNEL);

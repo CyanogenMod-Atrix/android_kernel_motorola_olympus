@@ -49,10 +49,12 @@
 #include "board.h"
 #include <linux/mpu.h>
 #include <media/sh532u.h>
+#include <media/ad5816.h>
 #include <linux/bq27x00.h>
 #include <mach/gpio.h>
 #include <mach/edp.h>
 #include <mach/thermal.h>
+#include <linux/therm_est.h>
 
 #include "gpio-names.h"
 #include "board-cardhu.h"
@@ -87,24 +89,20 @@ static int cardhu_camera_init(void)
 	 * and donot have TCA6416 exp for camera */
 	if ((board_info.board_id == BOARD_E1198) ||
 		(board_info.board_id == BOARD_E1291)) {
-		tegra_gpio_enable(CAM1_POWER_DWN_GPIO);
 		ret = gpio_request(CAM1_POWER_DWN_GPIO, "camera_power_en");
 		if (ret < 0)
 			pr_err("%s: gpio_request failed for gpio %s\n",
 				__func__, "CAM1_POWER_DWN_GPIO");
-				tegra_gpio_enable(CAM3_POWER_DWN_GPIO);
 		ret = gpio_request(CAM3_POWER_DWN_GPIO, "cam3_power_en");
 		if (ret < 0)
 			pr_err("%s: gpio_request failed for gpio %s\n",
 				__func__, "CAM3_POWER_DWN_GPIO");
 
-		tegra_gpio_enable(CAM2_POWER_DWN_GPIO);
 		ret = gpio_request(CAM2_POWER_DWN_GPIO, "camera2_power_en");
 		if (ret < 0)
 			pr_err("%s: gpio_request failed for gpio %s\n",
 				__func__, "CAM2_POWER_DWN_GPIO");
 
-		tegra_gpio_enable(OV5650_RESETN_GPIO);
 		ret = gpio_request(OV5650_RESETN_GPIO, "camera_reset");
 		if (ret < 0)
 			pr_err("%s: gpio_request failed for gpio %s\n",
@@ -124,7 +122,6 @@ static int cardhu_camera_init(void)
 	}
 
 	/* To select the CSIB MUX either for cam2 or cam3 */
-	tegra_gpio_enable(CAMERA_CSI_MUX_SEL_GPIO);
 	ret = gpio_request(CAMERA_CSI_MUX_SEL_GPIO, "camera_csi_sel");
 	if (ret < 0)
 		pr_err("%s: gpio_request failed for gpio %s\n",
@@ -601,6 +598,54 @@ static struct sh532u_platform_data pm269_sh532u_right_pdata = {
 	.gpio		= pm269_sh532u_right_gpio_pdata,
 };
 
+static struct nvc_gpio_pdata ad5816_gpio_pdata[] = {
+	{ AD5816_GPIO_RESET, TEGRA_GPIO_PBB0, false, 0, },
+};
+
+static struct ad5816_platform_data ad5816_left_pdata = {
+	.cfg		= 0,
+	.num		= 1,
+	.sync		= 2,
+	.dev_name	= "focuser",
+	.gpio_count	= ARRAY_SIZE(ad5816_gpio_pdata),
+	.gpio		= ad5816_gpio_pdata,
+};
+
+static struct ad5816_platform_data ad5816_right_pdata = {
+	.cfg		= 0,
+	.num		= 2,
+	.sync		= 1,
+	.dev_name	= "focuser",
+	.gpio_count	= ARRAY_SIZE(ad5816_gpio_pdata),
+	.gpio		= ad5816_gpio_pdata,
+};
+
+static struct nvc_gpio_pdata pm269_ad5816_left_gpio_pdata[] = {
+	{ AD5816_GPIO_RESET, CAM1_RST_L_GPIO, false, 0, },
+};
+
+static struct ad5816_platform_data pm269_ad5816_left_pdata = {
+	.cfg		= NVC_CFG_NODEV,
+	.num		= 1,
+	.sync		= 2,
+	.dev_name	= "focuser",
+	.gpio_count	= ARRAY_SIZE(pm269_ad5816_left_gpio_pdata),
+	.gpio		= pm269_ad5816_left_gpio_pdata,
+};
+
+static struct nvc_gpio_pdata pm269_ad5816_right_gpio_pdata[] = {
+	{ AD5816_GPIO_RESET, CAM2_RST_L_GPIO, false, 0, },
+};
+
+static struct ad5816_platform_data pm269_ad5816_right_pdata = {
+	.cfg		= NVC_CFG_NODEV,
+	.num		= 2,
+	.sync		= 1,
+	.dev_name	= "focuser",
+	.gpio_count	= ARRAY_SIZE(pm269_ad5816_right_gpio_pdata),
+	.gpio		= pm269_ad5816_right_gpio_pdata,
+};
+
 
 static struct nvc_torch_pin_state cardhu_tps61050_pinstate = {
 	.mask		= 0x0008, /*VGP3*/
@@ -628,6 +673,10 @@ static struct i2c_board_info cardhu_i2c6_board_info[] = {
 		I2C_BOARD_INFO("sh532u", 0x72),
 		.platform_data = &sh532u_left_pdata,
 	},
+	{
+		I2C_BOARD_INFO("ad5816", 0x0E),
+		.platform_data = &ad5816_left_pdata,
+	},
 };
 
 static struct i2c_board_info cardhu_i2c7_board_info[] = {
@@ -638,6 +687,10 @@ static struct i2c_board_info cardhu_i2c7_board_info[] = {
 	{
 		I2C_BOARD_INFO("sh532u", 0x72),
 		.platform_data = &sh532u_right_pdata,
+	},
+	{
+		I2C_BOARD_INFO("ad5816", 0x0E),
+		.platform_data = &ad5816_right_pdata,
 	},
 };
 
@@ -650,6 +703,10 @@ static struct i2c_board_info pm269_i2c6_board_info[] = {
 		I2C_BOARD_INFO("sh532u", 0x72),
 		.platform_data = &pm269_sh532u_left_pdata,
 	},
+	{
+		I2C_BOARD_INFO("ad5816", 0x0E),
+		.platform_data = &pm269_ad5816_left_pdata,
+	},
 };
 
 static struct i2c_board_info pm269_i2c7_board_info[] = {
@@ -660,6 +717,10 @@ static struct i2c_board_info pm269_i2c7_board_info[] = {
 	{
 		I2C_BOARD_INFO("sh532u", 0x72),
 		.platform_data = &pm269_sh532u_right_pdata,
+	},
+	{
+		I2C_BOARD_INFO("ad5816", 0x0E),
+		.platform_data = &pm269_ad5816_right_pdata,
 	},
 };
 
@@ -710,27 +771,56 @@ static int nct_set_shutdown_temp(void *_data, long shutdown_temp)
 	return nct1008_thermal_set_shutdown_temp(data, shutdown_temp);
 }
 
+#ifdef CONFIG_TEGRA_SKIN_THROTTLE
+static int nct_get_itemp(void *dev_data, long *temp)
+{
+	struct nct1008_data *data = dev_data;
+	return nct1008_thermal_get_temps(data, NULL, temp);
+}
+#endif
+
 static void nct1008_probe_callback(struct nct1008_data *data)
 {
-	struct tegra_thermal_device *thermal_device;
+	struct tegra_thermal_device *ext_nct;
 
-	thermal_device = kzalloc(sizeof(struct tegra_thermal_device),
+	ext_nct = kzalloc(sizeof(struct tegra_thermal_device),
 					GFP_KERNEL);
-	if (!thermal_device) {
+	if (!ext_nct) {
 		pr_err("unable to allocate thermal device\n");
 		return;
 	}
 
-	thermal_device->name = "nct1008";
-	thermal_device->data = data;
-	thermal_device->offset = TDIODE_OFFSET;
-	thermal_device->get_temp = nct_get_temp;
-	thermal_device->get_temp_low = nct_get_temp_low;
-	thermal_device->set_limits = nct_set_limits;
-	thermal_device->set_alert = nct_set_alert;
-	thermal_device->set_shutdown_temp = nct_set_shutdown_temp;
+	ext_nct->name = "nct_ext";
+	ext_nct->id = THERMAL_DEVICE_ID_NCT_EXT;
+	ext_nct->data = data;
+	ext_nct->offset = TDIODE_OFFSET;
+	ext_nct->get_temp = nct_get_temp;
+	ext_nct->get_temp_low = nct_get_temp_low;
+	ext_nct->set_limits = nct_set_limits;
+	ext_nct->set_alert = nct_set_alert;
+	ext_nct->set_shutdown_temp = nct_set_shutdown_temp;
 
-	tegra_thermal_set_device(thermal_device);
+	tegra_thermal_device_register(ext_nct);
+
+#ifdef CONFIG_TEGRA_SKIN_THROTTLE
+	{
+		struct tegra_thermal_device *int_nct;
+		int_nct = kzalloc(sizeof(struct tegra_thermal_device),
+						GFP_KERNEL);
+		if (!int_nct) {
+			kfree(int_nct);
+			pr_err("unable to allocate thermal device\n");
+			return;
+		}
+
+		int_nct->name = "nct_int";
+		int_nct->id = THERMAL_DEVICE_ID_NCT_INT;
+		int_nct->data = data;
+		int_nct->get_temp = nct_get_itemp;
+
+		tegra_thermal_device_register(int_nct);
+	}
+#endif
 }
 
 static struct nct1008_platform_data cardhu_nct1008_pdata = {
@@ -785,8 +875,6 @@ static int cardhu_nct1008_init(void)
 		ret = gpio_direction_input(nct1008_port);
 		if (ret < 0)
 			gpio_free(nct1008_port);
-		else
-			tegra_gpio_enable(nct1008_port);
 	}
 
 	return ret;
@@ -916,7 +1004,6 @@ static void mpuirq_init(void)
 #if (MPU_GYRO_TYPE == MPU_TYPE_MPU3050)
 #if	MPU_ACCEL_IRQ_GPIO
 	/* ACCEL-IRQ assignment */
-	tegra_gpio_enable(MPU_ACCEL_IRQ_GPIO);
 	ret = gpio_request(MPU_ACCEL_IRQ_GPIO, MPU_ACCEL_NAME);
 	if (ret < 0) {
 		pr_err("%s: gpio_request failed %d\n", __func__, ret);
@@ -933,7 +1020,6 @@ static void mpuirq_init(void)
 #endif
 
 	/* MPU-IRQ assignment */
-	tegra_gpio_enable(MPU_GYRO_IRQ_GPIO);
 	ret = gpio_request(MPU_GYRO_IRQ_GPIO, MPU_GYRO_NAME);
 	if (ret < 0) {
 		pr_err("%s: gpio_request failed %d\n", __func__, ret);

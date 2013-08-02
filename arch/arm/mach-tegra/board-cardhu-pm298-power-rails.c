@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-cardhu-pm298-power-rails.c
  *
- * Copyright (C) 2011 NVIDIA, Inc.
+ * Copyright (C) 2011-2012, NVIDIA Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -37,7 +37,6 @@
 #include "board.h"
 #include "board-cardhu.h"
 #include "pm.h"
-#include "wakeups-t3.h"
 
 #define PMC_CTRL		0x0
 #define PMC_CTRL_INTR_LOW	BIT(17)
@@ -676,7 +675,6 @@ static struct platform_device *fixed_reg_devs_pm269[] = {
 
 int __init cardhu_pm298_gpio_switch_regulator_init(void)
 {
-	int i;
 	struct board_info board_info;
 	struct platform_device **fixed_reg_devs;
 	int    nfixreg_devs;
@@ -698,12 +696,5 @@ int __init cardhu_pm298_gpio_switch_regulator_init(void)
 		break;
 	}
 
-	for (i = 0; i < nfixreg_devs; ++i) {
-		struct fixed_voltage_config *fixed_reg_pdata =
-				fixed_reg_devs[i]->dev.platform_data;
-		int gpio_nr = fixed_reg_pdata->gpio;
-		if (gpio_nr < TEGRA_NR_GPIOS)
-			tegra_gpio_enable(gpio_nr);
-	}
 	return platform_add_devices(fixed_reg_devs, nfixreg_devs);
 }

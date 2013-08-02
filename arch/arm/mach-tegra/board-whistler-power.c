@@ -31,7 +31,6 @@
 #include "gpio-names.h"
 #include "fuse.h"
 #include "pm.h"
-#include "wakeups-t2.h"
 #include "board.h"
 
 #define PMC_CTRL		0x0

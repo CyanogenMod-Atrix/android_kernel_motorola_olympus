@@ -35,6 +35,7 @@ struct codec_info_s {
 	char *cpu_dai_name;
 	char *codec_name;	/* Name of the Codec Driver */
 	char *name;			/* Name of the Codec-Dai-Link */
+	char *pcm_driver;	/* Name of the PCM driver */
 	enum i2s_data_format i2s_format;
 	int master;			/* Codec is Master or Slave */
 	/* TDM format setttings */

@@ -4,7 +4,7 @@
  * Tegra I/O VMM implementation for GART devices in Tegra and Tegra 2 series
  * systems-on-a-chip.
  *
- * Copyright (c) 2010-2012, NVIDIA Corporation.
+ * Copyright (c) 2010-2012 NVIDIA Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -73,7 +73,7 @@ static int gart_map(struct tegra_iovmm_domain *, struct tegra_iovmm_area *);
 static void gart_unmap(struct tegra_iovmm_domain *,
 	struct tegra_iovmm_area *, bool);
 static void gart_map_pfn(struct tegra_iovmm_domain *,
-	struct tegra_iovmm_area *, tegra_iovmm_addr_t, unsigned long);
+	struct tegra_iovmm_area *, unsigned long, unsigned long);
 static struct tegra_iovmm_domain *gart_alloc_domain(
 	struct tegra_iovmm_device *, struct tegra_iovmm_client *);
 
@@ -330,7 +330,7 @@ static void gart_unmap(struct tegra_iovmm_domain *domain,
 }
 
 static void gart_map_pfn(struct tegra_iovmm_domain *domain,
-	struct tegra_iovmm_area *iovma, tegra_iovmm_addr_t offs,
+	struct tegra_iovmm_area *iovma, unsigned long offs,
 	unsigned long pfn)
 {
 	struct gart_device *gart =

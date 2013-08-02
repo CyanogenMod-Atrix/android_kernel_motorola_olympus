@@ -36,11 +36,6 @@
 
 #include "dc_reg.h"
 
-#define SUPPORT_RAW_EDID_READS
-
-/* Define to give user space full control on HPD enable/disable */
-#define SUPPORT_US_CTRL_OF_HPD
-
 #define WIN_IS_TILED(win)	((win)->flags & TEGRA_WIN_FLAG_TILED)
 #define WIN_IS_ENABLED(win)	((win)->flags & TEGRA_WIN_FLAG_ENABLED)
 
