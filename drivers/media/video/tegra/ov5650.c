@@ -1302,9 +1302,9 @@ static int ov5650_set_power(struct ov5650_info *info, int powerLevel)
 			info->camera_mode);
 
 // for Olympus
-	if (Main & stereo_ov5650_info->camera_mode) {
+	if (Main & info->camera_mode) {
 		mutex_lock(&info->mutex_le);
-		set_power_helper(stereo_ov5650_info->left.pdata, powerLevel,
+		set_power_helper(info->left.pdata, powerLevel,
 				&info->power_refcnt_le);
 		mutex_unlock(&info->mutex_le);
 	}

@@ -35,9 +35,6 @@
 #include <linux/platform_data/tegra_nor.h>
 #include <linux/spi/spi.h>
 #include <linux/mtd/partitions.h>
-#if defined(CONFIG_TOUCHSCREEN_ATMEL_MXT)
-#include <linux/i2c/atmel_mxt_ts.h>
-#endif
 #include <mach/clk.h>
 #include <mach/iomap.h>
 #include <mach/irqs.h>
@@ -51,7 +48,6 @@
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
 #include <mach/usb_phy.h>
-#include <mach/tegra_fiq_debugger.h>
 #include <sound/wm8903.h>
 #include <mach/tsensor.h>
 #include "board.h"
@@ -61,6 +57,42 @@
 #include "gpio-names.h"
 #include "fuse.h"
 
+static struct tegra_utmip_config utmi_phy_config[] = {
+	[0] = {
+			.hssync_start_delay = 0,
+			.idle_wait_delay = 17,
+			.elastic_limit = 16,
+			.term_range_adj = 6,
+			.xcvr_setup = 15,
+			.xcvr_setup_offset = 0,
+			.xcvr_use_fuses = 1,
+			.xcvr_lsfslew = 2,
+			.xcvr_lsrslew = 2,
+	},
+	[1] = {
+			.hssync_start_delay = 0,
+			.idle_wait_delay = 17,
+			.elastic_limit = 16,
+			.term_range_adj = 6,
+			.xcvr_setup = 15,
+			.xcvr_setup_offset = 0,
+			.xcvr_use_fuses = 1,
+			.xcvr_lsfslew = 2,
+			.xcvr_lsrslew = 2,
+	},
+	[2] = {
+			.hssync_start_delay = 0,
+			.idle_wait_delay = 17,
+			.elastic_limit = 16,
+			.term_range_adj = 6,
+			.xcvr_setup = 8,
+			.xcvr_setup_offset = 0,
+			.xcvr_use_fuses = 1,
+			.xcvr_lsfslew = 2,
+			.xcvr_lsrslew = 2,
+	},
+};
+
 static __initdata struct tegra_clk_init_table p1852_clk_init_table[] = {
 	/* name		parent		rate		enabled */
 	{ "pll_m",		NULL,		0,		true},
@@ -69,9 +101,8 @@ static __initdata struct tegra_clk_init_table p1852_clk_init_table[] = {
 	{ "pwm",		"clk_32k",	32768,		false},
 	{ "blink",		"clk_32k",	32768,		true},
 	{ "pll_a",		NULL,		552960000,	false},
-	/* audio cif clock should be faster than i2s */
-	{ "pll_a_out0",		NULL,		24576000,	false},
-	{ "d_audio",		"pll_a_out0",	24576000,	false},
+	{ "pll_a_out0",		NULL,		12288000,	false},
+	{ "d_audio",		"pll_a_out0",	12288000,	false},
 	{ "nor",		"pll_p",	102000000,	true},
 	{ "uarta",		"pll_p",	480000000,	true},
 	{ "uartd",		"pll_p",	480000000,	true},
@@ -84,11 +115,16 @@ static __initdata struct tegra_clk_init_table p1852_clk_init_table[] = {
 	{ "sbc5",		"pll_m",	100000000,	true},
 	{ "sbc6",		"pll_m",	100000000,	true},
 	{ "cpu_g",		"cclk_g",	900000000,	true},
-	{ "i2s0",		"pll_a_out0",	24576000,	false},
-	{ "i2s1",		"pll_a_out0",	24576000,	false},
-	{ "i2s2",		"pll_a_out0",	24576000,	false},
-	{ "i2s3",		"pll_a_out0",	24576000,	false},
-	{ "i2s4",		"pll_a_out0",	24576000,	false},
+	{ "i2s0",		"pll_a_out0",	12288000,	false},
+	{ "i2s1",		"pll_a_out0",	12288000,	false},
+	{ "i2s2",		"pll_a_out0",	12288000,	false},
+	{ "i2s3",		"pll_a_out0",	12288000,	false},
+	{ "i2s4",		"pll_a_out0",	12288000,	false},
+	{ "audio0",		"i2s0_sync",	12288000,	false},
+	{ "audio1",		"i2s1_sync",	12288000,	false},
+	{ "audio2",		"i2s2_sync",	12288000,	false},
+	{ "audio3",		"i2s3_sync",	12288000,	false},
+	{ "audio4",		"i2s4_sync",	12288000,	false},
 	{ "apbif",		"clk_m",	12000000,	false},
 	{ "dam0",		"clk_m",	12000000,	true},
 	{ "dam1",		"clk_m",	12000000,	true},
@@ -199,57 +235,26 @@ static void __init p1852_uart_init(void)
 				ARRAY_SIZE(p1852_uart_devices));
 }
 
-#if defined(CONFIG_TEGRA_P1852_TDM)
-static struct tegra_p1852_platform_data p1852_audio_tdm_pdata = {
+static struct tegra_p1852_platform_data p1852_audio_pdata = {
 	.codec_info[0] = {
 		.codec_dai_name = "dit-hifi",
 		.cpu_dai_name = "tegra30-i2s.0",
 		.codec_name = "spdif-dit.0",
 		.name = "tegra-i2s-1",
-		.pcm_driver = "tegra-tdm-pcm-audio",
-		.i2s_format = format_tdm,
-		.master = 1,
-		.num_slots = 4,
-		.slot_width = 32,
-		.tx_mask = 0x0f,
-		.rx_mask = 0x0f,
-	},
-	.codec_info[1] = {
-		.codec_dai_name = "dit-hifi",
-		.cpu_dai_name = "tegra30-i2s.4",
-		.codec_name = "spdif-dit.1",
-		.name = "tegra-i2s-2",
-		.pcm_driver = "tegra-tdm-pcm-audio",
-		.i2s_format = format_tdm,
-		.master = 1,
-		.num_slots = 8,
-		.slot_width = 32,
-		.tx_mask = 0xff,
-		.rx_mask = 0xff,
-	},
-};
-#else
-static struct tegra_p1852_platform_data p1852_audio_i2s_pdata = {
-	.codec_info[0] = {
-		.codec_dai_name = "dit-hifi",
-		.cpu_dai_name = "tegra30-i2s.0",
-		.codec_name = "spdif-dit.0",
-		.name = "tegra-i2s-1",
-		.pcm_driver = "tegra-pcm-audio",
 		.i2s_format = format_i2s,
 		.master = 1,
 	},
 	.codec_info[1] = {
 		.codec_dai_name = "dit-hifi",
-		.cpu_dai_name = "tegra30-i2s.4",
+		.cpu_dai_name = "tegra30-i2s.1",
 		.codec_name = "spdif-dit.1",
 		.name = "tegra-i2s-2",
-		.pcm_driver = "tegra-pcm-audio",
 		.i2s_format = format_i2s,
 		.master = 0,
 	},
+
 };
-#endif
+
 static struct platform_device generic_codec_1 = {
 	.name		= "spdif-dit",
 	.id			= 0,
@@ -263,22 +268,17 @@ static struct platform_device tegra_snd_p1852 = {
 	.name       = "tegra-snd-p1852",
 	.id = 0,
 	.dev    = {
-#if defined(CONFIG_TEGRA_P1852_TDM)
-		.platform_data = &p1852_audio_tdm_pdata,
-#else
-		.platform_data = &p1852_audio_i2s_pdata,
-#endif
+	    .platform_data = &p1852_audio_pdata,
 	},
 };
 
 static void p1852_i2s_audio_init(void)
 {
 	platform_device_register(&tegra_pcm_device);
-	platform_device_register(&tegra_tdm_pcm_device);
 	platform_device_register(&generic_codec_1);
 	platform_device_register(&generic_codec_2);
 	platform_device_register(&tegra_i2s_device0);
-	platform_device_register(&tegra_i2s_device4);
+	platform_device_register(&tegra_i2s_device1);
 	platform_device_register(&tegra_ahub_device);
 	platform_device_register(&tegra_snd_p1852);
 }
@@ -299,15 +299,6 @@ static struct spi_board_info tegra_spi_devices[] __initdata = {
 		.modalias = "spidev",
 		.bus_num = 1,
 		.chip_select = 1,
-		.mode = SPI_MODE_0,
-		.max_speed_hz = 18000000,
-		.platform_data = NULL,
-		.irq = 0,
-	},
-	{
-		.modalias = "spidev",
-		.bus_num = 2,
-		.chip_select = 0,
 		.mode = SPI_MODE_0,
 		.max_speed_hz = 18000000,
 		.platform_data = NULL,
@@ -339,7 +330,6 @@ static void p1852_spi_init(void)
 	tegra_spi_device2.name = "spi_slave_tegra";
 	platform_device_register(&tegra_spi_device1);
 	platform_device_register(&tegra_spi_device2);
-	platform_device_register(&tegra_spi_device3);
 	p852_register_spidev();
 }
 
@@ -349,212 +339,66 @@ static struct platform_device tegra_camera = {
 };
 
 static struct platform_device *p1852_devices[] __initdata = {
-#if defined(CONFIG_TEGRA_IOVMM_SMMU) || defined(CONFIG_TEGRA_IOMMU_SMMU)
+#if defined(CONFIG_TEGRA_IOVMM_SMMU)
 	&tegra_smmu_device,
 #endif
 #if defined(CONFIG_TEGRA_AVP)
 	&tegra_avp_device,
 #endif
 	&tegra_camera,
-	&tegra_wdt0_device,
-	&tegra_wdt1_device,
-	&tegra_wdt2_device
+	&tegra_wdt_device
 };
 
-
-#ifdef CONFIG_TOUCHSCREEN_ATMEL_MXT
-
-#define MXT_CONFIG_CRC  0xD62DE8
-static const u8 config[] = {
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	0xFF, 0xFF, 0x32, 0x0A, 0x00, 0x14, 0x14, 0x00,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x8B, 0x00, 0x00,
-	0x1B, 0x2A, 0x00, 0x20, 0x3C, 0x04, 0x05, 0x00,
-	0x02, 0x01, 0x00, 0x0A, 0x0A, 0x0A, 0x0A, 0xFF,
-	0x02, 0x55, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x64, 0x02, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x07,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x23,
-	0x00, 0x00, 0x00, 0x05, 0x0A, 0x15, 0x1E, 0x00,
-	0x00, 0x04, 0xFF, 0x03, 0x3F, 0x64, 0x64, 0x01,
-	0x0A, 0x14, 0x28, 0x4B, 0x00, 0x02, 0x00, 0x64,
-	0x00, 0x19, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x08, 0x10, 0x3C, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-};
-
-#define MXT_CONFIG_CRC_SKU2000  0xA24D9A
-static const u8 config_sku2000[] = {
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	0xFF, 0xFF, 0x32, 0x0A, 0x00, 0x14, 0x14, 0x19,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x8B, 0x00, 0x00,
-	0x1B, 0x2A, 0x00, 0x20, 0x3A, 0x04, 0x05, 0x00,  //23=thr  2 di
-	0x04, 0x04, 0x41, 0x0A, 0x0A, 0x0A, 0x0A, 0xFF,
-	0x02, 0x55, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x0A, 0x00, 0x00, 0x00, 0x00,  //0A=limit
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x23,
-	0x00, 0x00, 0x00, 0x05, 0x0A, 0x15, 0x1E, 0x00,
-	0x00, 0x04, 0x00, 0x03, 0x3F, 0x64, 0x64, 0x01,
-	0x0A, 0x14, 0x28, 0x4B, 0x00, 0x02, 0x00, 0x64,
-	0x00, 0x19, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x08, 0x10, 0x3C, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-};
-
-static struct mxt_platform_data atmel_mxt_info = {
-	.x_line         = 27,
-	.y_line         = 42,
-	.x_size         = 768,
-	.y_size         = 1366,
-	.blen           = 0x20,
-	.threshold      = 0x3C,
-	.voltage        = 3300000,              /* 3.3V */
-	.orient         = 5,
-	.config         = config,
-	.config_length  = 157,
-	.config_crc     = MXT_CONFIG_CRC,
-	.irqflags       = IRQF_TRIGGER_FALLING,
-/*	.read_chg       = &read_chg, */
-	.read_chg       = NULL,
-};
-
-static struct i2c_board_info __initdata atmel_i2c_info[] = {
-	{
-		I2C_BOARD_INFO("atmel_mxt_ts", 0x5A),
-		.irq = TEGRA_GPIO_TO_IRQ(TOUCH_GPIO_IRQ_ATMEL_T9),
-		.platform_data = &atmel_mxt_info,
-	}
-};
-
-static __initdata struct tegra_clk_init_table spi_clk_init_table[] = {
-	/* name         parent          rate            enabled */
-	{ "sbc1",       "pll_p",        52000000,       true},
-	{ NULL,         NULL,           0,              0},
-};
-
-static int __init p1852_touch_init(void)
-{
-	tegra_gpio_enable(TOUCH_GPIO_IRQ_ATMEL_T9);
-	tegra_gpio_enable(TOUCH_GPIO_RST_ATMEL_T9);
-
-	gpio_request(TOUCH_GPIO_IRQ_ATMEL_T9, "atmel-irq");
-	gpio_direction_input(TOUCH_GPIO_IRQ_ATMEL_T9);
-
-	gpio_request(TOUCH_GPIO_RST_ATMEL_T9, "atmel-reset");
-	gpio_direction_output(TOUCH_GPIO_RST_ATMEL_T9, 0);
-	msleep(1);
-	gpio_set_value(TOUCH_GPIO_RST_ATMEL_T9, 1);
-	msleep(100);
-
-	atmel_mxt_info.config = config_sku2000;
-	atmel_mxt_info.config_crc = MXT_CONFIG_CRC_SKU2000;
-
-	i2c_register_board_info(TOUCH_BUS_ATMEL_T9, atmel_i2c_info, 1);
-
-	return 0;
-}
-
-#endif // CONFIG_TOUCHSCREEN_ATMEL_MXT
-
-static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
-	.port_otg = false,
-	.has_hostpc = true,
-	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
-	.op_mode = TEGRA_USB_OPMODE_HOST,
-	.u_data.host = {
-		.vbus_gpio = -1,
-		.vbus_reg = NULL,
-		.hot_plug = false,
-		.remote_wakeup_supported = true,
-		.power_off_on_suspend = true,
+static struct usb_phy_plat_data tegra_usb_phy_pdata[] = {
+	[0] = {
+			.instance = 0,
+			.vbus_gpio = -1,
+			.vbus_reg_supply = NULL,
 	},
-	.u_cfg.utmi = {
-		.hssync_start_delay = 0,
-		.idle_wait_delay = 17,
-		.elastic_limit = 16,
-		.term_range_adj = 6,
-		.xcvr_setup = 63,
-		.xcvr_setup_offset = 6,
-		.xcvr_use_fuses = 1,
-		.xcvr_lsfslew = 2,
-		.xcvr_lsrslew = 2,
-		.xcvr_use_lsb = 1,
+	[1] = {
+			.instance = 1,
+			.vbus_gpio = -1,
+	},
+	[2] = {
+			.instance = 2,
+			.vbus_gpio = -1,
+			.vbus_reg_supply = NULL,
 	},
 };
 
-static struct tegra_usb_platform_data tegra_ehci2_utmi_pdata = {
-	.port_otg = false,
-	.has_hostpc = true,
-	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
-	.op_mode = TEGRA_USB_OPMODE_HOST,
-	.u_data.host = {
-		.vbus_gpio = -1,
-		.vbus_reg = NULL,
-		.hot_plug = false,
-		.remote_wakeup_supported = true,
-		.power_off_on_suspend = true,
+static struct tegra_ehci_platform_data tegra_ehci_pdata[] = {
+	[0] = {
+			.phy_config = &utmi_phy_config[0],
+			.operating_mode = TEGRA_USB_HOST,
+			.power_down_on_bus_suspend = 1,
 	},
-	.u_cfg.utmi = {
-		.hssync_start_delay = 0,
-		.idle_wait_delay = 17,
-		.elastic_limit = 16,
-		.term_range_adj = 6,
-		.xcvr_setup = 63,
-		.xcvr_setup_offset = 6,
-		.xcvr_use_fuses = 1,
-		.xcvr_lsfslew = 2,
-		.xcvr_lsrslew = 2,
-		.xcvr_use_lsb = 1,
+	[1] = {
+			.phy_config = &utmi_phy_config[1],
+			.operating_mode = TEGRA_USB_HOST,
+			.power_down_on_bus_suspend = 1,
 	},
-};
-
-static struct tegra_usb_platform_data tegra_ehci3_utmi_pdata = {
-	.port_otg = false,
-	.has_hostpc = true,
-	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
-	.op_mode = TEGRA_USB_OPMODE_HOST,
-	.u_data.host = {
-		.vbus_gpio = -1,
-		.vbus_reg = NULL,
-		.hot_plug = false,
-		.remote_wakeup_supported = true,
-		.power_off_on_suspend = true,
-	},
-	.u_cfg.utmi = {
-		.hssync_start_delay = 0,
-		.idle_wait_delay = 17,
-		.elastic_limit = 16,
-		.term_range_adj = 6,
-		.xcvr_setup = 63,
-		.xcvr_setup_offset = 6,
-		.xcvr_use_fuses = 1,
-		.xcvr_lsfslew = 2,
-		.xcvr_lsrslew = 2,
-		.xcvr_use_lsb = 1,
+	[2] = {
+			.phy_config = &utmi_phy_config[2],
+			.operating_mode = TEGRA_USB_HOST,
+			.power_down_on_bus_suspend = 1,
 	},
 };
 
 static void p1852_usb_init(void)
 {
-	tegra_ehci1_device.dev.platform_data = &tegra_ehci1_utmi_pdata;
+	/* Need to parse sku info to decide host/device mode */
+	tegra_usb_phy_init(tegra_usb_phy_pdata,
+				ARRAY_SIZE(tegra_usb_phy_pdata));
+
+	tegra_ehci1_device.dev.platform_data = &tegra_ehci_pdata[0];
 	platform_device_register(&tegra_ehci1_device);
 
-	tegra_ehci2_device.dev.platform_data = &tegra_ehci2_utmi_pdata;
+	tegra_ehci2_device.dev.platform_data = &tegra_ehci_pdata[1];
 	platform_device_register(&tegra_ehci2_device);
 
-	tegra_ehci3_device.dev.platform_data = &tegra_ehci3_utmi_pdata;
+	tegra_ehci3_device.dev.platform_data = &tegra_ehci_pdata[2];
 	platform_device_register(&tegra_ehci3_device);
+
 }
 
 static struct tegra_nor_platform_data p1852_nor_data = {
@@ -595,13 +439,9 @@ static void __init tegra_p1852_init(void)
 	p1852_sdhci_init();
 	p1852_spi_init();
 	platform_add_devices(p1852_devices, ARRAY_SIZE(p1852_devices));
-#ifdef CONFIG_TOUCHSCREEN_ATMEL_MXT
-	p1852_touch_init();
-#endif
 	p1852_panel_init();
 	p1852_nor_init();
 	p1852_pcie_init();
-	tegra_serial_debug_init(TEGRA_UARTD_BASE, INT_WDT_CPU, NULL, -1, -1);
 }
 
 static void __init tegra_p1852_reserve(void)

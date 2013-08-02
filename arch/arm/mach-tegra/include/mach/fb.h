@@ -2,12 +2,9 @@
  * arch/arm/mach-tegra/include/mach/fb.h
  *
  * Copyright (C) 2010 Google, Inc.
- * Copyright 2013: Olympus Kernel Project
- * <http://forum.xda-developers.com/showthread.php?t=2016837>
  *
  * Author:
  *	Erik Gilling <konkers@google.com>
- *      Olympus Kernel Project
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -24,16 +21,6 @@
 #define __MACH_TEGRA_FB_H
 
 #include <linux/fb.h>
-/* not needed anymore for Olympus
- * since we fixed tegra_move_framebuffer to support conversion
- * from 16bit to 24bit
- * and also there are no issues with init (unless there are;)
- */
-/*
-#if defined(CONFIG_MACH_OLYMPUS)
-# define TEGRA_FB_BLANK_ON_PROBE
-#endif
-*/
 
 struct nvhost_device;
 struct tegra_dc;

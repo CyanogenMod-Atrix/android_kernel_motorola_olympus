@@ -84,9 +84,6 @@ struct xmm_power_data {
 	struct baseband_power_platform_data *pdata;
 	struct work_struct work;
 	struct platform_device *hsic_device;
-	wait_queue_head_t bb_wait;
-	/* host wakeup gpio state*/
-	unsigned int hostwake;
 };
 
 enum baseband_xmm_powerstate_t {

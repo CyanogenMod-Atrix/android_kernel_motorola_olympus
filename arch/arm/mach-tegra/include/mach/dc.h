@@ -128,13 +128,6 @@ struct dsi_phy_timing_ns {
 	u16		t_tago_ns;
 };
 
-/* Aggressiveness level of DSI suspend. The higher, the more aggressive. */
-#define DSI_NO_SUSPEND			0
-#define DSI_HOST_SUSPEND_LV0		1
-#define DSI_HOST_SUSPEND_LV1		2
-#define DSI_HOST_SUSPEND_LV2		3
-#define DSI_SUSPEND_FULL		4
-
 struct tegra_dsi_out {
 	u8		n_data_lanes;			/* required */
 	u8		pixel_format;			/* required */
@@ -147,7 +140,6 @@ struct tegra_dsi_out {
 	u8		chip_rev;
 
 	bool		panel_has_frame_buffer;	/* required*/
-	bool		panel_send_dc_frames;
 
 	struct tegra_dsi_cmd	*dsi_init_cmd;		/* required */
 	u16		n_init_cmd;			/* required */
@@ -164,8 +156,6 @@ struct tegra_dsi_out {
 	u8		video_data_type;		/* required */
 	u8		video_clock_mode;
 	u8		video_burst_mode;
-
-	u8		suspend_aggr;
 
 	u16		panel_buffer_size_byte;
 	u16		panel_reset_timeout_msec;
@@ -371,7 +361,6 @@ struct tegra_dc_out {
 
 	int	(*enable)(void);
 	int	(*postpoweron)(void);
-	int	(*prepoweroff)(void);
 	int	(*disable)(void);
 
 	int	(*hotplug_init)(void);
@@ -388,16 +377,12 @@ struct tegra_dc_out {
 #define TEGRA_DC_OUT_CONTINUOUS_MODE		(0 << 3)
 #define TEGRA_DC_OUT_ONE_SHOT_MODE		(1 << 3)
 #define TEGRA_DC_OUT_N_SHOT_MODE		(1 << 4)
-#define TEGRA_DC_OUT_ONE_SHOT_LP_MODE		(1 << 5)
 
 #define TEGRA_DC_ALIGN_MSB		0
 #define TEGRA_DC_ALIGN_LSB		1
 
 #define TEGRA_DC_ORDER_RED_BLUE		0
 #define TEGRA_DC_ORDER_BLUE_RED		1
-
-#define V_BLANK_FLIP		0
-#define V_BLANK_NVSD		1
 
 struct tegra_dc;
 struct nvmap_handle_ref;
@@ -518,7 +503,6 @@ struct tegra_dc_platform_data {
 
 #define TEGRA_DC_FLAG_ENABLED		(1 << 0)
 
-int tegra_dc_get_stride(struct tegra_dc *dc, unsigned win);
 struct tegra_dc *tegra_dc_get_dc(unsigned idx);
 struct tegra_dc_win *tegra_dc_get_window(struct tegra_dc *dc, unsigned win);
 bool tegra_dc_get_connected(struct tegra_dc *);
@@ -555,6 +539,7 @@ unsigned tegra_dc_get_out_max_pixclock(const struct tegra_dc *dc);
 
 struct tegra_dc_pwm_params {
 	int which_pwm;
+	void (*switch_to_sfio)(int);
 	int gpio_conf_to_sfio;
 	unsigned int period;
 	unsigned int clk_div;
@@ -565,10 +550,7 @@ struct tegra_dc_pwm_params {
 void tegra_dc_config_pwm(struct tegra_dc *dc, struct tegra_dc_pwm_params *cfg);
 
 int tegra_dsi_send_panel_short_cmd(struct tegra_dc *dc, u8 *pdata, u8 data_len);
-void tegra_dc_host_suspend(struct tegra_dc *dc);
-void tegra_dc_host_resume(struct tegra_dc *dc);
-int tegra_dsi_host_suspend(struct tegra_dc *dc);
-int tegra_dsi_host_resume(struct tegra_dc *dc);
+void tegra_dc_host_trigger(struct tegra_dc *dc);
 
 int tegra_dc_update_csc(struct tegra_dc *dc, int win_index);
 

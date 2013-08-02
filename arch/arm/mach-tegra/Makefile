@@ -1,7 +1,5 @@
 GCOV_PROFILE := y
 
-#subdir-ccflags-y := -Werror
-
 obj-y                                   += ahb.o
 obj-y                                   += apbio.o
 obj-y                                   += common.o
@@ -46,8 +44,6 @@ obj-y                                   += i2c_error_recovery.o
 obj-y                                   += mc.o
 obj-$(CONFIG_TEGRA_STAT_MON)            += tegra2_statmon.o
 obj-$(CONFIG_USB_SUPPORT)               += usb_phy.o
-obj-$(CONFIG_USB_SUPPORT)               += tegra3_usb_phy.o
-obj-$(CONFIG_USB_SUPPORT)               += tegra2_usb_phy.o
 obj-$(CONFIG_FIQ)                       += fiq.o
 obj-$(CONFIG_TEGRA_FIQ_DEBUGGER)        += tegra_fiq_debugger.o
 obj-$(CONFIG_TEGRA_PWM)                 += pwm.o
@@ -69,7 +65,6 @@ obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += tegra2_emc.o
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += tegra3_emc.o
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += wakeups-t2.o
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += wakeups-t3.o
-obj-y                                   += wakeups.o
 obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += pm-t2.o
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += pm-t3.o
 
@@ -83,12 +78,7 @@ obj-y                                   += reset.o
 obj-$(CONFIG_TEGRA_SYSTEM_DMA)          += dma.o
 obj-$(CONFIG_CPU_FREQ)                  += cpu-tegra.o
 ifeq ($(CONFIG_TEGRA_AUTO_HOTPLUG),y)
-ifeq ($(CONFIG_CPUQUIET_FRAMEWORK),y)
-obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += cpuquiet.o
-else
-obj-$(CONFIG_ARCH_TEGRA_2x_SOC)         += cpu-tegra2.o
 obj-$(CONFIG_ARCH_TEGRA_3x_SOC)         += cpu-tegra3.o
-endif
 endif
 obj-$(CONFIG_TEGRA_PCI)                 += pcie.o
 obj-$(CONFIG_USB_SUPPORT)               += usb_phy.o
@@ -122,28 +112,6 @@ obj-${CONFIG_MACH_HARMONY}              += board-harmony-panel.o
 obj-${CONFIG_MACH_HARMONY}              += board-harmony-pinmux.o
 obj-${CONFIG_MACH_HARMONY}              += board-harmony-pcie.o
 obj-${CONFIG_MACH_HARMONY}              += board-harmony-power.o
-
-obj-${CONFIG_MACH_OLYMPUS}             += board-olympus.o
-obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-audio.o
-obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-backlight.o
-obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-camera.o
-obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-clocks.o
-obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-devices.o
-obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-i2c.o
-obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-kbc.o
-obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-memory.o
-obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-misc.o
-obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-modem.o
-obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-panel.o
-obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-pinmux.o
-obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-power.o
-obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-sdhci.o
-obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-sensors.o
-obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-spi.o
-obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-touch.o
-obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-uart.o
-obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-usb.o
-obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-wlan.o
 
 obj-${CONFIG_MACH_PAZ00}                += board-paz00.o
 obj-${CONFIG_MACH_PAZ00}                += board-paz00-pinmux.o
@@ -197,7 +165,7 @@ obj-${CONFIG_MACH_CARDHU}               += board-cardhu-memory.o
 obj-${CONFIG_MACH_CARDHU}               += board-cardhu-powermon.o
 
 obj-${CONFIG_MACH_KAI}                  += board-touch-kai-synaptics-spi.o
-#obj-y                                   += board-touch-raydium_spi.o
+obj-y                                   += board-touch-raydium_spi.o
 
 obj-${CONFIG_MACH_P1852}               += board-p1852.o
 obj-${CONFIG_MACH_P1852}               += board-p1852-panel.o

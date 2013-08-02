@@ -38,7 +38,6 @@
 #include "devices.h"
 #include "gpio-names.h"
 #include "board.h"
-#include "tegra2_host1x_devices.h"
 
 #define whistler_hdmi_hpd	TEGRA_GPIO_PN7
 
@@ -59,6 +58,7 @@ static struct platform_tegra_pwm_backlight_data whistler_disp1_backlight_data = 
 	.max_brightness	= 256,
 	.dft_brightness	= 77,
 	.gpio_conf_to_sfio	= TEGRA_GPIO_PW1,
+	.switch_to_sfio		= &tegra_gpio_disable,
 	.period	= 0x1F,
 	.clk_div = 3,
 	.clk_select = 2,
@@ -319,7 +319,9 @@ static void whistler_panel_early_suspend(struct early_suspend *h)
 
 #ifdef CONFIG_TEGRA_CONVSERVATIVE_GOV_ON_EARLYSUPSEND
 	cpufreq_store_default_gov();
-	cpufreq_change_gov(cpufreq_conservative_gov);
+	if (cpufreq_change_gov(cpufreq_conservative_gov))
+		pr_err("Early_suspend: Error changing governor to %s\n",
+				cpufreq_conservative_gov);
 #endif
 }
 
@@ -328,7 +330,8 @@ static void whistler_panel_late_resume(struct early_suspend *h)
 	unsigned i;
 
 #ifdef CONFIG_TEGRA_CONVSERVATIVE_GOV_ON_EARLYSUPSEND
-	cpufreq_restore_default_gov();
+	if (cpufreq_restore_default_gov())
+		pr_err("Early_suspend: Unable to restore governor\n");
 #endif
 
 	for (i = 0; i < num_registered_fb; i++)
@@ -341,6 +344,7 @@ int __init whistler_panel_init(void)
 	int err;
 	struct resource __maybe_unused *res;
 
+	tegra_gpio_enable(whistler_hdmi_hpd);
 	gpio_request(whistler_hdmi_hpd, "hdmi_hpd");
 	gpio_direction_input(whistler_hdmi_hpd);
 
@@ -357,7 +361,7 @@ int __init whistler_panel_init(void)
 #endif
 
 #ifdef CONFIG_TEGRA_GRHOST
-	err = tegra2_register_host1x_devices();
+	err = nvhost_device_register(&tegra_grhost_device);
 	if (err)
 		return err;
 #endif

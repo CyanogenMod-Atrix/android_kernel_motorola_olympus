@@ -44,6 +44,7 @@
 #include <linux/delay.h>
 #include <linux/regulator/consumer.h>
 #include <linux/workqueue.h>
+#include <linux/pm_qos_params.h>
 
 #include <asm/byteorder.h>
 #include <asm/io.h>

@@ -4,8 +4,6 @@
  * Copyright (C) 2010 CompuLab, Ltd.
  * Mike Rapoport <mike@compulab.co.il>
  *
- * Copyright (C) 2011-2012 NVIDIA Corporation.
- *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
  * may be copied, distributed, and modified under those terms.
@@ -70,6 +68,7 @@ int __init harmony_pcie_init(void)
 
 	return 0;
 
+err_pcie:
 	tegra_pinmux_set_tristate(TEGRA_PINGROUP_GPV, TEGRA_TRI_TRISTATE);
 	tegra_pinmux_set_tristate(TEGRA_PINGROUP_SLXA, TEGRA_TRI_TRISTATE);
 	tegra_pinmux_set_tristate(TEGRA_PINGROUP_SLXK, TEGRA_TRI_TRISTATE);

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2012 NVIDIA Corporation.
+ * Copyright (C) 2010-2012 NVIDIA, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -34,6 +34,7 @@
 #include "gpio-names.h"
 #include "fuse.h"
 #include "pm.h"
+#include "wakeups-t2.h"
 #include "board.h"
 #include "board-ventana.h"
 
@@ -46,6 +47,7 @@ int __init ventana_charge_init(void)
 {
 	gpio_request(CHARGING_DISABLE, "chg_disable");
 	gpio_direction_output(CHARGING_DISABLE, 0);
+	tegra_gpio_enable(CHARGING_DISABLE);
 	return 0;
 }
 
@@ -253,6 +255,14 @@ static struct platform_device *fixed_voltage_regulators[] __initdata = {
 
 int __init ventana_fixed_voltage_regulator_init(void)
 {
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(fixed_voltage_regulators); ++i) {
+		struct fixed_voltage_config *fixed_voltage_regulators_pdata =
+				fixed_voltage_regulators[i]->dev.platform_data;
+		if (fixed_voltage_regulators_pdata->gpio < TEGRA_NR_GPIOS)
+			tegra_gpio_enable(fixed_voltage_regulators_pdata->gpio);
+	}
 	return platform_add_devices(fixed_voltage_regulators,
 				ARRAY_SIZE(fixed_voltage_regulators));
 }
@@ -307,6 +317,7 @@ static struct platform_device ventana_charger_device = {
 
 int __init ventana_charger_init(void)
 {
+	tegra_gpio_enable(AC_PRESENT_GPIO);
 	platform_device_register(&ventana_charger_device);
 	return 0;
 }

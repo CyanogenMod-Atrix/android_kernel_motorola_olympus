@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/board-ventana-panel.c
  *
- * Copyright (c) 2010-2012 NVIDIA Corporation.
+ * Copyright (c) 2010-2012, NVIDIA Corporation.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -36,7 +36,6 @@
 #include "devices.h"
 #include "gpio-names.h"
 #include "board.h"
-#include "tegra2_host1x_devices.h"
 
 #define ventana_bl_enb		TEGRA_GPIO_PD4
 #define ventana_lvds_shutdown	TEGRA_GPIO_PB2
@@ -64,6 +63,8 @@ static int ventana_backlight_init(struct device *dev) {
 	ret = gpio_direction_output(ventana_bl_enb, 1);
 	if (ret < 0)
 		gpio_free(ventana_bl_enb);
+	else
+		tegra_gpio_enable(ventana_bl_enb);
 
 	return ret;
 };
@@ -71,6 +72,7 @@ static int ventana_backlight_init(struct device *dev) {
 static void ventana_backlight_exit(struct device *dev) {
 	gpio_set_value(ventana_bl_enb, 0);
 	gpio_free(ventana_bl_enb);
+	tegra_gpio_disable(ventana_bl_enb);
 }
 
 static int ventana_backlight_notify(struct device *unused, int brightness)
@@ -282,7 +284,7 @@ static struct tegra_dc_platform_data ventana_disp1_pdata = {
 };
 
 static struct tegra_dc_platform_data ventana_disp2_pdata = {
-	.flags		= TEGRA_DC_FLAG_ENABLED,
+	.flags		= 0,
 	.default_out	= &ventana_disp2_out,
 	.fb		= &ventana_hdmi_fb_data,
 };
@@ -347,8 +349,6 @@ static struct platform_device *ventana_gfx_devices[] __initdata = {
 	&ventana_nvmap_device,
 #endif
 	&tegra_pwfm2_device,
-};
-static struct platform_device *ventana_backlight_devices[] __initdata = {
 	&ventana_backlight_device,
 };
 
@@ -367,7 +367,9 @@ static void ventana_panel_early_suspend(struct early_suspend *h)
 		fb_blank(registered_fb[1], FB_BLANK_NORMAL);
 #ifdef CONFIG_TEGRA_CONVSERVATIVE_GOV_ON_EARLYSUPSEND
 	cpufreq_store_default_gov();
-	cpufreq_change_gov(cpufreq_conservative_gov);
+	if (cpufreq_change_gov(cpufreq_conservative_gov))
+		pr_err("Early_suspend: Error changing governor to %s\n",
+				cpufreq_conservative_gov);
 #endif
 }
 
@@ -375,7 +377,8 @@ static void ventana_panel_late_resume(struct early_suspend *h)
 {
 	unsigned i;
 #ifdef CONFIG_TEGRA_CONVSERVATIVE_GOV_ON_EARLYSUPSEND
-	cpufreq_restore_default_gov();
+	if (cpufreq_restore_default_gov())
+		pr_err("Early_suspend: Unable to restore governor\n");
 #endif
 	for (i = 0; i < num_registered_fb; i++)
 		fb_blank(registered_fb[i], FB_BLANK_UNBLANK);
@@ -389,10 +392,13 @@ int __init ventana_panel_init(void)
 
 	gpio_request(ventana_lvds_shutdown, "lvds_shdn");
 	gpio_direction_output(ventana_lvds_shutdown, 1);
+	tegra_gpio_enable(ventana_lvds_shutdown);
 
+	tegra_gpio_enable(ventana_hdmi_enb);
 	gpio_request(ventana_hdmi_enb, "hdmi_5v_en");
 	gpio_direction_output(ventana_hdmi_enb, 1);
 
+	tegra_gpio_enable(ventana_hdmi_hpd);
 	gpio_request(ventana_hdmi_hpd, "hdmi_hpd");
 	gpio_direction_input(ventana_hdmi_hpd);
 
@@ -409,7 +415,7 @@ int __init ventana_panel_init(void)
 #endif
 
 #ifdef CONFIG_TEGRA_GRHOST
-	err = tegra2_register_host1x_devices();
+	err = nvhost_device_register(&tegra_grhost_device);
 	if (err)
 		return err;
 #endif
@@ -445,9 +451,6 @@ int __init ventana_panel_init(void)
 	if (!err)
 		err = nvhost_device_register(&ventana_disp2_device);
 #endif
-
-	err = platform_add_devices(ventana_backlight_devices,
-				   ARRAY_SIZE(ventana_backlight_devices));
 
 	return err;
 }
