@@ -116,7 +116,7 @@ config CPU_FREQ_DEFAULT_GOV_SMARTASS2
 	  Use the CPUFreq governor 'smartassV2' as default.
 
 config CPU_FREQ_DEFAULT_GOV_LAGFREE
-	bool "smartassV2"
+	bool "lagfree"
 	select CPU_FREQ_GOV_LAGFREE
 	help
 	  Use the CPUFreq governor 'lagfree' as default.
