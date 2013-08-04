@@ -70,6 +70,7 @@ void reset_security_ops(void)
 	security_ops = &default_security_ops;
 }
 
+#ifndef CONFIG_MACH_OLYMPUS
 /* Save user chosen LSM */
 static int __init choose_lsm(char *str)
 {
@@ -77,6 +78,7 @@ static int __init choose_lsm(char *str)
 	return 1;
 }
 __setup("security=", choose_lsm);
+#endif
 
 /**
  * security_module_enable - Load given security module on boot ?
