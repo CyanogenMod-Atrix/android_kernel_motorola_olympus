@@ -334,7 +334,7 @@ static int olympus_setup_mdm6600_uart_ipc(void)
 	pr_info("%s: irq: %d, value: %d\n", __func__, irq,
 				gpio_get_value(MDM6600_UART_HOST_WAKE_GPIO));
 
-	//irq_set_irq_wake(irq, 1);
+	irq_set_irq_wake(irq, 1);
 	irq_set_irq_type(irq, IRQ_TYPE_EDGE_RISING);
 	//irq_set_irq_type(irq, IRQ_TYPE_EDGE_FALLING);
 	err = request_irq(irq, mdm6600_host_wake_irq_handler,
