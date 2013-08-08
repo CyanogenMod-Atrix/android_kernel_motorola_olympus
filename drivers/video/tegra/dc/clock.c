@@ -95,26 +95,14 @@ void tegra_dc_setup_clk(struct tegra_dc *dc, struct clk *clk)
 		struct clk *parent_clk = clk_get_sys(NULL,
 			dc->out->parent_clk ? : "pll_d_out0");
 		struct clk *base_clk = clk_get_parent(parent_clk);
-#if CONFIG_MACH_OLYMPUS
-		/* needs to match tegra_dc_hdmi_supported_modes[]
-		and tegra_pll_d_freq_table[] */
-		if (dc->mode.h_active == 1366 && dc->mode.v_active == 768 &&
-			dc->mode.pclk == 72004000)
+#ifdef CONFIG_MACH_OLYMPUS
+		if (dc->mode.h_active == 1366 && dc->mode.v_active == 768)
 		{
 			parent_clk =
 				clk_get_sys(NULL, dc->out->parent_clk ? : "pll_p");
 			base_clk = clk_get_parent(parent_clk);
-			rate = 216000000;
-		} else
-		{
-			if (dc->mode.pclk > 70000000)
-				rate = 594000000;
-			else if (dc->mode.pclk > 25200000)
-				rate = 216000000;
-			else
-				rate = 504000000;
 		}
-#else
+#endif
 		/*
 		 * Providing dynamic frequency rate setting for T20/T30 HDMI.
 		 * The required rate needs to be setup at 4x multiplier,
@@ -122,7 +110,6 @@ void tegra_dc_setup_clk(struct tegra_dc *dc, struct clk *clk)
 		 */
 
 		rate = dc->mode.pclk * 4;
-#endif
 		if (rate != clk_get_rate(base_clk))
 			clk_set_rate(base_clk, rate);
 
