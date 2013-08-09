@@ -766,9 +766,10 @@ static void tegra_uart_config_gpio(struct tegra_uart_port *t)
 				__func__, t->uart_irq, gpio_get_value(t->uart_wake_host));
 
 		// set falling edge for interrupt
+		irq_set_irq_wake(t->uart_irq, 1);
 		irq_set_irq_type(t->uart_irq, IRQ_TYPE_EDGE_FALLING);
 		err = request_irq(t->uart_irq, tegra_ipc_uart_irq_handler,
-		    IRQF_DISABLED | IRQ_TYPE_EDGE_FALLING, "uart_wake_host", t);
+		    IRQF_DISABLED | IRQ_TYPE_EDGE_RISING, "uart_wake_host", t);
 		if ( err < 0) {
 			pr_err("%s Failed to register UART BP AP WAKE interrupt handler., errno = %d\n", __func__, -err);
 			goto err_gpio_config_failed;

@@ -32,6 +32,7 @@
 #include <linux/nvhost.h>
 #include <linux/pwm_backlight.h>
 #include <linux/tegra_pwm_bl.h>
+#include <linux/tegra_audio.h>
 
 #include <asm/mach-types.h>
 #include <mach/clk.h>
@@ -522,12 +523,19 @@ static struct platform_device *olympus_gfx_devices[] __initdata = {
  */
 struct early_suspend olympus_panel_early_suspender;
 
+static u8 bkp_suspend_aggr=99;
+
 static void olympus_panel_early_suspend(struct early_suspend *h)
 {
 	int i;
 
 	printk(KERN_INFO "%s: here...\n", __func__);
 //	tegra2_enable_autoplug();
+	if (tegra_is_voice_call_active()) {
+		bkp_suspend_aggr = olympus_dsi_out.suspend_aggr;
+		olympus_dsi_out.suspend_aggr = DSI_HOST_SUSPEND_LV2;
+	}
+
 	for (i = 0; i < num_registered_fb; i++)
 		fb_blank(registered_fb[i], FB_BLANK_POWERDOWN);
 
@@ -547,6 +555,10 @@ static void olympus_panel_late_resume(struct early_suspend *h)
 	printk(KERN_INFO "%s: here...\n", __func__);
 	for (i = 0; i < num_registered_fb; i++)
 		fb_blank(registered_fb[i], FB_BLANK_UNBLANK);
+	if (bkp_suspend_aggr != 99) {
+			olympus_dsi_out.suspend_aggr = bkp_suspend_aggr;
+			bkp_suspend_aggr = 99;
+		}
 //	tegra2_disable_autoplug();
 }
 #endif
