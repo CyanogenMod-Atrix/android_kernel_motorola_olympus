@@ -132,7 +132,6 @@ extern int nvhost_add_devices(struct nvhost_device **, int num);
 
 /* Register device to nvhost bus */
 extern int nvhost_device_register(struct nvhost_device *);
-
 /* Deregister device from nvhost bus */
 extern void nvhost_device_unregister(struct nvhost_device *);
 
@@ -172,6 +171,10 @@ struct nvhost_driver {
 	/* Allocates a context handler for the device */
 	struct nvhost_hwctx_handler *(*alloc_hwctx_handler)(u32 syncpt,
 			u32 waitbase, struct nvhost_channel *ch);
+
+	/* Clock gating callbacks */
+	int (*prepare_clockoff)(struct nvhost_device *dev);
+	void (*finalize_clockon)(struct nvhost_device *dev);
 };
 
 extern int nvhost_driver_register(struct nvhost_driver *);
@@ -208,5 +211,7 @@ void nvhost_syncpt_cpu_incr_ext(struct nvhost_device *dev, u32 id);
 u32 nvhost_syncpt_read_ext(struct nvhost_device *dev, u32 id);
 int nvhost_syncpt_wait_timeout_ext(struct nvhost_device *dev, u32 id, u32 thresh,
 	u32 timeout, u32 *value);
+
+void nvhost_scale3d_set_throughput_hint(int hint);
 
 #endif

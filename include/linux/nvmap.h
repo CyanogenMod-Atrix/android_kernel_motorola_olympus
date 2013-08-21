@@ -3,7 +3,7 @@
  *
  * structure declarations for nvmem and nvmap user-space ioctls
  *
- * Copyright (c) 2009-2012, NVIDIA Corporation.
+ * Copyright (c) 2009-2012, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -28,8 +28,8 @@
 #define __user
 #endif
 
-#ifndef _LINUX_NVMAP_H
-#define _LINUX_NVMAP_H
+#ifndef __NVMAP_H
+#define __NVMAP_H
 
 #define NVMAP_HEAP_SYSMEM  (1ul<<31)
 #define NVMAP_HEAP_IOVMM   (1ul<<30)
@@ -49,6 +49,8 @@
 #define NVMAP_HANDLE_CACHE_FLAG      (0x3ul << 0)
 
 #define NVMAP_HANDLE_SECURE          (0x1ul << 2)
+#define NVMAP_HANDLE_ZEROED_PAGES    (0x1ul << 3)
+
 
 #if defined(__KERNEL__)
 
@@ -56,7 +58,6 @@
 struct nvmap_handle;
 struct nvmap_client;
 struct nvmap_device;
-
 #define nvmap_ref_to_handle(_ref) (*(struct nvmap_handle **)(_ref))
 /* Convert User space handle to Kernel. */
 #define nvmap_convert_handle_u2k(h) (h)
@@ -87,8 +88,7 @@ struct nvmap_handle_ref {
 		BUG(); \
 	} \
 	(*((u32 *)h)); })
-
-#endif /* CONFIG_ION_TEGRA */
+#endif
 
 #define nvmap_id_to_handle(_id) ((struct nvmap_handle *)(_id))
 
@@ -138,6 +138,6 @@ struct nvmap_platform_data {
 
 extern struct nvmap_device *nvmap_dev;
 
-#endif /* __KERNEL__ */
+#endif
 
-#endif /* _LINUX_NVMAP_H */
+#endif
