@@ -290,7 +290,7 @@ int nvmap_flush_heap_block(struct nvmap_client *client,
 	if (prot == NVMAP_HANDLE_UNCACHEABLE || prot == NVMAP_HANDLE_WRITE_COMBINE)
 		goto out;
 
-	if (len >= FLUSH_CLEAN_BY_SET_WAY_THRESHOLD) {
+	if (len >= FLUSH_CLEAN_BY_SET_WAY_THRESHOLD_INNER) {
 		inner_flush_cache_all();
 		if (prot != NVMAP_HANDLE_INNER_CACHEABLE)
 			outer_flush_range(block->base, block->base + len);
@@ -886,10 +886,11 @@ static void nvmap_vma_open(struct vm_area_struct *vma)
 	struct nvmap_vma_priv *priv;
 
 	priv = vma->vm_private_data;
-
 	BUG_ON(!priv);
 
 	atomic_inc(&priv->count);
+	if(priv->handle)
+		nvmap_usecount_inc(priv->handle);
 }
 
 static void nvmap_vma_close(struct vm_area_struct *vma)
@@ -898,8 +899,8 @@ static void nvmap_vma_close(struct vm_area_struct *vma)
 
 	if (priv) {
 		if (priv->handle) {
+			BUG_ON(priv->handle->usecount == 0);
 			nvmap_usecount_dec(priv->handle);
-			BUG_ON(priv->handle->usecount < 0);
 		}
 		if (!atomic_dec_return(&priv->count)) {
 			if (priv->handle)

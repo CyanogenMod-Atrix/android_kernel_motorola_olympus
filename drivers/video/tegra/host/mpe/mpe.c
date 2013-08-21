@@ -212,7 +212,7 @@ struct save_info {
 	unsigned int restore_count;
 };
 
-static void __init save_begin(struct host1x_hwctx_handler *h, u32 *ptr)
+static void save_begin(struct host1x_hwctx_handler *h, u32 *ptr)
 {
 	/* MPE: when done, increment syncpt to base+1 */
 	ptr[0] = nvhost_opcode_setclass(NV_VIDEO_ENCODE_MPEG_CLASS_ID, 0, 0);
@@ -229,7 +229,7 @@ static void __init save_begin(struct host1x_hwctx_handler *h, u32 *ptr)
 }
 #define SAVE_BEGIN_SIZE 5
 
-static void __init save_direct(u32 *ptr, u32 start_reg, u32 count)
+static void save_direct(u32 *ptr, u32 start_reg, u32 count)
 {
 	ptr[0] = nvhost_opcode_setclass(NV_HOST1X_CLASS_ID,
 					host1x_uclass_indoff_r(), 1);
@@ -239,7 +239,7 @@ static void __init save_direct(u32 *ptr, u32 start_reg, u32 count)
 }
 #define SAVE_DIRECT_SIZE 3
 
-static void __init save_set_ram_cmd(u32 *ptr, u32 cmd_reg, u32 count)
+static void save_set_ram_cmd(u32 *ptr, u32 cmd_reg, u32 count)
 {
 	ptr[0] = nvhost_opcode_setclass(NV_VIDEO_ENCODE_MPEG_CLASS_ID,
 					cmd_reg, 1);
@@ -247,7 +247,7 @@ static void __init save_set_ram_cmd(u32 *ptr, u32 cmd_reg, u32 count)
 }
 #define SAVE_SET_RAM_CMD_SIZE 2
 
-static void __init save_read_ram_data_nasty(u32 *ptr, u32 data_reg)
+static void save_read_ram_data_nasty(u32 *ptr, u32 data_reg)
 {
 	ptr[0] = nvhost_opcode_setclass(NV_HOST1X_CLASS_ID,
 					host1x_uclass_indoff_r(), 1);
@@ -261,7 +261,7 @@ static void __init save_read_ram_data_nasty(u32 *ptr, u32 data_reg)
 }
 #define SAVE_READ_RAM_DATA_NASTY_SIZE 5
 
-static void __init save_end(struct host1x_hwctx_handler *h, u32 *ptr)
+static void save_end(struct host1x_hwctx_handler *h, u32 *ptr)
 {
 	/* Wait for context read service to finish (cpu incr 3) */
 	ptr[0] = nvhost_opcode_setclass(NV_HOST1X_CLASS_ID,
@@ -275,7 +275,7 @@ static void __init save_end(struct host1x_hwctx_handler *h, u32 *ptr)
 }
 #define SAVE_END_SIZE 5
 
-static void __init setup_save_regs(struct save_info *info,
+static void setup_save_regs(struct save_info *info,
 			const struct hwctx_reginfo *regs,
 			unsigned int nr_regs)
 {
@@ -304,7 +304,7 @@ static void __init setup_save_regs(struct save_info *info,
 	info->restore_count = restore_count;
 }
 
-static void __init setup_save_ram_nasty(struct save_info *info,	unsigned words,
+static void setup_save_ram_nasty(struct save_info *info,	unsigned words,
 					unsigned cmd_reg, unsigned data_reg)
 {
 	u32 *ptr = info->ptr;
@@ -330,7 +330,7 @@ static void __init setup_save_ram_nasty(struct save_info *info,	unsigned words,
 	info->restore_count = restore_count;
 }
 
-static void __init setup_save(struct host1x_hwctx_handler *h, u32 *ptr)
+static void setup_save(struct host1x_hwctx_handler *h, u32 *ptr)
 {
 	struct save_info info = {
 		ptr,
@@ -553,7 +553,7 @@ struct nvhost_hwctx_handler *nvhost_mpe_ctxhandler_init(u32 syncpt,
 
 	p->save_buf = mem_op().alloc(memmgr, p->save_size * 4, 32,
 				mem_mgr_flag_write_combine);
-	if (IS_ERR(p->save_buf)) {
+	if (IS_ERR_OR_NULL(p->save_buf)) {
 		p->save_buf = NULL;
 		return NULL;
 	}

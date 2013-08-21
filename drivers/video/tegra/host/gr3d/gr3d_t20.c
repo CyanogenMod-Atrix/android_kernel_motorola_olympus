@@ -144,7 +144,7 @@ static void save_push_v0(struct nvhost_hwctx *nctx, struct nvhost_cdma *cdma)
 			p->save_phys);
 }
 
-static void __init save_begin_v0(struct host1x_hwctx_handler *h, u32 *ptr)
+static void save_begin_v0(struct host1x_hwctx_handler *h, u32 *ptr)
 {
 	/* 3d: when done, increment syncpt to base+1 */
 	ptr[0] = nvhost_opcode_setclass(NV_GRAPHICS_3D_CLASS_ID, 0, 0);
@@ -162,7 +162,7 @@ static void __init save_begin_v0(struct host1x_hwctx_handler *h, u32 *ptr)
 			h->syncpt); /* incr 2 */
 }
 
-static void __init save_direct_v0(u32 *ptr, u32 start_reg, u32 count)
+static void save_direct_v0(u32 *ptr, u32 start_reg, u32 count)
 {
 	ptr[0] = nvhost_opcode_nonincr(host1x_uclass_indoff_r(), 1);
 	ptr[1] = nvhost_class_host_indoff_reg_read(NV_HOST_MODULE_GR3D,
@@ -170,7 +170,7 @@ static void __init save_direct_v0(u32 *ptr, u32 start_reg, u32 count)
 	ptr[2] = nvhost_opcode_nonincr(host1x_uclass_inddata_r(), count);
 }
 
-static void __init save_indirect_v0(u32 *ptr, u32 offset_reg, u32 offset,
+static void save_indirect_v0(u32 *ptr, u32 offset_reg, u32 offset,
 			u32 data_reg, u32 count)
 {
 	ptr[0] = nvhost_opcode_setclass(NV_GRAPHICS_3D_CLASS_ID,
@@ -183,7 +183,7 @@ static void __init save_indirect_v0(u32 *ptr, u32 offset_reg, u32 offset,
 	ptr[4] = nvhost_opcode_nonincr(host1x_uclass_inddata_r(), count);
 }
 
-static void __init save_end_v0(struct host1x_hwctx_handler *h, u32 *ptr)
+static void save_end_v0(struct host1x_hwctx_handler *h, u32 *ptr)
 {
 	/* Wait for context read service to finish (cpu incr 3) */
 	ptr[0] = nvhost_opcode_nonincr(host1x_uclass_wait_syncpt_base_r(), 1);
@@ -226,7 +226,7 @@ static u32 *save_regs_v0(u32 *ptr, unsigned int *pending,
 
 /*** save ***/
 
-static void __init setup_save_regs(struct save_info *info,
+static void setup_save_regs(struct save_info *info,
 			const struct hwctx_reginfo *regs,
 			unsigned int nr_regs)
 {
@@ -284,7 +284,7 @@ static void __init setup_save_regs(struct save_info *info,
 	info->restore_count = restore_count;
 }
 
-static void __init setup_save(struct host1x_hwctx_handler *h, u32 *ptr)
+static void setup_save(struct host1x_hwctx_handler *h, u32 *ptr)
 {
 	struct save_info info = {
 		ptr,
@@ -371,7 +371,7 @@ struct nvhost_hwctx_handler *nvhost_gr3d_t20_ctxhandler_init(
 
 	p->save_buf = mem_op().alloc(memmgr, p->save_size * sizeof(u32), 32,
 				mem_mgr_flag_write_combine);
-	if (IS_ERR(p->save_buf)) {
+	if (IS_ERR_OR_NULL(p->save_buf)) {
 		p->save_buf = NULL;
 		return NULL;
 	}

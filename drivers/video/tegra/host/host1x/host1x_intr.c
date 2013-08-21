@@ -131,6 +131,16 @@ static void t20_intr_enable_syncpt_intr(struct nvhost_intr *intr, u32 id)
 			BIT_WORD(id) * REGISTER_STRIDE);
 }
 
+static void t20_intr_disable_syncpt_intr(struct nvhost_intr *intr, u32 id)
+{
+	struct nvhost_master *dev = intr_to_dev(intr);
+	void __iomem *sync_regs = dev->sync_aperture;
+
+	writel(BIT_MASK(id), sync_regs +
+			host1x_sync_syncpt_thresh_int_disable_r() +
+			BIT_WORD(id) * REGISTER_STRIDE);
+}
+
 static void t20_intr_disable_all_syncpt_intrs(struct nvhost_intr *intr)
 {
 	struct nvhost_master *dev = intr_to_dev(intr);
@@ -140,7 +150,7 @@ static void t20_intr_disable_all_syncpt_intrs(struct nvhost_intr *intr)
 	for (reg = 0; reg <= BIT_WORD(dev->info.nb_pts) * REGISTER_STRIDE;
 			reg += REGISTER_STRIDE) {
 		/* disable interrupts for both cpu's */
-		writel(0, sync_regs +
+		writel(0xffffffffu, sync_regs +
 				host1x_sync_syncpt_thresh_int_disable_r() +
 				reg);
 
@@ -276,6 +286,7 @@ static const struct nvhost_intr_ops host1x_intr_ops = {
 	.set_host_clocks_per_usec = t20_intr_set_host_clocks_per_usec,
 	.set_syncpt_threshold = t20_intr_set_syncpt_threshold,
 	.enable_syncpt_intr = t20_intr_enable_syncpt_intr,
+	.disable_syncpt_intr = t20_intr_disable_syncpt_intr,
 	.disable_all_syncpt_intrs = t20_intr_disable_all_syncpt_intrs,
 	.request_host_general_irq = t20_intr_request_host_general_irq,
 	.free_host_general_irq = t20_intr_free_host_general_irq,

@@ -20,7 +20,7 @@
 #include <linux/types.h>
 
 #include <mach/dc.h>
-#include <linux/nvmap.h>
+#include <mach/nvmap.h>
 
 /* ugh */
 #include "../../nvmap/nvmap.h"

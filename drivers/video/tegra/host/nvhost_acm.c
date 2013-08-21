@@ -5,9 +5,6 @@
  *
  * Copyright (c) 2010-2012, NVIDIA Corporation. All rights reserved.
  *
- * Copyright 2013: Olympus Kernel Project
- * <http://forum.xda-developers.com/showthread.php?t=2016837>
- *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
  * version 2, as published by the Free Software Foundation.
@@ -104,8 +101,17 @@ void nvhost_module_reset(struct nvhost_device *dev)
 
 static void to_state_clockgated_locked(struct nvhost_device *dev)
 {
+	struct nvhost_driver *drv = to_nvhost_driver(dev->dev.driver);
+
 	if (dev->powerstate == NVHOST_POWER_STATE_RUNNING) {
-		int i;
+		int i, err;
+		if (drv->prepare_clockoff) {
+			err = drv->prepare_clockoff(dev);
+			if (err) {
+				dev_err(&dev->dev, "error clock gating");
+				return;
+			}
+		}
 		for (i = 0; i < dev->num_clks; i++)
 			clk_disable(dev->clk[i]);
 		if (dev->dev.parent)
@@ -144,6 +150,14 @@ static void to_state_running_locked(struct nvhost_device *dev)
 			}
 		}
 
+		/* Invoke callback after enabling clock. This is used for
+		 * re-enabling host1x interrupts. */
+		if (prev_state == NVHOST_POWER_STATE_CLOCKGATED
+				&& drv->finalize_clockon)
+			drv->finalize_clockon(dev);
+
+		/* Invoke callback after power un-gating. This is used for
+		 * restoring context. */
 		if (prev_state == NVHOST_POWER_STATE_POWERGATED
 				&& drv->finalize_poweron)
 			drv->finalize_poweron(dev);
@@ -207,7 +221,6 @@ void nvhost_module_busy(struct nvhost_device *dev)
 	dev->refcount++;
 	if (dev->refcount > 0 && !nvhost_module_powered(dev))
 		to_state_running_locked(dev);
-
 	mutex_unlock(&dev->lock);
 }
 
@@ -347,15 +360,17 @@ void nvhost_module_remove_client(struct nvhost_device *dev, void *priv)
 {
 	int i;
 	struct nvhost_module_client *m;
+	int found = 0;
 
 	mutex_lock(&client_list_lock);
 	list_for_each_entry(m, &dev->client_list, node) {
 		if (priv == m->priv) {
 			list_del(&m->node);
+			found = 1;
 			break;
 		}
 	}
-	if (m) {
+	if (found) {
 		kfree(m);
 		for (i = 0; i < dev->num_clks; i++)
 			nvhost_module_update_rate(dev, i);
@@ -517,7 +532,6 @@ int nvhost_module_init(struct nvhost_device *dev)
 	}
 
 	attr = &dev->power_attrib->power_attr[NVHOST_POWER_SYSFS_ATTRIB_CLOCKGATE_DELAY];
-	sysfs_attr_init(&attr->attr);
 	attr->attr.name = "clockgate_delay";
 	attr->attr.mode = S_IWUSR | S_IRUGO;
 	attr->show = clockgate_delay_show;
@@ -529,7 +543,6 @@ int nvhost_module_init(struct nvhost_device *dev)
 	}
 
 	attr = &dev->power_attrib->power_attr[NVHOST_POWER_SYSFS_ATTRIB_POWERGATE_DELAY];
-	sysfs_attr_init(&attr->attr);
 	attr->attr.name = "powergate_delay";
 	attr->attr.mode = S_IWUSR | S_IRUGO;
 	attr->show = powergate_delay_show;
@@ -541,7 +554,6 @@ int nvhost_module_init(struct nvhost_device *dev)
 	}
 
 	attr = &dev->power_attrib->power_attr[NVHOST_POWER_SYSFS_ATTRIB_REFCOUNT];
-	sysfs_attr_init(&attr->attr);
 	attr->attr.name = "refcount";
 	attr->attr.mode = S_IRUGO;
 	attr->show = refcount_show;

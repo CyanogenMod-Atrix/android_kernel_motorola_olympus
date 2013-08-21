@@ -4,8 +4,6 @@
  * Tegra Graphics Host Syncpoints
  *
  * Copyright (c) 2010-2012, NVIDIA Corporation.
- * Copyright 2013: Olympus Kernel Project
- * <http://forum.xda-developers.com/showthread.php?t=2016837>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -237,7 +235,7 @@ int nvhost_syncpt_wait_timeout(struct nvhost_syncpt *sp, u32 id,
 			check_count++;
 		}
 	}
-	nvhost_intr_put_ref(&(syncpt_to_dev(sp)->intr), ref);
+	nvhost_intr_put_ref(&(syncpt_to_dev(sp)->intr), id, ref);
 
 done:
 	nvhost_module_idle(syncpt_to_dev(sp)->dev);
@@ -346,7 +344,7 @@ static ssize_t syncpt_min_show(struct kobject *kobj,
 	struct nvhost_syncpt_attr *syncpt_attr =
 		container_of(attr, struct nvhost_syncpt_attr, attr);
 
-	return snprintf(buf, PAGE_SIZE, "%d",
+	return snprintf(buf, PAGE_SIZE, "%u",
 			nvhost_syncpt_read(&syncpt_attr->host->syncpt,
 				syncpt_attr->id));
 }
@@ -357,7 +355,7 @@ static ssize_t syncpt_max_show(struct kobject *kobj,
 	struct nvhost_syncpt_attr *syncpt_attr =
 		container_of(attr, struct nvhost_syncpt_attr, attr);
 
-	return snprintf(buf, PAGE_SIZE, "%d",
+	return snprintf(buf, PAGE_SIZE, "%u",
 			nvhost_syncpt_read_max(&syncpt_attr->host->syncpt,
 				syncpt_attr->id));
 }
@@ -417,7 +415,6 @@ int nvhost_syncpt_init(struct nvhost_device *dev,
 
 		min->id = i;
 		min->host = host;
-		sysfs_attr_init(&min->attr.attr);
 		min->attr.attr.name = min_name;
 		min->attr.attr.mode = S_IRUGO;
 		min->attr.show = syncpt_min_show;
@@ -428,7 +425,6 @@ int nvhost_syncpt_init(struct nvhost_device *dev,
 
 		max->id = i;
 		max->host = host;
-		sysfs_attr_init(&max->attr.attr);
 		max->attr.attr.name = max_name;
 		max->attr.attr.mode = S_IRUGO;
 		max->attr.show = syncpt_max_show;

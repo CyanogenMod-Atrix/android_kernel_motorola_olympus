@@ -365,7 +365,7 @@ static int host1x_channel_read_3d_reg(
 		if (hwctx_to_save) {
 			syncpt_incrs += hwctx_to_save->save_incrs;
 			hwctx_to_save->hwctx.valid = true;
-			channel->ctxhandler->get(&hwctx_to_save->hwctx);
+			nvhost_job_get_hwctx(job, &hwctx_to_save->hwctx);
 		}
 		channel->cur_ctx = hwctx;
 		if (channel->cur_ctx && channel->cur_ctx->valid) {
@@ -470,7 +470,8 @@ static int host1x_channel_read_3d_reg(
 	wait_event(wq,
 		nvhost_syncpt_is_expired(&nvhost_get_host(channel->dev)->syncpt,
 				p->syncpt, syncval - 2));
-	nvhost_intr_put_ref(&nvhost_get_host(channel->dev)->intr, ref);
+	nvhost_intr_put_ref(&nvhost_get_host(channel->dev)->intr, p->syncpt,
+			ref);
 
 	/* Read the register value from FIFO */
 	err = host1x_drain_read_fifo(channel, value, 1, &pending);
@@ -580,7 +581,6 @@ static int host1x_save_context(struct nvhost_channel *ch)
 	}
 
 	hwctx_to_save->valid = true;
-	ch->ctxhandler->get(hwctx_to_save);
 	ch->cur_ctx = NULL;
 	syncpt_id = to_host1x_hwctx_handler(hwctx_to_save->h)->syncpt;
 
@@ -623,7 +623,7 @@ static int host1x_save_context(struct nvhost_channel *ch)
 		nvhost_syncpt_is_expired(&nvhost_get_host(ch->dev)->syncpt,
 				syncpt_id, syncpt_val));
 
-	nvhost_intr_put_ref(&nvhost_get_host(ch->dev)->intr, ref);
+	nvhost_intr_put_ref(&nvhost_get_host(ch->dev)->intr, syncpt_id, ref);
 
 	nvhost_cdma_update(&ch->cdma);
 
