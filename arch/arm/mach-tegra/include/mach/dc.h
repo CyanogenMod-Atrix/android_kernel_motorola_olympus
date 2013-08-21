@@ -24,6 +24,7 @@
 
 #include <linux/pm.h>
 #include <linux/types.h>
+#include <linux/fb.h>
 #include <drm/drm_fixed.h>
 
 #define TEGRA_MAX_DC		2
@@ -368,6 +369,8 @@ struct tegra_dc_out {
 
 	u8			*out_sel_configs;
 	unsigned		n_out_sel_configs;
+	bool			user_needs_vblank;
+	struct completion	user_vblank_comp;
 
 	int	(*enable)(void);
 	int	(*postpoweron)(void);
@@ -525,6 +528,8 @@ bool tegra_dc_get_connected(struct tegra_dc *);
 bool tegra_dc_hpd(struct tegra_dc *dc);
 
 
+void tegra_dc_get_fbvblank(struct tegra_dc *dc, struct fb_vblank *vblank);
+int tegra_dc_wait_for_vsync(struct tegra_dc *dc);
 void tegra_dc_blank(struct tegra_dc *dc);
 
 void tegra_dc_enable(struct tegra_dc *dc);
@@ -539,6 +544,9 @@ void tegra_dc_incr_syncpt_min(struct tegra_dc *dc, int i, u32 val);
  */
 int tegra_dc_update_windows(struct tegra_dc_win *windows[], int n);
 int tegra_dc_sync_windows(struct tegra_dc_win *windows[], int n);
+int tegra_dc_config_frame_end_intr(struct tegra_dc *dc, bool enable);
+bool tegra_dc_is_within_n_vsync(struct tegra_dc *dc, s64 ts);
+bool tegra_dc_does_vsync_separate(struct tegra_dc *dc, s64 new_ts, s64 old_ts);
 
 int tegra_dc_set_mode(struct tegra_dc *dc, const struct tegra_dc_mode *mode);
 struct fb_videomode;
@@ -565,10 +573,6 @@ struct tegra_dc_pwm_params {
 void tegra_dc_config_pwm(struct tegra_dc *dc, struct tegra_dc_pwm_params *cfg);
 
 int tegra_dsi_send_panel_short_cmd(struct tegra_dc *dc, u8 *pdata, u8 data_len);
-void tegra_dc_host_suspend(struct tegra_dc *dc);
-void tegra_dc_host_resume(struct tegra_dc *dc);
-int tegra_dsi_host_suspend(struct tegra_dc *dc);
-int tegra_dsi_host_resume(struct tegra_dc *dc);
 
 int tegra_dc_update_csc(struct tegra_dc *dc, int win_index);
 
@@ -587,5 +591,9 @@ struct tegra_dc_edid {
 };
 struct tegra_dc_edid *tegra_dc_get_edid(struct tegra_dc *dc);
 void tegra_dc_put_edid(struct tegra_dc_edid *edid);
+
+int tegra_dc_set_flip_callback(void (*callback)(void));
+int tegra_dc_unset_flip_callback(void);
+int tegra_dc_get_panel_sync_rate(void);
 
 #endif
