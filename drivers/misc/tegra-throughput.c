@@ -33,8 +33,16 @@ static unsigned short target_frame_time;
 static unsigned short last_frame_time;
 static ktime_t last_flip;
 static unsigned int multiple_app_disable;
-
 static spinlock_t lock;
+
+static struct work_struct work;
+static int throughput_hint;
+
+static void set_throughput_hint(struct work_struct *work)
+{
+	/* notify throughput hint clients here */
+	nvhost_scale3d_set_throughput_hint(throughput_hint);
+}
 
 static int throughput_flip_callback(void)
 {
@@ -92,9 +100,6 @@ static int callback_initialized;
 
 static int throughput_open(struct inode *inode, struct file *file)
 {
-	if (!notifier_initialized) {
-		tegra_dc_register_flip_notifier(&throughput_flip_nb);
-		notifier_initialized = 1;
 	spin_lock(&lock);
 
 	if (!callback_initialized) {
@@ -102,13 +107,12 @@ static int throughput_open(struct inode *inode, struct file *file)
 		tegra_dc_set_flip_callback(throughput_flip_callback);
 	}
 
-	spin_lock(&lock);
-
 	throughput_active_app_count++;
 	if (throughput_active_app_count > 1)
 		multiple_app_disable = 1;
 
 	spin_unlock(&lock);
+
 
 	pr_debug("throughput_open node %p file %p\n", inode, file);
 
@@ -118,15 +122,16 @@ static int throughput_open(struct inode *inode, struct file *file)
 static int throughput_release(struct inode *inode, struct file *file)
 {
 	spin_lock(&lock);
-	throughput_active_app_count--;
-	spin_unlock(&lock);
 
+	throughput_active_app_count--;
 	if (throughput_active_app_count == 0) {
 		reset_target_frame_time();
 		multiple_app_disable = 0;
 		callback_initialized = 0;
 		tegra_dc_unset_flip_callback();
 	}
+
+	spin_unlock(&lock);
 
 	pr_debug("throughput_release node %p file %p\n", inode, file);
 
@@ -210,6 +215,7 @@ int __init throughput_init_miscdev(void)
 	pr_debug("%s: initializing\n", __func__);
 
 	spin_lock_init(&lock);
+	INIT_WORK(&work, set_throughput_hint);
 
 	ret = misc_register(&throughput_miscdev);
 	if (ret) {
@@ -227,8 +233,9 @@ void __exit throughput_exit_miscdev(void)
 {
 	pr_debug("%s: exiting\n", __func__);
 
+	cancel_work_sync(&work);
+
 	misc_deregister(&throughput_miscdev);
 }
 
 module_exit(throughput_exit_miscdev);
-
