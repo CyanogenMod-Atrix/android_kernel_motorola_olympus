@@ -56,7 +56,6 @@ struct tegra_dc_ext_flip_data {
 	struct tegra_dc_ext		*ext;
 	struct work_struct		work;
 	struct tegra_dc_ext_flip_win	win[DC_N_WINDOWS];
-	struct list_head		timestamp_node;
 };
 
 int tegra_dc_ext_get_num_outputs(void)
@@ -208,7 +207,6 @@ static int tegra_dc_ext_set_windowattr(struct tegra_dc_ext *ext,
 {
 	int err = 0;
 	struct tegra_dc_ext_win *ext_win = &ext->win[win->idx];
-	s64 timestamp_ns;
 
 	if (flip_win->handle[TEGRA_DC_Y] == NULL) {
 		win->flags = 0;
@@ -272,20 +270,8 @@ static int tegra_dc_ext_set_windowattr(struct tegra_dc_ext *ext,
 				msecs_to_jiffies(500), NULL);
 	}
 
-#ifndef CONFIG_TEGRA_SIMULATION_PLATFORM
-	timestamp_ns = timespec_to_ns(&flip_win->attr.timestamp);
 
-	if (timestamp_ns) {
-		/* XXX: Should timestamping be overridden by "no_vsync" flag */
-		tegra_dc_config_frame_end_intr(win->dc, true);
-		trace_printk("%s:Before timestamp wait\n", win->dc->ndev->name);
-		err = wait_event_interruptible(win->dc->timestamp_wq,
-				tegra_dc_is_within_n_vsync(win->dc, timestamp_ns));
-		trace_printk("%s:After timestamp wait\n", win->dc->ndev->name);
-		tegra_dc_config_frame_end_intr(win->dc, false);
-	}
-#endif
-	return err;
+	return 0;
 }
 
 static void (*flip_callback)(void);
@@ -337,11 +323,9 @@ static void tegra_dc_ext_flip_worker(struct work_struct *work)
 
 	for (i = 0; i < DC_N_WINDOWS; i++) {
 		struct tegra_dc_ext_flip_win *flip_win = &data->win[i];
-		int j = 0, index = flip_win->attr.index;
+		int index = flip_win->attr.index;
 		struct tegra_dc_win *win;
 		struct tegra_dc_ext_win *ext_win;
-		struct tegra_dc_ext_flip_data *temp = NULL;
-		s64 head_timestamp = 0;
 
 		if (index < 0)
 			continue;
@@ -352,31 +336,6 @@ static void tegra_dc_ext_flip_worker(struct work_struct *work)
 		if (!(atomic_dec_and_test(&ext_win->nr_pending_flips)) &&
 			(flip_win->attr.flags & TEGRA_DC_EXT_FLIP_FLAG_CURSOR))
 			skip_flip = true;
-
-		mutex_lock(&ext_win->queue_lock);
-		list_for_each_entry(temp, &ext_win->timestamp_queue,
-				timestamp_node) {
-			if (j == 0) {
-				if (unlikely(temp != data))
-					dev_err(&win->dc->ndev->dev,
-							"work queue did NOT dequeue head!!!");
-				else
-					head_timestamp =
-						timespec_to_ns(&flip_win->attr.timestamp);
-			} else {
-				s64 timestamp =
-					timespec_to_ns(&temp->win[i].attr.timestamp);
-
-				skip_flip = !tegra_dc_does_vsync_separate(ext->dc,
-						timestamp, head_timestamp);
-				/* Look ahead only one flip */
-				break;
-			}
-			j++;
-		}
-		if (!list_empty(&ext_win->timestamp_queue))
-			list_del(&data->timestamp_node);
-		mutex_unlock(&ext_win->queue_lock);
 
 		if (win->flags & TEGRA_WIN_FLAG_ENABLED) {
 			int j;
@@ -409,17 +368,17 @@ static void tegra_dc_ext_flip_worker(struct work_struct *work)
 				flip_callback();
 			spin_unlock(&flip_callback_lock);
 		}
+	}
 
-		for (i = 0; i < DC_N_WINDOWS; i++) {
-			struct tegra_dc_ext_flip_win *flip_win = &data->win[i];
-			int index = flip_win->attr.index;
+	for (i = 0; i < DC_N_WINDOWS; i++) {
+		struct tegra_dc_ext_flip_win *flip_win = &data->win[i];
+		int index = flip_win->attr.index;
 
-			if (index < 0)
-				continue;
+		if (index < 0)
+			continue;
 
-			tegra_dc_incr_syncpt_min(ext->dc, index,
-					flip_win->syncpt_max);
-		}
+		tegra_dc_incr_syncpt_min(ext->dc, index,
+			flip_win->syncpt_max);
 	}
 
 	/* unpin and deref previous front buffers */
@@ -531,7 +490,6 @@ static int tegra_dc_ext_flip(struct tegra_dc_ext_user *user,
 	struct tegra_dc_ext_flip_data *data;
 	int work_index = -1;
 	int i, ret = 0;
-	bool has_timestamp = false;
 
 #ifdef CONFIG_ANDROID
 	int index_check[DC_N_WINDOWS] = {0, };
@@ -572,8 +530,6 @@ static int tegra_dc_ext_flip(struct tegra_dc_ext_user *user,
 		int index = args->win[i].index;
 
 		memcpy(&flip_win->attr, &args->win[i], sizeof(flip_win->attr));
-		if (timespec_to_ns(&flip_win->attr.timestamp))
-			has_timestamp = true;
 
 		if (index < 0)
 			continue;
@@ -647,11 +603,6 @@ static int tegra_dc_ext_flip(struct tegra_dc_ext_user *user,
 	if (work_index < 0) {
 		ret = -EINVAL;
 		goto unlock;
-	}
-	if (has_timestamp) {
-		mutex_lock(&ext->win[work_index].queue_lock);
-		list_add_tail(&data->timestamp_node, &ext->win[work_index].timestamp_queue);
-		mutex_unlock(&ext->win[work_index].queue_lock);
 	}
 	queue_work(ext->win[work_index].flip_wq, &data->work);
 
@@ -993,8 +944,6 @@ static int tegra_dc_ext_setup_windows(struct tegra_dc_ext *ext)
 		}
 
 		mutex_init(&win->lock);
-		mutex_init(&win->queue_lock);
-		INIT_LIST_HEAD(&win->timestamp_queue);
 	}
 
 	return 0;
