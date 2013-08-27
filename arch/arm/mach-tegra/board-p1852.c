@@ -607,10 +607,27 @@ static void __init tegra_p1852_init(void)
 static void __init tegra_p1852_reserve(void)
 {
 #if defined(CONFIG_NVMAP_CONVERT_CARVEOUT_TO_IOVMM)
-	tegra_reserve(0, SZ_8M, 0);
+	tegra_reserve(0, SZ_8M, SZ_8M);
 #else
-	tegra_reserve(SZ_128M, SZ_8M, 0);
+	tegra_reserve(SZ_128M, SZ_8M, SZ_8M);
 #endif
+}
+
+int p1852_get_skuid()
+{
+	switch (system_rev) {
+	case TEGRA_P1852_SKU2_A00:
+	case TEGRA_P1852_SKU2_B00:
+		return 2;
+	case TEGRA_P1852_SKU5_A00:
+	case TEGRA_P1852_SKU5_B00:
+		return 5;
+	case TEGRA_P1852_SKU8_A00:
+	case TEGRA_P1852_SKU8_B00:
+		return 8;
+	default:
+		return -1;
+	}
 }
 
 MACHINE_START(P1852, "p1852")

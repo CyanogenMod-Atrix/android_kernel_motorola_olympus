@@ -68,3 +68,4 @@ obj-$(CONFIG_MOT_TCMD_DRIVER)	+= tcmd_driver.o
 obj-$(CONFIG_MDM_CTRL)		+= mdm_ctrl.o
 obj-y                           += radio_ctrl/
 obj-$(CONFIG_TTY_SPI_SLAVE_MDM6600)   += spi-tty/
+obj-$(CONFIG_TEGRA_THROUGHPUT)	+= tegra-throughput.o

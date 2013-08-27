@@ -44,6 +44,7 @@
 #include <sound/wm8903.h>
 #include <sound/max98095.h>
 #include <media/tegra_dtv.h>
+#include <media/tegra_camera.h>
 
 #include <mach/clk.h>
 #include <mach/iomap.h>
@@ -601,10 +602,27 @@ static void __init cardhu_uart_init(void)
 				ARRAY_SIZE(cardhu_uart_devices));
 }
 
+static struct tegra_camera_platform_data tegra_camera_pdata = {
+	.limit_3d_emc_clk = false,
+};
+
 static struct platform_device tegra_camera = {
 	.name = "tegra_camera",
+	.dev = {
+		.platform_data = &tegra_camera_pdata,
+	},
 	.id = -1,
 };
+
+static void tegra_camera_init(void)
+{
+	/* For AP37 platform, limit 3d and emc freq when camera is ON */
+	if (TEGRA_REVISION_A03 == tegra_get_revision() &&
+		0xA0 == tegra_sku_id())
+		tegra_camera_pdata.limit_3d_emc_clk = true;
+	else
+		tegra_camera_pdata.limit_3d_emc_clk = false;
+}
 
 static struct platform_device *cardhu_spi_devices[] __initdata = {
 	&tegra_spi_device4,
@@ -1384,6 +1402,7 @@ static void __init tegra_cardhu_init(void)
 	cardhu_edp_init();
 #endif
 	cardhu_uart_init();
+	tegra_camera_init();
 	platform_add_devices(cardhu_devices, ARRAY_SIZE(cardhu_devices));
 	tegra_ram_console_debug_init();
 	cardhu_sdhci_init();

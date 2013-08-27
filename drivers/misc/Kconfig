@@ -596,6 +596,13 @@ config THERM_EST
 	---help---
 	Thermal driver which estimates temperature based of other sensors.
 
+config TEGRA_THROUGHPUT
+	bool "Device node to set throughput target"
+	depends on TEGRA_DC && TEGRA_DC_EXTENSIONS
+	default y
+	---help---
+	Dev node /dev/tegra-throughput used to set a throughput target.
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"

@@ -29,7 +29,18 @@
 #include "board.h"
 #include "devices.h"
 #include "tegra3_host1x_devices.h"
+#include "board-p1852.h"
+#include "gpio-names.h"
 
+#define P1852_LVDS_ENA1 TEGRA_GPIO_PV0
+#define P1852_LVDS_ENA2 TEGRA_GPIO_PV1
+#define P1852_HDMI_HPD  TEGRA_GPIO_PN7
+#define P1852_HDMI_RGB  TEGRA_GPIO_PW1
+#define P1852_LVDS_SER1_ADDR 0xd
+#define P1852_LVDS_SER2_ADDR 0xc
+
+
+/* RGB panel requires no special enable/disable */
 static int p1852_panel_enable(void)
 {
 	return 0;
@@ -37,6 +48,186 @@ static int p1852_panel_enable(void)
 
 static int p1852_panel_disable(void)
 {
+	return 0;
+}
+
+/* enable primary LVDS */
+static int p1852_lvds_enable(void)
+{
+	struct i2c_adapter *adapter;
+	struct i2c_board_info info = {{0}};
+	static struct i2c_client *client;
+	struct i2c_msg msg[2];
+	u8 cmd_buf[] = {0x4, 0};
+	int status=-1;
+
+	/* Turn on serializer chip */
+	gpio_set_value(P1852_LVDS_ENA1, 1);
+
+	/* Program the serializer */
+	adapter = i2c_get_adapter(3);
+	if (!adapter)
+		pr_warning("%s: adapter is null\n", __func__);
+	else {
+		info.addr = P1852_LVDS_SER1_ADDR;
+		if (!client)
+			client = i2c_new_device(adapter, &info);
+		i2c_put_adapter(adapter);
+		if (!client)
+			pr_warning("%s: client is null\n", __func__);
+		else {
+			msg[0].addr = P1852_LVDS_SER1_ADDR;
+			msg[0].flags = 0;
+			msg[0].len = 1;
+			msg[0].buf = &cmd_buf[0];
+
+			status = i2c_transfer(client->adapter, msg, 1);
+			/* ignore first write status */
+
+			msg[0].addr = P1852_LVDS_SER1_ADDR;
+			msg[0].flags = 0;
+			msg[0].len = 1;
+			msg[0].buf = &cmd_buf[0];
+
+			msg[1].addr = P1852_LVDS_SER1_ADDR;
+			msg[1].flags = I2C_M_RD;
+			msg[1].len = 1;
+			msg[1].buf = &cmd_buf[1];
+
+			status = i2c_transfer(client->adapter, msg, 2);
+			if (status < 0) {
+				pr_warning("%s: i2c failed, addr=0x%x, reg=%d, ret=%d\n",
+					__func__, P1852_LVDS_SER1_ADDR, cmd_buf[0], status);
+			}
+			else {
+				cmd_buf[1] |= (1 << 2);
+				cmd_buf[1] |= (1 << 3);
+
+				msg[0].addr = P1852_LVDS_SER1_ADDR;
+				msg[0].flags = 0;
+				msg[0].len = 2;
+				msg[0].buf = &cmd_buf[0];
+
+				status = i2c_transfer(client->adapter, msg, 1);
+				if (status < 0) {
+					pr_warning("%s: i2c err, addr=0x%x, reg=%d, ret=%d\n",
+						__func__, P1852_LVDS_SER1_ADDR, cmd_buf[0], status);
+				}
+			}
+		}
+	}
+	return (status<0 ? status : 0);
+}
+
+/* Disable primary LVDS */
+static int p1852_lvds_disable(void)
+{
+	/* Turn off serializer chip */
+	gpio_set_value(P1852_LVDS_ENA1, 0);
+
+	return 0;
+}
+
+/* Enable secondary LVDS */
+static int p1852_lvds2_enable(void)
+{
+	struct i2c_adapter *adapter;
+	struct i2c_board_info info = {{0}};
+	static struct i2c_client *client;
+	struct i2c_msg msg[2];
+	u8 cmd_buf[] = {0x4, 0};
+	int status=-1;
+
+	/* Enable HDMI HPD */
+	/* need nothing here */
+
+	/* Turn on HDMI-RGB converter */
+	gpio_set_value(P1852_HDMI_RGB, 1);
+
+	/* Turn on serializer chip */
+	gpio_set_value(P1852_LVDS_ENA2, 1);
+
+	/* Program the serializer */
+	adapter = i2c_get_adapter(3);
+	if (!adapter)
+		pr_warning("%s: adapter is null\n", __func__);
+	else {
+		info.addr = P1852_LVDS_SER2_ADDR;
+		if (!client)
+			client = i2c_new_device(adapter, &info);
+		i2c_put_adapter(adapter);
+		if (!client)
+			pr_warning("%s: client is null\n", __func__);
+		else {
+			msg[0].addr = P1852_LVDS_SER2_ADDR;
+			msg[0].flags = 0;
+			msg[0].len = 1;
+			msg[0].buf = &cmd_buf[0];
+
+			status = i2c_transfer(client->adapter, msg, 1);
+			/* ignore first write status */
+
+			msg[0].addr = P1852_LVDS_SER2_ADDR;
+			msg[0].flags = 0;
+			msg[0].len = 1;
+			msg[0].buf = &cmd_buf[0];
+
+			msg[1].addr = P1852_LVDS_SER2_ADDR;
+			msg[1].flags = I2C_M_RD;
+			msg[1].len = 1;
+			msg[1].buf = &cmd_buf[1];
+
+			status = i2c_transfer(client->adapter, msg, 2);
+			if (status < 0) {
+				pr_warning("%s: i2c failed, addr=0x%x, reg=%d, ret=%d\n",
+					__func__, P1852_LVDS_SER2_ADDR, cmd_buf[0], status);
+			}
+			else {
+				cmd_buf[1] |= (1 << 2);
+				cmd_buf[1] |= (1 << 3);
+
+				msg[0].addr = P1852_LVDS_SER2_ADDR;
+				msg[0].flags = 0;
+				msg[0].len = 2;
+				msg[0].buf = &cmd_buf[0];
+
+				status = i2c_transfer(client->adapter, msg, 1);
+				if (status < 0) {
+					pr_warning("%s: i2c err, addr=0x%x, reg=%d, ret=%d\n",
+						__func__, P1852_LVDS_SER2_ADDR, cmd_buf[0], status);
+				}
+			}
+		}
+	}
+	return (status<0 ? status : 0);
+}
+
+/* Disable secondary LVDS */
+static int p1852_lvds2_disable(void)
+{
+	/* Turn off serializer chip */
+	gpio_set_value(P1852_LVDS_ENA2, 0);
+
+	/* Turn off HDMI-RGB converter */
+	gpio_set_value(P1852_HDMI_RGB, 0);
+
+	/* Turn off HDMI */
+	/* need nothing here */
+
+	return 0;
+}
+
+/* Enable secondary HDMI */
+static int p1852_hdmi_enable(void)
+{
+	/* need nothing here */
+	return 0;
+}
+
+/* Disable secondary HDMI */
+static int p1852_hdmi_disable(void)
+{
+	/* need nothing here */
 	return 0;
 }
 
@@ -123,9 +314,42 @@ static struct tegra_fb_data p1852_fb_data = {
 
 #endif
 
+/* Mode data for secondary LVDS out */
+static struct tegra_dc_mode p1852_hdmi_lvds_modes[] = {
+	{
+		/* 800x480@60 */
+		.pclk = 33260000,
+		.h_ref_to_sync = 1,
+		.v_ref_to_sync = 1,
+		.h_sync_width = 64,
+		.v_sync_width = 3,
+		.h_back_porch = 128,
+		.v_back_porch = 38,
+		.h_front_porch = 64,
+		.v_front_porch = 4,
+		.h_active = 800,
+		.v_active = 480,
+	},
+};
+
+static struct tegra_fb_data p1852_hdmi_fb_data = {
+	.win		= 0,
+	.xres		= 800,
+	.yres		= 480,
+	.bits_per_pixel	= 32,
+	.flags		= TEGRA_FB_FLIP_ON_PROBE,
+};
+
+/* Start of DC_OUT data
+ *  disp1 = Primary RGB out
+ *  ser1  = Primary LVDS out
+ *  ser2  = Secondary LVDS out
+ *  hdmi  = Secondary HDMI out
+ */
 static struct tegra_dc_out p1852_disp1_out = {
 	.align		= TEGRA_DC_ALIGN_MSB,
 	.order		= TEGRA_DC_ORDER_RED_BLUE,
+	.parent_clk = "pll_d_out0",
 	.type		= TEGRA_DC_OUT_RGB,
 	.modes		= p1852_panel_modes,
 	.n_modes	= ARRAY_SIZE(p1852_panel_modes),
@@ -133,12 +357,80 @@ static struct tegra_dc_out p1852_disp1_out = {
 	.disable	= p1852_panel_disable,
 };
 
+static struct tegra_dc_out p1852_ser1_out = {
+	.align		= TEGRA_DC_ALIGN_MSB,
+	.order		= TEGRA_DC_ORDER_RED_BLUE,
+	.parent_clk	= "pll_d_out0",
+	.type		= TEGRA_DC_OUT_RGB,
+	.modes		= p1852_panel_modes,
+	.n_modes	= ARRAY_SIZE(p1852_panel_modes),
+	.enable		= p1852_lvds_enable,
+	.disable	= p1852_lvds_disable,
+};
+
+static struct tegra_dc_out p1852_ser2_out = {
+	.align		= TEGRA_DC_ALIGN_MSB,
+	.order		= TEGRA_DC_ORDER_RED_BLUE,
+	.parent_clk	= "pll_d2_out0",
+	.type		= TEGRA_DC_OUT_HDMI,
+	.flags		= TEGRA_DC_OUT_HOTPLUG_LOW |
+			  TEGRA_DC_OUT_NVHDCP_POLICY_ON_DEMAND,
+	.max_pixclock	= KHZ2PICOS(148500),
+	.hotplug_gpio	= P1852_HDMI_HPD,
+	.modes		= p1852_hdmi_lvds_modes,
+	.n_modes	= ARRAY_SIZE(p1852_hdmi_lvds_modes),
+	.enable		= p1852_lvds2_enable,
+	.disable	= p1852_lvds2_disable,
+	.dcc_bus	= 3,
+};
+
+static struct tegra_dc_out p1852_hdmi_out = {
+	.align		= TEGRA_DC_ALIGN_MSB,
+	.order		= TEGRA_DC_ORDER_RED_BLUE,
+	.parent_clk	= "pll_d2_out0",
+	.type		= TEGRA_DC_OUT_HDMI,
+	.flags		= TEGRA_DC_OUT_HOTPLUG_LOW |
+			  TEGRA_DC_OUT_NVHDCP_POLICY_ON_DEMAND,
+	.max_pixclock	= KHZ2PICOS(148500),
+	.hotplug_gpio	= P1852_HDMI_HPD,
+	.enable		= p1852_hdmi_enable,
+	.disable	= p1852_hdmi_disable,
+
+	.dcc_bus	= 1,
+};
+
+/* End of DC_OUT data */
+
+/* Start of platform data */
 static struct tegra_dc_platform_data p1852_disp1_pdata = {
 	.flags		= TEGRA_DC_FLAG_ENABLED,
 	.default_out	= &p1852_disp1_out,
 	.emc_clk_rate	= 300000000,
 	.fb		= &p1852_fb_data,
 };
+
+static struct tegra_dc_platform_data p1852_ser1_pdata = {
+	.flags		= TEGRA_DC_FLAG_ENABLED,
+	.default_out	= &p1852_ser1_out,
+	.emc_clk_rate	= 300000000,
+	.fb		= &p1852_fb_data,
+};
+
+static struct tegra_dc_platform_data p1852_ser2_pdata = {
+	.flags		= TEGRA_DC_FLAG_ENABLED,
+	.default_out	= &p1852_ser2_out,
+	.emc_clk_rate	= 300000000,
+	.fb		= &p1852_hdmi_fb_data,
+};
+
+static struct tegra_dc_platform_data p1852_hdmi_pdata = {
+	.flags		= TEGRA_DC_FLAG_ENABLED,
+	.default_out	= &p1852_hdmi_out,
+	.emc_clk_rate	= 300000000,
+	.fb		= &p1852_hdmi_fb_data,
+};
+
+/* End of platform data */
 
 static struct nvmap_platform_carveout p1852_carveouts[] = {
 	[0] = {
@@ -166,7 +458,7 @@ static struct platform_device *p1852_gfx_devices[] __initdata = {
 	&tegra_nvmap_device,
 };
 
-int __init p1852_panel_init(void)
+static int __init p1852_sku2_panel_init(void)
 {
 	int err;
 	struct resource *res;
@@ -174,16 +466,12 @@ int __init p1852_panel_init(void)
 	p1852_carveouts[1].base = tegra_carveout_start;
 	p1852_carveouts[1].size = tegra_carveout_size;
 	tegra_nvmap_device.dev.platform_data = &p1852_nvmap_data;
-	tegra_disp1_device.dev.platform_data = &p1852_disp1_pdata;
-
-	res = nvhost_get_resource_byname(&tegra_disp1_device,
-					 IORESOURCE_MEM, "fbmem");
-	if (!res) {
-		pr_err("No memory resources\n");
-		return -ENODEV;
-	}
-	res->start = tegra_fb_start;
-	res->end = tegra_fb_start + tegra_fb_size - 1;
+	/*
+	 * sku2 has primary LVDS out and secondary LVDS out
+	 * (via HDMI->RGB->Serializer)
+	 */
+	tegra_disp1_device.dev.platform_data = &p1852_ser1_pdata;
+	tegra_disp2_device.dev.platform_data = &p1852_ser2_pdata;
 
 #ifdef CONFIG_TEGRA_GRHOST
 	err = tegra3_register_host1x_devices();
@@ -193,12 +481,100 @@ int __init p1852_panel_init(void)
 
 	err = platform_add_devices(p1852_gfx_devices,
 				ARRAY_SIZE(p1852_gfx_devices));
+
+#if defined(CONFIG_TEGRA_GRHOST) && defined(CONFIG_TEGRA_DC)
+	res = nvhost_get_resource_byname(&tegra_disp1_device,
+					 IORESOURCE_MEM, "fbmem");
+	if (res) {
+		res->start = tegra_fb_start;
+		res->end = tegra_fb_start + tegra_fb_size - 1;
+	}
+
 	if (!err)
 		err = nvhost_device_register(&tegra_disp1_device);
+
+	res = nvhost_get_resource_byname(&tegra_disp2_device,
+					 IORESOURCE_MEM, "fbmem");
+	if (res) {
+		res->start = tegra_fb2_start;
+		res->end = tegra_fb2_start + tegra_fb2_size - 1;
+	}
+
+	if (!err)
+		err = nvhost_device_register(&tegra_disp2_device);
+#endif
 
 #if defined(CONFIG_TEGRA_GRHOST) && defined(CONFIG_TEGRA_NVAVP)
 	if (!err)
 		err = nvhost_device_register(&nvavp_device);
 #endif
 	return err;
+}
+
+static int __init p1852_sku8_panel_init(void)
+{
+	int err;
+	struct resource *res;
+
+	p1852_carveouts[1].base = tegra_carveout_start;
+	p1852_carveouts[1].size = tegra_carveout_size;
+	tegra_nvmap_device.dev.platform_data = &p1852_nvmap_data;
+	/* sku 8 has primary RGB out and secondary HDMI out */
+	tegra_disp1_device.dev.platform_data = &p1852_disp1_pdata;
+	tegra_disp2_device.dev.platform_data = &p1852_hdmi_pdata;
+
+#ifdef CONFIG_TEGRA_GRHOST
+	err = tegra3_register_host1x_devices();
+	if (err)
+		return err;
+#endif
+
+	err = platform_add_devices(p1852_gfx_devices,
+				ARRAY_SIZE(p1852_gfx_devices));
+
+#if defined(CONFIG_TEGRA_GRHOST) && defined(CONFIG_TEGRA_DC)
+	res = nvhost_get_resource_byname(&tegra_disp1_device,
+					 IORESOURCE_MEM, "fbmem");
+	if (res) {
+		res->start = tegra_fb_start;
+		res->end = tegra_fb_start + tegra_fb_size - 1;
+	}
+
+	if (!err)
+		err = nvhost_device_register(&tegra_disp1_device);
+
+	res = nvhost_get_resource_byname(&tegra_disp2_device,
+					 IORESOURCE_MEM, "fbmem");
+	if (res) {
+		res->start = tegra_fb2_start;
+		res->end = tegra_fb2_start + tegra_fb2_size - 1;
+	}
+
+	if (!err)
+		err = nvhost_device_register(&tegra_disp2_device);
+#endif
+
+#if defined(CONFIG_TEGRA_GRHOST) && defined(CONFIG_TEGRA_NVAVP)
+	if (!err)
+		err = nvhost_device_register(&nvavp_device);
+#endif
+	return err;
+}
+
+int __init p1852_panel_init(void)
+{
+	int skuid;
+
+	skuid = p1852_get_skuid();
+
+	switch (skuid) {
+	case 2:
+		return p1852_sku2_panel_init();
+	case 5:	/* Sku 5 display is same as 8 */
+	case 8:
+		return p1852_sku8_panel_init();
+	default:
+		pr_warning("%s: unknown skuid %d\n", __func__, skuid);
+		return 1;
+	}
 }

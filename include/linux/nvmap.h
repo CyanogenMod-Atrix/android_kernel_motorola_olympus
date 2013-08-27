@@ -51,7 +51,6 @@
 #define NVMAP_HANDLE_SECURE          (0x1ul << 2)
 #define NVMAP_HANDLE_ZEROED_PAGES    (0x1ul << 3)
 
-
 #if defined(__KERNEL__)
 
 #if defined(CONFIG_TEGRA_NVMAP)
