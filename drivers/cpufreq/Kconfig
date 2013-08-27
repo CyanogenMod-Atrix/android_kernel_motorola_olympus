@@ -243,6 +243,39 @@ config CPU_FREQ_GOV_LAGFREE
 
           If in doubt, say N.
 
+config CPU_FREQ_GOV_SAVAGEDZEN
+    tristate "'savagedzen' cpufreq governor"
+    depends on CPU_FREQ
+    help
+          'Savaged-Zen' - a "smartass" based governor
+          If in doubt, say N.
+
+config CPU_FREQ_GOV_LAZY
+        tristate "'lazy' cpufreq governor"
+        depends on CPU_FREQ
+
+config CPU_FREQ_GOV_WHEATLEY
+    tristate "'wheatley' cpufreq governor"
+    depends on CPU_FREQ
+
+config CPU_FREQ_GOV_LULZACTIVE
+    tristate "'lulzactive' cpufreq governor"
+    depends on CPU_FREQ
+    help
+      'lulzactive' - a new interactive governor by Tegrak!
+
+      If in doubt, say N.
+
+config CPU_FREQ_GOV_INTELLIDEMAND
+        tristate "'intellidemand' cpufreq governor"
+        depends on CPU_FREQ
+        help
+          If in doubt, say N.
+
+config CPU_FREQ_GOV_LIONHEART
+  tristate "'lionheart' cpufreq governor"
+  depends on CPU_FREQ
+
 menu "x86 CPU frequency scaling drivers"
 depends on X86
 source "drivers/cpufreq/Kconfig.x86"
