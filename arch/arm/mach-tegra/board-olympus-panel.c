@@ -396,8 +396,8 @@ static struct tegra_dsi_out olympus_dsi_out = {
 		.video_clock_mode = TEGRA_DSI_VIDEO_CLOCK_TX_ONLY,
 		.video_data_type = TEGRA_DSI_VIDEO_TYPE_COMMAND_MODE,
 		.virtual_channel = TEGRA_DSI_VIRTUAL_CHANNEL_0,
-		.dsi_init_cmd = dsi_olympus_init_cmd_es4,
-		.n_init_cmd = ARRAY_SIZE(dsi_olympus_init_cmd_es4),
+		.dsi_init_cmd = dsi_olympus_init_cmd_es2,
+		.n_init_cmd = ARRAY_SIZE(dsi_olympus_init_cmd_es2),
 		.dsi_suspend_cmd = dsi_suspend_cmd,
 		.n_suspend_cmd = ARRAY_SIZE(dsi_suspend_cmd),
 };
@@ -631,9 +631,9 @@ int __init olympus_panel_init(void)
 		olympus_disp1_out.modes  = olympus_panel_modes_for_0x8;
 		olympus_disp1_out.n_modes = ARRAY_SIZE(olympus_panel_modes_for_0x8);
 	}
-	if ((s_MotorolaDispInfo >> 9) & 0x07) {
-		olympus_dsi_out.dsi_init_cmd = dsi_olympus_init_cmd_es2;
-		olympus_dsi_out.n_init_cmd = ARRAY_SIZE(dsi_olympus_init_cmd_es2);
+	if ((s_MotorolaDispInfo >> 9) & 0x07) > 1) {
+		olympus_dsi_out.dsi_init_cmd = dsi_olympus_init_cmd_es4;
+		olympus_dsi_out.n_init_cmd = ARRAY_SIZE(dsi_olympus_init_cmd_es4);
 	}
 
 	olympus_panel_setup_dc();
