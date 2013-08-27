@@ -631,7 +631,7 @@ int __init olympus_panel_init(void)
 		olympus_disp1_out.modes  = olympus_panel_modes_for_0x8;
 		olympus_disp1_out.n_modes = ARRAY_SIZE(olympus_panel_modes_for_0x8);
 	}
-	if ((s_MotorolaDispInfo >> 9) & 0x07) > 1) {
+	if (((s_MotorolaDispInfo >> 9) & 0x07) > 1) {
 		olympus_dsi_out.dsi_init_cmd = dsi_olympus_init_cmd_es4;
 		olympus_dsi_out.n_init_cmd = ARRAY_SIZE(dsi_olympus_init_cmd_es4);
 	}
