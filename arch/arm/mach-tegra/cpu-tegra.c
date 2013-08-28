@@ -31,7 +31,6 @@
 #include <linux/clk.h>
 #include <linux/io.h>
 #include <linux/suspend.h>
-#include <linux/earlysuspend.h>
 #include <linux/debugfs.h>
 #include <linux/cpu.h>
 
@@ -54,8 +53,6 @@ static struct clk *emc_clk;
 static unsigned long policy_max_speed[CONFIG_NR_CPUS];
 static unsigned long target_cpu_speed[CONFIG_NR_CPUS];
 static DEFINE_MUTEX(tegra_cpu_lock);
-static DEFINE_MUTEX(early_mutex);
-
 static bool is_suspended;
 static int suspend_index;
 
@@ -796,34 +793,6 @@ static struct cpufreq_driver tegra_cpufreq_driver = {
 	.attr		= tegra_cpufreq_attr,
 };
 
-static void tegra_cpu_early_suspend(struct early_suspend *h)
-{
-	tegra_cpu_user_cap_set(456000);
-	mutex_lock(&early_mutex);
-	/* turn off 2nd cpu ALWAYS */
-	if (num_online_cpus() > 1)
-		cpu_down(1);
-
-	mutex_unlock(&early_mutex);
-}
-
-static void tegra_cpu_late_resume(struct early_suspend *h)
-{
-	tegra_cpu_user_cap_set(1000000);
-	mutex_lock(&early_mutex);
-	/* restore dual core operations */
-	if (num_online_cpus() < 2)
-		cpu_up(1);
-
-	mutex_unlock(&early_mutex);
-}
-
-static struct early_suspend tegra_cpu_early_suspend_handler = {
-	.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN,
-	.suspend = tegra_cpu_early_suspend,
-	.resume = tegra_cpu_late_resume,
-};
-
 static int __init tegra_cpufreq_init(void)
 {
 	int ret = 0;
@@ -850,8 +819,6 @@ static int __init tegra_cpufreq_init(void)
 		&tegra_cpufreq_policy_nb, CPUFREQ_POLICY_NOTIFIER);
 	if (ret)
 		return ret;
-
-	register_early_suspend(&tegra_cpu_early_suspend_handler);
 
 	return cpufreq_register_driver(&tegra_cpufreq_driver);
 }
