@@ -55,8 +55,8 @@ static bool debug_data;
 
 #define MODEM_INTERFACE_NUM 4
 
-#define MODEM_WAKELOCK_TIME	msecs_to_jiffies(2000)
-#define MODEM_AUTOSUSPEND_DELAY	msecs_to_jiffies(500)
+#define MODEM_WAKELOCK_TIME msecs_to_jiffies(2000)
+#define MODEM_AUTOSUSPEND_DELAY msecs_to_jiffies(500)
 
 static const struct usb_device_id mdm6600_id_table[] = {
 	{ USB_DEVICE_AND_INTERFACE_INFO(0x22b8, 0x2a70, 0xff, 0xff, 0xff) },
@@ -128,24 +128,33 @@ static void mdm6600_wake_work(struct work_struct *work)
 	struct mdm6600_port *modem = container_of(dwork, struct mdm6600_port,
 						wake_work);
 	struct usb_interface *intf = modem->serial->interface;
+	struct usb_device *udev = interface_to_usbdev(intf);
 	long ret;
 
 	dbg("%s: port %d", __func__, modem->number);
 
+	/*
+	* We check again since device state could have changed by the time
+	* the delayed work gets scheduled.
+	*/
+	if (udev->state == USB_STATE_NOTATTACHED) {
+		pr_err("%s: device has disconnected\n", __func__);
+		return;
+	}
+
 	device_lock(&intf->dev);
 
 	/* Don't proceed until we're awake enough to unsuspend */
-	/*
-	if (intf->dev.power.status != DPM_ON) {
+	if (intf->dev.power.is_suspended) {
 		device_unlock(&intf->dev);
 		if (printk_ratelimit())
 			pr_debug("%s: pm state %d, retry..\n",
-					__func__, intf->dev.power.status);
+				__func__, intf->dev.power.is_suspended);
 		wake_lock_timeout(&modem->readlock, HZ);
-		schedule_delayed_work(&modem->wake_work, msecs_to_jiffies(20));
+		queue_delayed_work(system_nrt_wq, &modem->wake_work, msecs_to_jiffies(20));
 		return;
 	}
-	*/
+
 	pr_info("%s: Call usb_autopm\n", __func__);
 	usb_mark_last_busy(modem->serial->dev);
 	ret = usb_autopm_get_interface(intf);
@@ -156,7 +165,7 @@ static void mdm6600_wake_work(struct work_struct *work)
 						__func__, ret);
 
 	device_unlock(&intf->dev);
-	/* Give USB long enough to take it's own wakelock. */
+	/* Give USB long enough to take its own wakelock */
 	wake_lock_timeout(&modem->readlock, HZ/4);
 }
 
@@ -172,11 +181,7 @@ static irqreturn_t mdm6600_irq_handler(int irq, void *ptr)
 	spin_unlock(&mdm6600_wake_irq_lock);
 
 	wake_lock_timeout(&modem->readlock, MODEM_WAKELOCK_TIME);
-#ifndef CONFIG_MACH_MAPPHONE
 	queue_delayed_work(system_nrt_wq, &modem->wake_work, 0);
-#else
-	schedule_delayed_work(&modem->wake_work, 0);
-#endif
 
 	return IRQ_HANDLED;
 }
@@ -313,7 +318,7 @@ static int mdm6600_attach(struct usb_serial *serial)
 	usb_enable_autosuspend(serial->dev);
 	usb_mark_last_busy(serial->dev);
 
-	/* the modem triggers wakeup requests only if remote wakeup is enabled*/
+	/* the modem triggers wakeup requests only if remote wakeup is enabled */
 	device_init_wakeup(&serial->dev->dev, 1);
 	serial->interface->needs_remote_wakeup = 1;
 	serial->dev->dev.power.autosuspend_delay = MODEM_AUTOSUSPEND_DELAY;
@@ -538,8 +543,7 @@ static int mdm6600_write(struct tty_struct *tty, struct usb_serial_port *port,
 
 	u = usb_get_from_anchor(&modem->write.free_list);
 	if (!u) {
-		pr_info("%s: port %d all buffers busy!\n", __func__,
-				 modem->number);
+		pr_info("%s: port %d all buffers busy!\n", __func__, modem->number);
 		return 0;
 	}
 	u->transfer_flags &= ~URB_ZERO_PACKET;
@@ -674,7 +678,7 @@ static int mdm6600_dtr_control(struct usb_serial_port *port, int ctrl)
 }
 
 static int mdm6600_tiocmset(struct tty_struct *tty, unsigned int set,
-				unsigned int clear)
+	unsigned int clear)
 {
 	struct usb_serial_port *port = tty->driver_data;
 	struct mdm6600_port *modem = usb_get_serial_data(port->serial);
@@ -890,26 +894,13 @@ static void mdm6600_read_bulk_cb(struct urb *u)
 
 	usb_anchor_urb(u, &modem->read.pending);
 
-#ifndef CONFIG_MACH_MAPPHONE
 	queue_work(system_nrt_wq, &modem->read.work);
-#else
-	schedule_work(&modem->read.work);
-#endif
 }
 
 static int mdm6600_suspend(struct usb_interface *intf, pm_message_t message)
 {
 	struct usb_serial *serial = usb_get_intfdata(intf);
 	struct mdm6600_port *modem = usb_get_serial_data(serial);
-
-	/*
-	unsigned long threshold_time;
-
-	threshold_time = serial->dev->last_busy + MODEM_AUTOSUSPEND_DELAY;
-
-	if (time_before(jiffies, threshold_time))
-		return -EBUSY;
-	*/
 
 	dbg("%s: event=%d", __func__, message.event);
 
@@ -1006,8 +997,7 @@ static int mdm6600_reset_resume(struct usb_interface *intf)
 	return mdm6600_resume(intf);
 }
 
-static int mdm6600_probe(struct usb_serial *serial,
-				 const struct usb_device_id *id)
+static int mdm6600_probe(struct usb_serial *serial, const struct usb_device_id *id)
 {
 	struct usb_device *dev = interface_to_usbdev(serial->interface);
 
@@ -1025,7 +1015,7 @@ static struct usb_driver mdm6600_usb_driver = {
 	.probe =	usb_serial_probe,
 	.disconnect =	usb_serial_disconnect,
 	.id_table =	mdm6600_id_table,
-	.no_dynamic_id =	1,
+	.no_dynamic_id = 	1,
 	.supports_autosuspend = 1,
 	.suspend =	mdm6600_suspend,
 	.resume =	mdm6600_resume,

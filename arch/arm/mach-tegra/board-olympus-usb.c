@@ -175,11 +175,6 @@ static struct tegra_usb_platform_data tegra_ehci3_utmi_pdata = {
 	},
 };
 
-static struct tegra_usb_otg_data cpcap_otg_pdata = {
-	.ehci_device = &tegra_ehci1_device,
-	.ehci_pdata = &tegra_ehci1_utmi_pdata,
-};
-
 static char *usb_serial_num;
 
 static int __init olympus_usb_serial_num_setup(char *options)
@@ -193,7 +188,6 @@ __setup("androidboot.serialno=", olympus_usb_serial_num_setup);
 void olympus_usb_init(void)
 {
 	/* OTG should be the first to be registered */
-	cpcap_otg_device.dev.platform_data = &cpcap_otg_pdata;
 	cpcap_device_register(&cpcap_otg_device);
 
 	tegra_ehci1_device.dev.platform_data = &tegra_ehci1_utmi_pdata;

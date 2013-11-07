@@ -304,7 +304,6 @@ static struct platform_device *cpcap_devices[] = {
 	&cpcap_audio_device,
 	&cpcap_usb_det_device,
 	&cpcap_batt_device,
-	/*
 #ifdef CONFIG_CPCAP_WATCHDOG
 	&cpcap_wdt_device,
 #endif*/
