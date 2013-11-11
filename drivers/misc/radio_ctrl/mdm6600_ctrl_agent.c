@@ -24,9 +24,13 @@
 #include <linux/cdev.h>
 #include <linux/fs.h>
 #include <linux/init.h>
+#include <linux/reboot.h>
 #include <linux/kobject.h>
 #include <linux/radio_ctrl/mdm6600_ctrl.h>
 #include <linux/radio_ctrl/radio_class.h>
+
+#define BOOTMODE_NORMAL 0x00
+#define BOOTMODE_FLASH 0x01
 
 #define AP_STATUS_BP_PANIC_ACK      0x00
 #define AP_STATUS_DATA_ONLY_BYPASS  0x01
@@ -48,6 +52,8 @@
 #define LOOP_DELAY_TIME_MS          100
 
 static const char *mdmctrl = "mdm6600_ctrl";
+
+bool mdm6600_ctrl_bp_is_shutdown;
 
 static const char *bp_status[8] = {
 	[BP_STATUS_PANIC] = "panic",
@@ -82,6 +88,7 @@ struct mdm_ctrl_info {
 static struct mdm_ctrl_info mdm_ctrl;
 
 static DEFINE_MUTEX(mdm_ctrl_info_lock);
+static DEFINE_MUTEX(mdm_power_lock);
 
 struct workqueue_struct *working_queue = NULL;
 
@@ -95,6 +102,13 @@ static void __devexit mdm_ctrl_shutdown(struct platform_device *pdev);
 static void mdm_ctrl_powerup(void);
 static void mdm_ctrl_set_bootmode(int mode);
 static void mdm_ctrl_dump_log(void);
+static int mdm_process_reboot(struct notifier_block *this,
+				unsigned long event, void *ptr);
+
+static struct notifier_block mdm6600_reboot_notifier = {
+	.notifier_call = mdm_process_reboot,
+	.priority = 1,
+};
 
 static const char *bp_status_string(unsigned int stat)
 {
@@ -285,32 +299,61 @@ static void set_bp_resin(int on)
 	mutex_unlock(&mdm_ctrl_info_lock);
 }
 
-static void update_bp_status(void) {
+static void update_bp_status(void)
+{
+	int bp_status_prev_idx = bp_status_idx;
+	int i;
+	int bp_power_prev_idx = bp_power_idx;
 
-	static int bp_status_prev_idx = BP_STATUS_UNDEFINED;
-
-	bp_status_prev_idx = bp_status_idx;
 	bp_status_idx = get_bp_status();
+	/* No CDMA network when first power on after upgrade the software,
+	 * because the bp status is not right, so wait for bp ready status
+	 * when first powerup, becaue BP will execute restore RF. It will
+	 * take about 30~40 seconds, so AP should wait 50s for the bp status
+	 * changes from undefined status to awake status.
+	 */
+	if (bp_status_prev_idx == BP_STATUS_UNDEFINED) {
+		for (i = 0; i < 100; i++) {
+			if (bp_status_idx != BP_STATUS_PANIC)
+				break;
+			msleep(500);
+			bp_status_idx = get_bp_status();
+		}
+	}
 	bp_power_idx = get_bp_power_status();
 
-	pr_info("%s: modem status: %s -> %s [power %s]", mdmctrl,
-		bp_status_string(bp_status_prev_idx),
-		bp_status_string(bp_status_idx),
-		bp_power_state_string(bp_power_idx));
+	if (bp_power_idx == bp_power_prev_idx)
+		pr_debug("%s: modem status: %s -> %s [power %s]\n", mdmctrl,
+			bp_status_string(bp_status_prev_idx),
+			bp_status_string(bp_status_idx),
+			bp_power_state_string(bp_power_idx));
+	else
+		pr_info("%s: modem status: %s -> %s [power %s]\n", mdmctrl,
+			bp_status_string(bp_status_prev_idx),
+			bp_status_string(bp_status_idx),
+			bp_power_state_string(bp_power_idx));
 
+	if (1 == bp_power_idx)
+		mdm6600_ctrl_bp_is_shutdown = false;
+	else
+		mdm6600_ctrl_bp_is_shutdown = true;
 	kobject_uevent(&radio_cdev.dev->kobj, KOBJ_CHANGE);
 }
 
 static void mdm_ctrl_powerup(void)
 {
-	unsigned int bp_status;
+	unsigned int bp_status, i;
 
 	pr_info("%s: Starting up modem.", mdmctrl);
 
-	bp_status = get_bp_status();
-	pr_info("%s: Initial Modem status %s [0x%x]",
-		mdmctrl, bp_status_string(bp_status), bp_status);
+	mutex_lock(&mdm_power_lock);
 
+	bp_status = get_bp_status();
+	pr_info("%s: starting modem initial status %s [0x%x] bm %d\n",
+		mdmctrl, bp_status_string(bp_status), bp_status,
+		mdm_ctrl.pdata->bootmode);
+
+	mdm_ctrl_set_bootmode(mdm_ctrl.pdata->bootmode);
 	set_ap_status(AP_STATUS_NO_BYPASS);
 	pr_info("%s: ap_status set to %d", mdmctrl, get_ap_status());
 	msleep(100);
@@ -321,6 +364,21 @@ static void mdm_ctrl_powerup(void)
 	msleep(100);
 	set_bp_pwron(0);
 
+	/* verify power up by sampling reset */
+	for (i = 0; i < 10; i++) {
+		bp_status = get_bp_power_status();
+		pr_debug("%s: reset value = %d\n", __func__, bp_status);
+		if (bp_status) {
+			pr_info("%s: powered Up mdm6600\n", __func__);
+			break;
+		}
+		msleep(400);
+	}
+
+	if (!bp_status)
+		pr_err("%s: FAILED to start mdm6600\n", __func__);
+
+	mutex_unlock(&mdm_power_lock);
 	/* now let user handles bp status change through uevent */
 }
 
@@ -447,7 +505,9 @@ static int __devinit mdm_ctrl_probe(struct platform_device *pdev)
 		goto err_setup;
 	}
 
+	mdm_ctrl.pdata->bootmode = BOOTMODE_NORMAL;
 	update_bp_status();
+	register_reboot_notifier(&mdm6600_reboot_notifier);
 
 	return 0;
 
@@ -580,6 +640,22 @@ static void mdm_ctrl_dump_log(void)
 	msleep(500);
 }
 
+static int mdm_process_reboot(struct notifier_block *this,
+				unsigned long event, void *ptr)
+{
+	char *envp[] = {"MDM_SHUTDOWN=1", NULL};
+
+	pr_info("%s\n", __func__);
+
+	/* Notify userspace that modem is shutting down */
+	/* due to kernel reboot or powerdown */
+	kobject_uevent_env(&radio_cdev.dev->kobj, KOBJ_CHANGE, envp);
+
+	mdm_ctrl_shutdown(NULL);
+
+	return NOTIFY_DONE;
+}
+
 static struct platform_driver mdm6x00_ctrl_driver = {
 	.probe = mdm_ctrl_probe,
 	.remove = __devexit_p(mdm_ctrl_remove),
@@ -592,13 +668,16 @@ static struct platform_driver mdm6x00_ctrl_driver = {
 
 static int __init mdm6600_ctrl_init(void)
 {
-	printk(KERN_DEBUG "mdm6600_ctrl_init\n");
+	//TODO: unknown crashing
+	return -1;
+	pr_debug("%s: initializing %s\n",
+		__func__, mdm6x00_ctrl_driver.driver.name);
 	return platform_driver_register(&mdm6x00_ctrl_driver);
 }
 
 static void __exit mdm6600_ctrl_exit(void)
 {
-	printk(KERN_DEBUG "mdm6600_ctrl_exit\n");
+	pr_debug("%s: exiting %s\n", __func__, mdm6x00_ctrl_driver.driver.name);
 	platform_driver_unregister(&mdm6x00_ctrl_driver);
 }
 
@@ -609,3 +688,4 @@ MODULE_AUTHOR("Motorola");
 MODULE_DESCRIPTION("MDM6X00 Control Driver");
 MODULE_VERSION("1.1.4");
 MODULE_LICENSE("GPL");
+
