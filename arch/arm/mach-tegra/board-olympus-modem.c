@@ -36,8 +36,7 @@
 #include <mach/irqs.h>
 #include <mach/iomap.h>
 #include <mach/dma.h>
-//#include <mach/mdm_ctrl.h>
-#include <linux/radio_ctrl/mdm6600_ctrl.h>
+#include <mach/mdm_ctrl.h>
 #include <mach/tegra_hsuart.h>
 
 #ifdef CONFIG_SPI_SLAVE_TEGRA
@@ -189,30 +188,7 @@ static void olympus_on_bp_change(int state, int status)
 #define BP_FLASH1_GPIO  TEGRA_GPIO_PF1
 #define BP_FLASH2_GPIO  TEGRA_GPIO_PA0
 
-//static struct mdm_ctrl_platform_data mdm_ctrl_platform_data;
-
-static struct mdm_ctrl_platform_data mdm_ctrl_platform_data = {
-        .gpios[MDM_CTRL_GPIO_AP_STATUS_0] = {
-                TEGRA_GPIO_PL0, MDM_GPIO_DIRECTION_OUT, 0, 0, "mdm_ap_status0"},
-        .gpios[MDM_CTRL_GPIO_AP_STATUS_1] = {
-                TEGRA_GPIO_PL3, MDM_GPIO_DIRECTION_OUT, 0, 0, "mdm_ap_status1"},
-        .gpios[MDM_CTRL_GPIO_AP_STATUS_2] = {
-                TEGRA_GPIO_PD5, MDM_GPIO_DIRECTION_OUT, 0, 0, "mdm_ap_status2"},
-        .gpios[MDM_CTRL_GPIO_BP_STATUS_0] = {
-                TEGRA_GPIO_PM0, MDM_GPIO_DIRECTION_IN, 0, 0, "mdm_bp_status0"},
-        .gpios[MDM_CTRL_GPIO_BP_STATUS_1] = {
-                TEGRA_GPIO_PM1, MDM_GPIO_DIRECTION_IN, 0, 0, "mdm_bp_status1"},
-        .gpios[MDM_CTRL_GPIO_BP_STATUS_2] = {
-                TEGRA_GPIO_PT0, MDM_GPIO_DIRECTION_IN, 0, 0, "mdm_bp_status2"},
-        .gpios[MDM_CTRL_GPIO_BP_RESOUT] = {
-                TEGRA_GPIO_PV2, MDM_GPIO_DIRECTION_IN, 0, 0, "mdm_bp_resout"},
-        .gpios[MDM_CTRL_GPIO_BP_RESIN] = {
-                TEGRA_GPIO_PV1, MDM_GPIO_DIRECTION_OUT, 0, 0, "mdm_bp_resin"},
-        .gpios[MDM_CTRL_GPIO_BP_PWRON] = {
-                TEGRA_GPIO_PV0, MDM_GPIO_DIRECTION_OUT, 0, 0, "mdm_bp_pwr_on"},
-        .cmd_gpios = {TEGRA_GPIO_PF1, TEGRA_GPIO_PA0},
-};
-
+static struct mdm_ctrl_platform_data mdm_ctrl_platform_data;
 static struct platform_device mdm_ctrl_platform_device = {
 	.name = MDM_CTRL_MODULE_NAME,
 	.id = -1,
@@ -226,7 +202,7 @@ static const char mdm_ctrl_usb_regulator[] = "vusb_modem_flash";
 static int __init olympus_mdm_ctrl_init(void)
 {
 	int value;
-#if 0
+
 	spin_lock_init(&mdm_ctrl_peer_lock);
 
 	mdm_ctrl_platform_data.on_bp_startup = olympus_on_bp_startup;
@@ -264,6 +240,7 @@ static int __init olympus_mdm_ctrl_init(void)
 					IRQ_TYPE_EDGE_BOTH;
 	mdm_ctrl_platform_data.bp_status2_gpio_irq_type =
 					IRQ_TYPE_EDGE_BOTH;
+
 	/*
 	 * Tegra doesn't support edge triggering on GPIOs that can wake
 	 * the system from deep sleep.  If the BP goes down while AP is
@@ -306,7 +283,6 @@ static int __init olympus_mdm_ctrl_init(void)
 	gpio_request(BP_PWRON_GPIO, "BP Power On");
 	value = gpio_get_value(BP_PWRON_GPIO);
 	gpio_direction_output(BP_PWRON_GPIO, value);
-#endif
 
 	return platform_device_register(&mdm_ctrl_platform_device);
 }

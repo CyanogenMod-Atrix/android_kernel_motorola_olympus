@@ -19,7 +19,7 @@
 #ifndef _LINUX_MACH_MDM_CTRL_H__
 #define _LINUX_MACH_MDM_CTRL_H__
 
-//#define MDM_CTRL_MODULE_NAME "mdm_ctrl"
+#define MDM_CTRL_MODULE_NAME "mdm_ctrl"
 
 /* The number of bytes needed to return interrupt fire status.  First byte
  * contains the GPIO mask and the second byte the BP status */
@@ -28,7 +28,7 @@
 #define MDM_GPIO_INTERRUPT_COUNT	4
 
 #define MDM_GPIO_INVALID		~0
-/*
+
 struct mdm_ctrl_platform_data {
 	unsigned int ap_status0_gpio;
 	unsigned int ap_status1_gpio;
@@ -53,7 +53,7 @@ struct mdm_ctrl_platform_data {
 	void (*on_bp_shutdown)(void);
 	void (*on_bp_change)(int, int);
 };
-*/
+
 typedef int (*mdm_ctrl_peer_register_t)(void (*peer_startup)(void*),
 	                                void (*peer_shutdown)(void*),
 	                                void* context);
