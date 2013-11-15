@@ -23,6 +23,12 @@
 #define MDM_CTRL_MODULE_NAME "mdm6600_ctrl"
 #define MAX_GPIO_NAME 20
 
+extern bool mdm6600_ctrl_bp_is_shutdown;
+static inline bool mdm6600_ctrl_is_bp_up(void)
+{
+return !mdm6600_ctrl_bp_is_shutdown;
+}
+
 enum {
 	MDM_CTRL_GPIO_AP_STATUS_0,
 	MDM_CTRL_GPIO_AP_STATUS_1,
@@ -56,6 +62,8 @@ struct mdm_command_gpios {
 };
 
 struct mdm_ctrl_platform_data {
+	char *name;
+	int bootmode;
 	struct mdm_ctrl_gpio gpios[MDM_CTRL_NUM_GPIOS];
 	struct mdm_command_gpios cmd_gpios;
 };
