@@ -19,6 +19,7 @@
 #include <linux/device.h>
 #include <linux/gpio.h>
 #include <linux/platform_device.h>
+#include <linux/reboot.h>
 #include <linux/interrupt.h>
 #include <linux/irq.h>
 #include <linux/cdev.h>
@@ -95,6 +96,13 @@ static void __devexit mdm_ctrl_shutdown(struct platform_device *pdev);
 static void mdm_ctrl_powerup(void);
 static void mdm_ctrl_set_bootmode(int mode);
 static void mdm_ctrl_dump_log(void);
+static int mdm_process_reboot(struct notifier_block *this,
+				unsigned long event, void *ptr);
+
+static struct notifier_block mdm6600_reboot_notifier = {
+	.notifier_call = mdm_process_reboot,
+	.priority = 1,
+};
 
 static const char *bp_status_string(unsigned int stat)
 {
@@ -448,6 +456,7 @@ static int __devinit mdm_ctrl_probe(struct platform_device *pdev)
 	}
 
 	update_bp_status();
+	register_reboot_notifier(&mdm6600_reboot_notifier);
 
 	return 0;
 
@@ -578,6 +587,22 @@ static void mdm_ctrl_dump_log(void)
 	 * so that users of this don't have to wait themselves.
 	 */
 	msleep(500);
+}
+
+static int mdm_process_reboot(struct notifier_block *this,
+				unsigned long event, void *ptr)
+{
+	char *envp[] = {"MDM_SHUTDOWN=1", NULL};
+
+	pr_info("%s\n", __func__);
+
+	/* Notify userspace that modem is shutting down */
+	/* due to kernel reboot or powerdown */
+	kobject_uevent_env(&radio_cdev.dev->kobj, KOBJ_CHANGE, envp);
+
+	mdm_ctrl_shutdown(NULL);
+
+	return NOTIFY_DONE;
 }
 
 static struct platform_driver mdm6x00_ctrl_driver = {

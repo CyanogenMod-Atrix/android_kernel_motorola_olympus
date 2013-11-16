@@ -603,6 +603,13 @@ config TEGRA_THROUGHPUT
 	---help---
 	Dev node /dev/tegra-throughput used to set a throughput target.
 
+config OLYMPUS_SYSFS
+	bool "Sysfs interface for Atrix 4G settings tweaking"
+	depends on MACH_OLYMPUS
+	default y
+	---help---
+	Sysfs interface /sys/kernel/olympus for Motorola Olympus settings.
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"

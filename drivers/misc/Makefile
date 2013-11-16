@@ -69,3 +69,4 @@ obj-$(CONFIG_MDM_CTRL)		+= mdm_ctrl.o
 obj-y                           += radio_ctrl/
 obj-$(CONFIG_TTY_SPI_SLAVE_MDM6600)   += spi-tty/
 obj-$(CONFIG_TEGRA_THROUGHPUT)	+= tegra-throughput.o
+obj-$(CONFIG_OLYMPUS_SYSFS)	+= olympus_sysfs.o
