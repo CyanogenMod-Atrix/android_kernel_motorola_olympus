@@ -143,8 +143,7 @@ static int cpcap_wdt_get_timer(struct cpcap_wdt *wdt, unsigned short int *timer)
 static int cpcap_wdt_ping(struct cpcap_wdt *wdt)
 {
 
-	//dev_dbg (wdt->dev, "%s()\n", __func__);
-	dev_info (wdt->dev, "%s()\n", __func__);
+	dev_dbg (wdt->dev, "%s()\n", __func__);
 	if (!wdt)
 		return -EINVAL;
 
@@ -499,8 +498,7 @@ static int cpcap_wdt_suspend(struct platform_device *pdev, pm_message_t message)
 {
 #ifdef CONFIG_CPCAP_WATCHDOG_KERNEL_SPACE
 	struct cpcap_wdt *wdt = platform_get_drvdata(pdev);
-	//dev_dbg(wdt->dev, "suspend\n");
-	dev_info(wdt->dev, "suspend\n");
+	dev_dbg(wdt->dev, "suspend\n");
 	return (cpcap_wdt_stop(wdt));
 #else
 	return 0;
@@ -511,8 +509,7 @@ static int cpcap_wdt_resume(struct platform_device *pdev)
 {
 #ifdef CONFIG_CPCAP_WATCHDOG_KERNEL_SPACE
 	struct cpcap_wdt *wdt = platform_get_drvdata(pdev);
-	//dev_dbg(wdt->dev, "resume\n");
-	dev_info(wdt->dev, "resume\n");
+	dev_dbg(wdt->dev, "resume\n");
 	return (cpcap_wdt_start(wdt));
 #else
 	return 0;

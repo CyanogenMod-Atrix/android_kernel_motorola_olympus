@@ -98,7 +98,7 @@
 
 #define TILT_REPORT_DELAY	500
 
-unsigned trace_irq = 1;
+unsigned trace_irq = 0;
 module_param(trace_irq, uint, 0664);
 unsigned trace_xyz = 0;
 module_param(trace_xyz, uint, 0664);
