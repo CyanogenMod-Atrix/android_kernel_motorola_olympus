@@ -348,11 +348,11 @@ CHECK		= sparse
 CHECKFLAGS     := -D__linux__ -Dlinux -D__STDC__ -Dunix -D__unix__ \
 		  -Wbitwise -Wno-return-void $(CF)
 ifdef LINARO
-   MODFLAGS	= -DMODULE -fgcse-lm -fgcse-sm -fsched-spec-load -fforce-addr -ffast-math -fsingle-precision-constant -mcpu=cortex-a9 -mfloat-abi=hard -mfpu=vfpv3-d16-fp16 -funroll-loops -Ofast
+   MODFLAGS	= -DMODULE -fgcse-lm -fgcse-sm -fsched-spec-load -fforce-addr -ffast-math -fsingle-precision-constant -mcpu=cortex-a9 -mfloat-abi=soft -mfpu=vfpv3-d16-fp16 -funroll-loops -Ofast
    CFLAGS_MODULE   = $(MODFLAGS)
    AFLAGS_MODULE   = $(MODFLAGS)
    LDFLAGS_MODULE  = -T $(srctree)/scripts/module-common.lds
-   CFLAGS_KERNEL	= -fgcse-lm -fgcse-sm -fsched-spec-load -fforce-addr -ffast-math -fsingle-precision-constant -mcpu=cortex-a9 -mfloat-abi=hard -mfpu=vfpv3-d16-fp16 -funroll-loops -Ofast
+   CFLAGS_KERNEL	= -fgcse-lm -fgcse-sm -fsched-spec-load -fforce-addr -ffast-math -fsingle-precision-constant -mcpu=cortex-a9 -mfloat-abi=soft -mfpu=vfpv3-d16-fp16 -funroll-loops -Ofast
 else
    CFLAGS_MODULE   =
    AFLAGS_MODULE   =
@@ -385,7 +385,7 @@ ifdef LINARO
 		   -Wno-format-security \
 		   -fno-delete-null-pointer-checks \
  		   -Ofast -mcpu=cortex-a9  \
- 		   -D__ARM_ARCH_7__ -D__ARM_ARCH_7A__ -D__VFP_FP__ -D__ARM_HAVE_VFP -mfloat-abi=hard -mfpu=vfpv3-d16-fp16 \
+ 		   -D__ARM_ARCH_7__ -D__ARM_ARCH_7A__ -D__VFP_FP__ -D__ARM_HAVE_VFP -mfloat-abi=soft -mfpu=vfpv3-d16-fp16 \
  		   -funswitch-loops -fpredictive-commoning \
  		   -fmodulo-sched -fmodulo-sched-allow-regmoves
    ifdef CONFIG_GCC_48_FIXES
@@ -403,7 +403,7 @@ KBUILD_AFLAGS_KERNEL :=
 KBUILD_CFLAGS_KERNEL :=
 
 ifdef LINARO
-   KBUILD_AFLAGS   := -D__ASSEMBLY__ -Ofast -mcpu=cortex-a9 -D__ARM_ARCH_7__ -D__ARM_ARCH_7A__ -D__VFP_FP__ -D__ARM_HAVE_VFP -mfloat-abi=hard -mfpu=vfpv3-d16-fp16
+   KBUILD_AFLAGS   := -D__ASSEMBLY__ -Ofast -mcpu=cortex-a9 -D__ARM_ARCH_7__ -D__ARM_ARCH_7A__ -D__VFP_FP__ -D__ARM_HAVE_VFP -mfloat-abi=soft -mfpu=vfpv3-d16-fp16
 else
    KBUILD_AFLAGS   := -D__ASSEMBLY__
 endif
