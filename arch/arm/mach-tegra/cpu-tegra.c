@@ -767,7 +767,7 @@ static struct cpufreq_driver tegra_cpufreq_driver = {
 
 static void tegra_cpu_early_suspend(struct early_suspend *h)
 {
-#ifdef CONFIG_OLYMPUS_US
+#ifdef CONFIG_OLYMPUS_UV
 	tegra_cpu_user_cap_set(456000);
 #endif
 	mutex_lock(&early_mutex);
