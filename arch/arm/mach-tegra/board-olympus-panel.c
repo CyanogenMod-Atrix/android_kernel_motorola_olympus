@@ -323,7 +323,7 @@ static int olympus_panel_enable(void)
 	msleep_interruptible(50);
 	//printk(KERN_INFO "%s: TEGRA_GPIO_PE3 = 1",__func__);
 	gpio_set_value(TEGRA_GPIO_PE3, 1);
-	//msleep_interruptible(25);
+	msleep_interruptible(25);
 
 	return 0;
 }
@@ -332,7 +332,7 @@ static int olympus_panel_disable(void)
 {
 	int ret;
 
-	//msleep_interruptible(25);
+	msleep_interruptible(25);
 	//printk(KERN_INFO "%s: TEGRA_GPIO_PE3 = 0",__func__);
 	gpio_set_value(TEGRA_GPIO_PE3, 0);
 	msleep_interruptible(25);
@@ -375,7 +375,7 @@ static struct tegra_dsi_out olympus_dsi_out = {
 		.lp_cmd_mode_freq_khz = 229500,
 		.enable_hs_clock_on_lp_cmd_mode = true,
 		.panel_reset = true,	/* resend the init sequence on each resume */
-		.panel_reset_timeout_msec = 2, //202,
+		.panel_reset_timeout_msec = 100, //202,
 		.panel_has_frame_buffer = true,
 		.power_saving_suspend = true,	/* completely shutdown the panel */
 		.pixel_format = TEGRA_DSI_PIXEL_FORMAT_24BIT_P,
