@@ -484,14 +484,9 @@ int tegra_update_cpu_speed(unsigned long rate)
 {
 	int ret = 0;
 	struct cpufreq_freqs freqs;
-#ifdef CONFIG_TEGRA_AUTO_HOTPLUG
-	u64 now = jiffies;
-	u64 last_time = last_change_time();
-#endif
 	freqs.old = tegra_getspeed(0);
 	freqs.new = rate;
 
-//	printk(KERN_INFO "%s: freq.old: %u, freq.new: %u\n", __func__, freqs.old, freqs.new);
 
 	rate = clk_round_rate(cpu_clk, rate * 1000);
 	if (!IS_ERR_VALUE(rate))
@@ -500,32 +495,6 @@ int tegra_update_cpu_speed(unsigned long rate)
 	if (freqs.old == freqs.new)
 		return ret;
 
-//	printk(KERN_INFO "%s: now - last_time: %llu\n", __func__, now - last_time);
-#ifdef CONFIG_TEGRA_AUTO_HOTPLUG
-	if ((now - last_time) < msecs_to_jiffies(CPU1_ON_PENDING_MS))
-		return -1;
-#endif
-#if 0
-	printk(KERN_INFO "%s: freq: %u\n", __func__, freqs.new);
-
-	if ((freqs.old < freqs.new) && (freqs.new >= HI_LIMIT)) {
-		if (!cpu_online(1) && (up_state == false))
-			if ((now - last_change_time_lo) >= msecs_to_jiffies(CPU1_ON_PENDING_MS)) {
-				//cpu_up(1);
-				printk(KERN_INFO "%s: going up, now - last_change_time_hi = %llu, msecs_to_jiffies(CPU1_ON_PENDING_MS) = %lu\n", __func__, now - last_change_time_lo, msecs_to_jiffies(CPU1_ON_PENDING_MS));
-				up_state = true;
-			}
-		last_change_time_hi = now;
-	} else if ((freqs.old > freqs.new) && (freqs.new <= LO_LIMIT)) {
-		if (cpu_online(1) && (up_state == true))
-			if ((now - last_change_time_hi) >= msecs_to_jiffies(CPU1_OFF_PENDING_MS)) {
-				//cpu_down(1);
-				printk(KERN_INFO "%s: going down, now - last_change_time_hi = %llu, msecs_to_jiffies(CPU1_OFF_PENDING_MS) = %lu\n", __func__, now - last_change_time_hi, msecs_to_jiffies(CPU1_OFF_PENDING_MS));
-				up_state = false;
-			}
-		last_change_time_lo = now;
-	}
-#endif
 	/*
 	 * Vote on memory bus frequency based on cpu frequency
 	 * This sets the minimum frequency, display or avp may request higher
@@ -791,6 +760,38 @@ static struct cpufreq_driver tegra_cpufreq_driver = {
 	.name		= "tegra",
 	.owner		= THIS_MODULE,
 	.attr		= tegra_cpufreq_attr,
+};
+
+static void tegra_cpu_early_suspend(struct early_suspend *h)
+{
+#ifdef CONFIG_OLYMPUS_UV
+	tegra_cpu_user_cap_set(456000);
+#endif
+	mutex_lock(&early_mutex);
+	/* turn off 2nd cpu ALWAYS */
+	if (num_online_cpus() > 1)
+		cpu_down(1);
+
+	mutex_unlock(&early_mutex);
+}
+
+static void tegra_cpu_late_resume(struct early_suspend *h)
+{
+#ifdef CONFIG_OLYMPUS_UV
+	tegra_cpu_user_cap_set(1000000);
+#endif
+	mutex_lock(&early_mutex);
+	/* restore dual core operations */
+	if (num_online_cpus() < 2)
+		cpu_up(1);
+
+	mutex_unlock(&early_mutex);
+}
+
+static struct early_suspend tegra_cpu_early_suspend_handler = {
+	.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN,
+	.suspend = tegra_cpu_early_suspend,
+	.resume = tegra_cpu_late_resume,
 };
 
 static int __init tegra_cpufreq_init(void)

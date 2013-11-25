@@ -1535,7 +1535,7 @@ static int mmc_blk_probe(struct mmc_card *card)
 
 	string_get_size((u64)get_capacity(md->disk) << 9, STRING_UNITS_2,
 			cap_str, sizeof(cap_str));
-	printk(KERN_INFO "%s: %s %s %s %s\n",
+	printk(KERN_INFO "%s-> %s: %s %s %s %s\n", __func__, 
 		md->disk->disk_name, mmc_card_id(card), mmc_card_name(card),
 		cap_str, md->read_only ? "(ro)" : "");
 
@@ -1544,9 +1544,16 @@ static int mmc_blk_probe(struct mmc_card *card)
 
 	mmc_set_drvdata(card, md);
 	mmc_fixup_device(card, blk_fixups);
-
-#ifdef CONFIG_MMC_BLOCK_DEFERRED_RESUME
+	
+#ifdef CONFIG_MMC_BLOCK_DEFERRED_RESUME	
+#ifdef CONFIG_MACH_OLYMPUS
+	if (card->host->index == 2) {
+		printk(KERN_INFO "%s-> %s: %u\n", __func__, mmc_card_id(card), card->host->index);
+#endif
 	mmc_set_bus_resume_policy(card->host, 1);
+#ifdef CONFIG_MACH_OLYMPUS
+	}
+#endif
 #endif
 	if (mmc_add_disk(md))
 		goto out;
@@ -1573,6 +1580,9 @@ static void mmc_blk_remove(struct mmc_card *card)
 	mmc_release_host(card->host);
 	mmc_blk_remove_req(md);
 	mmc_set_drvdata(card, NULL);
+		printk(KERN_INFO "%s-> %s: %s %s %s\n", __func__, 
+		md->disk->disk_name, mmc_card_id(card), mmc_card_name(card),
+		md->read_only ? "(ro)" : "");
 #ifdef CONFIG_MMC_BLOCK_DEFERRED_RESUME
 	mmc_set_bus_resume_policy(card->host, 0);
 #endif
@@ -1599,6 +1609,10 @@ static int mmc_blk_resume(struct mmc_card *card)
 	struct mmc_blk_data *md = mmc_get_drvdata(card);
 
 	if (md) {
+		printk(KERN_INFO "%s-> %s: %s %s %s\n", __func__, 
+		md->disk->disk_name, mmc_card_id(card), mmc_card_name(card),
+		md->read_only ? "(ro)" : "");
+
 #ifndef CONFIG_MMC_BLOCK_DEFERRED_RESUME
 		mmc_blk_set_blksize(md, card);
 #endif

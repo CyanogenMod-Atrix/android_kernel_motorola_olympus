@@ -479,8 +479,9 @@ static int cpcap_regulator_set_voltage(struct regulator_dev *rdev,
 	regltr_id = rdev_get_id(rdev);
 	if (regltr_id >= CPCAP_NUM_REGULATORS)
 		return -EINVAL;
-
-	if ((regltr_id>1) && (regltr_id!=3)) printk(KERN_INFO "%s: Regulator: %s, min_uV: %d, max_uV: %d\n", __func__, r_names[regltr_id].name, min_uV, max_uV);
+#ifdef CONFIG_OLYMPUS_UV_DEBUG
+	if ((regltr_id>0) && (regltr_id!=3)) printk(KERN_INFO "%s: Regulator: %s, min_uV: %d, max_uV: %d\n", __func__, r_names[regltr_id].name, min_uV, max_uV);
+#endif
 	regnr = cpcap_regltr_data[regltr_id].reg;
 
 	if (regltr_id == CPCAP_VRF1) {
@@ -539,8 +540,9 @@ static int cpcap_regulator_get_voltage(struct regulator_dev *rdev)
 	volt_bits -= cpcap_regltr_data[regltr_id].bit_offset_from_cpcap_lowest_voltage;
 
 	shift = cpcap_regltr_data[regltr_id].volt_shft;
-
+#ifdef CONFIG_OLYMPUS_UV_DEBUG
 	printk(KERN_INFO "%s: Regulator: %s, uV: %d\n", __func__, r_names[regltr_id].name, cpcap_regltr_data[regltr_id].val_tbl[volt_bits >> shift]);
+#endif
 	return cpcap_regltr_data[regltr_id].val_tbl[volt_bits >> shift];
 }
 
@@ -554,8 +556,9 @@ static int cpcap_regulator_enable(struct regulator_dev *rdev)
 	regltr_id = rdev_get_id(rdev);
 	if (regltr_id >= CPCAP_NUM_REGULATORS)
 		return -EINVAL;
-
-	//printk(KERN_INFO "%s: Regulator: %s\n", __func__, r_names[regltr_id].name);
+#ifdef CONFIG_OLYMPUS_UV_DEBUG
+	printk(KERN_INFO "%s: Regulator: %s\n", __func__, r_names[regltr_id].name);
+#endif
 	regnr = cpcap_regltr_data[regltr_id].reg;
 
 	retval = cpcap_regacc_write(cpcap, regnr,
@@ -585,8 +588,9 @@ static int cpcap_regulator_disable(struct regulator_dev *rdev)
 	regltr_id = rdev_get_id(rdev);
 	if (regltr_id >= CPCAP_NUM_REGULATORS)
 		return -EINVAL;
-
-	//printk(KERN_INFO "%s: Regulator: %s\n", __func__, r_names[regltr_id].name);
+#ifdef CONFIG_OLYMPUS_UV_DEBUG
+	printk(KERN_INFO "%s: Regulator: %s\n", __func__, r_names[regltr_id].name);
+#endif
 	regnr = cpcap_regltr_data[regltr_id].reg;
 
 	retval = 0;
@@ -807,15 +811,15 @@ static int regulator_suspend(struct platform_device *pdev, pm_message_t mesg)
 	regltr_id = rdev_get_id(rdev);
 	if (regltr_id >= CPCAP_NUM_REGULATORS)
 		return -EINVAL;
-
+#ifdef CONFIG_OLYMPUS_UV_DEBUG
 	if (cpcap_regulator_is_enabled(rdev)) {
 		if ((regltr_id>1) && (regltr_id!=3))
 		{
-				//curr_volt = cpcap_regulator_get_voltage(rdev);
-				//if (cpcap_regltr_data[regltr_id].val_tbl[0] < curr_volt) cpcap_regulator_set_voltage(rdev, cpcap_regltr_data[regltr_id].val_tbl[0], cpcap_regltr_data[regltr_id].val_tbl[0], &select);
+			curr_volt = cpcap_regulator_get_voltage(rdev);
+			if (cpcap_regltr_data[regltr_id].val_tbl[0] < curr_volt) cpcap_regulator_set_voltage(rdev, cpcap_regltr_data[regltr_id].val_tbl[0], cpcap_regltr_data[regltr_id].val_tbl[0], &select);
 		}
 	}
-
+#endif
 	return 0;
 }
 
@@ -829,15 +833,15 @@ static int regulator_resume(struct platform_device *pdev)
 	regltr_id = rdev_get_id(rdev);
 	if (regltr_id >= CPCAP_NUM_REGULATORS)
 		return -EINVAL;
-
+#ifdef CONFIG_OLYMPUS_UV_DEBUG
 	if (cpcap_regulator_is_enabled(rdev)) {
 		if ((regltr_id>1) && (regltr_id!=3))
 		{
-				//curr_volt = cpcap_regulator_get_voltage(rdev);
-				//if (cpcap_regltr_data[regltr_id].val_tbl[cpcap_regltr_data[regltr_id].val_tbl_sz - 1] > curr_volt) cpcap_regulator_set_voltage(rdev, cpcap_regltr_data[regltr_id].val_tbl[cpcap_regltr_data[regltr_id].val_tbl_sz - 1], cpcap_regltr_data[regltr_id].val_tbl[cpcap_regltr_data[regltr_id].val_tbl_sz - 1], &select);
+			curr_volt = cpcap_regulator_get_voltage(rdev);
+			if (cpcap_regltr_data[regltr_id].val_tbl[cpcap_regltr_data[regltr_id].val_tbl_sz - 1] > curr_volt) cpcap_regulator_set_voltage(rdev, cpcap_regltr_data[regltr_id].val_tbl[cpcap_regltr_data[regltr_id].val_tbl_sz - 1], cpcap_regltr_data[regltr_id].val_tbl[cpcap_regltr_data[regltr_id].val_tbl_sz - 1], &select);
 		}
 	}
-
+#endif
 	return 0;
 }
 

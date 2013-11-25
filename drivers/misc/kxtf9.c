@@ -98,7 +98,7 @@
 
 #define TILT_REPORT_DELAY	500
 
-unsigned trace_irq = 1;
+unsigned trace_irq = 0;
 module_param(trace_irq, uint, 0664);
 unsigned trace_xyz = 0;
 module_param(trace_xyz, uint, 0664);
@@ -781,12 +781,12 @@ static long kxtf9_misc_ioctl(struct file *file,
 
 	switch (cmd) {
 	case KXTF9_IOCTL_QUERY:
-		pr_info("%s: QUERY\n", __func__);
+		//pr_info("%s: QUERY\n", __func__);
 		if (!atomic_read(&tf9->enabled))
 			return -EFAULT;
 
 		if (kxtf9_get_acceleration_data(tf9, xyz) == 0) {
-			pr_info("%s: QUERY %d %d %d\n", __func__, xyz[0], xyz[1], xyz[2]);
+			//pr_info("%s: QUERY %d %d %d\n", __func__, xyz[0], xyz[1], xyz[2]);
 			if (copy_to_user(argp, xyz, sizeof(xyz)))
 				return -EFAULT;
 		} else {
@@ -806,8 +806,8 @@ static long kxtf9_misc_ioctl(struct file *file,
 		else
 			tf9->pdata->poll_interval = tf9->pdata->min_interval;
 		poll_interval = tf9->pdata->poll_interval;
-		pr_info("%s: SET_DELAY %d\n",
-		             __func__, tf9->pdata->poll_interval);
+		//pr_info("%s: SET_DELAY %d\n",
+		//             __func__, tf9->pdata->poll_interval);
 		err = kxtf9_update_odr(tf9, tf9->pdata->poll_interval);
 		if (err < 0) {
 			pr_err("%s: SET_DELAY error %d\n", __func__, err);
@@ -819,7 +819,7 @@ static long kxtf9_misc_ioctl(struct file *file,
 			return -EFAULT;
 		if (io_int < 0 || io_int > 1)
 			return -EINVAL;
-		pr_info("%s: SET_ENABLE %d\n", __func__, io_int);
+		//pr_info("%s: SET_ENABLE %d\n", __func__, io_int);
 		if (io_int) {
 			atomic_set(&tf9->req_enabled, 1);
 			kxtf9_enable(tf9);
@@ -836,7 +836,7 @@ static long kxtf9_misc_ioctl(struct file *file,
 	case KXTF9_IOCTL_SET_G_RANGE:
 		if (copy_from_user(&io_u8, argp, sizeof(io_u8)))
 			return -EFAULT;
-		pr_info("%s: SET_G_RANGE %u\n", __func__, io_u8);
+		//pr_info("%s: SET_G_RANGE %u\n", __func__, io_u8);
 		err = kxtf9_update_g_range(tf9, io_u8);
 		if (err < 0) {
 			pr_err("%s: SET_G_RANGE error %d\n", __func__, err);
@@ -845,15 +845,15 @@ static long kxtf9_misc_ioctl(struct file *file,
 		break;
 	case KXTF9_IOCTL_SET_TILT_ENABLE: /* Overlapped set functionality */
 		io_u8 = TPE;
-		pr_info("%s: SET_TILT_ENABLE %u\n", __func__, io_u8);
+		//pr_info("%s: SET_TILT_ENABLE %u\n", __func__, io_u8);
 		goto process_set_x;
 	case KXTF9_IOCTL_SET_TAP_ENABLE:  /* Overlapped set functionality */
 		io_u8 = TDTE;
-		pr_info("%s: SET_TAP_ENABLE %u\n", __func__, io_u8);
+		//pr_info("%s: SET_TAP_ENABLE %u\n", __func__, io_u8);
 		goto process_set_x;
 	case KXTF9_IOCTL_SET_WAKE_ENABLE: /* Overlapped set functionality */
 		io_u8 = WUFE;
-		pr_info("%s: SET_WAKE_ENABLE %u\n", __func__, io_u8);
+		//pr_info("%s: SET_WAKE_ENABLE %u\n", __func__, io_u8);
 process_set_x:
 		if (copy_from_user(&io_int, argp, sizeof(io_int)))
 			return -EFAULT;
@@ -892,7 +892,7 @@ set_x_error:
 			return -EFAULT;
 		if (io_int < 0 || io_int > 1)
 			return -EINVAL;
-		pr_info("%s: SET_SELF_TEST %d\n", __func__, io_int);
+		//pr_info("%s: SET_SELF_TEST %d\n", __func__, io_int);
 		err = 0;
 		if (io_int) {
 			/* activate self-test function */
@@ -912,7 +912,7 @@ set_x_error:
 		}
 		break;
 	case KXTF9_IOCTL_INTERRUPT_TEST:
-		pr_info("%s: IOCTL_INTERRUPT_TEST\n", __func__);
+		//pr_info("%s: IOCTL_INTERRUPT_TEST\n", __func__);
 		reg_val = CTRL_REG1;
 		kxtf9_i2c_read(tf9, &reg_val, 1);
 		ctrl[0] = CTRL_REG1;
@@ -977,7 +977,7 @@ set_x_error:
 	case KXTF9_IOCTL_SET_SENSITIVITY:
 		if (copy_from_user(&io_int, argp, sizeof(io_int)))
 			return -EFAULT;
-		pr_info("%s: SET_SENSITIVITY %d\n", __func__, io_int);
+		//pr_info("%s: SET_SENSITIVITY %d\n", __func__, io_int);
 		err = kxtf9_update_gesture_sensitivity(tf9, io_int - 1);
 		if (err < 0) {
 			pr_err("%s: SET_SENSITIVITY %d error %d\n",
@@ -1341,14 +1341,14 @@ static void kxtf9_early_suspend(struct early_suspend *handler)
 {
 	struct kxtf9_data *tf9;
 
-	printk(KERN_INFO "%s: enter\n",__func__);
+	//printk(KERN_INFO "%s: enter\n",__func__);
 
 	tf9 = container_of(handler, struct kxtf9_data, early_suspend);
 
 	tf9->was_polling_at_suspend = atomic_read(&tf9->is_polling);
 	kxtf9_suspend(tf9->client, PMSG_SUSPEND);
 
-	printk(KERN_INFO "%s: exit\n",__func__);
+	//printk(KERN_INFO "%s: exit\n",__func__);
 }
 
 static void kxtf9_late_resume(struct early_suspend *handler)
@@ -1356,7 +1356,7 @@ static void kxtf9_late_resume(struct early_suspend *handler)
 	struct kxtf9_data *tf9;
 	int err = -1;
 
-	printk(KERN_INFO "%s: enter\n",__func__);
+	//printk(KERN_INFO "%s: enter\n",__func__);
 
 	tf9 = container_of(handler, struct kxtf9_data, early_suspend);
 
@@ -1368,7 +1368,7 @@ static void kxtf9_late_resume(struct early_suspend *handler)
 				"odr kickoff failed: %d\n", err);
 	}
 
-	printk(KERN_INFO "%s: exit\n",__func__);
+	//printk(KERN_INFO "%s: exit\n",__func__);
 }
 #endif
 

@@ -1,4 +1,5 @@
 GCOV_PROFILE := y
+#CFLAGS_tegra2_clocks.o := -DDEBUG
 
 #subdir-ccflags-y := -Werror
 

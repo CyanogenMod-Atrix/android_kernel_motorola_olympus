@@ -548,3 +548,9 @@ config TEGRA_DC_USE_HW_BPP
 	  Programs platform data to inform DC driver to use current
 	  hardware value for bits per pixel setting.  Useful for
           preserving and displaying framebuffer content from bootloader.
+
+config OLYMPUS_UV
+	bool "Undervolting for Motorola Atrix 4g (Olympus)"
+	default n
+	help
+		Extreme undervolting.

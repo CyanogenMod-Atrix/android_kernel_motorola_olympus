@@ -36,9 +36,9 @@
 #include <linux/akm8975.h>
 #include <linux/earlysuspend.h>
 
-#define AKM8975_DEBUG		1
-#define AKM8975_DEBUG_MSG	1
-#define AKM8975_DEBUG_FUNC	1
+#define AKM8975_DEBUG		0
+#define AKM8975_DEBUG_MSG	0
+#define AKM8975_DEBUG_FUNC	0
 #define AKM8975_DEBUG_DATA	0
 #define MAX_FAILURE_COUNT	3
 #define AKM8975_RETRY_COUNT	10
