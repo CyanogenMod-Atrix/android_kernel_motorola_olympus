@@ -31,6 +31,7 @@
 #include <linux/clk.h>
 #include <linux/io.h>
 #include <linux/suspend.h>
+#include <linux/earlysuspend.h>
 #include <linux/debugfs.h>
 #include <linux/cpu.h>
 
@@ -53,6 +54,7 @@ static struct clk *emc_clk;
 static unsigned long policy_max_speed[CONFIG_NR_CPUS];
 static unsigned long target_cpu_speed[CONFIG_NR_CPUS];
 static DEFINE_MUTEX(tegra_cpu_lock);
+static DEFINE_MUTEX(early_mutex);
 static bool is_suspended;
 static int suspend_index;
 
@@ -820,6 +822,8 @@ static int __init tegra_cpufreq_init(void)
 		&tegra_cpufreq_policy_nb, CPUFREQ_POLICY_NOTIFIER);
 	if (ret)
 		return ret;
+
+	register_early_suspend(&tegra_cpu_early_suspend_handler);
 
 	return cpufreq_register_driver(&tegra_cpufreq_driver);
 }
