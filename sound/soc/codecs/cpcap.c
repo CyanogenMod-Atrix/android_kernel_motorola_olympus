@@ -2424,9 +2424,8 @@ struct snd_soc_dai_driver cpcap_dai[] = {
 		.stream_name = "Capture",
 		.channels_min = 1,
 		.channels_max = 2,
-		.rates = (SNDRV_PCM_RATE_8000|SNDRV_PCM_RATE_16000|\
-			  SNDRV_PCM_RATE_32000|SNDRV_PCM_RATE_44100|\
-			  SNDRV_PCM_RATE_48000),
+		.rates = (SNDRV_PCM_RATE_8000|SNDRV_PCM_RATE_32000|\
+			  SNDRV_PCM_RATE_44100|SNDRV_PCM_RATE_48000),
 		.formats = SNDRV_PCM_FMTBIT_S16_LE,},
 	.ops = &cpcap_dai_mm_ops,
 },
@@ -2442,9 +2441,8 @@ struct snd_soc_dai_driver cpcap_dai[] = {
 		.stream_name = "Capture",
 		.channels_min = 1,
 		.channels_max = 2,
-		.rates = (SNDRV_PCM_RATE_8000|SNDRV_PCM_RATE_16000|\
-			  SNDRV_PCM_RATE_32000|SNDRV_PCM_RATE_44100|\
-			  SNDRV_PCM_RATE_48000),
+		.rates = (SNDRV_PCM_RATE_8000|SNDRV_PCM_RATE_32000|\
+			  SNDRV_PCM_RATE_44100|SNDRV_PCM_RATE_48000),
 		.formats = SNDRV_PCM_FMTBIT_S16_LE,},
 	.ops = &cpcap_dai_voice_ops,
 },
