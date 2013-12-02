@@ -35,7 +35,7 @@
 #include <linux/timer.h>
 #include <linux/workqueue.h>
 
-#define CPCAP_WDT_TIMEOUT	        120
+#define CPCAP_WDT_TIMEOUT	        40
 #define CPCAP_WDT_KICK_INTERVAL         10
 #define CPCAP_WDT_RAMWRITE_RETRIES	5
 #define CPCAP_WDT_MAX_TIMER		0xFFFF

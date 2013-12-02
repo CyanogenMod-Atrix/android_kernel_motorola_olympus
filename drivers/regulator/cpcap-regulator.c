@@ -480,7 +480,7 @@ static int cpcap_regulator_set_voltage(struct regulator_dev *rdev,
 	if (regltr_id >= CPCAP_NUM_REGULATORS)
 		return -EINVAL;
 #ifdef CONFIG_OLYMPUS_UV_DEBUG
-	if ((regltr_id>0) && (regltr_id!=3)) printk(KERN_INFO "%s: Regulator: %s, min_uV: %d, max_uV: %d\n", __func__, r_names[regltr_id].name, min_uV, max_uV);
+	printk(KERN_INFO "%s: Regulator: %s, min_uV: %d, max_uV: %d\n", __func__, r_names[regltr_id].name, min_uV, max_uV);
 #endif
 	regnr = cpcap_regltr_data[regltr_id].reg;
 
@@ -812,6 +812,7 @@ static int regulator_suspend(struct platform_device *pdev, pm_message_t mesg)
 	if (regltr_id >= CPCAP_NUM_REGULATORS)
 		return -EINVAL;
 #ifdef CONFIG_OLYMPUS_UV_DEBUG
+#if 0
 	if (cpcap_regulator_is_enabled(rdev)) {
 		if ((regltr_id>1) && (regltr_id!=3))
 		{
@@ -819,6 +820,7 @@ static int regulator_suspend(struct platform_device *pdev, pm_message_t mesg)
 			if (cpcap_regltr_data[regltr_id].val_tbl[0] < curr_volt) cpcap_regulator_set_voltage(rdev, cpcap_regltr_data[regltr_id].val_tbl[0], cpcap_regltr_data[regltr_id].val_tbl[0], &select);
 		}
 	}
+#endif
 #endif
 	return 0;
 }
@@ -834,6 +836,7 @@ static int regulator_resume(struct platform_device *pdev)
 	if (regltr_id >= CPCAP_NUM_REGULATORS)
 		return -EINVAL;
 #ifdef CONFIG_OLYMPUS_UV_DEBUG
+#if 0
 	if (cpcap_regulator_is_enabled(rdev)) {
 		if ((regltr_id>1) && (regltr_id!=3))
 		{
@@ -841,6 +844,7 @@ static int regulator_resume(struct platform_device *pdev)
 			if (cpcap_regltr_data[regltr_id].val_tbl[cpcap_regltr_data[regltr_id].val_tbl_sz - 1] > curr_volt) cpcap_regulator_set_voltage(rdev, cpcap_regltr_data[regltr_id].val_tbl[cpcap_regltr_data[regltr_id].val_tbl_sz - 1], cpcap_regltr_data[regltr_id].val_tbl[cpcap_regltr_data[regltr_id].val_tbl_sz - 1], &select);
 		}
 	}
+#endif
 #endif
 	return 0;
 }

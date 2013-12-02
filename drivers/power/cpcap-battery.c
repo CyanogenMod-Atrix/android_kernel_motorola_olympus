@@ -44,10 +44,6 @@
 #define CPCAP_BATT_IRQ_MACRO   0x10
 #define CPCAP_BATT_IRQ_LOWBPHL 0x20
 
-/*static int cpcap_batt_ioctl(struct inode *inode,
-			    struct file *file,
-			    unsigned int cmd,
-			    unsigned long arg);*/
 static long cpcap_batt_ioctl(struct file *file,
 			    unsigned int cmd,
 			    unsigned long arg);
@@ -240,10 +236,6 @@ static ssize_t cpcap_batt_read(struct file *file,
 	return ret;
 }
 
-/*static int cpcap_batt_ioctl(struct inode *inode,
-			    struct file *file,
-			    unsigned int cmd,
-			    unsigned long arg)*/
 static long cpcap_batt_ioctl(struct file *file,
 			    unsigned int cmd,
 			    unsigned long arg)
@@ -255,7 +247,7 @@ static long cpcap_batt_ioctl(struct file *file,
 	struct cpcap_adc_request req;
 	struct cpcap_adc_us_request req_us;
 	struct spi_device *spi = sply->cpcap->spi;
-	struct cpcap_platform_data *data = spi->controller_data;
+	struct cpcap_platform_data *data = spi->dev.platform_data;
 
 	switch (cmd) {
 	case CPCAP_IOCTL_BATT_DISPLAY_UPDATE:
@@ -448,12 +440,10 @@ static int cpcap_batt_get_property(struct power_supply *psy,
 
 	return ret;
 }
-struct attribute	attr;
-
 #ifdef CONFIG_MOT_CHARGING_DIS
 #define CPCAP_BATTERY_ATTR(_name)					\
 {									\
-	.attr = { .name = #_name, .mode = 0666 },	\
+	.attr = { .name = #_name, .mode = 0666},	\
 	.show = cpcap_battery_show_property,				\
 	.store = cpcap_battery_store_property,				\
 }
@@ -733,7 +723,7 @@ void cpcap_batt_set_ac_prop(struct cpcap_device *cpcap, int online)
 {
 	struct cpcap_batt_ps *sply = cpcap->battdata;
 	struct spi_device *spi = cpcap->spi;
-	struct cpcap_platform_data *data = spi->controller_data;
+	struct cpcap_platform_data *data = spi->dev.platform_data;
 
 	if (sply != NULL) {
 		sply->ac_state.online = online;
@@ -750,7 +740,7 @@ void cpcap_batt_set_usb_prop_online(struct cpcap_device *cpcap, int online,
 {
 	struct cpcap_batt_ps *sply = cpcap->battdata;
 	struct spi_device *spi = cpcap->spi;
-	struct cpcap_platform_data *data = spi->controller_data;
+	struct cpcap_platform_data *data = spi->dev.platform_data;
 
 	if (sply != NULL) {
 		sply->usb_state.online = online;
@@ -767,7 +757,7 @@ void cpcap_batt_set_usb_prop_curr(struct cpcap_device *cpcap, unsigned int curr)
 {
 	struct cpcap_batt_ps *sply = cpcap->battdata;
 	struct spi_device *spi = cpcap->spi;
-	struct cpcap_platform_data *data = spi->controller_data;
+	struct cpcap_platform_data *data = spi->dev.platform_data;
 
 	if (sply != NULL) {
 		sply->usb_state.current_now = curr;
