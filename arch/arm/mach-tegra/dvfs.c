@@ -498,8 +498,14 @@ static int tegra_dvfs_suspend_one(void)
 	list_for_each_entry(rail, &dvfs_rail_list, node) {
 		if (!rail->suspended && !rail->disabled &&
 		    tegra_dvfs_from_rails_suspended_or_solved(rail)) {
-			ret = dvfs_rail_set_voltage(rail,
-				rail->nominal_millivolts);
+#ifdef CONFIG_OLYMPUS_UV
+			if (rail->suspend_millivolts)
+				ret = dvfs_rail_set_voltage(rail,
+						rail->suspend_millivolts);
+			else
+#endif
+				ret = dvfs_rail_set_voltage(rail,
+					rail->nominal_millivolts);
 			if (ret)
 				return ret;
 			rail->suspended = true;
@@ -544,6 +550,48 @@ static int tegra_dvfs_suspend(void)
 
 	return ret;
 }
+#ifdef CONFIG_OLYMPUS_UV
+static int tegra_dvfs_suspend_one_for_off(void)
+{
+	struct dvfs_rail *rail;
+	int ret;
+
+	list_for_each_entry(rail, &dvfs_rail_list, node) {
+		if (!rail->suspended && !rail->disabled &&
+		    tegra_dvfs_from_rails_suspended_or_solved(rail)) {
+				ret = dvfs_rail_set_voltage(rail,
+					rail->nominal_millivolts);
+			if (ret)
+				return ret;
+			rail->suspended = true;
+			return 0;
+		}
+	}
+
+	return -EINVAL;
+}
+
+
+static int tegra_dvfs_power_off(void)
+{
+	int ret = 0;
+
+	mutex_lock(&dvfs_lock);
+
+	while (!tegra_dvfs_all_rails_suspended()) {
+		ret = tegra_dvfs_suspend_one_for_off();
+		if (ret)
+			break;
+	}
+
+	mutex_unlock(&dvfs_lock);
+
+	if (ret)
+		tegra_dvfs_resume();
+
+	return ret;
+}
+#endif
 
 static int tegra_dvfs_pm_notify(struct notifier_block *nb,
 				unsigned long event, void *data)
@@ -572,7 +620,11 @@ static int tegra_dvfs_reboot_notify(struct notifier_block *nb,
 	case SYS_RESTART:
 	case SYS_HALT:
 	case SYS_POWER_OFF:
+#ifdef CONFIG_OLYMPUS_UV
+		tegra_dvfs_power_off();
+#else
 		tegra_dvfs_suspend();
+#endif
 		return NOTIFY_OK;
 	}
 	return NOTIFY_DONE;

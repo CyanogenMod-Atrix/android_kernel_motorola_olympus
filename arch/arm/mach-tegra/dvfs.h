@@ -56,6 +56,9 @@ struct dvfs_rail {
 	int min_millivolts;
 	int max_millivolts;
 	int nominal_millivolts;
+#ifdef CONFIG_OLYMPUS_UV
+	int suspend_millivolts;
+#endif
 	int step;
 	bool jmp_to_zero;
 	bool disabled;
