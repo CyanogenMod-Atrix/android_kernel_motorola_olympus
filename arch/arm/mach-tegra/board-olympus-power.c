@@ -306,7 +306,7 @@ static struct platform_device *cpcap_devices[] = {
 	&cpcap_batt_device,
 #ifdef CONFIG_CPCAP_WATCHDOG
 	&cpcap_wdt_device,
-#endif*/
+#endif
 };
 
 static int is_olympus_ge_p0(struct cpcap_device *cpcap)
@@ -1188,22 +1188,6 @@ static struct tegra_suspend_platform_data olympus_suspend_data = {
 
 void __init olympus_suspend_init(void)
 {
-
-/*	enable_irq_wake(wakepad_irq[2]);
-	enable_irq_wake(wakepad_irq[5]);
-	enable_irq_wake(wakepad_irq[6]);
-	enable_irq_wake(wakepad_irq[7]);
-	enable_irq_wake(wakepad_irq[17]);
-	enable_irq_wake(wakepad_irq[18]);
-	enable_irq_wake(wakepad_irq[24]);
-
-	tegra_suspend_platform.wake_low 	= 4;		//0x0000004
-	tegra_suspend_platform.wake_high 	= 393248;	//0x0060020
-	tegra_suspend_platform.wake_any 	= 16777408;	//0x10000C0
-	tegra_suspend_platform.wake_enb 	= 17170660;	//0x10600E4
-
-	*/
-
 	tegra_init_suspend(&olympus_suspend_data);
 }
 
