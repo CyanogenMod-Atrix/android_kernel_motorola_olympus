@@ -388,8 +388,6 @@ static void __init tegra_olympus_init(void)
 
 	olympus_pinmux_init();
 
-	olympus_emc_init();
-
 	olympus_i2c_init();
 
 	olympus_uart_init();
@@ -423,6 +421,8 @@ static void __init tegra_olympus_init(void)
 	olympus_usb_init();
 
 	olympus_camera_init();
+
+	olympus_emc_init();
 
 	olympus_modem_init();
 
