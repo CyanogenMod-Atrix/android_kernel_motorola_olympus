@@ -25,14 +25,13 @@
 #include "board-olympus.h"
 
 static struct platform_device *olympus_devices[] __initdata = {
-	//&tegra_pmu_device,
-	//&tegra_wdt_device,
-   	//&tegra_pwfm1_device,
+	&tegra_pmu_device,
+//	&tegra_wdt_device,
+   	&tegra_pwfm1_device,
 };
 
 void __init olympus_devices_init()
 {
-
 	platform_add_devices(olympus_devices, ARRAY_SIZE(olympus_devices));
 
 }

@@ -30,6 +30,7 @@ struct tegra_hsuart_platform_data {
 	void (*wake_peer)(struct uart_port *);
 	struct uart_clk_parent *parent_clk_list;
 	int parent_clk_count;
+	bool is_loopback;
 	void (*exit_lpm_cb)(struct uart_port *);
 	void (*rx_done_cb)(struct uart_port *);
 };

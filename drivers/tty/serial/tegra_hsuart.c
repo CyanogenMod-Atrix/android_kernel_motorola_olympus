@@ -909,11 +909,10 @@ static int tegra_startup(struct uart_port *u)
 	ret = tegra_uart_hw_init(t);
 	if (ret)
 		goto fail;
-#ifndef CONFIG_MACH_OLYMPUS
 	pdata = u->dev->platform_data;
 	if (pdata && pdata->is_loopback)
 		t->mcr_shadow |= UART_MCR_LOOP;
-#endif
+
 	dev_dbg(u->dev, "Requesting IRQ %d\n", u->irq);
 	msleep(1);
 

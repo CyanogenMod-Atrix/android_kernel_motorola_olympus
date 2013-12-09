@@ -155,6 +155,7 @@ void __init olympus_uart_init(void)
 	olympus_uart_pdata[2].parent_clk_count = ARRAY_SIZE(uart_parent_clk);
 	olympus_uart_pdata[2].exit_lpm_cb = bcm_bt_lpm_exit_lpm_locked;
 	olympus_uart_pdata[2].rx_done_cb = bcm_bt_rx_done_locked;
+	olympus_uart_pdata[2].is_loopback = false;
 
 	olympus_uart_pdata[3].parent_clk_list = uart_parent_clk;
 	olympus_uart_pdata[3].parent_clk_count = ARRAY_SIZE(uart_parent_clk);

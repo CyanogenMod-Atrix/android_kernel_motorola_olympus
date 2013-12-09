@@ -435,10 +435,10 @@ static void __init tegra_olympus_init(void)
 	   can interefere with CPCAP ID pin, as SPDIF_OUT and ID are coupled.
 	*/
 
-//	tegra_gpio_enable(TEGRA_GPIO_PD4);
-//	gpio_request(TEGRA_GPIO_PD4, "spdif_enable");
-//	gpio_direction_output(TEGRA_GPIO_PD4, 0);
-//	gpio_export(TEGRA_GPIO_PD4, false);
+	tegra_gpio_enable(TEGRA_GPIO_PD4);
+	gpio_request(TEGRA_GPIO_PD4, "spdif_enable");
+	gpio_direction_output(TEGRA_GPIO_PD4, 0);
+	gpio_export(TEGRA_GPIO_PD4, false);
 
 	if ((HWREV_TYPE_IS_PORTABLE(system_rev) || HWREV_TYPE_IS_FINAL(system_rev)))
 		{
@@ -531,7 +531,7 @@ void __init tegra_olympus_reserve(void)
 	if (memblock_reserve(0x0, 4096) < 0)
 		pr_warn("Cannot reserve first 4K of memory for safety\n");
 
-	tegra_reserve(SZ_128M + SZ_64M, SZ_8M, SZ_8M);
+	tegra_reserve(SZ_128M + SZ_64M, SZ_8M, SZ_16M);
 	//tegra_reserve(SZ_256M, SZ_16M, SZ_16M);
 	//tegra_ram_console_debug_reserve(SZ_1M);
 

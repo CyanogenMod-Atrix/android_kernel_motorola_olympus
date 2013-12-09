@@ -20,7 +20,6 @@
 #include <linux/syscalls.h> /* sys_sync */
 #include <linux/wakelock.h>
 #include <linux/workqueue.h>
-#include <linux/tegra_audio.h>
 
 #include "power.h"
 
