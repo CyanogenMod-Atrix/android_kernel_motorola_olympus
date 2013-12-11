@@ -87,34 +87,15 @@ static struct platform_device android_usb_platform_device = {
 	},
 };
 
-/* OTG transceiver */
-static struct resource cpcap_otg_resources[] = {
-	[0] = {
-		.start  = TEGRA_USB_BASE,
-		.end    = TEGRA_USB_BASE + TEGRA_USB_SIZE - 1,
-		.flags  = IORESOURCE_MEM,
-	},
-};
-
-static struct platform_device cpcap_otg_device = {
-	.name = "cpcap-otg",
-	.id   = -1,
-	.resource = cpcap_otg_resources,
-	.num_resources = ARRAY_SIZE(cpcap_otg_resources),
-	.dev = {
-		.platform_data = &tegra_ehci1_device,
-	},
-};
-
 static struct tegra_usb_platform_data tegra_udc_pdata = {
 	.port_otg = true,
 	.has_hostpc = false,
 	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
 	.op_mode = TEGRA_USB_OPMODE_DEVICE,
 	.u_data.dev = {
-		//.vbus_pmu_irq = -1,
-		//.vbus_gpio = TEGRA_GPIO_PV6,
-		.charging_supported = true,
+		.vbus_pmu_irq = 0,
+		.vbus_gpio = -1,
+		.charging_supported = false,
 		.remote_wakeup_supported = false,
 	},
 	.u_cfg.utmi = {
@@ -136,8 +117,7 @@ static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
 	.u_data.host = {
 		.vbus_gpio = -1,
 		.vbus_reg = NULL,
-//		.vbus_reg = "vusb",
-		.hot_plug = true,
+		.hot_plug = false,
 		.remote_wakeup_supported = false,
 		.power_off_on_suspend = true,
 	},
@@ -158,10 +138,10 @@ static struct tegra_usb_platform_data tegra_ehci3_utmi_pdata = {
 	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
 	.op_mode	= TEGRA_USB_OPMODE_HOST,
 	.u_data.host = {
-		//.vbus_gpio = -1,
-		//.vbus_reg = NULL,
+		.vbus_gpio = -1,
+		.vbus_reg = NULL,
 		.hot_plug = true,
-		.remote_wakeup_supported = false,
+		.remote_wakeup_supported = true,
 		.power_off_on_suspend = true,
 	},
 	.u_cfg.utmi = {
@@ -172,6 +152,25 @@ static struct tegra_usb_platform_data tegra_ehci3_utmi_pdata = {
 		.xcvr_setup = 8,
 		.xcvr_lsfslew = 2,
 		.xcvr_lsrslew = 2,
+	},
+};
+
+/* OTG transceiver */
+static struct resource cpcap_otg_resources[] = {
+	[0] = {
+		.start  = TEGRA_USB_BASE,
+		.end    = TEGRA_USB_BASE + TEGRA_USB_SIZE - 1,
+		.flags  = IORESOURCE_MEM,
+	},
+};
+
+static struct platform_device cpcap_otg_device = {
+	.name = "cpcap-otg",
+	.id   = -1,
+	.resource = cpcap_otg_resources,
+	.num_resources = ARRAY_SIZE(cpcap_otg_resources),
+	.dev = {
+		.platform_data = &tegra_ehci1_device,
 	},
 };
 
@@ -188,6 +187,7 @@ __setup("androidboot.serialno=", olympus_usb_serial_num_setup);
 void olympus_usb_init(void)
 {
 	/* OTG should be the first to be registered */
+	//cpcap_otg_device.dev.platform_data = &cpcap_otg_pdata;
 	cpcap_device_register(&cpcap_otg_device);
 
 	tegra_ehci1_device.dev.platform_data = &tegra_ehci1_utmi_pdata;
