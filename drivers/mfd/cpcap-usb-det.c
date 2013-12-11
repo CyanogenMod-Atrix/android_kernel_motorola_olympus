@@ -215,6 +215,9 @@ static const char *accy_devices[] = {
 
 static DEFINE_MUTEX(switch_access);
 
+int cpcap_usb_state = 0;
+EXPORT_SYMBOL(cpcap_usb_state);
+
 /* Expects values from 0 to 2: 0=no_log, 1=basic_log, 2=max_log */
 static int cpcap_usb_det_debug = 1;
 module_param(cpcap_usb_det_debug, int, S_IRUGO | S_IWUSR | S_IWGRP);
@@ -734,6 +737,13 @@ static void detection_work(struct work_struct *work)
 
 	if (cpcap_usb_det_debug && data->state > SAMPLE_2)
 		pr_info("cpcap_usb_det: state %s\n",state_names[data->state]);
+
+	/* extra for tegra_udc - start */
+	if (cpcap_usb_det_debug && data->state > SAMPLE_2)
+		cpcap_usb_state = data->state;
+	else
+		cpcap_usb_state = 0;
+	/* extra for tegra_udc - end */
 
 	switch (data->state) {
 	case CONFIG:

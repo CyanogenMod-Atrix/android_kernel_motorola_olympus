@@ -115,11 +115,19 @@ static inline unsigned int udc_readl(struct tegra_udc *udc, u32 offset)
 	return readl(udc->regs + offset);
 }
 
+#ifdef CONFIG_MACH_OLYMPUS
+extern int cpcap_usb_state;
+#endif
+
 /* checks vbus status */
 static inline bool vbus_enabled(struct tegra_udc *udc)
 {
 	bool status = false;
+#ifdef CONFIG_MACH_OLYMPUS
+	status = cpcap_usb_state;
+#else
 	status = (udc_readl(udc, VBUS_WAKEUP_REG_OFFSET) & USB_SYS_VBUS_STATUS);
+#endif
 	return status;
 }
 
