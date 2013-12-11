@@ -182,9 +182,9 @@ static struct usb_configuration android_config_driver = {
 	.unbind		= android_unbind_config,
 	.bConfigurationValue = 1,
 	.bmAttributes	= USB_CONFIG_ATT_ONE | USB_CONFIG_ATT_SELFPOWER,
-	//.bMaxPower	= 0xFA, /* 500ma */
+	.bMaxPower	= 0xFA, /* 500ma */
 	//.bMaxPower	= 0xC8, /* 400ma */
-	.bMaxPower	= 0x7D, /* 250ma */
+	//.bMaxPower	= 0x7D, /* 250ma */
 };
 
 static int mass_storage_function_set_cdrom_lun(char *lunpath);
@@ -247,7 +247,6 @@ static void android_work(struct work_struct *data)
 	unsigned long flags;
 	char ch = 0;
 	int rc = 0;
-	printk(KERN_INFO "%s: start\n", __func__);
 
 	spin_lock_irqsave(&cdev->lock, flags);
   /*if (cdev->config)
@@ -261,8 +260,7 @@ static void android_work(struct work_struct *data)
 	dev->sw_connected = dev->connected;
 	spin_unlock_irqrestore(&cdev->lock, flags);
 
-	printk(KERN_INFO "%s: stage 1\n", __func__);
-/* update the lun sys file */
+	/* update the lun sys file */
 	if (dev->cdrom_enable) {
 		/*
 		 * mount cdrom only when connect with cable,
@@ -303,6 +301,7 @@ static void android_work(struct work_struct *data)
 			 dev->connected, dev->sw_connected, cdev->config);
 	}
 }
+
 static int android_enable_function(struct android_dev *dev, char *name);
 
 static char *get_function_name(struct android_dev *dev)
