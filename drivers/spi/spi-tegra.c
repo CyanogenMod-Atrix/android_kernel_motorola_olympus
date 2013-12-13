@@ -533,7 +533,15 @@ static int spi_tegra_start_dma_based_transfer(
 		udelay(1);
 		wmb();
 	}
-
+#ifdef CONFIG_MACH_OLYMPUS
+	/*
+	DMA cache fix:- Calling the write buffer barriers after enqueue into the write
+	dma buffer and before starting the transmit dma to make sure that all written
+	data is available in physical memory before dma start
+	*/
+	dmb();
+	outer_sync();
+#endif
 	val |= SLINK_DMA_EN;
 	spi_tegra_writel(tspi, val, SLINK_DMA_CTL);
 	return ret;
