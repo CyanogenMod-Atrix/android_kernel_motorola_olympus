@@ -153,14 +153,14 @@ static void mdm6600_spi_slave_config_gpio(struct mdm6600_spi_device *spi_dev)
 		goto err_request_irq;
 	}
 
-	err = spi_tegra_register_ready_callback(spi_dev->spi,
+	err = spi_tegra_register_callback(spi_dev->spi,
 		mdm6600_assert_slave_srdy, spi_dev);
 	if (err < 0) {
 		pr_err("spi_tegra_register_ready_callback() failed\n");
 		goto err_request_irq;
 	}
 
-	err = spi_tegra_register_done_callback(spi_dev->spi,
+	err = spi_tegra_register_callback(spi_dev->spi,
 		mdm6600_deassert_slave_srdy, spi_dev);
 	if (err < 0) {
 		pr_err("spi_tegra_register_done_callback() failed\n");
