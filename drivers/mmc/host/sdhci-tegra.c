@@ -957,9 +957,6 @@ static struct sdhci_ops tegra_sdhci_ops = {
 	.platform_reset_exit = tegra_sdhci_reset_exit,
 	.set_uhs_signaling = tegra_sdhci_set_uhs_signaling,
 	.switch_signal_voltage = tegra_sdhci_signal_voltage_switch,
-#ifdef CONFIG_EMBEDDED_MMC_START_OFFSET
-	.get_startoffset = tegra_sdhci_get_StartOffset,
-#endif
 	.execute_freq_tuning = sdhci_tegra_execute_tuning,
 };
 
