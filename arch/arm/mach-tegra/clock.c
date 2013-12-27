@@ -37,7 +37,7 @@
 #include "clock.h"
 #include "dvfs.h"
 
-#define DISABLE_BOOT_CLOCKS 0
+#define DISABLE_BOOT_CLOCKS 1
 
 /*
  * Locking:
