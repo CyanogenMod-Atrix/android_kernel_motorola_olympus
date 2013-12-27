@@ -52,7 +52,7 @@
 unsigned btn_bl_tied = 0;
 module_param(btn_bl_tied, uint, 0664);
 
-unsigned trace_suspend = 1;
+unsigned trace_suspend = 0;
 module_param(trace_suspend, uint, 0664);
 #define printk_suspend(fmt,args...) if (trace_suspend) printk(KERN_INFO fmt, ##args)
 
