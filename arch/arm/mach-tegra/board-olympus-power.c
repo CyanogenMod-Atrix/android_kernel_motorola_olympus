@@ -1039,17 +1039,16 @@ static void olympus_board_suspend(int lp_state, enum suspend_stage stg)
 	int rc,ret;
 	if ((lp_state == TEGRA_SUSPEND_LP1) && (stg == TEGRA_SUSPEND_BEFORE_CPU))
 		tegra_console_uart_suspend();
-#if 0
 	if ((lp_state == TEGRA_SUSPEND_LP0) && (stg == TEGRA_SUSPEND_BEFORE_CPU))
 			{
-				printk(KERN_INFO "%s: entering...\n", __func__);
+//				printk(KERN_INFO "%s: entering...\n", __func__);
 
 				tegra_pinmux_set_tristate(5 /*TEGRA_PINGROUP_CDEV*/, TEGRA_TRI_TRISTATE);
 				tegra_pinmux_set_tristate(8 /*TEGRA_PINGROUP_CSUS*/, TEGRA_TRI_TRISTATE);
 				tegra_pinmux_set_tristate(9 /*TEGRA_PINGROUP_DAP1*/, TEGRA_TRI_TRISTATE);
 				tegra_pinmux_set_tristate(10/*TEGRA_PINGROUP_DAP2*/, TEGRA_TRI_TRISTATE);
-				tegra_pinmux_set_tristate(11/*TEGRA_PINGROUP_DAP3*/, TEGRA_TRI_TRISTATE);
-				tegra_pinmux_set_tristate(12/*TEGRA_PINGROUP_DAP4*/, TEGRA_TRI_TRISTATE);
+				//tegra_pinmux_set_tristate(11/*TEGRA_PINGROUP_DAP3*/, TEGRA_TRI_TRISTATE);
+				//tegra_pinmux_set_tristate(12/*TEGRA_PINGROUP_DAP4*/, TEGRA_TRI_TRISTATE);
 				tegra_pinmux_set_tristate(22 /*TEGRA_PINGROUP_GMC*/, TEGRA_TRI_TRISTATE);
 				tegra_pinmux_set_tristate(30/*TEGRA_PINGROUP_IRRX*/, TEGRA_TRI_TRISTATE);
 				tegra_pinmux_set_tristate(31/*TEGRA_PINGROUP_IRTX*/, TEGRA_TRI_TRISTATE);
@@ -1063,7 +1062,7 @@ static void olympus_board_suspend(int lp_state, enum suspend_stage stg)
 				tegra_pinmux_set_tristate(104/*TEGRA_PINGROUP_UCA*/, TEGRA_TRI_TRISTATE);
 				tegra_pinmux_set_tristate(105/*TEGRA_PINGROUP_UCB*/, TEGRA_TRI_TRISTATE);
 				tegra_pinmux_set_pullupdown(108/*TEGRA_PINGROUP_DDRC*/, TEGRA_PUPD_PULL_UP);
-
+#if 0
 				printk(KERN_INFO "%s: TEGRA_GPIO_PM2 = 0",__func__);
 				//gpio_set_value(TEGRA_GPIO_PM2, 0);
 
@@ -1100,8 +1099,9 @@ static void olympus_board_suspend(int lp_state, enum suspend_stage stg)
 				//pinmux_show();
 				get_gpio_settings();
 				printk(KERN_INFO "%s: exiting...\n", __func__);
-			};
 #endif
+			};
+
 };
 
 static void olympus_board_resume(int lp_state, enum resume_stage stg)
@@ -1109,15 +1109,14 @@ static void olympus_board_resume(int lp_state, enum resume_stage stg)
 	int rc;
 	if ((lp_state == TEGRA_SUSPEND_LP1) && (stg == TEGRA_RESUME_AFTER_CPU))
 		tegra_console_uart_resume();
-#if 0
 	if ((lp_state == TEGRA_SUSPEND_LP0) && (stg == TEGRA_RESUME_AFTER_CPU)) {
-		printk(KERN_INFO "%s: entering...\n", __func__);
+//		printk(KERN_INFO "%s: entering...\n", __func__);
 		tegra_pinmux_set_tristate(5 /*TEGRA_PINGROUP_CDEV*/, TEGRA_TRI_NORMAL);
 		tegra_pinmux_set_tristate(8 /*TEGRA_PINGROUP_CSUS*/, TEGRA_TRI_NORMAL);
 		tegra_pinmux_set_tristate(9 /*TEGRA_PINGROUP_DAP1*/, TEGRA_TRI_NORMAL);
 		tegra_pinmux_set_tristate(10/*TEGRA_PINGROUP_DAP2*/, TEGRA_TRI_NORMAL);
-		tegra_pinmux_set_tristate(11/*TEGRA_PINGROUP_DAP3*/, TEGRA_TRI_NORMAL);
-		tegra_pinmux_set_tristate(12/*TEGRA_PINGROUP_DAP4*/, TEGRA_TRI_NORMAL);
+		//tegra_pinmux_set_tristate(11/*TEGRA_PINGROUP_DAP3*/, TEGRA_TRI_NORMAL);
+		//tegra_pinmux_set_tristate(12/*TEGRA_PINGROUP_DAP4*/, TEGRA_TRI_NORMAL);
 		tegra_pinmux_set_tristate(22 /*TEGRA_PINGROUP_GMC*/, TEGRA_TRI_NORMAL);
 		tegra_pinmux_set_tristate(30/*TEGRA_PINGROUP_IRRX*/, TEGRA_TRI_NORMAL);
 		tegra_pinmux_set_tristate(31/*TEGRA_PINGROUP_IRTX*/, TEGRA_TRI_NORMAL);
@@ -1131,7 +1130,7 @@ static void olympus_board_resume(int lp_state, enum resume_stage stg)
 		tegra_pinmux_set_tristate(104/*TEGRA_PINGROUP_UCA*/, TEGRA_TRI_NORMAL);
 		tegra_pinmux_set_tristate(105/*TEGRA_PINGROUP_UCB*/, TEGRA_TRI_NORMAL);
 		tegra_pinmux_set_pullupdown(108/*TEGRA_PINGROUP_DDRC*/, TEGRA_PUPD_NORMAL);
-
+#if 0
 		printk(KERN_INFO "%s: TEGRA_GPIO_PM2 = 1",__func__);
 		//gpio_set_value(TEGRA_GPIO_PM2, 1);
 
@@ -1161,8 +1160,8 @@ static void olympus_board_resume(int lp_state, enum resume_stage stg)
 		for (rc=0;rc<255;rc++) printk("gpio = %d => irq = %d\n", rc, gpio_to_irq(rc));*/
 
 		printk(KERN_INFO "%s: exiting...\n", __func__);
-	}
 #endif
+	}
 };
 
 static struct tegra_suspend_platform_data olympus_suspend_data = {

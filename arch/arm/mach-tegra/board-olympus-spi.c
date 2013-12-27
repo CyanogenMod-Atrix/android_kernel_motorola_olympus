@@ -51,7 +51,11 @@
 #include "board-olympus.h"
 
 /*
- * SPI
+ * SPI configuration for Olympus:
+ *   SPI1 - modem
+ *   SPI2 - cpcap?
+ *   SPI3 - ?
+ *   SPI4 - ?
  */
 
 static struct tegra_spi_platform_data olympus_spi_pdata = {
@@ -70,12 +74,8 @@ static struct tegra_spi_platform_data olympus_spi_cpcap_pdata = {
 
 struct spi_clk_parent spi_parent_clk[] = {
 	[0] = {.name = "pll_p"},
-#ifndef CONFIG_TEGRA_PLLM_RESTRICTED
 	[1] = {.name = "pll_m"},
 	[2] = {.name = "clk_m"},
-#else
-	[1] = {.name = "clk_m"},
-#endif
 };
 
 void __init olympus_spi_init(void)

@@ -55,6 +55,12 @@
 #include "hwrev.h"
 #include "board-olympus.h"
 
+/*
+ * USB configuration for Olympus:
+ *   EHCI1 - gsm modem??
+ *   EHCI3 - mini usb port (+otg)
+  */
+
 static struct device_pid olympus_android_pid[MAX_DEVICE_TYPE_NUM] = {
 	{"mtp,usbnet",		0x4361},
 	{"mtp,usbnet,adb",	0x4362},
@@ -88,7 +94,7 @@ static struct platform_device android_usb_platform_device = {
 };
 
 static struct tegra_usb_platform_data tegra_udc_pdata = {
-	.port_otg = true,
+	.port_otg = false,
 	.has_hostpc = false,
 	.phy_intf = TEGRA_USB_PHY_INTF_UTMI,
 	.op_mode = TEGRA_USB_OPMODE_DEVICE,
@@ -141,7 +147,7 @@ static struct tegra_usb_platform_data tegra_ehci3_utmi_pdata = {
 		.vbus_gpio = -1,
 		.vbus_reg = NULL,
 		.hot_plug = true,
-		.remote_wakeup_supported = true,
+		.remote_wakeup_supported = false,
 		.power_off_on_suspend = true,
 	},
 	.u_cfg.utmi = {
@@ -191,8 +197,8 @@ void olympus_usb_init(void)
 	cpcap_device_register(&cpcap_otg_device);
 
 	tegra_ehci1_device.dev.platform_data = &tegra_ehci1_utmi_pdata;
-
-	tegra_udc_device.dev.platform_data = &tegra_udc_pdata;
+	tegra_udc_device.dev.platform_data = &tegra_ehci3_utmi_pdata;;
+//	tegra_udc_device.dev.platform_data = &tegra_udc_pdata;
 	platform_device_register(&tegra_udc_device);
 
 	if (usb_serial_num)
