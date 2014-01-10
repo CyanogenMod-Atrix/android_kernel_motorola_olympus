@@ -61,5 +61,6 @@ int tegra_wake_to_irq(int wake);
 #define TEGRA_WAKE_GPIO_PQ6	28
 #define TEGRA_WAKE_GPIO_PQ7	29
 #define TEGRA_WAKE_GPIO_PN2	30
+#define TEGRA_WAKE_GPIO_PE1	31 //*Olympus: proximity sensor
 
 #endif

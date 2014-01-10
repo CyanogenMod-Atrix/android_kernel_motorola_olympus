@@ -394,7 +394,8 @@ struct isl29030_platform_data olympus_isl29030_pdata = {
 	.default_prox_noise_floor = 0x96,
 	.num_samples_for_noise_floor = 0x05,
 	.lens_percent_t = 10,
-	.irq = 0,
+	.irq = TEGRA_PROX_INT_GPIO,
+
 };
 
 static struct platform_device isl29030_als_ir = {
