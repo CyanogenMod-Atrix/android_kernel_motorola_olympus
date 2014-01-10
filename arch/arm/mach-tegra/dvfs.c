@@ -551,7 +551,7 @@ static int tegra_dvfs_suspend(void)
 	return ret;
 }
 #ifdef CONFIG_OLYMPUS_UV
-static int tegra_dvfs_suspend_one_for_off(void)
+static int tegra_dvfs_suspend_one_for_pw_dwn(void)
 {
 	struct dvfs_rail *rail;
 	int ret;
@@ -579,7 +579,7 @@ static int tegra_dvfs_power_off(void)
 	mutex_lock(&dvfs_lock);
 
 	while (!tegra_dvfs_all_rails_suspended()) {
-		ret = tegra_dvfs_suspend_one_for_off();
+		ret = tegra_dvfs_suspend_one_for_pw_dwn();
 		if (ret)
 			break;
 	}
