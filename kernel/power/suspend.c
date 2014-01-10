@@ -24,7 +24,6 @@
 #include <linux/suspend.h>
 #include <linux/syscore_ops.h>
 #include <trace/events/power.h>
-#include <linux/tegra_audio.h>
 
 #include "power.h"
 
@@ -281,11 +280,6 @@ int enter_state(suspend_state_t state)
 
 	if (!valid_state(state))
 		return -ENODEV;
-
-	if (tegra_is_voice_call_active()) {
-		printk(KERN_INFO "PM: Voice call is active... ");		
-		return -EINVAL;
-	}
 
 	if (!mutex_trylock(&pm_mutex))
 		return -EBUSY;

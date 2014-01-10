@@ -170,7 +170,8 @@ void request_suspend_state(suspend_state_t new_state)
 			tm.tm_hour, tm.tm_min, tm.tm_sec, ts.tv_nsec);
 	}
 	if (!old_sleep && new_state != PM_SUSPEND_ON) {
-		state |= SUSPEND_REQUESTED;
+		if (tegra_is_voice_call_active()) state |= PM_SUSPEND_STANDBY;
+		else state |= SUSPEND_REQUESTED;
 		queue_work(suspend_work_queue, &early_suspend_work);
 	} else if (old_sleep && new_state == PM_SUSPEND_ON) {
 		state &= ~SUSPEND_REQUESTED;
