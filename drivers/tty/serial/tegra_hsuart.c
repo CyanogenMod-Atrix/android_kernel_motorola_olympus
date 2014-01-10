@@ -43,6 +43,9 @@
 #include <mach/tegra_hsuart.h>
 #include <mach/dma.h>
 #include <mach/clk.h>
+#ifdef CONFIG_MACH_OLYMPUS
+#include <mach/pinmux.h>
+#endif
 
 #define TEGRA_UART_TYPE "TEGRA_UART"
 
@@ -1543,7 +1546,9 @@ static int tegra_uart_suspend(struct platform_device *pdev, pm_message_t state)
 {
 	struct tegra_uart_port *t = platform_get_drvdata(pdev);
 	struct uart_port *u;
-
+#ifdef CONFIG_MACH_OLYMPUS
+	struct tegra_hsuart_platform_data *pdata;
+#endif
 	if (pdev->id < 0 || pdev->id > tegra_uart_driver.nr)
 		pr_err("Invalid Uart instance (%d)\n", pdev->id);
 
@@ -1560,6 +1565,13 @@ static int tegra_uart_suspend(struct platform_device *pdev, pm_message_t state)
 	uart_suspend_port(&tegra_uart_driver, u);
 	t->uart_state = TEGRA_UART_SUSPEND;
 
+#ifdef CONFIG_MACH_OLYMPUS
+	pdata = u->dev->platform_data;
+	if (pdata) {
+		if (pdata->uart_pinmux1!=-1) tegra_pinmux_set_tristate(pdata->uart_pinmux1, TEGRA_TRI_TRISTATE);
+		if (pdata->uart_pinmux2!=-1) tegra_pinmux_set_tristate(pdata->uart_pinmux2, TEGRA_TRI_TRISTATE);
+	}
+#endif
 	return 0;
 }
 
@@ -1567,7 +1579,9 @@ static int tegra_uart_resume(struct platform_device *pdev)
 {
 	struct tegra_uart_port *t = platform_get_drvdata(pdev);
 	struct uart_port *u;
-
+#ifdef CONFIG_MACH_OLYMPUS
+	struct tegra_hsuart_platform_data *pdata;
+#endif
 	if (pdev->id < 0 || pdev->id > tegra_uart_driver.nr)
 		pr_err("Invalid Uart instance (%d)\n", pdev->id);
 
@@ -1575,7 +1589,18 @@ static int tegra_uart_resume(struct platform_device *pdev)
 	dev_dbg(t->uport.dev, "tegra_uart_resume called\n");
 
 	if (t->uart_state == TEGRA_UART_SUSPEND)
+#ifdef CONFIG_MACH_OLYMPUS
+	{
+		pdata = u->dev->platform_data;
+		if (pdata) {
+			if (pdata->uart_pinmux1!=-1) tegra_pinmux_set_tristate(pdata->uart_pinmux1, TEGRA_TRI_NORMAL);
+			if (pdata->uart_pinmux2!=-1) tegra_pinmux_set_tristate(pdata->uart_pinmux2, TEGRA_TRI_NORMAL);
+		}
+#endif
 		uart_resume_port(&tegra_uart_driver, u);
+#ifdef CONFIG_MACH_OLYMPUS
+	}
+#endif
 	return 0;
 }
 

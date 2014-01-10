@@ -36,6 +36,8 @@ struct tegra_hsuart_platform_data {
 	unsigned		uart_wake_host;
 	unsigned		uart_wake_request;
 	bool			uart_ipc;
+	unsigned		uart_pinmux1;
+	unsigned		uart_pinmux2;
 #ifdef CONFIG_MDM_CTRL
 	mdm_ctrl_peer_register_t peer_register;
 #endif

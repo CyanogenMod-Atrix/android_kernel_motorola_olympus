@@ -41,15 +41,17 @@
 #include <mach/irqs.h>
 #include <mach/i2s.h>
 #include <mach/i2s.h>
+#include <mach/pinmux-t2.h>
 #include <mach/tegra_hsuart.h>
 
+#include "board.h"
+#include "board-olympus.h"
 #include "clock.h"
 #include "devices.h"
 #include "gpio-names.h"
-#include "pm.h"
-#include "board.h"
 #include "hwrev.h"
-#include "board-olympus.h"
+#include "pm.h"
+
 
 /*
  * UART configuration for Olympus:
@@ -148,19 +150,27 @@ void __init olympus_uart_init(void)
 	olympus_uart_pdata[0].parent_clk_list = uart_parent_clk;
 	olympus_uart_pdata[0].parent_clk_count = ARRAY_SIZE(uart_parent_clk);
 	olympus_uart_pdata[0].is_loopback = false;
+	olympus_uart_pdata[0].uart_pinmux1 = TEGRA_PINGROUP_IRRX;
+	olympus_uart_pdata[0].uart_pinmux2 = TEGRA_PINGROUP_IRTX;
 
 	olympus_uart_pdata[1].parent_clk_list = uart_parent_clk;
 	olympus_uart_pdata[1].parent_clk_count = ARRAY_SIZE(uart_parent_clk);
+	olympus_uart_pdata[1].uart_pinmux1 = -1;
+	olympus_uart_pdata[1].uart_pinmux2 = -1;
 
 	olympus_uart_pdata[2].parent_clk_list = uart_parent_clk;
 	olympus_uart_pdata[2].parent_clk_count = ARRAY_SIZE(uart_parent_clk);
 	olympus_uart_pdata[2].exit_lpm_cb = bcm_bt_lpm_exit_lpm_locked;
 	olympus_uart_pdata[2].rx_done_cb = bcm_bt_rx_done_locked;
 	olympus_uart_pdata[2].is_loopback = false;
+	olympus_uart_pdata[2].uart_pinmux1 = TEGRA_PINGROUP_UCA;
+	olympus_uart_pdata[2].uart_pinmux2 = TEGRA_PINGROUP_UCB;
 
 	olympus_uart_pdata[3].parent_clk_list = uart_parent_clk;
 	olympus_uart_pdata[3].parent_clk_count = ARRAY_SIZE(uart_parent_clk);
 	olympus_uart_pdata[3].is_loopback = false;
+	olympus_uart_pdata[3].uart_pinmux1 = -1;//TEGRA_PINGROUP_GMC;
+	olympus_uart_pdata[3].uart_pinmux2 = -1; //to find
 
 	tegra_uarta_device.dev.platform_data = &olympus_uart_pdata[0];
 	tegra_uartb_device.dev.platform_data = &olympus_uart_pdata[1];
