@@ -46,6 +46,9 @@
 #include <linux/console.h>
 #include <linux/pm_qos_params.h>
 #include <linux/tegra_audio.h>
+#ifdef CONFIG_MACH_OLYMPUS
+#include <linux/wakelock.h>
+#endif
 
 #include <trace/events/power.h>
 
@@ -97,6 +100,10 @@ struct suspend_context {
 
 	struct tegra_twd_context twd;
 };
+
+#ifdef CONFIG_MACH_OLYMPUS
+struct wake_lock call_wakelock;
+#endif
 
 #ifdef CONFIG_PM_SLEEP
 #if USE_TEGRA_CPU_SUSPEND
@@ -876,7 +883,7 @@ int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags)
 		reg = TEGRA_POWER_LP1_AUDIO;
 		pmc_32kwritel(reg, PMC_SCRATCH37);
 #ifdef CONFIG_MACH_OLYMPUS
-		mode = TEGRA_SUSPEND_LP1;
+	//	wake_lock(&call_wakelock);
 #endif
 	}
 
@@ -983,6 +990,7 @@ static int tegra_suspend_prepare(void)
 {
 	if ((current_suspend_mode == TEGRA_SUSPEND_LP0) && tegra_deep_sleep)
 		tegra_deep_sleep(1);
+
 	return 0;
 }
 
@@ -993,9 +1001,12 @@ static void tegra_suspend_finish(void)
 		pr_info("Tegra: resume CPU boost to %u KHz: %s (%d)\n",
 			pdata->cpu_resume_boost, ret ? "Failed" : "OK", ret);
 	}
-
 	if ((current_suspend_mode == TEGRA_SUSPEND_LP0) && tegra_deep_sleep)
 		tegra_deep_sleep(0);
+#ifdef CONFIG_MACH_OLYMPUS
+	//if (!tegra_is_voice_call_active())
+		//wake_unlock(&call_wakelock);
+#endif
 }
 
 static const struct platform_suspend_ops tegra_suspend_ops = {
@@ -1060,9 +1071,13 @@ static struct kobject *suspend_kobj;
 
 static int tegra_pm_enter_suspend(void)
 {
+#ifdef CONFIG_MACH_OLYMPUS
+	//	wake_lock_init(&call_wakelock, WAKE_LOCK_SUSPEND, "call_wakelock");
+#endif
 	pr_info("Entering suspend state %s\n", lp_state[current_suspend_mode]);
 	if (current_suspend_mode == TEGRA_SUSPEND_LP0)
 		tegra_lp0_cpu_mode(true);
+
 	return 0;
 }
 
@@ -1071,6 +1086,9 @@ static void tegra_pm_enter_resume(void)
 	if (current_suspend_mode == TEGRA_SUSPEND_LP0)
 		tegra_lp0_cpu_mode(false);
 	pr_info("Exited suspend state %s\n", lp_state[current_suspend_mode]);
+#ifdef CONFIG_MACH_OLYMPUS
+	//	wake_lock_destroy(&call_wakelock);
+#endif
 }
 
 static struct syscore_ops tegra_pm_enter_syscore_ops = {

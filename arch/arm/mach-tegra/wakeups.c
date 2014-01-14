@@ -90,6 +90,8 @@ int tegra_irq_to_wake(unsigned int irq, int flow_type,
 	 */
 	for (i = 0; i < tegra_wake_event_data_size; i++) {
 		if (tegra_wake_event_data[i].irq == irq) {
+			pr_debug("update wake mask irq=%d, flow_type=%d\n",
+						irq, flow_type);
 			err = update_wake_mask(i, flow_type, wake_msk);
 			if (err)
 				return err;
@@ -104,6 +106,11 @@ int tegra_irq_to_wake(unsigned int irq, int flow_type,
 			wake_msk->wake_mask_any, flow_type);
 		return 0;
 	}
+#ifdef CONFIG_MACH_OLYMPUS
+	if (irq==225)
+		return -ENOTSUPP;
+	else
+#endif
 	return -EINVAL;
 }
 
