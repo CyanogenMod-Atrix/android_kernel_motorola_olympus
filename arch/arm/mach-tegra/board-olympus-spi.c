@@ -52,8 +52,8 @@
 
 /*
  * SPI configuration for Olympus:
- *   SPI1 - modem
- *   SPI2 - cpcap?
+ *   SPI1 - fingerprint sensor/modem
+ *   SPI2 - cpcap
  *   SPI3 - ?
  *   SPI4 - ?
  */
@@ -84,7 +84,7 @@ void __init olympus_spi_init(void)
 	int i;
 	struct clk *clk;
 
-	printk("this board spi init\n");
+	printk("board spi init\n");
         for (i = 0; i < ARRAY_SIZE(spi_parent_clk); ++i) {
       		clk = tegra_get_clock_by_name(spi_parent_clk[i].name);
 		if (IS_ERR_OR_NULL(clk)) {
