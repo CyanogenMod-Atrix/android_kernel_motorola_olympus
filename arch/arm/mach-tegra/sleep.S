@@ -1,7 +1,7 @@
 /*
  * arch/arm/mach-tegra/sleep.S
  *
- * Copyright (c) 2010-2011, NVIDIA Corporation.
+ * Copyright (c) 2010-2012, NVIDIA Corporation. All rights reserved.
  * Copyright (c) 2011, Google, Inc.
  *
  * Author: Colin Cross <ccross@android.com>
@@ -440,28 +440,83 @@ ENDPROC(tegra_cpu_pllp)
 #endif
 
 #ifdef CONFIG_TRUSTED_FOUNDATIONS
+
 /*
- * tegra_generic_smc
+ * Confirm we're issuing this SMC from CPU0 (only one
+ * currently supported) and issue the instruction.
  *
  * r0 = smc type
  * r1 = smc subtype
  * r2 = argument passed to smc
- *
- * issues SMC (secure monitor call) instruction with
- * the specified parameters.
  */
-ENTRY(tegra_generic_smc)
-	adr	r3, __tegra_smc_stack
-	stmia	r3, {r4-r12, lr}
+.macro smc_issue_smc tmp
+	cpu_id	\tmp
+	cmp	\tmp, #0
+	bne	.
 	mov	r3, #0
 	mov	r4, #0
 	dsb
 	smc	#0
-	adr	r3, __tegra_smc_stack
-	ldmia	r3, {r4-r12, pc}
+.endm
+
+/*
+ * Issue SMC with ctx kept on an uncached stack
+ */
+ENTRY(tegra_generic_smc_uncached)
+#if defined(CONFIG_PM_SLEEP) && defined(CONFIG_CACHE_L2X0)
+	mov32	r3, tegra_cpu_context		@ borrow CPU0's non-cached
+	ldr	r3, [r3]			@ context grows up
+	stmia	r3, {r4-r12, sp, lr}
+
+	smc_issue_smc r5
+
+	mov32	r3, tegra_cpu_context		@ borrow CPU0's non-cached
+	ldr	r3, [r3]			@ context grows up
+	ldmia	r3, {r4-r12, sp, pc}
+#else
+	mov	pc, lr
+#endif
+ENDPROC(tegra_generic_smc_uncached)
+
+/*
+ * Issue SMC with ctx kept on a cacheable stack
+ * 	(args in R0, R1, R2 and R3 holds save/restore ptr)
+ */
+ENTRY(tegra_generic_smc_cached)
+	stmia	r3, {r4-r12, sp, lr}
+	adr	r4, __tegra_smc_current_ctx	@ save current ptr
+	str	r3, [r4]
+
+	smc_issue_smc r5
+
+	adr	r4, __tegra_smc_current_ctx	@ restore from saved ptr
+	ldr	r3, [r4]
+	ldmia	r3, {r4-r12, sp, pc}
+ENDPROC(tegra_generic_smc_cached)
+	.type	__tegra_smc_current_ctx, %object
+__tegra_smc_current_ctx:
+	.long   0
+	.size   __tegra_smc_current_ctx, . - __tegra_smc_current_ctx
+
+#define TEGRA_SMC_SAVED_WORDS	11
+
+/* SMC issued using the current cacheable SP stack */
+ENTRY(tegra_generic_smc)
+	mov	r3, sp					@ use current stack
+	sub	r3, #(TEGRA_SMC_SAVED_WORDS << 2)	@ context grows up
+	b	tegra_generic_smc_cached
 ENDPROC(tegra_generic_smc)
-	.type   __tegra_smc_stack, %object
+
+/* SMC issued using a local cacheable stack */
+ENTRY(tegra_generic_smc_local)
+	adr	r3, __tegra_smc_stack			@ use local stack
+	b	tegra_generic_smc_cached
+ENDPROC(tegra_generic_smc_local)
+	.align	L1_CACHE_SHIFT
+	.type	__tegra_smc_stack, %object
 __tegra_smc_stack:
-	.long   0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+	.rept	TEGRA_SMC_SAVED_WORDS
+	.long   0
+	.endr
 	.size   __tegra_smc_stack, . - __tegra_smc_stack
 #endif
