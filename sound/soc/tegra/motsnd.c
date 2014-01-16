@@ -42,8 +42,9 @@
 #include "tegra_asoc_utils.h"
 #include "../codecs/cpcap.h"
 
-
-
+#ifdef CONFIG_MACH_OLYMPUS
+#include <mach/pinmux.h>
+#endif
 
 #define MOTSND_DEBUG 
 #ifdef MOTSND_DEBUG
@@ -60,6 +61,21 @@ struct mot_card_data {
 	struct tegra_asoc_utils_data util_data;
 };
 
+static int motsnd_hw_startup(struct snd_pcm_substream *substream)
+{
+	MOTSND_DEBUG_LOG("%s: entered\n", __func__);
+
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP1, TEGRA_TRI_NORMAL);
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP2, TEGRA_TRI_NORMAL);
+}
+
+static void motsnd_hw_shutdown(struct snd_pcm_substream *substream)
+{
+	MOTSND_DEBUG_LOG("%s: entered\n", __func__);
+
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP1, TEGRA_TRI_TRISTATE);
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP2, TEGRA_TRI_TRISTATE);
+}
 
 static int motsnd_hw_params(struct snd_pcm_substream *substream,
 			    struct snd_pcm_hw_params *params)
@@ -152,8 +168,26 @@ static int motsnd_hw_params(struct snd_pcm_substream *substream,
 }
 
 static struct snd_soc_ops motsnd_ops = {
+	.startup = motsnd_hw_startup,
+	.shutdown = motsnd_hw_shutdown,
 	.hw_params = motsnd_hw_params,
 };
+
+static int motsnd_voice_hw_startup(struct snd_pcm_substream *substream)
+{
+	MOTSND_DEBUG_LOG("%s: entered\n", __func__);
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP1, TEGRA_TRI_NORMAL);
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP2, TEGRA_TRI_NORMAL);
+}
+
+static void motsnd_voice_hw_shutdown(struct snd_pcm_substream *substream)
+{
+	MOTSND_DEBUG_LOG("%s: entered\n", __func__);
+
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP1, TEGRA_TRI_TRISTATE);
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP2, TEGRA_TRI_TRISTATE);
+}
+
 
 static int motsnd_voice_hw_params(struct snd_pcm_substream *substream,
 				  struct snd_pcm_hw_params *params)
@@ -211,6 +245,8 @@ static int motsnd_voice_hw_params(struct snd_pcm_substream *substream,
 }
 
 static struct snd_soc_ops motsnd_voice_ops = {
+	.startup = motsnd_voice_hw_startup,
+	.shutdown = motsnd_voice_hw_shutdown,
 	.hw_params = motsnd_voice_hw_params,
 };
 
@@ -223,6 +259,10 @@ static int motsnd_incall_startup(struct snd_pcm_substream *substream)
 	struct cpcap_audio_pdata *pdata = pdev->dev.platform_data;
 	int ret;
 	MOTSND_DEBUG_LOG("%s: entered\n", __func__);
+
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP2, TEGRA_TRI_NORMAL);
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP3, TEGRA_TRI_NORMAL);
+
 	if (pdata->voice_type == VOICE_TYPE_STE) {
 		/* STE_M570 */
 //		mcbsp3_i2s1_pin_mux_switch(1);
@@ -280,6 +320,9 @@ static void motsnd_incall_shutdown(struct snd_pcm_substream *substream)
 	if(g_is_call_mode)
 		g_is_call_mode = false;
 
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP2, TEGRA_TRI_TRISTATE);
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP3, TEGRA_TRI_TRISTATE);
+
 
 }
 static int motsnd_incall_hw_params(struct snd_pcm_substream *substream,
@@ -309,6 +352,10 @@ static struct snd_soc_ops motsnd_fm_ops = {
 static int motsnd_bt_incall_startup(struct snd_pcm_substream *substream)
 {
 	MOTSND_DEBUG_LOG("%s: entered\n", __func__);
+
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP3, TEGRA_TRI_NORMAL);
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP4, TEGRA_TRI_NORMAL);
+
 	if(!g_is_call_mode)
 		g_is_call_mode = true;
 }
@@ -316,6 +363,11 @@ static int motsnd_bt_incall_startup(struct snd_pcm_substream *substream)
 static void motsnd_bt_incall_shutdown(struct snd_pcm_substream *substream)
 {
 	MOTSND_DEBUG_LOG("%s: entered\n", __func__);
+
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP3, TEGRA_TRI_TRISTATE);
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP4, TEGRA_TRI_TRISTATE);
+
+
 	if(g_is_call_mode)
 		g_is_call_mode = false;
 }
