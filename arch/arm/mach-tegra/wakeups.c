@@ -106,11 +106,7 @@ int tegra_irq_to_wake(unsigned int irq, int flow_type,
 			wake_msk->wake_mask_any, flow_type);
 		return 0;
 	}
-#ifdef CONFIG_MACH_OLYMPUS
-	if (irq==225)
-		return -ENOTSUPP;
-	else
-#endif
+
 	return -EINVAL;
 }
 

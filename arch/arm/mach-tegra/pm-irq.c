@@ -64,8 +64,21 @@ module_param(debug_lp0, bool, S_IRUGO | S_IWUSR);
 static bool warn_prevent_lp0;
 module_param(warn_prevent_lp0, bool, S_IRUGO | S_IWUSR);
 
+#ifdef CONFIG_MACH_OLYMPUS
+extern int g_is_call_mode;
+#endif
+
 bool tegra_pm_irq_lp0_allowed(void)
 {
+/* To support proximity sensor on call
+ * we have to add proximity wakeup to wakepad
+ * and disable lp0 when it's working so it doesn't hang the phone.
+ */
+#ifdef CONFIG_MACH_OLYMPUS
+	if (g_is_call_mode)
+		return 1;
+	else
+#endif
 	return (tegra_prevent_lp0 == 0);
 }
 
