@@ -64,17 +64,20 @@ struct mot_card_data {
 static int motsnd_hw_startup(struct snd_pcm_substream *substream)
 {
 	MOTSND_DEBUG_LOG("%s: entered\n", __func__);
-
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_CDEV1, TEGRA_TRI_NORMAL);
 	tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP1, TEGRA_TRI_NORMAL);
 	tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP2, TEGRA_TRI_NORMAL);
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP3, TEGRA_TRI_NORMAL);
+	return 0;
 }
 
 static void motsnd_hw_shutdown(struct snd_pcm_substream *substream)
 {
 	MOTSND_DEBUG_LOG("%s: entered\n", __func__);
-
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_CDEV1, TEGRA_TRI_TRISTATE);
 	tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP1, TEGRA_TRI_TRISTATE);
 	tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP2, TEGRA_TRI_TRISTATE);
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP3, TEGRA_TRI_TRISTATE);
 }
 
 static int motsnd_hw_params(struct snd_pcm_substream *substream,
@@ -87,9 +90,9 @@ static int motsnd_hw_params(struct snd_pcm_substream *substream,
 	struct snd_soc_card *card = codec->card;
         struct mot_card_data *card_data =snd_soc_card_get_drvdata(card);
 	int ret;
-	unsigned long rate;
-	struct clk *dpll_abe_ck;
-	int srate, mclk, mclk_change;
+	//unsigned long rate;
+	//struct clk *dpll_abe_ck;
+	int srate, mclk;// mclk_change;
 	MOTSND_DEBUG_LOG("%s: entered\n", __func__);
 
 	srate = params_rate(params);
@@ -162,8 +165,6 @@ static int motsnd_hw_params(struct snd_pcm_substream *substream,
 		return ret;
 	}
 
-
-
 	return ret;
 }
 
@@ -176,16 +177,20 @@ static struct snd_soc_ops motsnd_ops = {
 static int motsnd_voice_hw_startup(struct snd_pcm_substream *substream)
 {
 	MOTSND_DEBUG_LOG("%s: entered\n", __func__);
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_CDEV1, TEGRA_TRI_NORMAL);
 	tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP1, TEGRA_TRI_NORMAL);
 	tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP2, TEGRA_TRI_NORMAL);
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP3, TEGRA_TRI_NORMAL);
+	return 0;
 }
 
 static void motsnd_voice_hw_shutdown(struct snd_pcm_substream *substream)
 {
 	MOTSND_DEBUG_LOG("%s: entered\n", __func__);
-
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_CDEV1, TEGRA_TRI_TRISTATE);
 	tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP1, TEGRA_TRI_TRISTATE);
 	tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP2, TEGRA_TRI_TRISTATE);
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP3, TEGRA_TRI_TRISTATE);
 }
 
 
@@ -241,6 +246,7 @@ static int motsnd_voice_hw_params(struct snd_pcm_substream *substream,
 		printk(KERN_ERR  "failed to set dac-dap path\n");
 		return ret;
 	}
+
 	return ret;
 }
 
@@ -259,7 +265,8 @@ static int motsnd_incall_startup(struct snd_pcm_substream *substream)
 	struct cpcap_audio_pdata *pdata = pdev->dev.platform_data;
 	int ret;
 	MOTSND_DEBUG_LOG("%s: entered\n", __func__);
-
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_CDEV1, TEGRA_TRI_NORMAL);
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP1, TEGRA_TRI_NORMAL);
 	tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP2, TEGRA_TRI_NORMAL);
 	tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP3, TEGRA_TRI_NORMAL);
 
@@ -306,23 +313,23 @@ static void motsnd_incall_shutdown(struct snd_pcm_substream *substream)
 	ret = tegra20_das_connect_dac_to_dap(TEGRA20_DAS_DAP_SEL_DAC1,
 					TEGRA20_DAS_DAP_ID_1);
 	if (ret < 0) {
-		printk(KERN_ERR "failed to set dap-dac path\n");
-		return ret;
+		printk(KERN_ERR "failed to set dap-dac path (%d)\n", ret);
+		return;
 	}
 
 	ret = tegra20_das_connect_dap_to_dac(TEGRA20_DAS_DAP_ID_1,
 					TEGRA20_DAS_DAP_SEL_DAC1);
 	if (ret < 0) {
-		printk(KERN_ERR  "failed to set dac-dap path\n");
-		return ret;
+		printk(KERN_ERR  "failed to set dac-dap path (%d)\n", ret);
+		return;
 	}
 
 	if(g_is_call_mode)
 		g_is_call_mode = false;
-
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_CDEV1, TEGRA_TRI_TRISTATE);
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP1, TEGRA_TRI_TRISTATE);
 	tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP2, TEGRA_TRI_TRISTATE);
 	tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP3, TEGRA_TRI_TRISTATE);
-
 
 }
 static int motsnd_incall_hw_params(struct snd_pcm_substream *substream,
@@ -337,7 +344,7 @@ static struct snd_soc_ops motsnd_incall_ops = {
 	.shutdown = motsnd_incall_shutdown,
 	.hw_params = motsnd_incall_hw_params,
 };
-
+/*
 static int motsnd_fm_hw_params(struct snd_pcm_substream *substream,
 			       struct snd_pcm_hw_params *params)
 {
@@ -348,22 +355,24 @@ static int motsnd_fm_hw_params(struct snd_pcm_substream *substream,
 static struct snd_soc_ops motsnd_fm_ops = {
 	.hw_params = motsnd_fm_hw_params,
 };
-
+*/
 static int motsnd_bt_incall_startup(struct snd_pcm_substream *substream)
 {
 	MOTSND_DEBUG_LOG("%s: entered\n", __func__);
-
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_CDEV1, TEGRA_TRI_NORMAL);
 	tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP3, TEGRA_TRI_NORMAL);
 	tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP4, TEGRA_TRI_NORMAL);
 
 	if(!g_is_call_mode)
 		g_is_call_mode = true;
+
+	return 0;
 }
 
 static void motsnd_bt_incall_shutdown(struct snd_pcm_substream *substream)
 {
 	MOTSND_DEBUG_LOG("%s: entered\n", __func__);
-
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_CDEV1, TEGRA_TRI_TRISTATE);
 	tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP3, TEGRA_TRI_TRISTATE);
 	tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP4, TEGRA_TRI_TRISTATE);
 
@@ -375,12 +384,12 @@ static void motsnd_bt_incall_shutdown(struct snd_pcm_substream *substream)
 static int motsnd_bt_incall_hw_params(struct snd_pcm_substream *substream,
 				  struct snd_pcm_hw_params *params)
 {
-	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
+	/*struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_codec *codec = rtd->codec_dai->codec;
+	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
 	struct platform_device *pdev = container_of(codec->dev,
 			struct platform_device, dev);
-	struct cpcap_audio_pdata *pdata = pdev->dev.platform_data;
+	struct cpcap_audio_pdata *pdata = pdev->dev.platform_data;*/
 	int ret;
 
 	MOTSND_DEBUG_LOG("%s: entered\n", __func__);
@@ -412,6 +421,7 @@ static int motsnd_bt_incall_hw_params(struct snd_pcm_substream *substream,
 		printk(KERN_ERR "failed to set dap-dap path\n");
 		return ret;
 	}
+
 	return ret;
 }
 
@@ -427,11 +437,11 @@ static int motsnd_btvoice_hw_params(struct snd_pcm_substream *substream,
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
+	/*struct snd_soc_codec *codec = rtd->codec_dai->codec;
 	struct snd_soc_dai *codec_dai = rtd->codec_dai;
-	struct snd_soc_codec *codec = rtd->codec_dai->codec;
 	struct platform_device *pdev = container_of(codec->dev,
 			struct platform_device, dev);
-	struct cpcap_audio_pdata *pdata = pdev->dev.platform_data;
+	struct cpcap_audio_pdata *pdata = pdev->dev.platform_data;*/
 	int ret;
 
 	MOTSND_DEBUG_LOG("%s: entered\n", __func__);
@@ -566,10 +576,10 @@ static struct snd_soc_ops motsnd_bpvoice_ops = {
 static int mcbsp_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 			struct snd_pcm_hw_params *params)
 {
-	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
+/*	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
 	struct snd_interval *channels = hw_param_interval(params,
 						SNDRV_PCM_HW_PARAM_CHANNELS);
-/*	unsigned int be_id = rtd->dai_link->be_id;
+	unsigned int be_id = rtd->dai_link->be_id;
 	unsigned int threshold;
 
 	switch (be_id) {
@@ -614,9 +624,15 @@ static int motsnd_tegra_mm_init(struct snd_soc_pcm_runtime *rtd)
 {
 	struct snd_soc_codec *codec = rtd->codec;
 	struct snd_soc_dapm_context *dapm = &codec->dapm;
-	struct snd_soc_card *card = codec->card;
+	//struct snd_soc_card *card = codec->card;
 	int ret;
 
+	MOTSND_DEBUG_LOG("%s: Entered\n", __func__);
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_CDEV1, TEGRA_TRI_NORMAL);
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP1, TEGRA_TRI_NORMAL);
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP2, TEGRA_TRI_NORMAL);
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP3, TEGRA_TRI_NORMAL);
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP4, TEGRA_TRI_NORMAL);
 
 	ret = snd_soc_add_controls(codec, tegra_controls,
 				   ARRAY_SIZE(tegra_controls));
@@ -636,19 +652,34 @@ static int motsnd_tegra_mm_init(struct snd_soc_pcm_runtime *rtd)
 	snd_soc_dapm_nc_pin(dapm, "LINEOUTR");
 
 	snd_soc_dapm_sync(dapm);
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_CDEV1, TEGRA_TRI_TRISTATE);
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP1, TEGRA_TRI_TRISTATE);
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP2, TEGRA_TRI_TRISTATE);
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP3, TEGRA_TRI_TRISTATE);
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP4, TEGRA_TRI_TRISTATE);
 
 	return 0;
 }
-
+/*
 static int motsnd_cpcap_init(struct snd_soc_pcm_runtime *rtd)
 {
 	MOTSND_DEBUG_LOG("%s: Entered\n", __func__);
 	return 0;
 }
-
+*/
 static int motsnd_cpcap_voice_init(struct snd_soc_pcm_runtime *rtd)
 {
 	MOTSND_DEBUG_LOG("%s: Entered\n", __func__);
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_CDEV1, TEGRA_TRI_NORMAL);
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP1, TEGRA_TRI_NORMAL);
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP2, TEGRA_TRI_NORMAL);
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP3, TEGRA_TRI_NORMAL);
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP4, TEGRA_TRI_NORMAL);
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_CDEV1, TEGRA_TRI_TRISTATE);
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP1, TEGRA_TRI_TRISTATE);
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP2, TEGRA_TRI_TRISTATE);
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP3, TEGRA_TRI_TRISTATE);
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP4, TEGRA_TRI_TRISTATE);
 	return 0;
 }
 

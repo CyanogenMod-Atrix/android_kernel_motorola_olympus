@@ -718,7 +718,7 @@ static int kxtf9_enable(struct kxtf9_data *tf9)
 	if (!atomic_read(&tf9->req_enabled))
 		return 0;
 
-	/*pr_debug*/pr_info("%s\n", __func__);
+	pr_debug("%s\n", __func__);
 	if (!atomic_cmpxchg(&tf9->enabled, 0, 1)) {
 		is_enabled = atomic_read(&tf9->enabled);
 		err = kxtf9_device_power_on(tf9);
@@ -739,7 +739,7 @@ static int kxtf9_enable(struct kxtf9_data *tf9)
 
 static int kxtf9_disable(struct kxtf9_data *tf9)
 {
-	/*pr_debug*/pr_info("%s\n", __func__);
+	pr_debug("%s\n", __func__);
 	if (atomic_cmpxchg(&tf9->enabled, 1, 0)) {
 		is_enabled = atomic_read(&tf9->enabled);
 		cancel_delayed_work_sync(&tf9->force_tilt);

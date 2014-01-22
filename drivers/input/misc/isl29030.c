@@ -960,21 +960,20 @@ static int isl29030_pm_event(struct notifier_block *this, unsigned long event,
 
 	if (isl29030_debug & ISL29030_DBG_SUSPEND_RESUME)
 		pr_info("%s: event = %lu\n", __func__, event);
-
+#if 0
 	mutex_lock(&isl->mutex);
 
 	switch (event) {
 	case PM_SUSPEND_PREPARE:
-		if (!isl->suspended)
 			isl29030_suspend(isl);
 		break;
 	case PM_POST_SUSPEND:
-		//isl29030_resume(isl);
+			isl29030_resume(isl);
 		break;
 	}
 
 	mutex_unlock(&isl->mutex);
-
+#endif
 	return NOTIFY_DONE;
 }
 
@@ -1170,7 +1169,7 @@ static void isl29030_early_suspend(struct early_suspend *handler)
 	struct isl29030_data *isl;
 
 	isl = container_of(handler, struct isl29030_data,
-		early_suspend);
+				early_suspend);
 	mutex_lock(&isl->mutex);
 	isl29030_suspend(isl);
 	mutex_unlock(&isl->mutex);
@@ -1181,7 +1180,7 @@ static void isl29030_late_resume(struct early_suspend *handler)
 	struct isl29030_data *isl;
 
 	isl = container_of(handler, struct isl29030_data,
-		early_suspend);
+			early_suspend);
 	mutex_lock(&isl->mutex);
 	isl29030_resume(isl);
 	mutex_unlock(&isl->mutex);
