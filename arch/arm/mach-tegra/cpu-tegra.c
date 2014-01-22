@@ -58,9 +58,9 @@ static DEFINE_MUTEX(early_mutex);
 
 static bool is_suspended;
 static int suspend_index;
-static unsigned int full_speed;
 
 #ifdef CONFIG_OLYMPUS_UV
+static unsigned int full_speed;
 extern int g_is_call_mode;
 #endif
 
@@ -720,9 +720,9 @@ static int tegra_cpu_init(struct cpufreq_policy *policy)
 	if (policy->cpu == 0) {
 		register_pm_notifier(&tegra_cpu_pm_notifier);
 	}
-
+#ifdef CONFIG_OLYMPUS_UV
 	full_speed = tegra_cpu_highest_speed();
-
+#endif
 	return 0;
 }
 
@@ -774,12 +774,12 @@ static struct cpufreq_driver tegra_cpufreq_driver = {
 	.attr		= tegra_cpufreq_attr,
 };
 
+#ifdef CONFIG_OLYMPUS_UV
 static void tegra_cpu_early_suspend(struct early_suspend *h)
 {
-#ifdef CONFIG_OLYMPUS_UV
 	if (!g_is_call_mode)
 		tegra_cpu_user_cap_set(216000);
-#endif
+
 	mutex_lock(&early_mutex);
 	/* turn off 2nd cpu ALWAYS */
 	if (num_online_cpus() > 1)
@@ -790,9 +790,8 @@ static void tegra_cpu_early_suspend(struct early_suspend *h)
 
 static void tegra_cpu_late_resume(struct early_suspend *h)
 {
-#ifdef CONFIG_OLYMPUS_UV
 	tegra_cpu_user_cap_set(full_speed);
-#endif
+
 	mutex_lock(&early_mutex);
 	/* restore dual core operations */
 	if (num_online_cpus() < 2)
@@ -806,6 +805,7 @@ static struct early_suspend tegra_cpu_early_suspend_handler = {
 	.suspend = tegra_cpu_early_suspend,
 	.resume = tegra_cpu_late_resume,
 };
+#endif
 
 static int __init tegra_cpufreq_init(void)
 {
@@ -833,9 +833,9 @@ static int __init tegra_cpufreq_init(void)
 		&tegra_cpufreq_policy_nb, CPUFREQ_POLICY_NOTIFIER);
 	if (ret)
 		return ret;
-
+#ifdef CONFIG_OLYMPUS_UV
 	register_early_suspend(&tegra_cpu_early_suspend_handler);
-
+#endif
 	return cpufreq_register_driver(&tegra_cpufreq_driver);
 }
 
