@@ -155,7 +155,7 @@ void __init olympus_uart_init(void)
 
 	olympus_uart_pdata[1].parent_clk_list = uart_parent_clk;
 	olympus_uart_pdata[1].parent_clk_count = ARRAY_SIZE(uart_parent_clk);
-	olympus_uart_pdata[1].uart_pinmux1 = -1;
+	olympus_uart_pdata[1].uart_pinmux1 = TEGRA_PINGROUP_UAD;
 	olympus_uart_pdata[1].uart_pinmux2 = -1;
 
 	olympus_uart_pdata[2].parent_clk_list = uart_parent_clk;
