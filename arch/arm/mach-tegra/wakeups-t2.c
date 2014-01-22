@@ -44,7 +44,7 @@ static struct tegra_wake_info tegra_wake_event_data_t2[] = {
 	{INT_RTC, POLARITY_NONE},
 	{INT_KBC, POLARITY_NONE},
 	{INT_EXTERNAL_PMU, POLARITY_NONE},
-	//{INT_USB, POLARITY_EDGE_ANY}, /* TEGRA_USB1_VBUS, */
+	{INT_USB, POLARITY_EDGE_ANY}, /* TEGRA_USB1_VBUS, */
 	{-EINVAL, POLARITY_EDGE_ANY}, /* TEGRA_USB1_VBUS, */ //*Olympus: Controlled not by SoC but by CPCAP
 	{-EINVAL, POLARITY_EDGE_ANY}, /* TEGRA_USB3_VBUS, */
 	{-EINVAL, POLARITY_EDGE_ANY}, /* TEGRA_USB1_ID, */

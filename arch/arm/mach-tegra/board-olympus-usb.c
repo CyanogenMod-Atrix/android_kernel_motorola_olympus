@@ -124,7 +124,7 @@ static struct tegra_usb_platform_data tegra_ehci1_utmi_pdata = {
 		.vbus_gpio = -1,
 		.vbus_reg = NULL,
 		.hot_plug = true,
-		.remote_wakeup_supported = false,
+		.remote_wakeup_supported = true,
 		.power_off_on_suspend = true,
 	},
 	.u_cfg.utmi = {
@@ -147,7 +147,7 @@ static struct tegra_usb_platform_data tegra_ehci3_utmi_pdata = {
 		.vbus_gpio = -1,
 		.vbus_reg = NULL,
 		.hot_plug = true,
-		.remote_wakeup_supported = false,
+		.remote_wakeup_supported = true,
 		.power_off_on_suspend = true,
 	},
 	.u_cfg.utmi = {
