@@ -43,8 +43,11 @@
 #include <mach/tegra_hsuart.h>
 #include <mach/dma.h>
 #include <mach/clk.h>
+
 #ifdef CONFIG_MACH_OLYMPUS
 #include <mach/pinmux.h>
+extern int g_is_call_mode;
+static int g_was_call_mode=0;
 #endif
 
 #define TEGRA_UART_TYPE "TEGRA_UART"
@@ -1566,10 +1569,15 @@ static int tegra_uart_suspend(struct platform_device *pdev, pm_message_t state)
 	t->uart_state = TEGRA_UART_SUSPEND;
 
 #ifdef CONFIG_MACH_OLYMPUS
-	pdata = u->dev->platform_data;
-	if (pdata) {
-		if (pdata->uart_pinmux1!=-1) tegra_pinmux_set_tristate(pdata->uart_pinmux1, TEGRA_TRI_TRISTATE);
-		if (pdata->uart_pinmux2!=-1) tegra_pinmux_set_tristate(pdata->uart_pinmux2, TEGRA_TRI_TRISTATE);
+	if (!g_is_call_mode) {
+		pdata = u->dev->platform_data;
+		if (pdata) {
+			if (pdata->uart_pinmux1!=-1) tegra_pinmux_set_tristate(pdata->uart_pinmux1, TEGRA_TRI_TRISTATE);
+			if (pdata->uart_pinmux2!=-1) tegra_pinmux_set_tristate(pdata->uart_pinmux2, TEGRA_TRI_TRISTATE);
+		}
+		g_was_call_mode=0;
+	} else {
+		g_was_call_mode=1;
 	}
 #endif
 	return 0;
@@ -1591,10 +1599,12 @@ static int tegra_uart_resume(struct platform_device *pdev)
 	if (t->uart_state == TEGRA_UART_SUSPEND)
 #ifdef CONFIG_MACH_OLYMPUS
 	{
-		pdata = u->dev->platform_data;
-		if (pdata) {
-			if (pdata->uart_pinmux1!=-1) tegra_pinmux_set_tristate(pdata->uart_pinmux1, TEGRA_TRI_NORMAL);
-			if (pdata->uart_pinmux2!=-1) tegra_pinmux_set_tristate(pdata->uart_pinmux2, TEGRA_TRI_NORMAL);
+		if (!g_was_call_mode) {
+			pdata = u->dev->platform_data;
+			if (pdata) {
+				if (pdata->uart_pinmux1!=-1) tegra_pinmux_set_tristate(pdata->uart_pinmux1, TEGRA_TRI_NORMAL);
+				if (pdata->uart_pinmux2!=-1) tegra_pinmux_set_tristate(pdata->uart_pinmux2, TEGRA_TRI_NORMAL);
+			}
 		}
 #endif
 		uart_resume_port(&tegra_uart_driver, u);
