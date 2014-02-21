@@ -62,6 +62,8 @@ const int INCALL = 4;
 const int BT_INCALL = 8;
 const int BT_VOICE = 16;
 
+const int MASK = 31;
+
 static int pin_mask = 0;
 
 
@@ -75,9 +77,8 @@ static int motsnd_hw_startup(struct snd_pcm_substream *substream)
 	MOTSND_DEBUG_LOG("%s: entered, pin_mask = %u\n", __func__, pin_mask);
 	if (pin_mask == 0) {
 		tegra_pinmux_set_tristate(TEGRA_PINGROUP_CDEV1, TEGRA_TRI_NORMAL);
-		tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP1, TEGRA_TRI_NORMAL);
-		pin_mask = OUT;
-	} else if ((pin_mask && OUT) == 0) {
+	}
+	if ((pin_mask & OUT) == 0) {
 		tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP1, TEGRA_TRI_NORMAL);
 		pin_mask |= OUT;
 	}
@@ -87,13 +88,12 @@ static int motsnd_hw_startup(struct snd_pcm_substream *substream)
 static void motsnd_hw_shutdown(struct snd_pcm_substream *substream)
 {
 	MOTSND_DEBUG_LOG("%s: entered, pin_mask = %u\n", __func__, pin_mask);
-	if (pin_mask == OUT) {
+	if ((pin_mask & OUT) == OUT) {
 		tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP1, TEGRA_TRI_TRISTATE);
+		pin_mask = pin_mask & ~OUT;
+	}
+	if (pin_mask == 0) {
 		tegra_pinmux_set_tristate(TEGRA_PINGROUP_CDEV1, TEGRA_TRI_TRISTATE);
-		pin_mask = 0;
-	} else if ((pin_mask && OUT) == OUT) {
-		tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP1, TEGRA_TRI_TRISTATE);
-		pin_mask ^= OUT;
 	}
 }
 
@@ -196,9 +196,8 @@ static int motsnd_voice_hw_startup(struct snd_pcm_substream *substream)
 	MOTSND_DEBUG_LOG("%s: entered, pin_mask = %u\n", __func__, pin_mask);
 	if (pin_mask == 0) {
 			tegra_pinmux_set_tristate(TEGRA_PINGROUP_CDEV1, TEGRA_TRI_NORMAL);
-			tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP2, TEGRA_TRI_NORMAL);
-			pin_mask = VOICE;
-	} else if ((pin_mask && VOICE) == 0) {
+	}
+	if ((pin_mask & VOICE) == 0) {
 			tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP2, TEGRA_TRI_NORMAL);
 			pin_mask |= VOICE;
 	}
@@ -208,13 +207,12 @@ static int motsnd_voice_hw_startup(struct snd_pcm_substream *substream)
 static void motsnd_voice_hw_shutdown(struct snd_pcm_substream *substream)
 {
 	MOTSND_DEBUG_LOG("%s: entered, pin_mask = %u\n", __func__, pin_mask);
-	if (pin_mask == VOICE) {
+	if ((pin_mask & VOICE) == VOICE) {
 			tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP2, TEGRA_TRI_TRISTATE);
+			pin_mask = pin_mask & ~VOICE;
+	}
+	if (pin_mask == 0) {
 			tegra_pinmux_set_tristate(TEGRA_PINGROUP_CDEV1, TEGRA_TRI_TRISTATE);
-			pin_mask = 0;
-	} else if ((pin_mask && VOICE) == VOICE) {
-			tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP2, TEGRA_TRI_TRISTATE);
-			pin_mask ^= VOICE;
 	}
 }
 
@@ -291,13 +289,9 @@ static int motsnd_incall_startup(struct snd_pcm_substream *substream)
 	MOTSND_DEBUG_LOG("%s: entered, pin_mask = %u\n", __func__, pin_mask);
 	if (pin_mask == 0) {
 		tegra_pinmux_set_tristate(TEGRA_PINGROUP_CDEV1, TEGRA_TRI_NORMAL);
+	}
+	if ((pin_mask & INCALL) == 0) {
 		tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP2, TEGRA_TRI_NORMAL);
-		tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP3, TEGRA_TRI_NORMAL);
-		pin_mask = INCALL;
-	} else if ((pin_mask && INCALL) == 0) {
-		if ((pin_mask && VOICE) == 0) {
-			tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP2, TEGRA_TRI_NORMAL);
-		}
 		tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP3, TEGRA_TRI_NORMAL);
 		pin_mask |= INCALL;
 	}
@@ -359,17 +353,13 @@ static void motsnd_incall_shutdown(struct snd_pcm_substream *substream)
 	if(g_is_call_mode)
 		g_is_call_mode = false;
 
-	if (pin_mask == INCALL) {
+	if ((pin_mask & INCALL) == INCALL) {
+		tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP3, TEGRA_TRI_TRISTATE);
 		tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP2, TEGRA_TRI_TRISTATE);
-		tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP3, TEGRA_TRI_TRISTATE);
+		pin_mask = pin_mask & ~INCALL;
+	}
+	if (pin_mask == 0) {
 		tegra_pinmux_set_tristate(TEGRA_PINGROUP_CDEV1, TEGRA_TRI_TRISTATE);
-		pin_mask = 0;
-	} else if ((pin_mask && INCALL) == INCALL) {
-		if ((pin_mask && VOICE) == 0) {
-			tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP2, TEGRA_TRI_TRISTATE);
-		}
-		tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP3, TEGRA_TRI_TRISTATE);
-		pin_mask ^= INCALL;
 	}
 }
 static int motsnd_incall_hw_params(struct snd_pcm_substream *substream,
@@ -401,13 +391,9 @@ static int motsnd_bt_incall_startup(struct snd_pcm_substream *substream)
 	MOTSND_DEBUG_LOG("%s: entered, pin_mask = %u\n", __func__, pin_mask);
 	if (pin_mask == 0) {
 		tegra_pinmux_set_tristate(TEGRA_PINGROUP_CDEV1, TEGRA_TRI_NORMAL);
+	}
+	if ((pin_mask & BT_INCALL) == 0) {
 		tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP3, TEGRA_TRI_NORMAL);
-		tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP4, TEGRA_TRI_NORMAL);
-		pin_mask = BT_INCALL;
-	} else if ((pin_mask && BT_INCALL) == 0) {
-		if ((pin_mask && INCALL) == 0) {
-			tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP3, TEGRA_TRI_NORMAL);
-		}
 		tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP4, TEGRA_TRI_NORMAL);
 		pin_mask |= BT_INCALL;
 	}
@@ -421,17 +407,13 @@ static int motsnd_bt_incall_startup(struct snd_pcm_substream *substream)
 static void motsnd_bt_incall_shutdown(struct snd_pcm_substream *substream)
 {
 	MOTSND_DEBUG_LOG("%s: entered, pin_mask = %u\n", __func__, pin_mask);
-	if (pin_mask == BT_INCALL) {
+	if ((pin_mask & BT_INCALL) == BT_INCALL) {
 		tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP3, TEGRA_TRI_TRISTATE);
 		tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP4, TEGRA_TRI_TRISTATE);
+		pin_mask = pin_mask & ~BT_INCALL;
+	}
+	if (pin_mask == 0) {
 		tegra_pinmux_set_tristate(TEGRA_PINGROUP_CDEV1, TEGRA_TRI_TRISTATE);
-		pin_mask = 0;
-	} else if ((pin_mask && BT_INCALL) == BT_INCALL) {
-		if ((pin_mask && INCALL) == 0) {
-			tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP3, TEGRA_TRI_TRISTATE);
-		}
-		tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP4, TEGRA_TRI_TRISTATE);
-		pin_mask ^= BT_INCALL;
 	}
 
 	if(g_is_call_mode)
@@ -493,10 +475,8 @@ static int motsnd_btvoice_startup(struct snd_pcm_substream *substream)
 	MOTSND_DEBUG_LOG("%s: entered, pin_mask = %u\n", __func__, pin_mask);
 	if (pin_mask == 0) {
 		tegra_pinmux_set_tristate(TEGRA_PINGROUP_CDEV1, TEGRA_TRI_NORMAL);
-		tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP4, TEGRA_TRI_NORMAL);
-		pin_mask = BT_VOICE;
-	} else if (((pin_mask && BT_VOICE) == 0) &&
-				((pin_mask && BT_INCALL) == 0)) {
+	}
+	if ((pin_mask & BT_VOICE) == 0) {
 		tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP4, TEGRA_TRI_NORMAL);
 		pin_mask |= BT_VOICE;
 	}
@@ -506,15 +486,12 @@ static int motsnd_btvoice_startup(struct snd_pcm_substream *substream)
 static void motsnd_btvoice_shutdown(struct snd_pcm_substream *substream)
 {
 	MOTSND_DEBUG_LOG("%s: entered, pin_mask = %u\n", __func__, pin_mask);
-	if (pin_mask == BT_VOICE) {
+	if ((pin_mask & BT_VOICE) == BT_VOICE) {
 		tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP4, TEGRA_TRI_TRISTATE);
+		pin_mask = pin_mask & ~BT_VOICE;
+	}
+	if (pin_mask == 0) {
 		tegra_pinmux_set_tristate(TEGRA_PINGROUP_CDEV1, TEGRA_TRI_TRISTATE);
-		pin_mask = 0;
-	} else if ((pin_mask && BT_VOICE) == BT_VOICE) {
-		if ((pin_mask && BT_INCALL) == 0) {
-			tegra_pinmux_set_tristate(TEGRA_PINGROUP_DAP4, TEGRA_TRI_TRISTATE);
-		}
-		pin_mask ^= BT_VOICE;
 	}
 }
 
