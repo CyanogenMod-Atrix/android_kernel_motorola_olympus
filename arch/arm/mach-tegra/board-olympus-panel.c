@@ -129,15 +129,7 @@ static struct resource olympus_disp2_resources[] = {
 		.flags	= IORESOURCE_MEM,
 	},
 };
-/*
-changed
-.h_sync_width = 16,  to .h_sync_width = 4,
-.h_back_porch = 32,  to .h_back_porch = 52,
-.h_front_porch = 32, to .h_front_porch = 52,
 
-per epinter changes
-
-*/
 
 static struct tegra_dc_mode olympus_panel_modes[] = {
 	{
