@@ -25,7 +25,6 @@
 #include <media/ov5650.h>
 #include <media/dw9714l.h>
 #include <media/soc380.h>
-#include <media/tegra_camera.h>
 #include <linux/regulator/consumer.h>
 #include <linux/err.h>
 #include <asm/mach-types.h>
@@ -372,15 +371,8 @@ static void olympus_camera_set(void)
 		rear_cam.flash_on	= 1;
 }
 
-static struct tegra_camera_platform_data tegra_camera_pdata = {
-	.limit_3d_emc_clk = true,
-};
-
 static struct platform_device tegra_camera = {
 	.name = "tegra_camera",
-	.dev = {
-		.platform_data = &tegra_camera_pdata,
-	},
 	.id = -1,
 };
 
