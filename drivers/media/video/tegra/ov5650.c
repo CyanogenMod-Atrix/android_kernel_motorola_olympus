@@ -1361,6 +1361,7 @@ static long ov5650_ioctl(struct file *file,
 	switch (cmd) {
 	case OV5650_IOCTL_SET_CAMERA_MODE:
 	{
+		pr_info("%s %d\n", __func__, __LINE__);
 		if (info->camera_mode != arg) {
 			err = ov5650_set_power(info, 0);
 			if (err) {
@@ -1377,10 +1378,12 @@ static long ov5650_ioctl(struct file *file,
 	case OV5650_IOCTL_SYNC_SENSORS:
 		if (info->right.pdata->synchronize_sensors)
 			info->right.pdata->synchronize_sensors();
+		pr_info("%s %d\n", __func__, __LINE__);
 		return 0;
 	case OV5650_IOCTL_SET_MODE:
 	{
 		struct ov5650_mode mode;
+		pr_info("%s %d\n", __func__, __LINE__);
 		if (copy_from_user(&mode,
 				   (const void __user *)arg,
 				   sizeof(struct ov5650_mode))) {
@@ -1391,16 +1394,21 @@ static long ov5650_ioctl(struct file *file,
 		return ov5650_set_mode(info, &mode);
 	}
 	case OV5650_IOCTL_SET_FRAME_LENGTH:
+		pr_info("%s %d\n", __func__, __LINE__);
 		return ov5650_set_frame_length(info, (u32)arg);
 	case OV5650_IOCTL_SET_COARSE_TIME:
+		pr_info("%s %d\n", __func__, __LINE__);
 		return ov5650_set_coarse_time(info, (u32)arg);
 	case OV5650_IOCTL_SET_GAIN:
+		pr_info("%s %d\n", __func__, __LINE__);
 		return ov5650_set_gain(info, (u16)arg);
 	case OV5650_IOCTL_SET_BINNING:
+		pr_info("%s %d\n", __func__, __LINE__);
 		return ov5650_set_binning(info, (u8)arg);
 	case OV5650_IOCTL_GET_STATUS:
 	{
 		u16 status = 0;
+		pr_info("%s %d\n", __func__, __LINE__);
 		if (copy_to_user((void __user *)arg, &status,
 				 2)) {
 			pr_info("%s %d\n", __func__, __LINE__);
@@ -1411,6 +1419,7 @@ static long ov5650_ioctl(struct file *file,
 	case OV5650_IOCTL_TEST_PATTERN:
 	{
 		err = ov5650_test_pattern(info, (enum ov5650_test_pattern) arg);
+		pr_info("%s %d\n", __func__, __LINE__);
 		if (err)
 			pr_err("%s %d %d\n", __func__, __LINE__, err);
 		return err;
@@ -1418,6 +1427,7 @@ static long ov5650_ioctl(struct file *file,
 	case OV5650_IOCTL_SET_GROUP_HOLD:
 	{
 		struct ov5650_ae ae;
+		pr_info("%s %d\n", __func__, __LINE__);
 		if (copy_from_user(&ae,
 				(const void __user *)arg,
 				sizeof(struct ov5650_ae))) {
@@ -1428,6 +1438,7 @@ static long ov5650_ioctl(struct file *file,
 	}
 	case OV5650_IOCTL_GET_SENSORDATA:
 	{
+		pr_info("%s %d\n", __func__, __LINE__);
 		err = ov5650_get_sensor_id(info);
 		if (err) {
 			pr_err("%s %d %d\n", __func__, __LINE__, err);
