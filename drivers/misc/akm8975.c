@@ -762,6 +762,8 @@ static void akm8975_early_suspend(struct early_suspend *handler)
 		akm8975_power_off();
 	mutex_unlock(&state_mutex);
 	wake_up(&open_wq);
+	//irq_set_irq_wake(this_client->irq,0);
+	tegra_gpio_disable(34); //TEGRA_GPIO_PE2
 	tegra_pinmux_set_tristate(TEGRA_PINGROUP_LD2, TEGRA_TRI_TRISTATE);
 	AKMDBG("suspended with flag=%d", open_state);
 }
@@ -770,6 +772,7 @@ static void akm8975_late_resume(struct early_suspend *handler)
 {
 	AKMFUNC("akm8975_late_resume");
 	tegra_pinmux_set_tristate(TEGRA_PINGROUP_LD2, TEGRA_TRI_NORMAL);
+	tegra_gpio_enable(34); //TEGRA_GPIO_PE2
 	mutex_lock(&state_mutex);
 	if (e_flag)
 		akm8975_power_on();
