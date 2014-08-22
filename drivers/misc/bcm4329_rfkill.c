@@ -113,6 +113,10 @@ static void set_wake_locked(int wake)
 		wake_unlock(&bt_lpm.wake_lock);
 
 	gpio_set_value(bcm4329_rfkill->gpio_wake, wake);
+	if (!wake)
+		irq_set_irq_wake(gpio_to_irq(bcm4329_rfkill->gpio_wake), 0);
+	else
+		irq_set_irq_wake(gpio_to_irq(bcm4329_rfkill->gpio_wake), 1);
 }
 
 static enum hrtimer_restart enter_lpm(struct hrtimer *timer)
@@ -130,7 +134,6 @@ void bcm_bt_lpm_exit_lpm_locked(struct uart_port *uport)
 {
 	bt_lpm.uport = uport;
 
-
 	hrtimer_try_to_cancel(&bt_lpm.enter_lpm_timer);
 
 	set_wake_locked(1);
@@ -143,8 +146,6 @@ EXPORT_SYMBOL(bcm_bt_lpm_exit_lpm_locked);
 
 void bcm_bt_rx_done_locked(struct uart_port *uport)
 {
-
-
 	if (bt_lpm.host_wake) {
 		/* Release wake in 500 ms so that higher layers can take it */
 		wake_lock_timeout(&bt_lpm.wake_lock, HZ/2);
