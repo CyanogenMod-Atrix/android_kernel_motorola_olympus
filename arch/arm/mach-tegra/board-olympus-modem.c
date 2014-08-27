@@ -394,6 +394,7 @@ static struct resource mdm6600_spi_slave_resource[] = {
 
 static struct platform_device mdm6600_spi_slave_device = {
 	.name           = "spi_slave_tegra",
+//	.name           = "spi_tegra",
 	.id             = 0,
 	.resource       = mdm6600_spi_slave_resource,
 	.num_resources  = ARRAY_SIZE(mdm6600_spi_slave_resource),
@@ -423,8 +424,8 @@ static struct spi_board_info mdm6600_spi_slave_devices[] __initdata = {
 
 static int __init olympus_setup_mdm6600_spi_ipc(void)
 {
-	tegra_clk_init_from_table(mdm6600_spi_clk_table);
-	platform_device_register(&mdm6600_spi_slave_device);
+//	tegra_clk_init_from_table(mdm6600_spi_clk_table);
+//	platform_device_register(&mdm6600_spi_slave_device);
 
 //	return spi_slave_register_board_info(mdm6600_spi_slave_devices,
 //				ARRAY_SIZE(mdm6600_spi_slave_devices));
