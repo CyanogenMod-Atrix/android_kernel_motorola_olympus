@@ -20,6 +20,7 @@
 
 #include <linux/module.h>
 #include <linux/init.h>
+#include <linux/clk.h>
 #include <linux/gpio.h>
 #include <linux/hrtimer.h>
 #include <linux/irq.h>
@@ -67,11 +68,15 @@ static struct platform_device olympus_bcm4329_rfkill_device = {
 
 void __init olympus_bt_rfkill(void)
 {
-	olympus_bcm4329_rfkill_resources[0].start =
-	olympus_bcm4329_rfkill_resources[0].end = TEGRA_GPIO_PU4;
+	clk_add_alias("bcm4329_32k_clk", olympus_bcm4329_rfkill_device.name, \
+					"blink", NULL);
 
-	tegra_gpio_enable (TEGRA_GPIO_PU4);
+	olympus_bcm4329_rfkill_resources[0].start =
+		olympus_bcm4329_rfkill_resources[0].end = TEGRA_GPIO_PU4;
 	printk("%s: registering bcm4329_rfkill device...\n", __func__);
+
+	tegra_gpio_enable(TEGRA_GPIO_PU1);
+	tegra_gpio_enable(TEGRA_GPIO_PU6);
 
 	platform_device_register(&olympus_bcm4329_rfkill_device);
 	return;
