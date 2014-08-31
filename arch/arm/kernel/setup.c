@@ -677,13 +677,14 @@ static int __init parse_tag_cmdline(const struct tag *tag)
 #ifdef CONFIG_MACH_OLYMPUS
         char *tmp_cmdline = (char *) tag->u.cmdline.cmdline;
         char *cmdline_tok = strsep(&tmp_cmdline," ");
-        const char excl1[] = "vmalloc=", excl2[] = "nvmem=", excl3[] = "mem=";
+        const char excl1[] = "vmalloc=", excl2[] = "nvmem=", excl3[] = "mem=", excl4[] = "security=";
 
         while ((cmdline_tok = strsep(&tmp_cmdline," ")) != NULL)
         {   /* only copy if not a mem related part of cmdline */
                 if ((0 != strncmp(cmdline_tok, excl1, sizeof(&excl1))) &&
                     (0 != strncmp(cmdline_tok, excl2, sizeof(&excl2))) &&
-                    (0 != strncmp(cmdline_tok, excl3, sizeof(&excl3))))
+                    (0 != strncmp(cmdline_tok, excl3, sizeof(&excl3))) &&
+		    (0 != strncmp(cmdline_tok, excl4, sizeof(&excl4))))
                 {
                         strlcat(cmdline_buffer,cmdline_tok,COMMAND_LINE_SIZE);
                         strlcat(cmdline_buffer," ",COMMAND_LINE_SIZE);
