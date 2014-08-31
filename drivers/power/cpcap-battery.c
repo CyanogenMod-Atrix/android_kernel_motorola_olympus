@@ -414,7 +414,7 @@ static int cpcap_batt_get_property(struct power_supply *psy,
 		break;
 
 	case POWER_SUPPLY_PROP_CAPACITY:
-		val->intval = sply->batt_state.capacity;
+		val->intval = sply->batt_state.batt_capacity_one;
 		break;
 
 	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
@@ -847,7 +847,7 @@ static int cpcap_batt_debug_get(void *prop, u64 *val)
 		break;
 
 	case POWER_SUPPLY_PROP_CAPACITY:
-		*val = sply->batt_state.capacity;
+		*val = sply->batt_state.batt_capacity_one;
 		break;
 
 	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
