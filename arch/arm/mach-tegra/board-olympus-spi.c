@@ -62,14 +62,14 @@ static struct tegra_spi_platform_data olympus_spi_pdata = {
 	.is_dma_based		= true,
 	.max_dma_buffer		= (16 * 1024),
 	.is_clkon_always	= false,
-	.max_rate			= 26000000,
+	.max_rate			= 104000000,
 };
 
 static struct tegra_spi_platform_data olympus_spi_cpcap_pdata = {
 	.is_dma_based		= true,
 	.max_dma_buffer		= (16 * 1024),
 	.is_clkon_always	= true,
-	.max_rate			= 8000000,
+	.max_rate			= 100000000,
 };
 
 struct spi_clk_parent spi_parent_clk[] = {
