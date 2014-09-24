@@ -701,7 +701,8 @@ static void notify_whisper_switch(struct cpcap_usb_det_data *data, enum cpcap_ac
 	if (accy == CPCAP_ACCY_CHARGER || accy == CPCAP_ACCY_WHISPER_PPD) {
 		/* Set switch for whisper PPDs and Chargers, which are like whisper SPDs */
 		switch_set_state(&data->wsdev, 1);
-		switch_set_state(&data->dsdev, 2);
+		if (accy == CPCAP_ACCY_WHISPER_PPD)
+                 switch_set_state(&data->dsdev, 2);
 
 	} else if (accy != CPCAP_ACCY_CHARGER && accy != CPCAP_ACCY_WHISPER_PPD) {
 		switch_set_state(&data->wsdev, 0);
