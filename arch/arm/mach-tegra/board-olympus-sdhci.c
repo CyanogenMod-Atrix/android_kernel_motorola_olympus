@@ -137,7 +137,7 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data2 = {
 	.wp_gpio = -1,
 	.power_gpio = -1,
 	.is_8bit = 0,
-	.max_clk_limit = 50000000,
+	.max_clk_limit = 100000000,
 };
 
 static struct tegra_sdhci_platform_data tegra_sdhci_platform_data3 = {
@@ -149,7 +149,7 @@ static struct tegra_sdhci_platform_data tegra_sdhci_platform_data3 = {
 	.wp_gpio = -1,
 	.power_gpio = -1,
 	.is_8bit = 1,
-	.max_clk_limit = 50000000,
+	.max_clk_limit = 100000000,
 };
 
 static struct platform_device tegra_sdhci_device0 = {
