@@ -84,17 +84,14 @@ u32 wl_dbg_level = WL_DBG_ERR;
  * All the chnages in world regulatory domain are to be done here.
  */
 static const struct ieee80211_regdomain brcm_regdom = {
-	.n_reg_rules = 5,
+	.n_reg_rules = 4,
 	.alpha2 =  "99",
 	.reg_rules = {
 		/* IEEE 802.11b/g, channels 1..11 */
-		REG_RULE(2412-10, 2462+10, 40, 6, 20, 0),
+		REG_RULE(2412-10, 2472+10, 40, 6, 20, 0),
 		/* IEEE 802.11b/g, channels 12..13. No HT40
 		 * channel fits here.
 		 */
-		REG_RULE(2467-10, 2472+10, 20, 6, 20,
-		NL80211_RRF_PASSIVE_SCAN |
-		NL80211_RRF_NO_IBSS),
 		/*
 		 * IEEE 802.11 channel 14 - is for JP only,
 		 * we need cfg80211 to allow it (reg_flags = 0); so that
@@ -704,7 +701,7 @@ static chanspec_t wl_cfg80211_get_shared_freq(struct wiphy *wiphy)
 
 		*(u32 *) wl->extra_buf = htod32(WL_EXTRA_BUF_MAX);
 		if ((err = wldev_ioctl(dev, WLC_GET_BSS_INFO, wl->extra_buf,
-			sizeof(WL_EXTRA_BUF_MAX), false))) {
+			WL_EXTRA_BUF_MAX, false))) {
 				WL_ERR(("Failed to get associated bss info, use temp channel \n"));
 				chspec = wf_chspec_aton(WL_P2P_TEMP_CHAN);
 		}
@@ -780,8 +777,6 @@ wl_cfg80211_add_virtual_iface(struct wiphy *wiphy, char *name,
 		WL_ERR(("name is NULL\n"));
 		return NULL;
 	}
-	if (wl->iface_cnt == IFACE_MAX_CNT)
-		return ERR_PTR(-ENOMEM);
 	if (wl->p2p_supported && (wlif_type != -1)) {
 		if (wl_get_p2p_status(wl, IF_DELETING)) {
 			/* wait till IF_DEL is complete
@@ -810,6 +805,9 @@ wl_cfg80211_add_virtual_iface(struct wiphy *wiphy, char *name,
 				return ERR_PTR(-EAGAIN);
 			}
 		}
+		if (wl->iface_cnt == IFACE_MAX_CNT)
+			return ERR_PTR(-ENOMEM);
+
 		if (wl->p2p && !wl->p2p->on && strstr(name, WL_P2P_INTERFACE_PREFIX)) {
 			p2p_on(wl) = true;
 			wl_cfgp2p_set_firm_p2p(wl);
@@ -1338,7 +1336,7 @@ static s32 wl_do_iscan(struct wl_priv *wl, struct cfg80211_scan_request *request
 	}
 	wl->iscan_kickstart = true;
 	wl_run_iscan(iscan, request, WL_SCAN_ACTION_START);
-	mod_timer(&iscan->timer, jiffies + iscan->timer_ms * HZ / 1000);
+	mod_timer(&iscan->timer, jiffies + msecs_to_jiffies(iscan->timer_ms));
 	iscan->timer_on = 1;
 
 	return err;
@@ -1561,7 +1559,7 @@ __wl_cfg80211_scan(struct wiphy *wiphy, struct net_device *ndev,
 	}
 
 	/* Arm scan timeout timer */
-	mod_timer(&wl->scan_timeout, jiffies + WL_SCAN_TIMER_INTERVAL_MS * HZ / 1000);
+	mod_timer(&wl->scan_timeout, jiffies + msecs_to_jiffies(WL_SCAN_TIMER_INTERVAL_MS));
 	iscan_req = false;
 	if (request) {		/* scan bss */
 		ssids = request->ssids;
@@ -5805,7 +5803,7 @@ static s32 wl_iscan_pending(struct wl_priv *wl)
 	s32 err = 0;
 
 	/* Reschedule the timer */
-	mod_timer(&iscan->timer, jiffies + iscan->timer_ms * HZ / 1000);
+	mod_timer(&iscan->timer, jiffies + msecs_to_jiffies(iscan->timer_ms));
 	iscan->timer_on = 1;
 
 	return err;
@@ -5821,7 +5819,7 @@ static s32 wl_iscan_inprogress(struct wl_priv *wl)
 	wl_run_iscan(iscan, NULL, WL_SCAN_ACTION_CONTINUE);
 	mutex_unlock(&wl->usr_sync);
 	/* Reschedule the timer */
-	mod_timer(&iscan->timer, jiffies + iscan->timer_ms * HZ / 1000);
+	mod_timer(&iscan->timer, jiffies + msecs_to_jiffies(iscan->timer_ms));
 	iscan->timer_on = 1;
 
 	return err;

@@ -647,7 +647,7 @@ dhd_timeout_start(dhd_timeout_t *tmo, uint usec)
 	tmo->limit = usec;
 	tmo->increment = 0;
 	tmo->elapsed = 0;
-	tmo->tick = 1000000 / HZ;
+	tmo->tick = jiffies_to_usecs(1);
 }
 
 int
@@ -1525,10 +1525,13 @@ dhd_rx_frame(dhd_pub_t *dhdp, int ifidx, void *pktbuf, int numpkt, uint8 chan)
 			wl_event_to_host_order(&event);
 			if (!tout_ctrl)
 				tout_ctrl = DHD_PACKET_TIMEOUT_MS;
+#ifdef PNO_SUPPORT
+                        if (event.event_type == WLC_E_PFN_NET_FOUND) {
+                                tout_ctrl = 7 * DHD_PACKET_TIMEOUT_MS;
+                        }
+#endif                        
 			if (event.event_type == WLC_E_BTA_HCI_EVENT) {
 				dhd_bta_doevt(dhdp, data, event.datalen);
-			} else if (event.event_type == WLC_E_PFN_NET_FOUND) {
-				tout_ctrl *= 2;
 			}
 		} else {
 			tout_rx = DHD_PACKET_TIMEOUT_MS;
@@ -1689,11 +1692,10 @@ dhd_watchdog_thread(void *data)
 				/* Reschedule the watchdog */
 				if (dhd->wd_timer_valid)
 					mod_timer(&dhd->timer,
-					jiffies + dhd_watchdog_ms * HZ / 1000);
+					jiffies + msecs_to_jiffies(dhd_watchdog_ms));
 				dhd_os_spin_unlock(&dhd->pub, flags);
 			}
 			dhd_os_sdunlock(&dhd->pub);
-			DHD_OS_WAKE_UNLOCK(&dhd->pub);
 		} else {
 			break;
 		}
@@ -1707,9 +1709,7 @@ static void dhd_watchdog(ulong data)
 	dhd_info_t *dhd = (dhd_info_t *)data;
 	unsigned long flags;
 
-	DHD_OS_WAKE_LOCK(&dhd->pub);
 	if (dhd->pub.dongle_reset) {
-		DHD_OS_WAKE_UNLOCK(&dhd->pub);
 		return;
 	}
 
@@ -1730,7 +1730,7 @@ static void dhd_watchdog(ulong data)
 
 	/* Reschedule the watchdog */
 	if (dhd->wd_timer_valid)
-		mod_timer(&dhd->timer, jiffies + dhd_watchdog_ms * HZ / 1000);
+		mod_timer(&dhd->timer, jiffies + msecs_to_jiffies(dhd_watchdog_ms));
 	dhd_os_spin_unlock(&dhd->pub, flags);
 	dhd_os_sdunlock(&dhd->pub);
 	DHD_OS_WAKE_UNLOCK(&dhd->pub);
