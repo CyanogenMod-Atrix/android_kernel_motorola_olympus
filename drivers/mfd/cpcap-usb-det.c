@@ -313,11 +313,12 @@ void cpcap_accy_set_dock_switch(struct cpcap_device *cpcap, int state, bool is_h
 				break;
 			case HD_DOCK:
 				switch_set_state(&data->edsdev, EXT_HD_DOCK);
-				switch_set_state(&data->dsdev, DESK_DOCK);
+				switch_set_state(&data->dsdev, HD_DOCK);
 				data->hall_effect_connected = is_hall_effect;
 				break;
 			case MOBILE_DOCK:
 				switch_set_state(&data->edsdev, EXT_MOBILE_DOCK);
+				switch_set_state(&data->dsdev, MOBILE_DOCK);
 				data->hall_effect_connected = is_hall_effect;
 				break;
 			default:
@@ -702,7 +703,7 @@ static void notify_whisper_switch(struct cpcap_usb_det_data *data, enum cpcap_ac
 		/* Set switch for whisper PPDs and Chargers, which are like whisper SPDs */
 		switch_set_state(&data->wsdev, 1);
 		if (accy == CPCAP_ACCY_WHISPER_PPD)
-                 switch_set_state(&data->dsdev, 2);
+                 switch_set_state(&data->dsdev, CAR_DOCK);
 
 	} else if (accy != CPCAP_ACCY_CHARGER && accy != CPCAP_ACCY_WHISPER_PPD) {
 		switch_set_state(&data->wsdev, 0);
@@ -857,6 +858,10 @@ static void detection_work(struct work_struct *work)
 
 			if (cpcap_usb_det_debug)
 				pr_info("cpcap_usb_det: WHISPER_SMART_DOCK\n");
+			if (cpcap_usb_det_debug && data->sense == SENSE_WHISPER_SMART)
+				pr_info("cpcap_usb_det: data->sense == SENSE_WHISPER_SMART\n");
+			if (cpcap_usb_det_debug && data->sense == SENSE_WHISPER_LD2)
+				pr_info("cpcap_usb_det: data->sense == SENSE_WHISPER_LD2\n");
 
 			notify_accy(data, CPCAP_ACCY_WHISPER_SMART_DOCK);
 
@@ -867,7 +872,10 @@ static void detection_work(struct work_struct *work)
 
 			data->state = WHISPER_SMART_DOCK;
 			switch_set_state(&data->sdsdev, 1);
-			switch_set_state(&data->dsdev, 1);
+			if (data->sense == SENSE_WHISPER_SMART)
+			   switch_set_state(&data->dsdev, DESK_DOCK);
+                        if (data->sense == SENSE_WHISPER_LD2)
+			    switch_set_state(&data->dsdev, HD_DOCK);
 		} else if (data->sense == SENSE_WHISPER_PPD ||
 				   data->sense == SENSE_WHISPER_PPD_NO_DP) {
 
