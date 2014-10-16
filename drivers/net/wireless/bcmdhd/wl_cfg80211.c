@@ -3124,6 +3124,8 @@ wl_cfg80211_set_power_mgmt(struct wiphy *wiphy, struct net_device *dev,
 		else
 			WL_ERR(("error (%d)\n", err));
 		return err;
+	} else {
+	 wl_cfg80211_update_power_mode(dev);
 	}
 	WL_DBG(("power save %s\n", (pm ? "enabled" : "disabled")));
 	return err;

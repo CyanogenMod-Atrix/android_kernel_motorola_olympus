@@ -91,7 +91,7 @@ enum dhd_bus_state {
 #define DHD_SCAN_ACTIVE_TIME	 40 /* ms : Embedded default Active setting from DHD Driver */
 #define DHD_SCAN_PASSIVE_TIME	130 /* ms: Embedded default Passive setting from DHD Driver */
 
-#define DHD_BEACON_TIMEOUT_NORMAL	4
+#define DHD_BEACON_TIMEOUT_NORMAL	5
 #define DHD_BEACON_TIMEOUT_HIGH		10
 
 enum dhd_bus_wake_state {
