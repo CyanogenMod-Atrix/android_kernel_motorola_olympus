@@ -383,9 +383,9 @@ static int config_unused_pins(char *pins, int num)
 static void __init tegra_olympus_init(void)
 {
 	olympus_clks_init();
-
-	//tegra_ram_console_debug_init();
-
+#ifdef CONFIG_ANDROID_RAM_CONSOLE
+	tegra_ram_console_debug_init();
+#endif
 	olympus_pinmux_init();
 
 	olympus_i2c_init();
