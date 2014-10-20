@@ -113,10 +113,6 @@ static void set_wake_locked(int wake)
 		wake_unlock(&bt_lpm.wake_lock);
 
 	gpio_set_value(bcm4329_rfkill->gpio_wake, wake);
-	if (!wake)
-		irq_set_irq_wake(gpio_to_irq(bcm4329_rfkill->gpio_wake), 0);
-	else
-		irq_set_irq_wake(gpio_to_irq(bcm4329_rfkill->gpio_wake), 1);
 }
 
 static enum hrtimer_restart enter_lpm(struct hrtimer *timer)
