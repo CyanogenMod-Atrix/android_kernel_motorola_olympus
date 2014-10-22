@@ -4450,9 +4450,20 @@ static inline bool owner_running(struct mutex *lock, struct task_struct *owner)
  */
 int mutex_spin_on_owner(struct mutex *lock, struct task_struct *owner)
 {
+	unsigned int nrun;
 	if (!sched_feat(OWNER_SPIN))
 		return 0;
 
+	nrun = this_rq()->nr_running;
+	if (nrun >= 3)
+		return 0;
+	else if (nrun == 2) {
+		long active = atomic_long_read(&calc_load_tasks);
+		int ncpu = num_online_cpus();
+		if (active > 2*ncpu) {
+			return 0;
+		}
+	}
 	rcu_read_lock();
 	while (owner_running(lock, owner)) {
 		if (need_resched())
