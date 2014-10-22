@@ -237,6 +237,8 @@ ram_console_save_old(struct ram_console_buffer *buffer, const char *bootinfo,
 		memcpy(ptr, bootinfo, bootinfo_size);
 		ptr += bootinfo_size;
 	}
+	pr_info("Clearing previous ram_console data...\n");
+	memset(buffer->data, '\0', buffer->size);
 }
 
 static int __init ram_console_init(struct ram_console_buffer *buffer,
