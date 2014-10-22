@@ -116,6 +116,13 @@ static inline int freezer_should_skip(struct task_struct *p)
 	return !!(p->flags & PF_FREEZER_SKIP);
 }
 
+static inline void freezable_schedule(void)
+{
+	freezer_do_not_count();
+	schedule();
+	freezer_count();
+}
+
 /*
  * Tell the freezer that the current task should be frozen by it
  */
