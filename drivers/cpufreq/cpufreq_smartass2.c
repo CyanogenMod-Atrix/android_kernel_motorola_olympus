@@ -356,7 +356,8 @@ static void cpufreq_idle(void)
 	struct smartass_info_s *this_smartass = &per_cpu(smartass_info, raw_smp_processor_id());
 	struct cpufreq_policy *policy = this_smartass->cur_policy;
 
-	if (!this_smartass->enable) {
+	
+	if (!this_smartass || !policy || !this_smartass->enable) {
 		pm_idle_old();
 		return;
 	}
