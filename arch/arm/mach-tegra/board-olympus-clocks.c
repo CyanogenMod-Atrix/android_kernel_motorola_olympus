@@ -25,7 +25,7 @@ static __initdata struct tegra_clk_init_table olympus_clk_init_table[] = {
 		//	{ "sbc1",		"pll_m",		26000000,	true},
 			{"sbc1",		NULL,			0,			true},
 		    {"sclk",		"pll_p_out4",	108000000,	true},
-			{"sbc2",		"pll_c",		60000000,	true},
+			{"sbc2",		NULL,		60000000,	true},
 			{"pwm",			"clk_32k",		32768,		false},
 			{"kbc",			"clk_32k",		32768,		true},
 		    {"blink",		"clk_32k",		32768,		false},
