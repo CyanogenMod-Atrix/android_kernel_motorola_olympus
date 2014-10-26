@@ -180,7 +180,7 @@ static const unsigned long spi_tegra_req_sels[] = {
 #define MAX_CHIP_SELECT		4
 #define SLINK_FIFO_DEPTH	4
 #ifdef CONFIG_MACH_OLYMPUS
-#define TRANSACTION_TIMEOUT (5 * HZ)
+#define TRANSACTION_TIMEOUT (msecs_to_jiffies(5000))
 #endif
 struct spi_tegra_data {
 	struct spi_master	*master;
@@ -226,7 +226,6 @@ struct spi_tegra_data {
 
 	bool			is_clkon_always;
 	bool			clk_state;
-	bool			is_suspended;
 
 	bool			is_hw_based_cs;
 
@@ -265,6 +264,7 @@ struct spi_tegra_data {
 	unsigned long		max_rate;
 	unsigned long		max_parent_rate;
 	int			min_div;
+	atomic_t		cnt;
 };
 
 static inline unsigned long spi_tegra_readl(struct spi_tegra_data *tspi,
@@ -787,9 +787,6 @@ static void spi_tegra_start_transfer(struct spi_device *spi,
 	command2 |= SLINK_SS_EN_CS(spi->chip_select);
 	spi_tegra_writel(tspi, command2, SLINK_COMMAND2);
 	tspi->command2_reg = command2;
-#ifdef CONFIG_MACH_OLYMPUS
-	mod_timer(&tspi->transfer_timer, jiffies + TRANSACTION_TIMEOUT);
-#endif
 	if (total_fifo_words > SPI_FIFO_DEPTH)
 		ret = spi_tegra_start_dma_based_transfer(tspi, t);
 	else
@@ -915,20 +912,19 @@ static int spi_tegra_transfer(struct spi_device *spi, struct spi_message *m)
 
 	spin_lock_irqsave(&tspi->lock, flags);
 
-	if (ACCESS_ONCE(tspi->is_suspended)) {
-		// We have the lock. Let's inform resume that it's now bogus.
-		tspi->is_suspended = 0;
-		// The write sequence will resume the controller properly later on.
-	}
-
 	m->state = spi;
 
 	was_empty = list_empty(&tspi->queue);
 	list_add_tail(&m->queue, &tspi->queue);
 
-	if (was_empty)
+	if (was_empty) {
+		atomic_set(&tspi->cnt, 1);
 		spi_tegra_start_message(spi, m);
+#ifdef CONFIG_MACH_OLYMPUS
+		mod_timer(&tspi->transfer_timer, jiffies + TRANSACTION_TIMEOUT);
+#endif
 
+	}
 	spin_unlock_irqrestore(&tspi->lock, flags);
 
 	return 0;
@@ -939,6 +935,9 @@ static void spi_tegra_curr_transfer_complete(struct spi_tegra_data *tspi,
 {
 	struct spi_message *m;
 	struct spi_device *spi;
+
+	if (list_empty_careful(&tspi->queue))
+		return;
 
 	m = list_first_entry(&tspi->queue, struct spi_message, queue);
 	if (err)
@@ -1161,12 +1160,65 @@ static irqreturn_t spi_tegra_isr_thread(int irq, void *context_data)
 	return IRQ_HANDLED;
 }
 
+void spi_tegra_complete_with_error(struct spi_tegra_data *tspi)
+{
+	/* slave transfer timed out */
+	struct spi_message *m;
+	unsigned long val;
+	unsigned long flags;
+
+	if (!atomic_sub_and_test(1, &tspi->cnt))
+		return;
+	/* any pending interrupts for *this* transfer will be skipped from now
+	   on */
+
+	spin_lock_irqsave(&tspi->lock, flags);
+
+	dev_dbg(&tspi->pdev->dev, "ioctl timeout, resetting controller\n");
+	/* disable interrupts, dma and reset the controller */
+	val = tspi->def_command2_reg;
+	val &= ~(SLINK_SS_EN_CS(~0) | SLINK_RXEN | SLINK_TXEN | SLINK_SPIE);
+	spi_tegra_writel(tspi, val, SLINK_COMMAND2);
+
+	val = 0;
+	val &= ~(SLINK_IE_TXC | SLINK_IE_RXC | SLINK_DMA_EN);
+	spi_tegra_writel(tspi, val, SLINK_DMA_CTL);
+
+	if (tspi->is_curr_dma_xfer) {
+		if (tspi->cur_direction & DATA_DIR_TX)
+			cancel_dma(tspi->tx_dma, &tspi->tx_dma_req);
+		if (tspi->cur_direction & DATA_DIR_RX)
+			cancel_dma(tspi->rx_dma, &tspi->rx_dma_req);
+	}
+
+	tegra_periph_reset_assert(tspi->clk);
+	udelay(2);
+	tegra_periph_reset_deassert(tspi->clk);
+
+	/* clear all registers */
+	val = spi_tegra_readl(tspi, SLINK_STATUS);
+	val |= (SLINK_RDY | SLINK_ERR | SLINK_RX_FLUSH | SLINK_TX_FLUSH);
+	spi_tegra_writel(tspi, val, SLINK_STATUS);
+	spi_tegra_writel(tspi, tspi->def_command2_reg, SLINK_COMMAND2);
+	spi_tegra_writel(tspi, tspi->def_command_reg, SLINK_COMMAND);
+
+	/* complete the spidev core wait */
+	if (!list_empty_careful(&tspi->queue)) {
+		/* mark the message with I/O error */
+		m = list_first_entry(&tspi->queue, struct spi_message, queue);
+		m->status = -EIO;
+		list_del(&m->queue);
+		m->complete(m->context);
+	}
+	spin_unlock_irqrestore(&tspi->lock, flags);
+}
+
 static void spi_tegra_timeout_worker(struct work_struct *work)
 {
 	struct spi_tegra_data *tspi = container_of(work, 
 			struct spi_tegra_data, transfer_timeout_work);
 
-	spi_tegra_handle_transfer_completion(tspi);
+	spi_tegra_complete_with_error(tspi);
 }
 
 static void spi_tegra_handle_timeout(unsigned long data)
@@ -1195,6 +1247,9 @@ static irqreturn_t spi_tegra_isr(int irq, void *context_data)
 	spi_tegra_clear_status(tspi);
 	spin_unlock_irqrestore(&tspi->lock, flags);
 
+	 if (!atomic_sub_and_test(1, &tspi->cnt))
+	 	return IRQ_HANDLED;
+	del_timer(&tspi->transfer_timer);
 	return IRQ_WAKE_THREAD;
 }
 
@@ -1470,56 +1525,22 @@ static int spi_tegra_suspend(struct platform_device *pdev, pm_message_t state)
 	struct spi_master	*master;
 	struct spi_tegra_data	*tspi;
 	unsigned long		flags;
-	unsigned		limit = 50;
+	int		tries = 5;
 
 	master = dev_get_drvdata(&pdev->dev);
 	tspi = spi_master_get_devdata(master);
 
 	spin_lock_irqsave(&tspi->lock, flags);
-	tspi->is_suspended = true;
-
-	WARN_ON(!list_empty(&tspi->queue));
-
-	while (!list_empty(&tspi->queue) && limit--) {
+	while ((!list_empty(&tspi->queue) || ACCESS_ONCE(tspi->clk_state)) && tries) {
+		tries--;
 		spin_unlock_irqrestore(&tspi->lock, flags);
 		msleep(20);
 		spin_lock_irqsave(&tspi->lock, flags);
 	}
-	if (!tspi->is_clkon_always) {
-		clk_disable(tspi->clk);
-		tspi->clk_state = 0;
-	}
 	spin_unlock_irqrestore(&tspi->lock, flags);
-	return 0;
+	return (tries) ? 0 : -1;
 }
 
-static int spi_tegra_resume(struct platform_device *pdev)
-{
-	struct spi_master	*master;
-	struct spi_tegra_data	*tspi;
-	unsigned long		flags;
-
-	master = dev_get_drvdata(&pdev->dev);
-	tspi = spi_master_get_devdata(master);
-
-	spin_lock_irqsave(&tspi->lock, flags);
-	if (unlikely(!ACCESS_ONCE(tspi->is_suspended))) {
-		spin_unlock_irqrestore(&tspi->lock, flags);
-		return 0; // "Someone" already did all the work for us.
-	}
-	clk_enable(tspi->clk);
-	tspi->clk_state = 1;
-	spi_tegra_writel(tspi, tspi->command_reg, SLINK_COMMAND);
-	if (!tspi->is_clkon_always) {
-		clk_disable(tspi->clk);
-		tspi->clk_state = 0;
-	}
-
-	tspi->cur_speed = 0;
-	tspi->is_suspended = false;
-	spin_unlock_irqrestore(&tspi->lock, flags);
-	return 0;
-}
 #endif
 
 MODULE_ALIAS("platform:spi_slave_tegra");
@@ -1532,7 +1553,6 @@ static struct platform_driver spi_tegra_driver = {
 	.remove =	__devexit_p(spi_tegra_remove),
 #ifdef CONFIG_PM
 	.suspend =	spi_tegra_suspend,
-	.resume  =	spi_tegra_resume,
 #endif
 };
 
