@@ -149,6 +149,13 @@
 #define SPI_FIFO_DEPTH		32
 #define SLINK_DMA_TIMEOUT (msecs_to_jiffies(1000))
 
+/* Slave controller clock should be 4 times of the interface clock.
+ * However, it is recommended to keep controller clock 8 times of interface
+ * clock to avoid some timing issue.
+ */
+#define CONTROLLER_SPEED_MULTIPLIER    8
+
+
 
 static const unsigned long spi_tegra_req_sels[] = {
 	TEGRA_DMA_REQ_SEL_SL2B1,
@@ -395,7 +402,7 @@ static unsigned spi_tegra_calculate_curr_xfer_param(
 	if (tspi->is_packed) {
 		max_len = min(remain_len, tspi->max_buf_size);
 		tspi->curr_dma_words = max_len/tspi->bytes_per_word;
-		total_fifo_words = remain_len/4;
+		total_fifo_words = (remain_len + 3)/4;
 	} else {
 		max_word = (remain_len - 1) / tspi->bytes_per_word + 1;
 		max_word = min(max_word, tspi->max_buf_size/4);
@@ -651,8 +658,8 @@ static void set_best_clk_source(struct spi_tegra_data *tspi,
 {
 	long new_rate;
 	unsigned long err_rate;
-	int rate = speed * 4;
-	unsigned int fin_err = speed * 4;
+	int rate = speed * CONTROLLER_SPEED_MULTIPLIER;
+	unsigned int fin_err = speed * CONTROLLER_SPEED_MULTIPLIER;
 	int final_index = -1;
 	int count;
 	int ret;
@@ -723,9 +730,9 @@ static void spi_tegra_start_transfer(struct spi_device *spi,
 	speed = t->speed_hz ? t->speed_hz : spi->max_speed_hz;
 	if (speed != tspi->cur_speed) {
 		set_best_clk_source(tspi, speed);
-		clk_set_rate(tspi->clk, speed * 4);
+		clk_set_rate(tspi->clk, speed * CONTROLLER_SPEED_MULTIPLIER);
 		tspi->cur_speed = speed;
-		dev_dbg(&tspi->pdev->dev, "%s: tspi->cur_speed = %d (clk_rate = %d)\n", __func__, speed, speed * 4);
+		dev_dbg(&tspi->pdev->dev, "%s: tspi->cur_speed = %d (clk_rate = %d)\n", __func__, speed, speed * CONTROLLER_SPEED_MULTIPLIER);
 	}
 
 	tspi->cur = t;
@@ -908,9 +915,10 @@ static int spi_tegra_transfer(struct spi_device *spi, struct spi_message *m)
 
 	spin_lock_irqsave(&tspi->lock, flags);
 
-	if (WARN_ON(tspi->is_suspended)) {
-		spin_unlock_irqrestore(&tspi->lock, flags);
-		return -EBUSY;
+	if (ACCESS_ONCE(tspi->is_suspended)) {
+		// We have the lock. Let's inform resume that it's now bogus.
+		tspi->is_suspended = 0;
+		// The write sequence will resume the controller properly later on.
 	}
 
 	m->state = spi;
@@ -1134,7 +1142,7 @@ static irqreturn_t spi_tegra_isr_thread(int irq, void *context_data)
 	spin_unlock_irqrestore(&tspi->lock, flags);
 
 	/* There should not be remaining transfer */
-	BUG();
+	WARN_ON(1);
 #ifdef CONFIG_MACH_OLYMPUS
 		return 0;
 #else
@@ -1173,7 +1181,9 @@ static void spi_tegra_handle_timeout(unsigned long data)
 static irqreturn_t spi_tegra_isr(int irq, void *context_data)
 {
 	struct spi_tegra_data *tspi = context_data;
+	unsigned long flags;
 
+	spin_lock_irqsave(&tspi->lock, flags);
 	tspi->status_reg = spi_tegra_readl(tspi, SLINK_STATUS);
 	if (tspi->cur_direction & DATA_DIR_TX)
 		tspi->tx_status = tspi->status_reg &
@@ -1183,7 +1193,7 @@ static irqreturn_t spi_tegra_isr(int irq, void *context_data)
 		tspi->rx_status = tspi->status_reg &
 					(SLINK_RX_OVF | SLINK_RX_UNF);
 	spi_tegra_clear_status(tspi);
-
+	spin_unlock_irqrestore(&tspi->lock, flags);
 
 	return IRQ_WAKE_THREAD;
 }
@@ -1426,7 +1436,7 @@ static int __devexit spi_tegra_remove(struct platform_device *pdev)
 	master = dev_get_drvdata(&pdev->dev);
 	tspi = spi_master_get_devdata(master);
 #ifdef CONFIG_MACH_OLYMPUS
-	del_timer(&tspi->transfer_timer);
+	del_timer_sync(&tspi->transfer_timer);
 #endif
 	if (tspi->tx_buf)
 		dma_free_coherent(&pdev->dev, tspi->dma_buf_size,
@@ -1464,6 +1474,7 @@ static int spi_tegra_suspend(struct platform_device *pdev, pm_message_t state)
 
 	master = dev_get_drvdata(&pdev->dev);
 	tspi = spi_master_get_devdata(master);
+
 	spin_lock_irqsave(&tspi->lock, flags);
 	tspi->is_suspended = true;
 
@@ -1474,12 +1485,11 @@ static int spi_tegra_suspend(struct platform_device *pdev, pm_message_t state)
 		msleep(20);
 		spin_lock_irqsave(&tspi->lock, flags);
 	}
-
-	spin_unlock_irqrestore(&tspi->lock, flags);
-	if (tspi->is_clkon_always) {
+	if (!tspi->is_clkon_always) {
 		clk_disable(tspi->clk);
 		tspi->clk_state = 0;
 	}
+	spin_unlock_irqrestore(&tspi->lock, flags);
 	return 0;
 }
 
@@ -1493,6 +1503,10 @@ static int spi_tegra_resume(struct platform_device *pdev)
 	tspi = spi_master_get_devdata(master);
 
 	spin_lock_irqsave(&tspi->lock, flags);
+	if (unlikely(!ACCESS_ONCE(tspi->is_suspended))) {
+		spin_unlock_irqrestore(&tspi->lock, flags);
+		return 0; // "Someone" already did all the work for us.
+	}
 	clk_enable(tspi->clk);
 	tspi->clk_state = 1;
 	spi_tegra_writel(tspi, tspi->command_reg, SLINK_COMMAND);
