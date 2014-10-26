@@ -226,7 +226,6 @@ struct spi_tegra_data {
 
 	bool			is_clkon_always;
 	bool			clk_state;
-	bool			is_suspended;
 
 	bool			is_hw_based_cs;
 
@@ -915,12 +914,6 @@ static int spi_tegra_transfer(struct spi_device *spi, struct spi_message *m)
 
 	spin_lock_irqsave(&tspi->lock, flags);
 
-	if (ACCESS_ONCE(tspi->is_suspended)) {
-		// We have the lock. Let's inform resume that it's now bogus.
-		tspi->is_suspended = 0;
-		// The write sequence will resume the controller properly later on.
-	}
-
 	m->state = spi;
 
 	was_empty = list_empty(&tspi->queue);
@@ -950,7 +943,7 @@ static void spi_tegra_curr_transfer_complete(struct spi_tegra_data *tspi,
 #ifdef CONFIG_MACH_OLYMPUS
 	del_timer_sync(&tspi->transfer_timer);
 	if (err)
-	printk(KERN_ALERT"spi:tegra:address m=%x m->complete=%x\n",(unsigned int)(m),(unsigned int)(m->complete));
+		printk(KERN_ALERT"spi:tegra:address m=%x m->complete=%x\n",(unsigned int)(m),(unsigned int)(m->complete));
 //	else
 #endif
 	m->complete(m->context);
@@ -1476,7 +1469,6 @@ static int spi_tegra_suspend(struct platform_device *pdev, pm_message_t state)
 	tspi = spi_master_get_devdata(master);
 
 	spin_lock_irqsave(&tspi->lock, flags);
-	tspi->is_suspended = true;
 
 	WARN_ON(!list_empty(&tspi->queue));
 
@@ -1485,41 +1477,10 @@ static int spi_tegra_suspend(struct platform_device *pdev, pm_message_t state)
 		msleep(20);
 		spin_lock_irqsave(&tspi->lock, flags);
 	}
-	if (!tspi->is_clkon_always) {
-		clk_disable(tspi->clk);
-		tspi->clk_state = 0;
-	}
 	spin_unlock_irqrestore(&tspi->lock, flags);
 	return 0;
 }
 
-static int spi_tegra_resume(struct platform_device *pdev)
-{
-	struct spi_master	*master;
-	struct spi_tegra_data	*tspi;
-	unsigned long		flags;
-
-	master = dev_get_drvdata(&pdev->dev);
-	tspi = spi_master_get_devdata(master);
-
-	spin_lock_irqsave(&tspi->lock, flags);
-	if (unlikely(!ACCESS_ONCE(tspi->is_suspended))) {
-		spin_unlock_irqrestore(&tspi->lock, flags);
-		return 0; // "Someone" already did all the work for us.
-	}
-	clk_enable(tspi->clk);
-	tspi->clk_state = 1;
-	spi_tegra_writel(tspi, tspi->command_reg, SLINK_COMMAND);
-	if (!tspi->is_clkon_always) {
-		clk_disable(tspi->clk);
-		tspi->clk_state = 0;
-	}
-
-	tspi->cur_speed = 0;
-	tspi->is_suspended = false;
-	spin_unlock_irqrestore(&tspi->lock, flags);
-	return 0;
-}
 #endif
 
 MODULE_ALIAS("platform:spi_slave_tegra");
@@ -1532,7 +1493,6 @@ static struct platform_driver spi_tegra_driver = {
 	.remove =	__devexit_p(spi_tegra_remove),
 #ifdef CONFIG_PM
 	.suspend =	spi_tegra_suspend,
-	.resume  =	spi_tegra_resume,
 #endif
 };
 
