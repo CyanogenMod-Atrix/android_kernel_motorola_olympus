@@ -36,6 +36,7 @@
 #include <linux/completion.h>
 #ifdef CONFIG_MACH_OLYMPUS
 #include <linux/timer.h>
+#include <linux/sysrq.h>
 #endif
 #include <linux/spi/spi.h>
 #include <linux/spi-tegra.h>
@@ -820,7 +821,7 @@ static int spi_tegra_setup(struct spi_device *spi)
 	unsigned long val;
 	unsigned long flags;
 
-	dev_dbg(&spi->dev, "setup %d bpw, %scpol, %scpha, %dHz\n",
+	dev_info(&spi->dev, "setup %d bpw, %scpol, %scpha, %dHz\n",
 		spi->bits_per_word,
 		spi->mode & SPI_CPOL ? "" : "~",
 		spi->mode & SPI_CPHA ? "" : "~",
@@ -950,10 +951,12 @@ static void spi_tegra_curr_transfer_complete(struct spi_tegra_data *tspi,
 #ifdef CONFIG_MACH_OLYMPUS
 	if (tspi->client_slave_done_cb) {
 		tspi->client_slave_done_cb(tspi->client_done_data);
+
 	}
 #endif
 	if (!list_empty(&tspi->queue)) {
 		m = list_first_entry(&tspi->queue, struct spi_message, queue);
+		pr_info("%s: m == %p\n", __func__, m);
 		spi = m->state;
 		spi_tegra_start_message(spi, m);
 	} else {
@@ -1028,11 +1031,12 @@ static void handle_cpu_based_xfer(void *context_data)
 	}
 
 	/* There should not be remaining transfer */
-	BUG();
+	WARN_ON(1);
 exit:
 	spin_unlock_irqrestore(&tspi->lock, flags);
 	return;
 }
+
 #ifdef CONFIG_MACH_OLYMPUS
 static int spi_tegra_handle_transfer_completion(struct spi_tegra_data *tspi)
 {
@@ -1167,6 +1171,7 @@ static void spi_tegra_handle_timeout(unsigned long data)
 	struct spi_tegra_data *tspi = (struct spi_tegra_data *)data;
 
 	dev_err(&tspi->pdev->dev, "transfer timeout\n");
+	handle_sysrq('l');
 	schedule_work(&tspi->transfer_timeout_work);
 }
 #endif
