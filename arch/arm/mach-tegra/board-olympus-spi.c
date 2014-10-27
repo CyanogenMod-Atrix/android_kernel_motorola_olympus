@@ -62,7 +62,7 @@ static struct tegra_spi_platform_data olympus_spi_pdata = {
 	.is_dma_based		= true,
 	.max_dma_buffer		= (16 * 1024),
 	.is_clkon_always	= false,
-	.max_rate			= 104000000,
+	.max_rate			= 208000000,
 };
 
 static struct tegra_spi_platform_data olympus_spi_cpcap_pdata = {
