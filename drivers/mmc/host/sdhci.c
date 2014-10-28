@@ -2845,15 +2845,11 @@ int sdhci_add_host(struct sdhci_host *host)
 	} else {
 		mmc->max_blk_size = (caps[0] & SDHCI_MAX_BLOCK_MASK) >>
 				SDHCI_MAX_BLOCK_SHIFT;
-#ifndef CONFIG_MACH_OLYMPUS
-// Tegra 2 is supposed to handle larger transfers just fine.
-
 		if (mmc->max_blk_size >= 3) {
 			printk(KERN_WARNING "%s: Invalid maximum block size, "
 				"assuming 512 bytes\n", mmc_hostname(mmc));
 			mmc->max_blk_size = 0;
 		}
-#endif		
 	}
 
 	mmc->max_blk_size = 512 << mmc->max_blk_size;
@@ -2863,10 +2859,6 @@ int sdhci_add_host(struct sdhci_host *host)
 	 */
 	mmc->max_blk_count = (host->quirks & SDHCI_QUIRK_NO_MULTIBLOCK) ? 1 : 65535;
 
-#ifdef CONFIG_MACH_OLYMPUS
-        printk(KERN_INFO "%s: mss %u mrs %u mbs %u mbc %u\n", mmc_hostname(mmc), mmc->max_seg_size, mmc->max_req_size, mmc->max_blk_size,
-            mmc->max_blk_count);
-#endif            
 	/*
 	 * Init tasklets.
 	 */
