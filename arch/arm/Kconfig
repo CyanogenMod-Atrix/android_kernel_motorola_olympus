@@ -1466,6 +1466,15 @@ config HAVE_ARM_SCU
 	help
 	  This option enables support for the ARM system coherency unit
 
+config ARM_SCU_SPECULATIVE_LINE
+	bool "Enable SCU Speculative Line Fill"
+	depends on HAVE_ARM_SCU
+	default n
+	help
+	  Enable Speculative Line Fills for SCU. May or may not improve
+	  read performance, and reports says it may hurt write performance.
+	  You should probably benchmark with this toggled.
+
 config HAVE_ARM_TWD
 	bool
 	depends on SMP
@@ -2197,6 +2206,7 @@ config NEON
 	help
 	  Say Y to include support code for NEON, the ARMv7 Advanced SIMD
 	  Extension.
+
 
 endmenu
 
