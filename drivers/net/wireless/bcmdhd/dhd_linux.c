@@ -3261,7 +3261,11 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 
 #ifdef PKT_FILTER_SUPPORT
 	/* Setup defintions for pktfilter , enable in suspend */
+#ifdef CONFIG_MACH_OLYMPUS
+        dhd->pktfilter_count = 1;
+#else        	
 	dhd->pktfilter_count = 5;
+#endif
 	/* Setup filter to allow only unicast */
 	dhd->pktfilter[0] = "100 0 0 0 0x01 0x00";
 	dhd->pktfilter[1] = NULL;
