@@ -112,6 +112,12 @@ config MACH_OLYMPUS
        help
 	 Support for Olympus development platform
 
+config MACH_OLYMPUS_HPORCH32
+	bool "Use hporch32 panel settings"
+	depends on MACH_OLYMPUS
+	help
+	  Support for hporch32 hardware.
+
 config MACH_SEABOARD
        bool "Seaboard board"
        depends on ARCH_TEGRA_2x_SOC
