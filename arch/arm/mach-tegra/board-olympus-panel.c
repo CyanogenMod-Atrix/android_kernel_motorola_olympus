@@ -33,6 +33,7 @@
 #include <linux/pwm_backlight.h>
 #include <linux/tegra_pwm_bl.h>
 #include <linux/tegra_audio.h>
+#include <linux/cpu.h>
 
 #include <asm/mach-types.h>
 #include <mach/clk.h>
@@ -131,6 +132,24 @@ static struct resource olympus_disp2_resources[] = {
 	},
 };
 
+
+#ifdef CONFIG_MACH_OLYMPUS_HPORCH32
+static struct tegra_dc_mode olympus_panel_modes_for_0x8[] = {
+	{
+		.pclk = 27000000,
+		.h_ref_to_sync = 4,
+		.v_ref_to_sync = 4,
+		.h_sync_width = 16,
+		.v_sync_width = 8,
+		.h_back_porch = 32,
+		.v_back_porch = 12,
+		.h_active = 540,
+		.v_active = 960,
+		.h_front_porch = 32,
+		.v_front_porch = 12,
+	},
+};
+#endif
 static struct tegra_dc_mode olympus_panel_modes[] = {
 	{
 		.pclk = 27000000,
@@ -564,7 +583,9 @@ static struct platform_device *olympus_gfx_devices[] __initdata = {
  * to keep the code out of the display driver, keeping it closer to upstream
  */
 struct early_suspend olympus_panel_early_suspender;
-
+#ifndef CONFIG_TEGRA_AUTO_HOTPLUG
+static bool cpu1_was_up;
+#endif
 static void olympus_panel_early_suspend(struct early_suspend *h)
 {
 	int i;
@@ -577,6 +598,15 @@ static void olympus_panel_early_suspend(struct early_suspend *h)
 #ifdef CONFIG_TEGRA_CONVSERVATIVE_GOV_ON_EARLYSUPSEND
 	cpufreq_store_default_gov();
 	cpufreq_change_gov(cpufreq_conservative_gov);
+#ifndef CONFIG_TEGRA_AUTO_HOTPLUG
+        // Kill secondary cpu while screen off, to save power.
+        if (cpu_online(1)) {
+                cpu1_was_up = true;
+                cpu_down(1);
+        } else {
+                cpu1_was_up = false;
+        }
+#endif
 #endif
 	tegra_gpio_disable(HDMI_HPD_GPIO);
 	tegra_pinmux_set_tristate(TEGRA_PINGROUP_HDINT, TEGRA_TRI_TRISTATE);
@@ -588,6 +618,11 @@ static void olympus_panel_late_resume(struct early_suspend *h)
 	int i;
 
 #ifdef CONFIG_TEGRA_CONVSERVATIVE_GOV_ON_EARLYSUPSEND
+#ifndef CONFIG_TEGRA_AUTO_HOTPLUG
+	if (cpu1_was_up) {
+	        cpu_up(1);
+	}
+#endif
 	cpufreq_restore_default_gov();
 #endif
 	//printk(KERN_INFO "%s: here...\n", __func__);
@@ -596,7 +631,7 @@ static void olympus_panel_late_resume(struct early_suspend *h)
 //	tegra2_disable_autoplug();
 	tegra_gpio_enable(HDMI_HPD_GPIO);
 	tegra_pinmux_set_tristate(TEGRA_PINGROUP_HDINT, TEGRA_TRI_NORMAL);
-
+	
 }
 #endif
 
@@ -610,10 +645,13 @@ int __init olympus_panel_init(void)
 	tegra_gpio_enable(HDMI_HPD_GPIO);
 	gpio_request(HDMI_HPD_GPIO, "hdmi_hpd");
 	gpio_direction_input(HDMI_HPD_GPIO);
-
+#ifdef CONFIG_MACH_OLYMPUS_HPORCH32
 	// Lets check if we have buggy tegra
 	if ((s_MotorolaDispInfo >> 31) & 0x01) {
+		olympus_disp1_out.modes = olympus_panel_modes_for_0x8;
+		olympus_disp1_out.n_modes = ARRAY_SIZE(olympus_panel_modes_for_0x8);
 	}
+#endif
 	if (((s_MotorolaDispInfo >> 9) & 0x07) > 1) {
 		olympus_dsi_out.dsi_init_cmd = dsi_olympus_init_cmd_es4;
 		olympus_dsi_out.n_init_cmd = ARRAY_SIZE(dsi_olympus_init_cmd_es4);

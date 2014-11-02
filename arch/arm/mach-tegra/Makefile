@@ -139,11 +139,7 @@ obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-kbc.o
 obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-memory.o
 obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-misc.o
 obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-modem.o
-ifeq ($(CONFIG_MACH_OLYMPUS_HPORCH32),y)
-obj-${CONFIG_MACH_OLYMPUS}         += board-olympus-panel_hporch32.o
-else
-obj-${CONFIG_MACH_OLYMPUS}         += board-olympus-panel.o
-endif
+obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-panel.o
 obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-pinmux.o
 obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-power.o
 obj-${CONFIG_MACH_OLYMPUS}             += board-olympus-sdhci.o
