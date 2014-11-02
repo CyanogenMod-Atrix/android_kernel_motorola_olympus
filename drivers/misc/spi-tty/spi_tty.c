@@ -318,7 +318,7 @@ static void spi_tty_write_worker(struct work_struct *work)
 
 		spin_lock_irqsave(&(spi_tty->port_lock), flags);
 	}
-
+	wake_unlock(&spi_tty->wakelock);
 	spin_unlock_irqrestore(&(spi_tty->port_lock), flags);
 	mutex_unlock(&(spi_tty->work_lock));
 	SPI_IPC_INFO("%s: done\n", __func__);
