@@ -742,7 +742,7 @@ static int fw_load(struct cpcap_uc_data *uc_data, struct device *dev)
 {
 	int err;
 	const struct ihex_binrec *rec;
-	const struct firmware *fw;
+	const struct firmware *fw = NULL;
 	unsigned short *buf;
 	int i;
 	unsigned short num_bytes;
@@ -750,11 +750,11 @@ static int fw_load(struct cpcap_uc_data *uc_data, struct device *dev)
 	unsigned char odd_bytes;
 	struct cpcap_platform_data *data;
 
-	data = uc_data->cpcap->spi->dev.platform_data;
 
 	if (!uc_data || !dev)
 		return -EINVAL;
 
+	data = uc_data->cpcap->spi->dev.platform_data;
 	if (uc_data->cpcap->vendor == CPCAP_VENDOR_ST)
 		err = request_ihex_firmware(&fw, "cpcap/firmware_0_2x.fw", dev);
 	else

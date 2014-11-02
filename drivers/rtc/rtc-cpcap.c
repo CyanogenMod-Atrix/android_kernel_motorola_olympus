@@ -394,8 +394,9 @@ static int __devinit cpcap_rtc_probe(struct platform_device *pdev)
 					   &cpcap_rtc_ops, THIS_MODULE);
 
 	if (IS_ERR(rtc->rtc_dev)) {
+		int err = PTR_ERR(rtc->rtc_dev);
 		kfree(rtc);
-		return PTR_ERR(rtc->rtc_dev);
+		return err;
 	}
 
 #ifdef CONFIG_RTC_INTF_CPCAP_SECCLKD
