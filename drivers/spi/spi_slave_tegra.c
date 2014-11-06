@@ -265,6 +265,7 @@ struct spi_tegra_data {
 	unsigned long		max_rate;
 	unsigned long		max_parent_rate;
 	int			min_div;
+  atomic_t  cnt;
 };
 
 static inline unsigned long spi_tegra_readl(struct spi_tegra_data *tspi,
@@ -787,9 +788,6 @@ static void spi_tegra_start_transfer(struct spi_device *spi,
 	command2 |= SLINK_SS_EN_CS(spi->chip_select);
 	spi_tegra_writel(tspi, command2, SLINK_COMMAND2);
 	tspi->command2_reg = command2;
-#ifdef CONFIG_MACH_OLYMPUS
-	mod_timer(&tspi->transfer_timer, jiffies + TRANSACTION_TIMEOUT);
-#endif
 	if (total_fifo_words > SPI_FIFO_DEPTH)
 		ret = spi_tegra_start_dma_based_transfer(tspi, t);
 	else
@@ -920,8 +918,11 @@ static int spi_tegra_transfer(struct spi_device *spi, struct spi_message *m)
 	was_empty = list_empty(&tspi->queue);
 	list_add_tail(&m->queue, &tspi->queue);
 
-	if (was_empty)
+	if (was_empty) {
+    atomic_set(&tspi->cnt, 1);
 		spi_tegra_start_message(spi, m);
+    mod_timer(&tspi->transfer_timer, jiffies + TRANSACTION_TIMEOUT);
+  }
 
 	spin_unlock_irqrestore(&tspi->lock, flags);
 
@@ -942,7 +943,7 @@ static void spi_tegra_curr_transfer_complete(struct spi_tegra_data *tspi,
 	m->actual_length += cur_xfer_size;
 	list_del(&m->queue);
 #ifdef CONFIG_MACH_OLYMPUS
-	del_timer_sync(&tspi->transfer_timer);
+	del_timer(&tspi->transfer_timer);
 	if (err)
 		printk(KERN_ALERT"spi:tegra:address m=%x m->complete=%x\n",(unsigned int)(m),(unsigned int)(m->complete));
 //	else
@@ -1160,7 +1161,7 @@ static irqreturn_t spi_tegra_isr_thread(int irq, void *context_data)
 
 static void spi_tegra_timeout_worker(struct work_struct *work)
 {
-	struct spi_tegra_data *tspi = container_of(work, 
+	struct spi_tegra_data *tspi = container_of(work,
 			struct spi_tegra_data, transfer_timeout_work);
 
 	spi_tegra_handle_transfer_completion(tspi);
@@ -1170,6 +1171,9 @@ static void spi_tegra_handle_timeout(unsigned long data)
 {
 	struct spi_tegra_data *tspi = (struct spi_tegra_data *)data;
 
+  /* see if we are the first one to handle the completion */
+	if (!atomic_sub_and_test(1, &tspi->cnt))
+		return;
 	dev_err(&tspi->pdev->dev, "transfer timeout\n");
 	handle_sysrq('l');
 	schedule_work(&tspi->transfer_timeout_work);
@@ -1192,7 +1196,13 @@ static irqreturn_t spi_tegra_isr(int irq, void *context_data)
 					(SLINK_RX_OVF | SLINK_RX_UNF);
 	spi_tegra_clear_status(tspi);
 	spin_unlock_irqrestore(&tspi->lock, flags);
+	/*  handle only if we are the first event for the transfer */
+	if (!atomic_sub_and_test(1, &tspi->cnt))
+		return IRQ_HANDLED;
 
+	/* we got in first for the tranfer, delete timer (delete on deleted
+	   timer is ok) */
+	del_timer(&tspi->transfer_timer);
 	return IRQ_WAKE_THREAD;
 }
 
@@ -1256,7 +1266,7 @@ static int __init spi_tegra_probe(struct platform_device *pdev)
 
 	sprintf(tspi->port_name, "tegra_spi_%d", pdev->id);
 	ret = request_threaded_irq(tspi->irq, spi_tegra_isr,
-			spi_tegra_isr_thread, IRQF_DISABLED,
+			spi_tegra_isr_thread, IRQF_ONESHOT,
 			tspi->port_name, tspi);
 	if (ret < 0) {
 		dev_err(&pdev->dev, "Failed to register ISR for IRQ %d\n",
@@ -1468,7 +1478,7 @@ static int spi_tegra_suspend(struct platform_device *pdev, pm_message_t state)
 	struct spi_master	*master;
 	struct spi_tegra_data	*tspi;
 	unsigned long		flags;
-	unsigned		limit = 50;
+	unsigned		limit = 5;
 
 	master = dev_get_drvdata(&pdev->dev);
 	tspi = spi_master_get_devdata(master);
@@ -1483,6 +1493,10 @@ static int spi_tegra_suspend(struct platform_device *pdev, pm_message_t state)
 		spin_lock_irqsave(&tspi->lock, flags);
 	}
 	spin_unlock_irqrestore(&tspi->lock, flags);
+  if (!limit) {
+    pr_warn("%s: stuck on transmit, refusing to suspend.", __func__);
+    return -EAGAIN;
+  }
 	return 0;
 }
 
