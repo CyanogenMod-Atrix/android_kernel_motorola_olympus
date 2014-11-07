@@ -1536,7 +1536,7 @@ dhd_rx_frame(dhd_pub_t *dhdp, int ifidx, void *pktbuf, int numpkt, uint8 chan)
 				dhd_bta_doevt(dhdp, data, event.datalen);
 			}
 		} else {
-			tout_rx = DHD_PACKET_TIMEOUT_MS;
+			tout_rx = DHD_PACKET_RX_TIMEOUT_MS;
 		}
 
 		ASSERT(ifidx < DHD_MAX_IFS && dhd->iflist[ifidx]);
