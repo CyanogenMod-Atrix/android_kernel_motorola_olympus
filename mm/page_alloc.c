@@ -5164,11 +5164,7 @@ static void setup_per_zone_lowmem_reserve(void)
 void setup_per_zone_wmarks(void)
 {
 	unsigned long pages_min = min_free_kbytes >> (PAGE_SHIFT - 10);
-#ifndef CONFIG_MACH_OLYMPUS	
 	unsigned long pages_low = extra_free_kbytes >> (PAGE_SHIFT - 10);
-#else
-	unsigned long pages_low = (16384 + extra_free_kbytes) >> (PAGE_SHIFT - 10);
-#endif	
 	unsigned long lowmem_pages = 0;
 	struct zone *zone;
 	unsigned long flags;
