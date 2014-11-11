@@ -356,12 +356,6 @@ enum {
 	CPCAP_IOCTL_NUM_UC_SET_TURBO_MODE,
 	CPCAP_IOCTL_NUM_UC__END,
 
-#ifdef CONFIG_RTC_INTF_CPCAP_SECCLKD
-	CPCAP_IOCTL_NUM_RTC__START,
-	CPCAP_IOCTL_NUM_RTC_COUNT,
-	CPCAP_IOCTL_NUM_RTC__END,
-#endif
-
 	CPCAP_IOCTL_NUM_ACCY__START,
 	CPCAP_IOCTL_NUM_ACCY_WHISPER,
 	CPCAP_IOCTL_NUM_ACCY__END,
@@ -376,6 +370,21 @@ enum {
 	CPCAP_IOCTL_NUM_TEST_SEC_WRITE_REG,
 	CPCAP_IOCTL_NUM_TEST_SEC__END,
 };
+
+
+#ifdef CONFIG_RTC_INTF_CPCAP_SECCLKD
+/*
+ * This was put on the above enum apparently by mistake.
+ * Make it start in 20 for compatibility with eventual broken headers.
+ * If you're porting an android set from scratch (i.e. you'll use this kernel
+ * headers to compile the rom) feel free to take off the "= 20" below.
+ */
+enum {
+	CPCAP_IOCTL_NUM_RTC__START = 20,
+	CPCAP_IOCTL_NUM_RTC_COUNT,
+	CPCAP_IOCTL_NUM_RTC__END,
+};
+#endif
 
 enum cpcap_irqs {
 	CPCAP_IRQ__START,		/* 1st supported interrupt event */

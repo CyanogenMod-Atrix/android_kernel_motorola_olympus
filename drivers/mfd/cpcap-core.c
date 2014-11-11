@@ -589,6 +589,7 @@ static long accy_ioctl(unsigned int cmd, unsigned long arg)
 	break;
 
 	default:
+		pr_info("%s: unknown ioctl %u", __func__, cmd);
 		retval = -ENOTTY;
 	break;
 	}
