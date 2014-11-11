@@ -264,28 +264,35 @@ struct spi_tegra_data {
   atomic_t  cnt;
 };
 
-static void do_set_clk_state(struct spi_device *spi, bool enabled) {
-  struct spi_tegra_data *tspi = spi_master_get_devdata(spi->master);
+static void do_set_clk_state(struct spi_tegra_data *tspi, bool enabled) {
+	pr_debug("%s: called with %s and previous reference %u", __func__,
+		enabled? "enable" : "disable",
+		tegra_is_clk_enabled(tspi->clk));
+
   if (ACCESS_ONCE(tspi->is_clkon_always)) {
     if (!ACCESS_ONCE(tspi->clk_state)) {
-      pr_warn("Entering with clocks disabled?");
-      dump_stack();
       clk_enable(tspi->clk);
       ACCESS_ONCE(tspi->clk_state) = true;
-      //smp_mb();
     }
     return;
   }
   if (enabled) {
-    if (ACCESS_ONCE(tspi->clk_state))
-      return;
+    pr_debug("enabling");
     clk_enable(tspi->clk);
-    set_mb(tspi->clk_state, true);
+    ACCESS_ONCE(tspi->clk_state) = true;
+#if 0    
+    /* 
+     * If reference count is 1, we just enabled the clock.
+     * Give it some time to settle.
+     */
+    if (tegra_is_clk_enabled(tspi->clk) == 1) {
+			udelay(1); 
+    }
+#endif
   } else {
-    if (!ACCESS_ONCE(tspi->clk_state))
-      return;
+    pr_debug("disabling");
     clk_disable(tspi->clk);
-    set_mb(tspi->clk_state, false);
+    ACCESS_ONCE(tspi->clk_state) = false;
   }
   smp_mb();
 }
@@ -768,7 +775,7 @@ static void spi_tegra_start_transfer(struct spi_device *spi,
 	total_fifo_words = spi_tegra_calculate_curr_xfer_param(spi, tspi, t);
 
 	command2 = tspi->def_command2_reg;
-  do_set_clk_state(spi, true);
+  do_set_clk_state(tspi, true);
 	spi_tegra_clear_status(tspi);
 
 	command = tspi->def_command_reg;
@@ -871,9 +878,9 @@ static int spi_tegra_setup(struct spi_device *spi)
 		val &= ~cs_bit;
 	tspi->def_command_reg = val;
 
-  do_set_clk_state(spi, true);
+  do_set_clk_state(tspi, true);
 	spi_tegra_writel(tspi, tspi->def_command_reg, SLINK_COMMAND);
-  do_set_clk_state(spi, false);
+  do_set_clk_state(tspi, false);
 
 	spin_unlock_irqrestore(&tspi->lock, flags);
 	return 0;
@@ -889,11 +896,12 @@ static int spi_tegra_transfer(struct spi_device *spi, struct spi_message *m)
 	u8 bits_per_word;
 	int fifo_word;
 
-	/* Support only one transfer per message */
+	/* Support only one transfer per message. Also test for !empty */
 	if (!list_is_singular(&m->transfers))
 		return -EINVAL;
 
-	if (list_empty(&m->transfers) || !m->complete)
+	/* No wait queue on the other end. Not good. */
+	if (!m->complete)
 		return -EINVAL;
 
 	t = list_first_entry(&m->transfers, struct spi_transfer, transfer_list);
@@ -974,7 +982,7 @@ static void spi_tegra_curr_transfer_complete(struct spi_tegra_data *tspi,
 				/* Provide delay to stablize the signal
 				   state */
 				udelay(10);
-				do_set_clk_state(spi, false);
+				do_set_clk_state(tspi, false);
 		}
 	}
 }
@@ -1190,7 +1198,7 @@ static void spi_tegra_handle_timeout(unsigned long data)
 
 	}
 #endif
-
+	do_set_clk_state(tspi, false);
 	spin_unlock_irqrestore(&tspi->lock, flags);
 }
 
@@ -1398,17 +1406,10 @@ static int __init spi_tegra_probe(struct platform_device *pdev)
 	tspi->def_command2_reg = SLINK_CS_ACTIVE_BETWEEN;
 
 skip_dma_alloc:
-	clk_enable(tspi->clk);
-	tspi->clk_state = 1;
+	do_set_clk_state(tspi, true);
 	spi_tegra_writel(tspi, tspi->def_command2_reg, SLINK_COMMAND2);
 	ret = spi_register_master(master);
-	if (!tspi->is_clkon_always) {
-		if (tspi->clk_state) {
-			clk_disable(tspi->clk);
-			tspi->clk_state = 0;
-		}
-	}
-
+	do_set_clk_state(tspi, false);
 	if (ret < 0) {
 		dev_err(&pdev->dev, "can not register to master err %d\n", ret);
 		goto fail_master_register;
@@ -1488,28 +1489,29 @@ static int spi_tegra_suspend(struct platform_device *pdev, pm_message_t state)
 	struct spi_tegra_data	*tspi;
 	unsigned long		flags;
 	unsigned		limit = 5;
+	int ret = -EAGAIN;
 
 	master = dev_get_drvdata(&pdev->dev);
 	tspi = spi_master_get_devdata(master);
 
 	spin_lock_irqsave(&tspi->lock, flags);
-
 	while (!list_empty(&tspi->queue) && limit--) {
 		spin_unlock_irqrestore(&tspi->lock, flags);
-		msleep(20);
+		msleep(10);
 		spin_lock_irqsave(&tspi->lock, flags);
 	}
-	spin_unlock_irqrestore(&tspi->lock, flags);
   if (!limit) {
-    pr_warn("%s: stuck on transmit, refusing to suspend.", __func__);
-    return -EAGAIN;
+    pr_warn("%s: stuck on xfer, refusing to suspend.", __func__);
   } else if (ACCESS_ONCE(tspi->clk_state) && !ACCESS_ONCE(tspi->is_clkon_always)) {
-	  pr_warn("%s: Clock still running, refusing to suspend.", __func__);
-	  return -EAGAIN;
+	  // This shouldn't happen.
+	  pr_warn("%s: Clock still running.", __func__);
+	  ret = 0; // Let's assume it's safe anyway.
   } else {
-    pr_info("%s: leaving", __func__);
+	  ret = 0; // Nothing prevents us from suspending now.
   }
-	return 0;
+
+	spin_unlock_irqrestore(&tspi->lock, flags);
+	return ret;
 }
 
 #endif
