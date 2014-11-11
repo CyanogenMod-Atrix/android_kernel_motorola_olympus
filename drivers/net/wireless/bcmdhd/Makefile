@@ -9,6 +9,7 @@ DHDCFLAGS = -Wall -Wstrict-prototypes -Dlinux -DBCMDRIVER                     \
 	-DKEEP_ALIVE -DPKT_FILTER_SUPPORT     \
 	-DEMBEDDED_PLATFORM           \
 	-DSET_RANDOM_MAC_SOFTAP -DWL_CFG80211_STA_EVENT                       \
+	-DWL_FORCE_ENABLE_5GHZ \
 	-Idrivers/net/wireless/bcmdhd -Idrivers/net/wireless/bcmdhd/include
 
 ifeq ($(CONFIG_BCMDHD_WIFI_CONTROL_FUNC),y)
