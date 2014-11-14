@@ -24,6 +24,7 @@
 #include <linux/delay.h>
 #include <linux/init.h>
 #include <linux/sched.h>
+#include <linux/slab.h>
 
 #include <linux/atomic.h>
 #include <asm/cacheflush.h>
@@ -473,6 +474,37 @@ do_cache_op(unsigned long start, unsigned long end, int flags)
 	up_read(&mm->mmap_sem);
 }
 
+static inline int
+do_cache_op_iov(const struct iovec __user *uiov, unsigned long cnt, int flags)
+{
+	int i, ret = 0;
+	unsigned long len = cnt * sizeof(struct iovec);
+	struct iovec *iov = kmalloc(len, GFP_KERNEL);
+
+	if (iov == NULL) {
+		ret = -ENOMEM;
+		goto out;
+	}
+
+	if (copy_from_user(iov, uiov, len)) {
+		ret = -EFAULT;
+		goto out_free;
+	}
+
+	for (i = 0; i < cnt; ++i) {
+		unsigned long start = (unsigned long __force)iov[i].iov_base;
+		unsigned long end = start + iov[i].iov_len;
+		ret = do_cache_op(start, end, flags);
+		if (ret)
+			break;
+	}
+
+out_free:
+	kfree(iov);
+out:
+	return ret;
+}
+
 /*
  * Handle all unrecognised system calls.
  *  0x9f0000 - 0x9fffff are some more esoteric system calls
@@ -518,6 +550,10 @@ asmlinkage int arm_syscall(int no, struct pt_regs *regs)
 	case NR(cacheflush):
 		do_cache_op(regs->ARM_r0, regs->ARM_r1, regs->ARM_r2);
 		return 0;
+
+	case NR(cacheflush_iov):
+		return do_cache_op_iov((const struct iovec __user *)regs->ARM_r0,
+					regs->ARM_r1, regs->ARM_r2);
 
 	case NR(usr26):
 		if (!(elf_hwcap & HWCAP_26BIT))
