@@ -1030,8 +1030,8 @@ void vm_unmap_aliases(void)
 				unsigned long s, e;
 
 				j = find_last_bit(vb->dirty_map,
-+							VMAP_BBMAP_BITS);
-+				j = j + 1; /* need exclusive index */
+							VMAP_BBMAP_BITS);
+				j = j + 1; /* need exclusive index */
 
 				s = vb->va->va_start + (i << PAGE_SHIFT);
 				e = vb->va->va_start + (j << PAGE_SHIFT);
@@ -1966,7 +1966,7 @@ long vread(char *buf, char *addr, unsigned long count)
 	read_lock(&vmlist_lock);
 	for (tmp = vmlist; count && tmp; tmp = tmp->next) {
 		vaddr = (char *) tmp->addr;
-		if (addr >= vaddr + get_vm_area_size(tmp)
+		if (addr >= vaddr + get_vm_area_size(tmp))
 			continue;
 		while (addr < vaddr) {
 			if (count == 0)

@@ -450,12 +450,13 @@ static int bad_syscall(int n, struct pt_regs *regs)
 	return regs->ARM_r0;
 }
 
-static inline void
+static inline int
 do_cache_op(unsigned long start, unsigned long end, int flags)
 {
 	if (end < start || flags)
-		return;
-	return flush_cache_user_range(start, end);
+		return -EINVAL;
+	flush_cache_user_range(start, end);
+	return 0;
 }
 
 static inline int
