@@ -1796,7 +1796,7 @@ config LEDS_CPU
 
 config ALIGNMENT_TRAP
 	bool
-	depends on CPU_CP15_MMU
+	depends on CPU_CP15_MMU && !HAVE_EFFICIENT_UNALIGNED_ACCESS
 	default y if !ARCH_EBSA110
 	select HAVE_PROC_CPU if PROC_FS
 	help
