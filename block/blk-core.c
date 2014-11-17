@@ -2692,6 +2692,9 @@ EXPORT_SYMBOL(kblockd_schedule_delayed_work);
 
 void blk_start_plug(struct blk_plug *plug)
 {
+#ifdef CONFIG_ANDROID_NO_BLK_PLUG
+	(void)plug;
+#else
 	struct task_struct *tsk = current;
 
 	plug->magic = PLUG_MAGIC;
@@ -2710,6 +2713,7 @@ void blk_start_plug(struct blk_plug *plug)
 		 */
 		tsk->plug = plug;
 	}
+#endif
 }
 EXPORT_SYMBOL(blk_start_plug);
 
@@ -2831,10 +2835,14 @@ void blk_flush_plug_list(struct blk_plug *plug, bool from_schedule)
 
 void blk_finish_plug(struct blk_plug *plug)
 {
+#ifdef CONFIG_ANDROID_NO_BLK_PLUG
+	(void)plug;
+#else
 	blk_flush_plug_list(plug, false);
 
 	if (plug == current->plug)
 		current->plug = NULL;
+#endif
 }
 EXPORT_SYMBOL(blk_finish_plug);
 
