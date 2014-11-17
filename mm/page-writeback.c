@@ -83,7 +83,7 @@ unsigned long dirty_background_bytes;
  * free highmem will not be subtracted from the total free memory
  * for calculating free ratios if vm_highmem_is_dirtyable is true
  */
-int vm_highmem_is_dirtyable;
+int vm_highmem_is_dirtyable = 1;
 
 /*
  * The generator of dirty data starts writeback at this percentage
@@ -219,7 +219,14 @@ int dirty_bytes_handler(struct ctl_table *table, int write,
 	ret = proc_doulongvec_minmax(table, write, buffer, lenp, ppos);
 	if (ret == 0 && write && vm_dirty_bytes != old_bytes) {
 		update_completion_period();
-		vm_dirty_ratio = 0;
+		/*
+		 * It seemed safer to disallow vm_dirty_bytes becoming zero as a side effect
+		 *  of setting vm_dirty_bytes to zero, and to report the offender :-)
+		 */
+		if (vm_dirty_bytes)
+			vm_dirty_ratio = 0;
+                else
+		        dump_stack(); // Let's see who is messing this :-)
 	}
 	return ret;
 }
