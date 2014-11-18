@@ -595,3 +595,11 @@ config MMC_USHC
 
 	  Note: These controllers only support SDIO cards and do not
 	  support MMC or SD memory cards.
+
+config MMC_ALLOW_HUGE_BLOCK
+	bool "Allow huge MMC block lengths"
+	default y
+	help
+	  Allow MMC host drivers to select block sizes over 512 bytes. May
+	  increase performance, or trigger bugs. Choose wisely.
+
