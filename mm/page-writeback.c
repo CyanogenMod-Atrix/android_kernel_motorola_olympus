@@ -202,6 +202,10 @@ int dirty_ratio_handler(struct ctl_table *table, int write,
 
 	ret = proc_dointvec_minmax(table, write, buffer, lenp, ppos);
 	if (ret == 0 && write && vm_dirty_ratio != old_ratio) {
+#ifdef CONFIG_ANDROID // cheat against vold setting caches to zero.
+		if (!vm_dirty_ratio)
+		        vm_dirty_ratio = old_ratio;
+#endif                
 		update_completion_period();
 		vm_dirty_bytes = 0;
 	}
