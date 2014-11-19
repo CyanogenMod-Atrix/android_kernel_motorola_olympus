@@ -83,7 +83,7 @@ unsigned long dirty_background_bytes;
  * free highmem will not be subtracted from the total free memory
  * for calculating free ratios if vm_highmem_is_dirtyable is true
  */
-int vm_highmem_is_dirtyable = 1;
+int vm_highmem_is_dirtyable = 0;
 
 /*
  * The generator of dirty data starts writeback at this percentage
