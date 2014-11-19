@@ -277,7 +277,7 @@ static struct fsg_lun *fsg_lun_from_dev(struct device *dev)
 
 /* Number of buffers we will use.  2 is enough for double-buffering */
 #ifdef CONFIG_MACH_OLYMPUS
-#define FSG_NUM_BUFFERS	3
+#define FSG_NUM_BUFFERS	4
 #else
 #define FSG_NUM_BUFFERS	2
 #endif
