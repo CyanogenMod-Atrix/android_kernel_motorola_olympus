@@ -1283,7 +1283,7 @@ static void binder_send_failed_reply(struct binder_transaction *t,
 					"already\n", target_thread->proc->pid,
 					target_thread->pid,
 					target_thread->return_error);
-                                kfree(t);
+                               // kfree(t);
 			}
 			return;
 		} else {
@@ -2531,24 +2531,33 @@ static void binder_release_work(struct list_head *list)
 			if (t->buffer->target_node && !(t->flags & TF_ONE_WAY)) {
 				binder_send_failed_reply(t, BR_DEAD_REPLY);
                         } else {
-                            kfree(t);
+				binder_debug(BINDER_DEBUG_DEAD_TRANSACTION,
+					"binder: undelivered transaction %d\n",
+					t->debug_id);
+				t->buffer->transaction = NULL;
+				kfree(t);
+				binder_stats_deleted(BINDER_STAT_TRANSACTION);
                         }
 		} break;
 		case BINDER_WORK_TRANSACTION_COMPLETE: {
+			binder_debug(BINDER_DEBUG_DEAD_TRANSACTION,
+			"binder: undelivered TRANSACTION_COMPLETE\n");
 			kfree(w);
 			binder_stats_deleted(BINDER_STAT_TRANSACTION_COMPLETE);
 		} break;
 		case BINDER_WORK_DEAD_BINDER_AND_CLEAR:
 		case BINDER_WORK_CLEAR_DEATH_NOTIFICATION: {
-		    struct binder_ref_death *death;
-		    death = container_of(w, struct binder_ref_death, work);
-		    binder_debug(BINDER_DEBUG_DEAD_TRANSACTION,
-		    	"binder: undelivered death notification, %p\n", death->cookie);
-                    kfree(death);
+			struct binder_ref_death *death;
+			death = container_of(w, struct binder_ref_death, work);
+			binder_debug(BINDER_DEBUG_DEAD_TRANSACTION,
+				"binder: undelivered death notification, %p\n", death->cookie);
+			kfree(death);
+			binder_stats_deleted(BINDER_STAT_DEATH);
                 }
                 break;
 		default:
-		    pr_err("binder: unexpected work type, %d, not freed\n", w->type);
+			pr_err("binder: unexpected work type, %d, not freed\n",
+				w->type);
 			break;
 		}
 	}
@@ -2802,7 +2811,6 @@ static void binder_vma_open(struct vm_area_struct *vma)
 		     proc->pid, vma->vm_start, vma->vm_end,
 		     (vma->vm_end - vma->vm_start) / SZ_1K, vma->vm_flags,
 		     (unsigned long)pgprot_val(vma->vm_page_prot));
-	dump_stack();
 }
 
 static void binder_vma_close(struct vm_area_struct *vma)
