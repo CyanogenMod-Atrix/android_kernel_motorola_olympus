@@ -807,7 +807,7 @@ next_elt:
 	 * ARP entry timeouts range from 1/2 base_reachable_time to 3/2
 	 * base_reachable_time.
 	 */
-	schedule_delayed_work(&tbl->gc_work,
+	queue_delayed_work(system_power_efficient_wq, &tbl->gc_work,
 			      tbl->parms.base_reachable_time >> 1);
 	write_unlock_bh(&tbl->lock);
 }
