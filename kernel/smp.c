@@ -152,7 +152,7 @@ void generic_exec_single(int cpu, struct call_single_data *data, int wait)
 	 * locking and barrier primitives. Generic code isn't really
 	 * equipped to do the right thing...
 	 */
-	if (ipi)
+	if (ipi || wait)
 		arch_send_call_function_single_ipi(cpu);
 
 	if (wait)
