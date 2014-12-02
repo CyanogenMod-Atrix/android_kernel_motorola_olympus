@@ -583,9 +583,6 @@ static struct platform_device *olympus_gfx_devices[] __initdata = {
  * to keep the code out of the display driver, keeping it closer to upstream
  */
 struct early_suspend olympus_panel_early_suspender;
-#ifndef CONFIG_TEGRA_AUTO_HOTPLUG
-static bool cpu1_was_up;
-#endif
 static void olympus_panel_early_suspend(struct early_suspend *h)
 {
 	int i;
@@ -599,15 +596,6 @@ static void olympus_panel_early_suspend(struct early_suspend *h)
 	cpufreq_store_default_gov();
 	cpufreq_change_gov(cpufreq_conservative_gov);
 #endif
-#ifndef CONFIG_TEGRA_AUTO_HOTPLUG
-        // Kill secondary cpu while screen off, to save power.
-        if (cpu_online(1)) {
-                cpu1_was_up = true;
-                cpu_down(1);
-        } else {
-                cpu1_was_up = false;
-        }
-#endif
 	tegra_gpio_disable(HDMI_HPD_GPIO);
 	tegra_pinmux_set_tristate(TEGRA_PINGROUP_HDINT, TEGRA_TRI_TRISTATE);
 
@@ -617,11 +605,6 @@ static void olympus_panel_late_resume(struct early_suspend *h)
 {
 	int i;
 
-#ifndef CONFIG_TEGRA_AUTO_HOTPLUG
-	if (cpu1_was_up) {
-	        cpu_up(1);
-	}
-#endif
 #ifdef CONFIG_TEGRA_CONVSERVATIVE_GOV_ON_EARLYSUPSEND
 	cpufreq_restore_default_gov();
 #endif
