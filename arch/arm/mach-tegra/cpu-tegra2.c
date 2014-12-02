@@ -138,11 +138,11 @@ static void tegra2_auto_hotplug_work_func(struct work_struct *work)
 	if (good_time) {
 		pr_debug("%s good time", __func__);
 		if (up) {
-			//cpu_up(1);
+			cpu_up(1);
 			last_change_time_hi = now;
 			last_change_time_lo = now;
 		} else {
-			//cpu_down(1);
+			cpu_down(1);
 			last_change_time_hi = now;
 			last_change_time_lo = now;
 		}
