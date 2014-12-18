@@ -154,7 +154,7 @@
  * However, it is recommended to keep controller clock 8 times of interface
  * clock to avoid some timing issue.
  */
-#define CONTROLLER_SPEED_MULTIPLIER    8
+#define CONTROLLER_SPEED_MULTIPLIER    5
 
 
 
@@ -280,13 +280,13 @@ static void do_set_clk_state(struct spi_tegra_data *tspi, bool enabled) {
     pr_debug("enabling");
     clk_enable(tspi->clk);
     ACCESS_ONCE(tspi->clk_state) = true;
-#if 0    
-    /* 
+#if 0
+    /*
      * If reference count is 1, we just enabled the clock.
      * Give it some time to settle.
      */
     if (tegra_is_clk_enabled(tspi->clk) == 1) {
-			udelay(1); 
+			udelay(1);
     }
 #endif
   } else {
@@ -294,6 +294,7 @@ static void do_set_clk_state(struct spi_tegra_data *tspi, bool enabled) {
     clk_disable(tspi->clk);
     ACCESS_ONCE(tspi->clk_state) = false;
   }
+  udelay(10); // give it some time to settle.
   smp_mb();
 }
 
@@ -947,6 +948,40 @@ static int spi_tegra_transfer(struct spi_device *spi, struct spi_message *m)
 	return 0;
 }
 
+static void spi_tegra_error_handle(struct spi_tegra_data *tspi)
+{
+	unsigned long val;
+	dev_info(&tspi->pdev->dev, "Transfer error, resetting controller\n");
+
+	/* disable interrupts, dma and reset the controller */
+	val = tspi->def_command2_reg;
+	val &= ~(SLINK_SS_EN_CS(~0) | SLINK_RXEN | SLINK_TXEN | SLINK_SPIE);
+	spi_tegra_writel(tspi, val, SLINK_COMMAND2);
+
+	val = 0;
+	val &= ~(SLINK_IE_TXC | SLINK_IE_RXC | SLINK_DMA_EN);
+	spi_tegra_writel(tspi, val, SLINK_DMA_CTL);
+
+	if (tspi->is_curr_dma_xfer) {
+		if (tspi->cur_direction & DATA_DIR_TX)
+			cancel_dma(tspi->tx_dma, &tspi->tx_dma_req);
+		if (tspi->cur_direction & DATA_DIR_RX)
+			cancel_dma(tspi->rx_dma, &tspi->rx_dma_req);
+	}
+
+	tegra_periph_reset_assert(tspi->clk);
+	udelay(2);
+	tegra_periph_reset_deassert(tspi->clk);
+
+	/* clear all registers */
+	val = spi_tegra_readl(tspi, SLINK_STATUS);
+	val |= (SLINK_RDY | SLINK_ERR | SLINK_RX_FLUSH | SLINK_TX_FLUSH);
+	spi_tegra_writel(tspi, val, SLINK_STATUS);
+	spi_tegra_writel(tspi, tspi->def_command2_reg, SLINK_COMMAND2);
+	spi_tegra_writel(tspi, tspi->def_command_reg, SLINK_COMMAND);
+
+}
+
 static void spi_tegra_curr_transfer_complete(struct spi_tegra_data *tspi,
 	unsigned err, unsigned cur_xfer_size)
 {
@@ -978,13 +1013,8 @@ static void spi_tegra_curr_transfer_complete(struct spi_tegra_data *tspi,
 	} else {
 		spi_tegra_writel(tspi, tspi->def_command_reg, SLINK_COMMAND);
 		spi_tegra_writel(tspi, tspi->def_command2_reg, SLINK_COMMAND2);
-		if (!tspi->is_clkon_always) {
-				/* Provide delay to stablize the signal
-				   state */
-				udelay(10);
-				do_set_clk_state(tspi, false);
+		do_set_clk_state(tspi, false);
 		}
-	}
 }
 
 static void tegra_spi_tx_dma_complete(struct tegra_dma_req *req)
@@ -1010,12 +1040,10 @@ static void handle_cpu_based_xfer(void *context_data)
 				(tspi->status_reg & SLINK_BSY)) {
 		dev_err(&tspi->pdev->dev, "%s ERROR bit set 0x%x\n",
 					 __func__, tspi->status_reg);
-		tegra_periph_reset_assert(tspi->clk);
-		udelay(2);
-		tegra_periph_reset_deassert(tspi->clk);
 		WARN_ON(1);
+		spi_tegra_error_handle(tspi);
 		spi_tegra_curr_transfer_complete(tspi,
-				tspi->tx_status ||  tspi->rx_status, t->len);
+				1, t->len);
 		goto exit;
 	}
 
@@ -1100,10 +1128,8 @@ static irqreturn_t spi_tegra_isr_thread(int irq, void *context_data)
 	if (err) {
 		dev_err(&tspi->pdev->dev, "%s ERROR bit set 0x%x\n",
 					 __func__, tspi->status_reg);
-		tegra_periph_reset_assert(tspi->clk);
-		udelay(2);
-		tegra_periph_reset_deassert(tspi->clk);
 		WARN_ON(1);
+		spi_tegra_error_handle(tspi);
 		spi_tegra_curr_transfer_complete(tspi, err, t->len);
 		spin_unlock_irqrestore(&tspi->lock, flags);
 		return IRQ_HANDLED;
@@ -1139,7 +1165,6 @@ static void spi_tegra_handle_timeout(unsigned long data)
 	struct spi_tegra_data *tspi = (struct spi_tegra_data *)data;
 	/* slave transfer timed out */
 	struct spi_message *m;
-	unsigned long val;
 	unsigned long flags;
 
 	/* see if we are the first one to handle the completion */
@@ -1151,36 +1176,9 @@ static void spi_tegra_handle_timeout(unsigned long data)
 
 	spin_lock_irqsave(&tspi->lock, flags);
 
-	dev_info(&tspi->pdev->dev, "Transfer timeout, resetting controller\n");
-	/* disable interrupts, dma and reset the controller */
-	val = tspi->def_command2_reg;
-	val &= ~(SLINK_SS_EN_CS(~0) | SLINK_RXEN | SLINK_TXEN | SLINK_SPIE);
-	spi_tegra_writel(tspi, val, SLINK_COMMAND2);
+	dev_info(&tspi->pdev->dev, "Transfer timeout\n");
 
-	val = 0;
-	val &= ~(SLINK_IE_TXC | SLINK_IE_RXC | SLINK_DMA_EN);
-	spi_tegra_writel(tspi, val, SLINK_DMA_CTL);
-
-	if (tspi->is_curr_dma_xfer) {
-		if (tspi->cur_direction & DATA_DIR_TX)
-			cancel_dma(tspi->tx_dma, &tspi->tx_dma_req);
-		if (tspi->cur_direction & DATA_DIR_RX)
-			cancel_dma(tspi->rx_dma, &tspi->rx_dma_req);
-	}
-
-	tegra_periph_reset_assert(tspi->clk);
-	udelay(2);
-	tegra_periph_reset_deassert(tspi->clk);
-
-	/* clear all registers */
-	val = spi_tegra_readl(tspi, SLINK_STATUS);
-	val |= (SLINK_RDY | SLINK_ERR | SLINK_RX_FLUSH | SLINK_TX_FLUSH);
-	spi_tegra_writel(tspi, val, SLINK_STATUS);
-	spi_tegra_writel(tspi, tspi->def_command2_reg, SLINK_COMMAND2);
-	spi_tegra_writel(tspi, tspi->def_command_reg, SLINK_COMMAND);
-
-
-//  spi_tegra_curr_transfer_complete(tspi, 1, tspi->cur->len);
+	spi_tegra_error_handle(tspi);
 #if 1
 	/* complete the spidev core wait */
 	if (!list_empty_careful(&tspi->queue)) {
