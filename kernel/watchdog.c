@@ -579,7 +579,7 @@ static struct notifier_block __cpuinitdata cpu_nfb = {
 
 void __init lockup_detector_init(void)
 {
-	void *cpu = (void *)(long)smp_processor_id();
+	void *cpu = (void *)(long)raw_smp_processor_id();
 	int err;
 
 	err = cpu_callback(&cpu_nfb, CPU_UP_PREPARE, cpu);
