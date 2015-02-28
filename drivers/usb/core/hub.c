@@ -324,7 +324,7 @@ static void led_work (struct work_struct *work)
 		changed++;
 	}
 	if (changed)
-		schedule_delayed_work(&hub->leds, LED_CYCLE_PERIOD);
+		queue_delayed_work(system_power_efficient_wq, &hub->leds, LED_CYCLE_PERIOD);
 }
 
 /* use a short timeout for hub/port status fetches */
@@ -725,7 +725,7 @@ static void hub_activate(struct usb_hub *hub, enum hub_activation_type type)
 		if (type == HUB_INIT) {
 			delay = hub_power_on(hub, false);
 			PREPARE_DELAYED_WORK(&hub->init_work, hub_init_func2);
-			schedule_delayed_work(&hub->init_work,
+			queue_delayed_work(system_power_efficient_wq, &hub->init_work,
 					msecs_to_jiffies(delay));
 
 			/* Suppress autosuspend until init is done */
@@ -869,7 +869,7 @@ static void hub_activate(struct usb_hub *hub, enum hub_activation_type type)
 		/* Don't do a long sleep inside a workqueue routine */
 		if (type == HUB_INIT2) {
 			PREPARE_DELAYED_WORK(&hub->init_work, hub_init_func3);
-			schedule_delayed_work(&hub->init_work,
+			queue_delayed_work(system_power_efficient_wq, &hub->init_work,
 					msecs_to_jiffies(delay));
 			return;		/* Continues at init3: below */
 		} else {
@@ -883,7 +883,7 @@ static void hub_activate(struct usb_hub *hub, enum hub_activation_type type)
 	if (status < 0)
 		dev_err(hub->intfdev, "activate --> %d\n", status);
 	if (hub->has_indicators && blinkenlights)
-		schedule_delayed_work(&hub->leds, LED_CYCLE_PERIOD);
+		queue_delayed_work(system_power_efficient_wq, &hub->leds, LED_CYCLE_PERIOD);
 
 	/* Scan all ports that need attention */
 	kick_khubd(hub);
@@ -1640,13 +1640,13 @@ void usb_disconnect(struct usb_device **pdev)
 {
 	struct usb_device	*udev = *pdev;
 	int			i;
-	struct usb_hcd		*hcd = bus_to_hcd(udev->bus);
+	struct usb_hcd		*hcd;
 
 	if (!udev) {
 		pr_debug ("%s nodev\n", __func__);
 		return;
 	}
-
+	hcd = bus_to_hcd(udev->bus);
 	/* mark the device as inactive, so any further urb submissions for
 	 * this device (and any of its children) will fail immediately.
 	 * this quiesces everything except pending urbs.
@@ -3084,7 +3084,7 @@ check_highspeed (struct usb_hub *hub, struct usb_device *udev, int port1)
 		/* hub LEDs are probably harder to miss than syslog */
 		if (hub->has_indicators) {
 			hub->indicator[port1-1] = INDICATOR_GREEN_BLINK;
-			schedule_delayed_work (&hub->leds, 0);
+			queue_delayed_work(system_power_efficient_wq, &hub->leds, 0);
 		}
 	}
 	kfree(qual);
@@ -3297,7 +3297,7 @@ static void hub_port_connect_change(struct usb_hub *hub, int port1,
 				if (hub->has_indicators) {
 					hub->indicator[port1-1] =
 						INDICATOR_AMBER_BLINK;
-					schedule_delayed_work (&hub->leds, 0);
+					queue_delayed_work(system_power_efficient_wq, &hub->leds, 0);
 				}
 				status = -ENOTCONN;	/* Don't retry */
 				goto loop_disable;

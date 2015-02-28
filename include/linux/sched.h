@@ -135,6 +135,7 @@ extern void get_avenrun(unsigned long *loads, unsigned long offset, int shift);
 extern unsigned long total_forks;
 extern int nr_threads;
 DECLARE_PER_CPU(unsigned long, process_counts);
+DECLARE_PER_CPU(int, sd_llc_size);
 extern int nr_processes(void);
 extern unsigned long nr_running(void);
 extern unsigned long nr_uninterruptible(void);
@@ -902,6 +903,7 @@ struct sched_group_power {
 	 * single CPU.
 	 */
 	unsigned int power, power_orig;
+	unsigned long next_update;
 };
 
 struct sched_group {
@@ -1228,6 +1230,9 @@ struct task_struct {
 #ifdef CONFIG_SMP
 	struct task_struct *wake_entry;
 	int on_cpu;
+	struct task_struct *last_wakee;
+	unsigned long nr_wakee_switch;
+	unsigned long last_switch_decay;
 #endif
 	int on_rq;
 
@@ -2581,7 +2586,16 @@ static inline void thread_group_cputime_init(struct signal_struct *sig)
 extern void recalc_sigpending_and_wake(struct task_struct *t);
 extern void recalc_sigpending(void);
 
-extern void signal_wake_up(struct task_struct *t, int resume_stopped);
+extern void signal_wake_up_state(struct task_struct *t, unsigned int state);
+
+static inline void signal_wake_up(struct task_struct *t, bool resume)
+{
+	signal_wake_up_state(t, resume ? TASK_WAKEKILL : 0);
+}
+static inline void ptrace_signal_wake_up(struct task_struct *t, bool resume)
+{
+	signal_wake_up_state(t, resume ? __TASK_TRACED : 0);
+}
 
 /*
  * Wrappers for p->thread_info->cpu access. No-op on UP.

@@ -181,7 +181,6 @@ enum {
 struct cpcap_usb_det_data {
 	struct cpcap_device *cpcap;
 	struct delayed_work work;
-	struct workqueue_struct *wq;
 	unsigned short sense;
 	unsigned short prev_sense;
 	enum cpcap_det_state state;
@@ -701,6 +700,9 @@ static void notify_whisper_switch(struct cpcap_usb_det_data *data, enum cpcap_ac
 	if (accy == CPCAP_ACCY_CHARGER || accy == CPCAP_ACCY_WHISPER_PPD) {
 		/* Set switch for whisper PPDs and Chargers, which are like whisper SPDs */
 		switch_set_state(&data->wsdev, 1);
+		if (accy == CPCAP_ACCY_WHISPER_PPD)
+                 switch_set_state(&data->dsdev, 2);
+
 	} else if (accy != CPCAP_ACCY_CHARGER && accy != CPCAP_ACCY_WHISPER_PPD) {
 		switch_set_state(&data->wsdev, 0);
 		mutex_lock(&switch_access);
@@ -762,13 +764,13 @@ static void detection_work(struct work_struct *work)
 		notify_whisper_switch(data, CPCAP_ACCY_UNKNOWN);
 
 		data->state = SAMPLE_1;
-		queue_delayed_work(data->wq, &data->work, msecs_to_jiffies(11));
+		queue_delayed_work(system_power_efficient_wq, &data->work, msecs_to_jiffies(11));
 		break;
 
 	case SAMPLE_1:
 		get_sense(data);
 		data->state = SAMPLE_2;
-		queue_delayed_work(data->wq, &data->work, msecs_to_jiffies(100));
+		queue_delayed_work(system_power_efficient_wq, &data->work, msecs_to_jiffies(100));
 		break;
 
 	case SAMPLE_2:
@@ -778,7 +780,7 @@ static void detection_work(struct work_struct *work)
 		if (data->prev_sense != data->sense) {
 			/* Stay in this state */
 			data->state = SAMPLE_2;
-			queue_delayed_work(data->wq, &data->work, msecs_to_jiffies(100));
+			queue_delayed_work(system_power_efficient_wq, &data->work, msecs_to_jiffies(100));
 		} else if (!(data->sense & CPCAP_BIT_SE1_S) &&
 			   (data->sense & CPCAP_BIT_ID_FLOAT_S) &&
 			   !(data->sense & CPCAP_BIT_ID_GROUND_S) &&
@@ -787,13 +789,13 @@ static void detection_work(struct work_struct *work)
 			if (cpcap_usb_det_debug > 1)
 				pr_info("cpcap_usb_det: SAMPLE_2 cable may not be fully inserted\n");
 			data->state = IDENTIFY;
-			queue_delayed_work(data->wq, &data->work, msecs_to_jiffies(100));
+			queue_delayed_work(system_power_efficient_wq, &data->work, msecs_to_jiffies(100));
 		} else {
 			/* cable connected: try to identify what was connected... */
 			if (cpcap_usb_det_debug > 1)
 				pr_info("cpcap_usb_det: cable connected.\n");
 			data->state = IDENTIFY;
-			queue_delayed_work(data->wq, &data->work, 0);
+			queue_delayed_work(system_power_efficient_wq, &data->work, 0);
 		}
 		break;
 
@@ -864,6 +866,7 @@ static void detection_work(struct work_struct *work)
 
 			data->state = WHISPER_SMART_DOCK;
 			switch_set_state(&data->sdsdev, 1);
+			switch_set_state(&data->dsdev, 1);
 		} else if (data->sense == SENSE_WHISPER_PPD ||
 				   data->sense == SENSE_WHISPER_PPD_NO_DP) {
 
@@ -926,7 +929,7 @@ static void detection_work(struct work_struct *work)
 		    (data->sense & CPCAP_BIT_ID_GROUND_S) ||
 		    (!(vbus_valid_adc_check(data)))) {
 			data->state = CONFIG;
-			queue_delayed_work(data->wq, &data->work, 0);
+			queue_delayed_work(system_power_efficient_wq, &data->work, 0);
 		} else {
 			data->state = USB;
 
@@ -948,7 +951,7 @@ static void detection_work(struct work_struct *work)
 			enable_tta();
 #endif
 			data->state = CONFIG;
-			queue_delayed_work(data->wq, &data->work, 0);
+			queue_delayed_work(system_power_efficient_wq, &data->work, 0);
 		} else {
 			data->state = FACTORY;
 			cpcap_irq_unmask(data->cpcap, CPCAP_IRQ_SE1);
@@ -1004,7 +1007,7 @@ static void detection_work(struct work_struct *work)
 							 CPCAP_BIT_EMUMODE0 |
 							 CPCAP_BIT_USBSUSPEND);
 			data->state = CONFIG;
-			queue_delayed_work(data->wq, &data->work, 0);
+			queue_delayed_work(system_power_efficient_wq, &data->work, 0);
 		} else {
 			if (!(data->sense & CPCAP_BIT_ID_GROUND_S) && data->irq == CPCAP_IRQ_IDGND
 					&& data->whisper_auth == AUTH_PASSED) {
@@ -1047,7 +1050,7 @@ static void detection_work(struct work_struct *work)
 			if (cpcap_usb_det_debug)
 				pr_info("cpcap_usb_det: WHISPER_PPD detached\n");
 			data->state = CONFIG;
-			queue_delayed_work(data->wq, &data->work, 0);
+			queue_delayed_work(system_power_efficient_wq, &data->work, 0);
 		} else if (!(data->sense & CPCAP_BIT_ID_GROUND_S) && (vbus_valid_adc_check(data)) &&
 				(data->sense & CPCAP_BIT_SESSVLD_S)) {
 			if (cpcap_usb_det_debug)
@@ -1106,7 +1109,7 @@ static void detection_work(struct work_struct *work)
 				pr_info("cpcap_usb_det: WHISPER_SMART_DOCK Removed\n");
 			data->state = CONFIG;
 			switch_set_state(&data->sdsdev, 0);
-			queue_delayed_work(data->wq, &data->work, 0);
+			queue_delayed_work(system_power_efficient_wq, &data->work, 0);
 		} else {
 			data->state = WHISPER_SMART_DOCK;
 			cpcap_irq_unmask(data->cpcap, CPCAP_IRQ_CHRG_CURR1);
@@ -1128,7 +1131,7 @@ static void detection_work(struct work_struct *work)
 		/* This shouldn't happen.  Need to reset state machine. */
 		vusb_disable(data);
 		data->state = CONFIG;
-		queue_delayed_work(data->wq, &data->work, 0);
+		queue_delayed_work(system_power_efficient_wq, &data->work, 0);
 		break;
 	}
 }
@@ -1143,7 +1146,7 @@ static void int_handler(enum cpcap_irqs int_event, void *data)
 		else
 			pr_info("cpcap_usb_det: irq=%d\n", int_event);
 	}
-	queue_delayed_work(usb_det_data->wq, &(usb_det_data->work), 0);
+	queue_delayed_work(system_power_efficient_wq, &(usb_det_data->work), 0);
 }
 
 int cpcap_accy_whisper(struct cpcap_device *cpcap,
@@ -1228,9 +1231,9 @@ int cpcap_accy_whisper(struct cpcap_device *cpcap,
 						pr_info("cpcap_usb_det: revert back to USB Mode, retval=%d, whisper_auth=%d\n",
 							retval, data->whisper_auth);
 					if (data->state == WHISPER_PPD)
-						queue_delayed_work(data->wq, &data->work, msecs_to_jiffies(11));
+						queue_delayed_work(system_power_efficient_wq, &data->work, msecs_to_jiffies(11));
 				} else {
-					queue_delayed_work(data->wq, &data->work, msecs_to_jiffies(11));
+					queue_delayed_work(system_power_efficient_wq, &data->work, msecs_to_jiffies(11));
 					retval = 0;
 				}
 				if (data->state == CHARGER) {
@@ -1260,7 +1263,6 @@ static int cpcap_usb_det_probe(struct platform_device *pdev)
 
 	data->cpcap = pdev->dev.platform_data;
 	data->state = CONFIG;
-	data->wq = create_singlethread_workqueue("cpcap_accy");
 	INIT_DELAYED_WORK(&data->work, detection_work);
 	data->usb_accy = CPCAP_ACCY_NONE;
 	wake_lock_init(&data->wake_lock, WAKE_LOCK_SUSPEND, "usb");
@@ -1338,7 +1340,7 @@ static int cpcap_usb_det_probe(struct platform_device *pdev)
 
 	/* Schedule initial detection.  This is done in case an interrupt has
 	   already scheduled the work, to keep it from running more than once. */
-	queue_delayed_work(data->wq, &(data->work), 0);
+	queue_delayed_work(system_power_efficient_wq, &(data->work), 0);
 
 	return 0;
 
@@ -1384,7 +1386,6 @@ static int __exit cpcap_usb_det_remove(struct platform_device *pdev)
 
 	configure_hardware(data, CPCAP_ACCY_NONE);
 	cancel_delayed_work_sync(&data->work);
-	destroy_workqueue(data->wq);
 
 	if ((data->usb_accy != CPCAP_ACCY_NONE) && (data->usb_dev != NULL))
 		platform_device_del(data->usb_dev);

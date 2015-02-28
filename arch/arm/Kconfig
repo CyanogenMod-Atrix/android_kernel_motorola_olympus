@@ -29,6 +29,9 @@ config ARM
 	select HAVE_GENERIC_HARDIRQS
 	select HAVE_SPARSE_IRQ
 	select GENERIC_IRQ_SHOW
+	select GENERIC_STRNCPY_FROM_USER
+	select GENERIC_STRNLEN_USER
+	select DCACHE_WORD_ACCESS if (CPU_V6 || CPU_V6K || CPU_V7) && !CPU_BIG_ENDIAN
 	help
 	  The ARM series is a line of low-power-consumption RISC chip designs
 	  licensed by ARM Ltd and targeted at embedded applications and
@@ -139,10 +142,9 @@ config GENERIC_LOCKBREAK
 
 config RWSEM_GENERIC_SPINLOCK
 	bool
-	default y
 
 config RWSEM_XCHGADD_ALGORITHM
-	bool
+	def_bool y
 
 config ARCH_HAS_ILOG2_U32
 	bool
@@ -1462,10 +1464,44 @@ config SMP_ON_UP
 
 	  If you don't know what to do here, say Y.
 
+config ARM_CPU_TOPOLOGY
+	bool "Support cpu topology definition"
+	depends on SMP && CPU_V7
+	default y
+	help
+	  Support ARM cpu topology definition. The MPIDR register defines
+	  affinity between processors which is then used to describe the cpu
+	  topology of an ARM System.
+
+config SCHED_MC
+	bool "Multi-core scheduler support"
+	depends on ARM_CPU_TOPOLOGY
+	help
+	  Multi-core scheduler support improves the CPU scheduler's decision
+	  making when dealing with multi-core CPU chips at a cost of slightly
+	  increased overhead in some places. If unsure say N here.
+
+config SCHED_SMT
+	bool "SMT scheduler support"
+	depends on ARM_CPU_TOPOLOGY
+	help
+	  Improves the CPU scheduler's decision making when dealing with
+	  MultiThreading at a cost of slightly increased overhead in some
+	  places. If unsure say N here.
+
 config HAVE_ARM_SCU
 	bool
 	help
 	  This option enables support for the ARM system coherency unit
+
+config ARM_SCU_SPECULATIVE_LINE
+	bool "Enable SCU Speculative Line Fill"
+	depends on HAVE_ARM_SCU
+	default n
+	help
+	  Enable Speculative Line Fills for SCU. May or may not improve
+	  read performance, and reports says it may hurt write performance.
+	  You should probably benchmark with this toggled.
 
 config HAVE_ARM_TWD
 	bool
@@ -2198,6 +2234,7 @@ config NEON
 	help
 	  Say Y to include support code for NEON, the ARMv7 Advanced SIMD
 	  Extension.
+
 
 endmenu
 

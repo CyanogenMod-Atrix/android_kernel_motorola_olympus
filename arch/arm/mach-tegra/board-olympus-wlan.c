@@ -40,7 +40,6 @@
 #include "board-olympus.h"
 #include "gpio-names.h"
 
-#define WLAN_WOW_GPIO 		TEGRA_GPIO_PU1
 #define WLAN_RESET_GPIO 	TEGRA_GPIO_PU2
 #define WLAN_REG_ON_GPIO 	TEGRA_GPIO_PU3
 #define WLAN_IRQ_GPIO 		TEGRA_GPIO_PU5
@@ -164,7 +163,7 @@ static struct resource olympus_wifi_resources[] = {
 		.name	= "bcm4329_wlan_irq",
 		.start	= TEGRA_GPIO_TO_IRQ(WLAN_IRQ_GPIO),
 		.end	= TEGRA_GPIO_TO_IRQ(WLAN_IRQ_GPIO),
-		.flags	= IORESOURCE_IRQ | IORESOURCE_IRQ_LOWLEVEL
+		.flags	= IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHLEVEL
 			| IORESOURCE_IRQ_SHAREABLE,
 	},
  };

@@ -48,13 +48,13 @@ void __init scu_enable(void __iomem *scu_base)
 #endif
 
 	scu_ctrl = __raw_readl(scu_base + SCU_CTRL);
-	/* already enabled? */
-	if (scu_ctrl & 1)
-		return;
 
+#ifdef CONFIG_ARM_SCU_SPECULATIVE_LINE
+	/* Enable speculative line fill */
+	scu_ctrl |= (1 << 3);
+#endif
 	scu_ctrl |= 1;
 	__raw_writel(scu_ctrl, scu_base + SCU_CTRL);
-
 	/*
 	 * Ensure that the data accessed by CPU0 before the SCU was
 	 * initialised is visible to the other CPUs.

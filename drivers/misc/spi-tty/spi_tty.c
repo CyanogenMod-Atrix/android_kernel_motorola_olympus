@@ -1,7 +1,7 @@
 /*
  * Copyright 2013: Olympus Kernel Project
  * <http://forum.xda-developers.com/showthread.php?t=2016837>
- 
+
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
@@ -155,7 +155,11 @@ static void spi_tty_handle_data(void *context, u8 *buf, u32 count)
 		SPI_IPC_INFO("insert data to tty\n");
 		buf += SPI_MSG_HEADER_LEN;
 		do {
-			cnt = tty_buffer_request_room(spi_tty->tty, len);
+			if (len > 1024) {
+				cnt = tty_buffer_request_room(spi_tty->tty, 1024);
+			} else {
+				cnt = tty_buffer_request_room(spi_tty->tty, len);
+			}
 			if (cnt == 0)
 				break;
 			cnt = tty_insert_flip_string(spi_tty->tty, buf, cnt);
@@ -318,7 +322,7 @@ static void spi_tty_write_worker(struct work_struct *work)
 
 		spin_lock_irqsave(&(spi_tty->port_lock), flags);
 	}
-
+	wake_unlock(&spi_tty->wakelock);
 	spin_unlock_irqrestore(&(spi_tty->port_lock), flags);
 	mutex_unlock(&(spi_tty->work_lock));
 	SPI_IPC_INFO("%s: done\n", __func__);
@@ -561,7 +565,7 @@ int spi_tty_register_device(struct spi_tty_device *device)
 
 	spi_tty_dev = device;
 	SPI_IPC_INFO("%s: registered device 0x%p\n", __func__, device);
-	
+
 	return 0;
 }
 
@@ -652,7 +656,7 @@ static int __init spi_tty_init(void)
 
 	tty_register_device(spi_tty_driver, 0, NULL);
 
-	/* 
+	/*
 	 * If spi_tty_register_device() was called before spi_tty_init(), fill
 	 * in the blanks.  Yeah, it's ugly.
 	 */

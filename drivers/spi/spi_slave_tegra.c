@@ -20,8 +20,8 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-/*#define DEBUG           1
-#define VERBOSE_DEBUG   1*/
+//#define DEBUG           1
+#define VERBOSE_DEBUG   1
 
 #include <linux/kernel.h>
 #include <linux/init.h>
@@ -36,6 +36,7 @@
 #include <linux/completion.h>
 #ifdef CONFIG_MACH_OLYMPUS
 #include <linux/timer.h>
+#include <linux/sysrq.h>
 #endif
 #include <linux/spi/spi.h>
 #include <linux/spi-tegra.h>
@@ -149,6 +150,13 @@
 #define SPI_FIFO_DEPTH		32
 #define SLINK_DMA_TIMEOUT (msecs_to_jiffies(1000))
 
+/* Slave controller clock should be 4 times of the interface clock.
+ * However, it is recommended to keep controller clock 8 times of interface
+ * clock to avoid some timing issue.
+ */
+#define CONTROLLER_SPEED_MULTIPLIER    5
+
+
 
 static const unsigned long spi_tegra_req_sels[] = {
 	TEGRA_DMA_REQ_SEL_SL2B1,
@@ -172,9 +180,8 @@ static const unsigned long spi_tegra_req_sels[] = {
 
 #define MAX_CHIP_SELECT		4
 #define SLINK_FIFO_DEPTH	4
-#ifdef CONFIG_MACH_OLYMPUS
 #define TRANSACTION_TIMEOUT (5 * HZ)
-#endif
+
 struct spi_tegra_data {
 	struct spi_master	*master;
 	struct platform_device	*pdev;
@@ -219,16 +226,12 @@ struct spi_tegra_data {
 
 	bool			is_clkon_always;
 	bool			clk_state;
-	bool			is_suspended;
 
 	bool			is_hw_based_cs;
 
 	struct completion	rx_dma_complete;
 	struct completion	tx_dma_complete;
-#ifdef CONFIG_MACH_OLYMPUS
 	struct timer_list	transfer_timer;
-	struct work_struct	transfer_timeout_work;
-#endif
 	u32			rx_complete;
 	u32			tx_complete;
 	u32			tx_status;
@@ -258,7 +261,42 @@ struct spi_tegra_data {
 	unsigned long		max_rate;
 	unsigned long		max_parent_rate;
 	int			min_div;
+  atomic_t  cnt;
 };
+
+static void do_set_clk_state(struct spi_tegra_data *tspi, bool enabled) {
+	pr_debug("%s: called with %s and previous reference %u", __func__,
+		enabled? "enable" : "disable",
+		tegra_is_clk_enabled(tspi->clk));
+
+  if (ACCESS_ONCE(tspi->is_clkon_always)) {
+    if (!ACCESS_ONCE(tspi->clk_state)) {
+      clk_enable(tspi->clk);
+      ACCESS_ONCE(tspi->clk_state) = true;
+    }
+    return;
+  }
+  if (enabled) {
+    pr_debug("enabling");
+    clk_enable(tspi->clk);
+    ACCESS_ONCE(tspi->clk_state) = true;
+#if 0
+    /*
+     * If reference count is 1, we just enabled the clock.
+     * Give it some time to settle.
+     */
+    if (tegra_is_clk_enabled(tspi->clk) == 1) {
+			udelay(1);
+    }
+#endif
+  } else {
+    pr_debug("disabling");
+    clk_disable(tspi->clk);
+    ACCESS_ONCE(tspi->clk_state) = false;
+  }
+  udelay(10); // give it some time to settle.
+  smp_mb();
+}
 
 static inline unsigned long spi_tegra_readl(struct spi_tegra_data *tspi,
 		    unsigned long reg)
@@ -395,7 +433,7 @@ static unsigned spi_tegra_calculate_curr_xfer_param(
 	if (tspi->is_packed) {
 		max_len = min(remain_len, tspi->max_buf_size);
 		tspi->curr_dma_words = max_len/tspi->bytes_per_word;
-		total_fifo_words = remain_len/4;
+		total_fifo_words = (remain_len + 3)/4;
 	} else {
 		max_word = (remain_len - 1) / tspi->bytes_per_word + 1;
 		max_word = min(max_word, tspi->max_buf_size/4);
@@ -651,8 +689,8 @@ static void set_best_clk_source(struct spi_tegra_data *tspi,
 {
 	long new_rate;
 	unsigned long err_rate;
-	int rate = speed * 4;
-	unsigned int fin_err = speed * 4;
+	int rate = speed * CONTROLLER_SPEED_MULTIPLIER;
+	unsigned int fin_err = speed * CONTROLLER_SPEED_MULTIPLIER;
 	int final_index = -1;
 	int count;
 	int ret;
@@ -668,7 +706,7 @@ static void set_best_clk_source(struct spi_tegra_data *tspi,
 	prate = clk_get_rate(pclk);
 	crate = clk_get_rate(tspi->clk);
 	cdiv = DIV_ROUND_UP(prate, crate);
-	if (cdiv < tspi->min_div) {
+	if (tspi->min_div && (cdiv < tspi->min_div)) {
 		nrate = DIV_ROUND_UP(prate, tspi->min_div);
 		clk_set_rate(tspi->clk, nrate);
 		dev_dbg(&tspi->pdev->dev, "Setting clk to %ld\n",
@@ -723,9 +761,9 @@ static void spi_tegra_start_transfer(struct spi_device *spi,
 	speed = t->speed_hz ? t->speed_hz : spi->max_speed_hz;
 	if (speed != tspi->cur_speed) {
 		set_best_clk_source(tspi, speed);
-		clk_set_rate(tspi->clk, speed * 4);
+		clk_set_rate(tspi->clk, speed * CONTROLLER_SPEED_MULTIPLIER);
 		tspi->cur_speed = speed;
-		dev_dbg(&tspi->pdev->dev, "%s: tspi->cur_speed = %d (clk_rate = %d)\n", __func__, speed, speed * 4);
+		dev_dbg(&tspi->pdev->dev, "%s: tspi->cur_speed = %d (clk_rate = %d)\n", __func__, speed, speed * CONTROLLER_SPEED_MULTIPLIER);
 	}
 
 	tspi->cur = t;
@@ -738,13 +776,7 @@ static void spi_tegra_start_transfer(struct spi_device *spi,
 	total_fifo_words = spi_tegra_calculate_curr_xfer_param(spi, tspi, t);
 
 	command2 = tspi->def_command2_reg;
-	if (!tspi->is_clkon_always) {
-		if (!tspi->clk_state) {
-			clk_enable(tspi->clk);
-			tspi->clk_state = 1;
-		}
-	}
-
+  do_set_clk_state(tspi, true);
 	spi_tegra_clear_status(tspi);
 
 	command = tspi->def_command_reg;
@@ -780,9 +812,6 @@ static void spi_tegra_start_transfer(struct spi_device *spi,
 	command2 |= SLINK_SS_EN_CS(spi->chip_select);
 	spi_tegra_writel(tspi, command2, SLINK_COMMAND2);
 	tspi->command2_reg = command2;
-#ifdef CONFIG_MACH_OLYMPUS
-	mod_timer(&tspi->transfer_timer, jiffies + TRANSACTION_TIMEOUT);
-#endif
 	if (total_fifo_words > SPI_FIFO_DEPTH)
 		ret = spi_tegra_start_dma_based_transfer(tspi, t);
 	else
@@ -814,7 +843,7 @@ static int spi_tegra_setup(struct spi_device *spi)
 	unsigned long val;
 	unsigned long flags;
 
-	dev_dbg(&spi->dev, "setup %d bpw, %scpol, %scpha, %dHz\n",
+	dev_info(&spi->dev, "setup %d bpw, %scpol, %scpha, %dHz\n",
 		spi->bits_per_word,
 		spi->mode & SPI_CPOL ? "" : "~",
 		spi->mode & SPI_CPHA ? "" : "~",
@@ -850,15 +879,9 @@ static int spi_tegra_setup(struct spi_device *spi)
 		val &= ~cs_bit;
 	tspi->def_command_reg = val;
 
-	if (!tspi->is_clkon_always && !tspi->clk_state) {
-		clk_enable(tspi->clk);
-		tspi->clk_state = 1;
-	}
+  do_set_clk_state(tspi, true);
 	spi_tegra_writel(tspi, tspi->def_command_reg, SLINK_COMMAND);
-	if (!tspi->is_clkon_always && tspi->clk_state) {
-		clk_disable(tspi->clk);
-		tspi->clk_state = 0;
-	}
+  do_set_clk_state(tspi, false);
 
 	spin_unlock_irqrestore(&tspi->lock, flags);
 	return 0;
@@ -874,11 +897,12 @@ static int spi_tegra_transfer(struct spi_device *spi, struct spi_message *m)
 	u8 bits_per_word;
 	int fifo_word;
 
-	/* Support only one transfer per message */
+	/* Support only one transfer per message. Also test for !empty */
 	if (!list_is_singular(&m->transfers))
 		return -EINVAL;
 
-	if (list_empty(&m->transfers) || !m->complete)
+	/* No wait queue on the other end. Not good. */
+	if (!m->complete)
 		return -EINVAL;
 
 	t = list_first_entry(&m->transfers, struct spi_transfer, transfer_list);
@@ -908,22 +932,54 @@ static int spi_tegra_transfer(struct spi_device *spi, struct spi_message *m)
 
 	spin_lock_irqsave(&tspi->lock, flags);
 
-	if (WARN_ON(tspi->is_suspended)) {
-		spin_unlock_irqrestore(&tspi->lock, flags);
-		return -EBUSY;
-	}
-
 	m->state = spi;
 
 	was_empty = list_empty(&tspi->queue);
 	list_add_tail(&m->queue, &tspi->queue);
 
-	if (was_empty)
+	if (was_empty) {
+    atomic_set(&tspi->cnt, 1);
 		spi_tegra_start_message(spi, m);
+    mod_timer(&tspi->transfer_timer, jiffies + TRANSACTION_TIMEOUT);
+  }
 
 	spin_unlock_irqrestore(&tspi->lock, flags);
 
 	return 0;
+}
+
+static void spi_tegra_error_handle(struct spi_tegra_data *tspi)
+{
+	unsigned long val;
+	dev_info(&tspi->pdev->dev, "Transfer error, resetting controller\n");
+
+	/* disable interrupts, dma and reset the controller */
+	val = tspi->def_command2_reg;
+	val &= ~(SLINK_SS_EN_CS(~0) | SLINK_RXEN | SLINK_TXEN | SLINK_SPIE);
+	spi_tegra_writel(tspi, val, SLINK_COMMAND2);
+
+	val = 0;
+	val &= ~(SLINK_IE_TXC | SLINK_IE_RXC | SLINK_DMA_EN);
+	spi_tegra_writel(tspi, val, SLINK_DMA_CTL);
+
+	if (tspi->is_curr_dma_xfer) {
+		if (tspi->cur_direction & DATA_DIR_TX)
+			cancel_dma(tspi->tx_dma, &tspi->tx_dma_req);
+		if (tspi->cur_direction & DATA_DIR_RX)
+			cancel_dma(tspi->rx_dma, &tspi->rx_dma_req);
+	}
+
+	tegra_periph_reset_assert(tspi->clk);
+	udelay(2);
+	tegra_periph_reset_deassert(tspi->clk);
+
+	/* clear all registers */
+	val = spi_tegra_readl(tspi, SLINK_STATUS);
+	val |= (SLINK_RDY | SLINK_ERR | SLINK_RX_FLUSH | SLINK_TX_FLUSH);
+	spi_tegra_writel(tspi, val, SLINK_STATUS);
+	spi_tegra_writel(tspi, tspi->def_command2_reg, SLINK_COMMAND2);
+	spi_tegra_writel(tspi, tspi->def_command_reg, SLINK_COMMAND);
+
 }
 
 static void spi_tegra_curr_transfer_complete(struct spi_tegra_data *tspi,
@@ -939,35 +995,26 @@ static void spi_tegra_curr_transfer_complete(struct spi_tegra_data *tspi,
 
 	m->actual_length += cur_xfer_size;
 	list_del(&m->queue);
-#ifdef CONFIG_MACH_OLYMPUS
-	del_timer_sync(&tspi->transfer_timer);
+	del_timer(&tspi->transfer_timer);
 	if (err)
-	printk(KERN_ALERT"spi:tegra:address m=%x m->complete=%x\n",(unsigned int)(m),(unsigned int)(m->complete));
-//	else
-#endif
+		printk(KERN_ALERT"spi:tegra:address m=%x m->complete=%x\n",(unsigned int)(m),(unsigned int)(m->complete));
 	m->complete(m->context);
 #ifdef CONFIG_MACH_OLYMPUS
 	if (tspi->client_slave_done_cb) {
 		tspi->client_slave_done_cb(tspi->client_done_data);
+
 	}
 #endif
 	if (!list_empty(&tspi->queue)) {
 		m = list_first_entry(&tspi->queue, struct spi_message, queue);
+		pr_info("%s: m == %p\n", __func__, m);
 		spi = m->state;
 		spi_tegra_start_message(spi, m);
 	} else {
 		spi_tegra_writel(tspi, tspi->def_command_reg, SLINK_COMMAND);
 		spi_tegra_writel(tspi, tspi->def_command2_reg, SLINK_COMMAND2);
-		if (!tspi->is_clkon_always) {
-			if (tspi->clk_state) {
-				/* Provide delay to stablize the signal
-				   state */
-				udelay(10);
-				clk_disable(tspi->clk);
-				tspi->clk_state = 0;
-			}
+		do_set_clk_state(tspi, false);
 		}
-	}
 }
 
 static void tegra_spi_tx_dma_complete(struct tegra_dma_req *req)
@@ -981,14 +1028,10 @@ static void tegra_spi_rx_dma_complete(struct tegra_dma_req *req)
 	struct spi_tegra_data *tspi = req->dev;
 	complete(&tspi->rx_dma_complete);
 }
-#ifdef CONFIG_MACH_OLYMPUS
-static void handle_cpu_based_xfer(struct spi_tegra_data *tspi)
-{
-#else
+
 static void handle_cpu_based_xfer(void *context_data)
 {
 	struct spi_tegra_data *tspi = context_data;
-#endif
 	struct spi_transfer *t = tspi->cur;
 	unsigned long flags;
 
@@ -997,12 +1040,10 @@ static void handle_cpu_based_xfer(void *context_data)
 				(tspi->status_reg & SLINK_BSY)) {
 		dev_err(&tspi->pdev->dev, "%s ERROR bit set 0x%x\n",
 					 __func__, tspi->status_reg);
-		tegra_periph_reset_assert(tspi->clk);
-		udelay(2);
-		tegra_periph_reset_deassert(tspi->clk);
 		WARN_ON(1);
+		spi_tegra_error_handle(tspi);
 		spi_tegra_curr_transfer_complete(tspi,
-				tspi->tx_status ||  tspi->rx_status, t->len);
+				1, t->len);
 		goto exit;
 	}
 
@@ -1027,33 +1068,23 @@ static void handle_cpu_based_xfer(void *context_data)
 	}
 
 	/* There should not be remaining transfer */
-	BUG();
+	WARN_ON(1);
 exit:
 	spin_unlock_irqrestore(&tspi->lock, flags);
 	return;
 }
-#ifdef CONFIG_MACH_OLYMPUS
-static int spi_tegra_handle_transfer_completion(struct spi_tegra_data *tspi)
-{
-#else
+
 static irqreturn_t spi_tegra_isr_thread(int irq, void *context_data)
 {
 	struct spi_tegra_data *tspi = context_data;
-#endif
 	struct spi_transfer *t = tspi->cur;
 	long wait_status;
 	int err = 0;
 	unsigned long flags;
 
 	if (!tspi->is_curr_dma_xfer) {
-#ifdef CONFIG_MACH_OLYMPUS
-		handle_cpu_based_xfer(tspi);
-		return 0;
-#else
 		handle_cpu_based_xfer(context_data);
 		return IRQ_HANDLED;
-#endif
-
 	}
 
 	/* Abort dmas if any error */
@@ -1097,17 +1128,11 @@ static irqreturn_t spi_tegra_isr_thread(int irq, void *context_data)
 	if (err) {
 		dev_err(&tspi->pdev->dev, "%s ERROR bit set 0x%x\n",
 					 __func__, tspi->status_reg);
-		tegra_periph_reset_assert(tspi->clk);
-		udelay(2);
-		tegra_periph_reset_deassert(tspi->clk);
 		WARN_ON(1);
+		spi_tegra_error_handle(tspi);
 		spi_tegra_curr_transfer_complete(tspi, err, t->len);
 		spin_unlock_irqrestore(&tspi->lock, flags);
-#ifdef CONFIG_MACH_OLYMPUS
-		return 0;
-#else
 		return IRQ_HANDLED;
-#endif
 	}
 
 	if (tspi->cur_direction & DATA_DIR_RX)
@@ -1124,56 +1149,63 @@ static irqreturn_t spi_tegra_isr_thread(int irq, void *context_data)
 		spi_tegra_curr_transfer_complete(tspi,
 			tspi->tx_status || tspi->rx_status, t->len);
 		spin_unlock_irqrestore(&tspi->lock, flags);
-#ifdef CONFIG_MACH_OLYMPUS
-		return 0;
-#else
 		return IRQ_HANDLED;
-#endif
 	}
 
 	spin_unlock_irqrestore(&tspi->lock, flags);
 
 	/* There should not be remaining transfer */
-	BUG();
-#ifdef CONFIG_MACH_OLYMPUS
-		return 0;
-#else
+	WARN_ON(1);
 		return IRQ_HANDLED;
-#endif
 }
 
-#ifdef CONFIG_MACH_OLYMPUS
-
-static irqreturn_t spi_tegra_isr_thread(int irq, void *context_data)
-{
-	struct spi_tegra_data *tspi = context_data;
-
-	spi_tegra_handle_transfer_completion(tspi);
-
-	return IRQ_HANDLED;
-}
-
-static void spi_tegra_timeout_worker(struct work_struct *work)
-{
-	struct spi_tegra_data *tspi = container_of(work, 
-			struct spi_tegra_data, transfer_timeout_work);
-
-	spi_tegra_handle_transfer_completion(tspi);
-}
 
 static void spi_tegra_handle_timeout(unsigned long data)
 {
 	struct spi_tegra_data *tspi = (struct spi_tegra_data *)data;
+	/* slave transfer timed out */
+	struct spi_message *m;
+	unsigned long flags;
 
-	dev_err(&tspi->pdev->dev, "transfer timeout\n");
-	schedule_work(&tspi->transfer_timeout_work);
-}
+	/* see if we are the first one to handle the completion */
+	if (!atomic_sub_and_test(1, &tspi->cnt))
+		return;
+
+	/* any pending interrupts for *this* transfer will be skipped from now
+	   on */
+
+	spin_lock_irqsave(&tspi->lock, flags);
+
+	dev_info(&tspi->pdev->dev, "Transfer timeout\n");
+
+	spi_tegra_error_handle(tspi);
+#if 1
+	/* complete the spidev core wait */
+	if (!list_empty_careful(&tspi->queue)) {
+		/* mark the message with I/O error */
+		m = list_first_entry(&tspi->queue, struct spi_message, queue);
+		m->status = -EIO;
+		list_del(&m->queue);
+		m->complete(m->context);
+	}
+
 #endif
+#ifdef CONFIG_MACH_OLYMPUS
+	if (tspi->client_slave_done_cb) {
+		tspi->client_slave_done_cb(tspi->client_done_data);
+
+	}
+#endif
+	do_set_clk_state(tspi, false);
+	spin_unlock_irqrestore(&tspi->lock, flags);
+}
 
 static irqreturn_t spi_tegra_isr(int irq, void *context_data)
 {
 	struct spi_tegra_data *tspi = context_data;
+	unsigned long flags;
 
+	spin_lock_irqsave(&tspi->lock, flags);
 	tspi->status_reg = spi_tegra_readl(tspi, SLINK_STATUS);
 	if (tspi->cur_direction & DATA_DIR_TX)
 		tspi->tx_status = tspi->status_reg &
@@ -1183,8 +1215,14 @@ static irqreturn_t spi_tegra_isr(int irq, void *context_data)
 		tspi->rx_status = tspi->status_reg &
 					(SLINK_RX_OVF | SLINK_RX_UNF);
 	spi_tegra_clear_status(tspi);
+	spin_unlock_irqrestore(&tspi->lock, flags);
+	/*  handle only if we are the first event for the transfer */
+	if (!atomic_sub_and_test(1, &tspi->cnt))
+		return IRQ_HANDLED;
 
-
+	/* we got in first for the tranfer, delete timer (delete on deleted
+	   timer is ok) */
+	del_timer(&tspi->transfer_timer);
 	return IRQ_WAKE_THREAD;
 }
 
@@ -1248,7 +1286,7 @@ static int __init spi_tegra_probe(struct platform_device *pdev)
 
 	sprintf(tspi->port_name, "tegra_spi_%d", pdev->id);
 	ret = request_threaded_irq(tspi->irq, spi_tegra_isr,
-			spi_tegra_isr_thread, IRQF_DISABLED,
+			spi_tegra_isr_thread, IRQF_ONESHOT,
 			tspi->port_name, tspi);
 	if (ret < 0) {
 		dev_err(&pdev->dev, "Failed to register ISR for IRQ %d\n",
@@ -1366,28 +1404,18 @@ static int __init spi_tegra_probe(struct platform_device *pdev)
 	tspi->def_command2_reg = SLINK_CS_ACTIVE_BETWEEN;
 
 skip_dma_alloc:
-	clk_enable(tspi->clk);
-	tspi->clk_state = 1;
+	do_set_clk_state(tspi, true);
 	spi_tegra_writel(tspi, tspi->def_command2_reg, SLINK_COMMAND2);
 	ret = spi_register_master(master);
-	if (!tspi->is_clkon_always) {
-		if (tspi->clk_state) {
-			clk_disable(tspi->clk);
-			tspi->clk_state = 0;
-		}
-	}
-
+	do_set_clk_state(tspi, false);
 	if (ret < 0) {
 		dev_err(&pdev->dev, "can not register to master err %d\n", ret);
 		goto fail_master_register;
 	}
-#ifdef CONFIG_MACH_OLYMPUS
-	INIT_WORK(&tspi->transfer_timeout_work, spi_tegra_timeout_worker);
 	setup_timer(&tspi->transfer_timer, spi_tegra_handle_timeout,
 			(unsigned long)tspi);
 
 	dev_info(&pdev->dev, "on bus %d\n", master->bus_num);
-#endif
 	return ret;
 
 fail_master_register:
@@ -1425,9 +1453,7 @@ static int __devexit spi_tegra_remove(struct platform_device *pdev)
 
 	master = dev_get_drvdata(&pdev->dev);
 	tspi = spi_master_get_devdata(master);
-#ifdef CONFIG_MACH_OLYMPUS
-	del_timer(&tspi->transfer_timer);
-#endif
+	del_timer_sync(&tspi->transfer_timer);
 	if (tspi->tx_buf)
 		dma_free_coherent(&pdev->dev, tspi->dma_buf_size,
 				tspi->tx_buf, tspi->tx_buf_phys);
@@ -1460,52 +1486,32 @@ static int spi_tegra_suspend(struct platform_device *pdev, pm_message_t state)
 	struct spi_master	*master;
 	struct spi_tegra_data	*tspi;
 	unsigned long		flags;
-	unsigned		limit = 50;
+	unsigned		limit = 5;
+	int ret = -EAGAIN;
 
 	master = dev_get_drvdata(&pdev->dev);
 	tspi = spi_master_get_devdata(master);
+
 	spin_lock_irqsave(&tspi->lock, flags);
-	tspi->is_suspended = true;
-
-	WARN_ON(!list_empty(&tspi->queue));
-
 	while (!list_empty(&tspi->queue) && limit--) {
 		spin_unlock_irqrestore(&tspi->lock, flags);
-		msleep(20);
+		msleep(10);
 		spin_lock_irqsave(&tspi->lock, flags);
 	}
+  if (!limit) {
+    pr_warn("%s: stuck on xfer, refusing to suspend.", __func__);
+  } else if (ACCESS_ONCE(tspi->clk_state) && !ACCESS_ONCE(tspi->is_clkon_always)) {
+	  // This shouldn't happen.
+	  pr_warn("%s: Clock still running.", __func__);
+	  ret = 0; // Let's assume it's safe anyway.
+  } else {
+	  ret = 0; // Nothing prevents us from suspending now.
+  }
 
 	spin_unlock_irqrestore(&tspi->lock, flags);
-	if (tspi->is_clkon_always) {
-		clk_disable(tspi->clk);
-		tspi->clk_state = 0;
-	}
-	return 0;
+	return ret;
 }
 
-static int spi_tegra_resume(struct platform_device *pdev)
-{
-	struct spi_master	*master;
-	struct spi_tegra_data	*tspi;
-	unsigned long		flags;
-
-	master = dev_get_drvdata(&pdev->dev);
-	tspi = spi_master_get_devdata(master);
-
-	spin_lock_irqsave(&tspi->lock, flags);
-	clk_enable(tspi->clk);
-	tspi->clk_state = 1;
-	spi_tegra_writel(tspi, tspi->command_reg, SLINK_COMMAND);
-	if (!tspi->is_clkon_always) {
-		clk_disable(tspi->clk);
-		tspi->clk_state = 0;
-	}
-
-	tspi->cur_speed = 0;
-	tspi->is_suspended = false;
-	spin_unlock_irqrestore(&tspi->lock, flags);
-	return 0;
-}
 #endif
 
 MODULE_ALIAS("platform:spi_slave_tegra");
@@ -1518,7 +1524,6 @@ static struct platform_driver spi_tegra_driver = {
 	.remove =	__devexit_p(spi_tegra_remove),
 #ifdef CONFIG_PM
 	.suspend =	spi_tegra_suspend,
-	.resume  =	spi_tegra_resume,
 #endif
 };
 

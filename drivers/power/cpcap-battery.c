@@ -503,7 +503,7 @@ static ssize_t cpcap_battery_store_property(struct device *dev,
 	const ptrdiff_t off = attr - cpcap_battery_attrs;
 
 	if (off == CPCAP_SUPPLY_DISABLE_CHRG) {
-		strict_strtoul(buf, 10, &val);
+		(void)strict_strtoul(buf, 10, &val);
 		cpcap_batt_sply->disable_charging = (val > 0);
 		if (cpcap_batt_sply->ac_state.online)
 			power_supply_changed(&cpcap_batt_sply->ac);

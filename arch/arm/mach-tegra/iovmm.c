@@ -255,11 +255,13 @@ static struct tegra_iovmm_block *iovmm_split_free_block(
 	struct tegra_iovmm_block *rem;
 	struct tegra_iovmm_block *b;
 
+	spin_unlock(&domain->block_lock);
 	rem = kmem_cache_zalloc(iovmm_cache, GFP_KERNEL);
+	spin_lock(&domain->block_lock);
+
 	if (!rem)
 		return NULL;
 
-	spin_lock(&domain->block_lock);
 	p = &domain->free_blocks.rb_node;
 
 	rem->start  = block->start + size;
@@ -344,7 +346,6 @@ static struct tegra_iovmm_block *iovmm_alloc_block(
 	simalign = SIMALIGN(best, align);
 	if (DO_SPLIT(simalign)) {
 		iovmm_block_splitting = 1;
-		spin_unlock(&domain->block_lock);
 
 		/* Split off misalignment */
 		b = best;
@@ -365,7 +366,6 @@ static struct tegra_iovmm_block *iovmm_alloc_block(
 
 	if (DO_SPLIT((best->start + best->length) - iovmm_end(best))) {
 		iovmm_block_splitting = 1;
-		spin_unlock(&domain->block_lock);
 
 		/* Split off excess */
 		(void)iovmm_split_free_block(domain, best, size + simalign);
@@ -415,7 +415,6 @@ static struct tegra_iovmm_block *iovmm_allocate_vm(
 	/* split the mem before iovm_start. */
 	if (DO_SPLIT(iovm_start - best->start)) {
 		iovmm_block_splitting = 1;
-		spin_unlock(&domain->block_lock);
 		best = iovmm_split_free_block(domain, best,
 			(iovm_start - best->start));
 	}
@@ -435,7 +434,6 @@ static struct tegra_iovmm_block *iovmm_allocate_vm(
 	/* split the mem after iovm_start+size. */
 	if (DO_SPLIT(best->start + best->length - iovmm_end(best))) {
 		iovmm_block_splitting = 1;
-		spin_unlock(&domain->block_lock);
 		(void)iovmm_split_free_block(domain, best,
 			(iovmm_start(best) - best->start + size));
 	}

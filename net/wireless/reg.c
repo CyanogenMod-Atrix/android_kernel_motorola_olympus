@@ -839,7 +839,7 @@ static void handle_channel(struct wiphy *wiphy,
 			return;
 
 		REG_DBG_PRINT("Disabling freq %d MHz\n", chan->center_freq);
-		chan->flags = IEEE80211_CHAN_DISABLED;
+		chan->flags |= IEEE80211_CHAN_DISABLED;
 		return;
 	}
 
@@ -1474,7 +1474,7 @@ static void reg_process_hint(struct regulatory_request *reg_request)
 	 */
 	if (r != -EALREADY &&
 	    reg_request->initiator == NL80211_REGDOM_SET_BY_USER)
-		schedule_delayed_work(&reg_timeout, msecs_to_jiffies(3142));
+		queue_delayed_work(system_power_efficient_wq, &reg_timeout, msecs_to_jiffies(3142));
 }
 
 /*
@@ -2046,7 +2046,7 @@ static int __set_regdom(const struct ieee80211_regdomain *rd)
 	if (!request_wiphy &&
 	    (last_request->initiator == NL80211_REGDOM_SET_BY_DRIVER ||
 	     last_request->initiator == NL80211_REGDOM_SET_BY_COUNTRY_IE)) {
-		schedule_delayed_work(&reg_timeout, 0);
+		queue_delayed_work(system_power_efficient_wq, &reg_timeout, 0);
 		return -ENODEV;
 	}
 

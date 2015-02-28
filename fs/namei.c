@@ -139,21 +139,19 @@ static int do_getname(const char __user *filename, char *page)
 
 static char *getname_flags(const char __user *filename, int flags, int *empty)
 {
-	char *tmp, *result;
+	char *result = __getname();
+	int retval;
 
-	result = ERR_PTR(-ENOMEM);
-	tmp = __getname();
-	if (tmp)  {
-		int retval = do_getname(filename, tmp);
+	if (!result)
+		return ERR_PTR(-ENOMEM);
 
-		result = tmp;
-		if (retval < 0) {
-			if (retval == -ENOENT && empty)
-				*empty = 1;
-			if (retval != -ENOENT || !(flags & LOOKUP_EMPTY)) {
-				__putname(tmp);
-				result = ERR_PTR(retval);
-			}
+	retval = do_getname(filename, result);
+	if (retval < 0) {
+		if (retval == -ENOENT && empty)
+			*empty = 1;
+		if (retval != -ENOENT || !(flags & LOOKUP_EMPTY)) {
+			__putname(result);
+			return ERR_PTR(retval);
 		}
 	}
 	audit_getname(result);
@@ -162,7 +160,7 @@ static char *getname_flags(const char __user *filename, int flags, int *empty)
 
 char *getname(const char __user * filename)
 {
-	return getname_flags(filename, 0, 0);
+	return getname_flags(filename, 0, NULL);
 }
 
 #ifdef CONFIG_AUDITSYSCALL
@@ -1053,27 +1051,65 @@ static void follow_dotdot(struct nameidata *nd)
 }
 
 /*
- * Allocate a dentry with name and parent, and perform a parent
- * directory ->lookup on it. Returns the new dentry, or ERR_PTR
- * on error. parent->d_inode->i_mutex must be held. d_lookup must
- * have verified that no child exists while under i_mutex.
+ * This looks up the name in dcache, possibly revalidates the old dentry and
+ * allocates a new one if not found or not valid.  In the need_lookup argument
+ * returns whether i_op->lookup is necessary.
+ *
+ * dir->d_inode->i_mutex must be held
  */
-static struct dentry *d_alloc_and_lookup(struct dentry *parent,
-				struct qstr *name, struct nameidata *nd)
+static struct dentry *lookup_dcache(struct qstr *name, struct dentry *dir,
+				    struct nameidata *nd, bool *need_lookup)
 {
-	struct inode *inode = parent->d_inode;
 	struct dentry *dentry;
+	int error;
+
+	*need_lookup = false;
+	dentry = d_lookup(dir, name);
+	if (dentry) {
+		if (d_need_lookup(dentry)) {
+			*need_lookup = true;
+		} else if (dentry->d_flags & DCACHE_OP_REVALIDATE) {
+			error = d_revalidate(dentry, nd);
+			if (unlikely(error <= 0)) {
+				if (error < 0) {
+					dput(dentry);
+					return ERR_PTR(error);
+				} else if (!d_invalidate(dentry)) {
+					dput(dentry);
+					dentry = NULL;
+				}
+			}
+		}
+	}
+
+	if (!dentry) {
+		dentry = d_alloc(dir, name);
+		if (unlikely(!dentry))
+			return ERR_PTR(-ENOMEM);
+
+		*need_lookup = true;
+	}
+	return dentry;
+}
+
+/*
+ * Call i_op->lookup on the dentry.  The dentry must be negative but may be
+ * hashed if it was pouplated with DCACHE_NEED_LOOKUP.
+ *
+ * dir->d_inode->i_mutex must be held
+ */
+static struct dentry *lookup_real(struct inode *dir, struct dentry *dentry,
+				  struct nameidata *nd)
+{
 	struct dentry *old;
 
 	/* Don't create child dentry for a dead directory. */
-	if (unlikely(IS_DEADDIR(inode)))
+	if (unlikely(IS_DEADDIR(dir))) {
+		dput(dentry);
 		return ERR_PTR(-ENOENT);
+	}
 
-	dentry = d_alloc(parent, name);
-	if (unlikely(!dentry))
-		return ERR_PTR(-ENOMEM);
-
-	old = inode->i_op->lookup(inode, dentry, nd);
+	old = dir->i_op->lookup(dir, dentry, nd);
 	if (unlikely(old)) {
 		dput(dentry);
 		dentry = old;
@@ -1081,28 +1117,17 @@ static struct dentry *d_alloc_and_lookup(struct dentry *parent,
 	return dentry;
 }
 
-/*
- * We already have a dentry, but require a lookup to be performed on the parent
- * directory to fill in d_inode. Returns the new dentry, or ERR_PTR on error.
- * parent->d_inode->i_mutex must be held. d_lookup must have verified that no
- * child exists while under i_mutex.
- */
-static struct dentry *d_inode_lookup(struct dentry *parent, struct dentry *dentry,
-				     struct nameidata *nd)
+static struct dentry *__lookup_hash(struct qstr *name,
+		struct dentry *base, struct nameidata *nd)
 {
-	struct inode *inode = parent->d_inode;
-	struct dentry *old;
+	bool need_lookup;
+	struct dentry *dentry;
 
-	/* Don't create child dentry for a dead directory. */
-	if (unlikely(IS_DEADDIR(inode)))
-		return ERR_PTR(-ENOENT);
+	dentry = lookup_dcache(name, base, nd, &need_lookup);
+	if (!need_lookup)
+		return dentry;
 
-	old = inode->i_op->lookup(inode, dentry, nd);
-	if (unlikely(old)) {
-		dput(dentry);
-		dentry = old;
-	}
-	return dentry;
+	return lookup_real(base->d_inode, dentry, nd);
 }
 
 /*
@@ -1136,6 +1161,8 @@ static int do_lookup(struct nameidata *nd, struct qstr *name,
 			return -ECHILD;
 		nd->seq = seq;
 
+		if (unlikely(d_need_lookup(dentry)))
+			goto unlazy;
 		if (unlikely(dentry->d_flags & DCACHE_OP_REVALIDATE)) {
 			status = d_revalidate(dentry, nd);
 			if (unlikely(status <= 0)) {
@@ -1144,8 +1171,6 @@ static int do_lookup(struct nameidata *nd, struct qstr *name,
 				goto unlazy;
 			}
 		}
-		if (unlikely(d_need_lookup(dentry)))
-			goto unlazy;
 		path->mnt = mnt;
 		path->dentry = dentry;
 		if (unlikely(!__follow_mount_rcu(nd, path, inode)))
@@ -1160,38 +1185,14 @@ unlazy:
 		dentry = __d_lookup(parent, name);
 	}
 
-	if (dentry && unlikely(d_need_lookup(dentry))) {
-		dput(dentry);
-		dentry = NULL;
-	}
-retry:
-	if (unlikely(!dentry)) {
-		struct inode *dir = parent->d_inode;
-		BUG_ON(nd->inode != dir);
+	if (unlikely(!dentry))
+		goto need_lookup;
 
-		mutex_lock(&dir->i_mutex);
-		dentry = d_lookup(parent, name);
-		if (likely(!dentry)) {
-			dentry = d_alloc_and_lookup(parent, name, nd);
-			if (IS_ERR(dentry)) {
-				mutex_unlock(&dir->i_mutex);
-				return PTR_ERR(dentry);
-			}
-			/* known good */
-			need_reval = 0;
-			status = 1;
-		} else if (unlikely(d_need_lookup(dentry))) {
-			dentry = d_inode_lookup(parent, dentry, nd);
-			if (IS_ERR(dentry)) {
-				mutex_unlock(&dir->i_mutex);
-				return PTR_ERR(dentry);
-			}
-			/* known good */
-			need_reval = 0;
-			status = 1;
-		}
-		mutex_unlock(&dir->i_mutex);
+	if (unlikely(d_need_lookup(dentry))) {
+		dput(dentry);
+		goto need_lookup;
 	}
+
 	if (unlikely(dentry->d_flags & DCACHE_OP_REVALIDATE) && need_reval)
 		status = d_revalidate(dentry, nd);
 	if (unlikely(status <= 0)) {
@@ -1201,12 +1202,10 @@ retry:
 		}
 		if (!d_invalidate(dentry)) {
 			dput(dentry);
-			dentry = NULL;
-			need_reval = 1;
-			goto retry;
+			goto need_lookup;
 		}
 	}
-
+done:
 	path->mnt = mnt;
 	path->dentry = dentry;
 	err = follow_managed(path, nd->flags);
@@ -1218,6 +1217,16 @@ retry:
 		nd->flags |= LOOKUP_JUMPED;
 	*inode = path->dentry->d_inode;
 	return 0;
+
+need_lookup:
+	BUG_ON(nd->inode != parent->d_inode);
+
+	mutex_lock(&parent->d_inode->i_mutex);
+	dentry = __lookup_hash(name, parent, nd);
+	mutex_unlock(&parent->d_inode->i_mutex);
+	if (IS_ERR(dentry))
+		return PTR_ERR(dentry);
+	goto done;
 }
 
 static inline int may_lookup(struct nameidata *nd)
@@ -1372,6 +1381,159 @@ static inline int can_lookup(struct inode *inode)
 }
 
 /*
+ * We can do the critical dentry name comparison and hashing
+ * operations one word at a time, but we are limited to:
+ *
+ * - Architectures with fast unaligned word accesses. We could
+ *   do a "get_unaligned()" if this helps and is sufficiently
+ *   fast.
+ *
+ * - Little-endian machines (so that we can generate the mask
+ *   of low bytes efficiently). Again, we *could* do a byte
+ *   swapping load on big-endian architectures if that is not
+ *   expensive enough to make the optimization worthless.
+ *
+ * - non-CONFIG_DEBUG_PAGEALLOC configurations (so that we
+ *   do not trap on the (extremely unlikely) case of a page
+ *   crossing operation.
+ *
+ * - Furthermore, we need an efficient 64-bit compile for the
+ *   64-bit case in order to generate the "number of bytes in
+ *   the final mask". Again, that could be replaced with a
+ *   efficient population count instruction or similar.
+ */
+#ifdef CONFIG_DCACHE_WORD_ACCESS
+
+#ifdef CONFIG_64BIT
+
+#include <asm/word-at-a-time.h>
+
+/*
+ * Jan Achrenius on G+: microoptimized version of
+ * the simpler "(mask & ONEBYTES) * ONEBYTES >> 56"
+ * that works for the bytemasks without having to
+ * mask them first.
+ */
+static inline long count_masked_bytes(unsigned long mask)
+{
+	return mask*0x0001020304050608ul >> 56;
+}
+
+static inline unsigned int fold_hash(unsigned long hash)
+{
+	hash += hash >> (8*sizeof(int));
+	return hash;
+}
+
+#else	/* 32-bit case */
+
+/* Carl Chatfield / Jan Achrenius G+ version for 32-bit */
+static inline long count_masked_bytes(long mask)
+{
+	/* (000000 0000ff 00ffff ffffff) -> ( 1 1 2 3 ) */
+	long a = (0x0ff0001+mask) >> 23;
+	/* Fix the 1 for 00 case */
+	return a & mask;
+}
+
+#define fold_hash(x) (x)
+
+#endif
+
+unsigned int full_name_hash(const unsigned char *name, unsigned int len)
+{
+	unsigned long a, mask;
+	unsigned long hash = 0;
+
+	for (;;) {
+		a = load_unaligned_zeropad(name);
+		if (len < sizeof(unsigned long))
+			break;
+		hash += a;
+		hash *= 9;
+		name += sizeof(unsigned long);
+		len -= sizeof(unsigned long);
+		if (!len)
+			goto done;
+	}
+	mask = ~(~0ul << len*8);
+	hash += mask & a;
+done:
+	return fold_hash(hash);
+}
+EXPORT_SYMBOL(full_name_hash);
+
+#define REPEAT_BYTE(x)	((~0ul / 0xff) * (x))
+#define ONEBYTES	REPEAT_BYTE(0x01)
+#define SLASHBYTES	REPEAT_BYTE('/')
+#define HIGHBITS	REPEAT_BYTE(0x80)
+
+/* Return the high bit set in the first byte that is a zero */
+static inline unsigned long has_zero(unsigned long a)
+{
+	return ((a - ONEBYTES) & ~a) & HIGHBITS;
+}
+
+/*
+ * Calculate the length and hash of the path component, and
+ * return the length of the component;
+ */
+static inline unsigned long hash_name(const char *name, unsigned int *hashp)
+{
+	unsigned long a, mask, hash, len;
+
+	hash = a = 0;
+	len = -sizeof(unsigned long);
+	do {
+		hash = (hash + a) * 9;
+		len += sizeof(unsigned long);
+		a = load_unaligned_zeropad(name+len);
+		/* Do we have any NUL or '/' bytes in this word? */
+		mask = has_zero(a) | has_zero(a ^ SLASHBYTES);
+	} while (!mask);
+
+	/* The mask *below* the first high bit set */
+	mask = (mask - 1) & ~mask;
+	mask >>= 7;
+	hash += a & mask;
+	*hashp = fold_hash(hash);
+
+	return len + count_masked_bytes(mask);
+}
+
+#else
+
+unsigned int full_name_hash(const unsigned char *name, unsigned int len)
+{
+	unsigned long hash = init_name_hash();
+	while (len--)
+		hash = partial_name_hash(*name++, hash);
+	return end_name_hash(hash);
+}
+EXPORT_SYMBOL(full_name_hash);
+
+/*
+ * We know there's a real path component here of at least
+ * one character.
+ */
+static inline unsigned long hash_name(const char *name, unsigned int *hashp)
+{
+	unsigned long hash = init_name_hash();
+	unsigned long len = 0, c;
+
+	c = (unsigned char)*name;
+	do {
+		len++;
+		hash = partial_name_hash(c, hash);
+		c = (unsigned char)name[len];
+	} while (c && c != '/');
+	*hashp = end_name_hash(hash);
+	return len;
+}
+
+#endif
+
+/*
  * Name resolution.
  * This is the basic name resolution function, turning a pathname into
  * the final dentry. We expect 'base' to be positive and a directory.
@@ -1391,31 +1553,22 @@ static int link_path_walk(const char *name, struct nameidata *nd)
 
 	/* At this point we know we have a real path component. */
 	for(;;) {
-		unsigned long hash;
 		struct qstr this;
-		unsigned int c;
+		long len;
 		int type;
 
 		err = may_lookup(nd);
  		if (err)
 			break;
 
+		len = hash_name(name, &this.hash);
 		this.name = name;
-		c = *(const unsigned char *)name;
-
-		hash = init_name_hash();
-		do {
-			name++;
-			hash = partial_name_hash(c, hash);
-			c = *(const unsigned char *)name;
-		} while (c && (c != '/'));
-		this.len = name - (const char *) this.name;
-		this.hash = end_name_hash(hash);
+		this.len = len;
 
 		type = LAST_NORM;
-		if (this.name[0] == '.') switch (this.len) {
+		if (name[0] == '.') switch (len) {
 			case 2:
-				if (this.name[1] == '.') {
+				if (name[1] == '.') {
 					type = LAST_DOTDOT;
 					nd->flags |= LOOKUP_JUMPED;
 				}
@@ -1434,12 +1587,18 @@ static int link_path_walk(const char *name, struct nameidata *nd)
 			}
 		}
 
-		/* remove trailing slashes? */
-		if (!c)
+		if (!name[len])
 			goto last_component;
-		while (*++name == '/');
-		if (!*name)
+		/*
+		 * If it wasn't NUL, we know it was '/'. Skip that
+		 * slash, and continue until no more slashes.
+		 */
+		do {
+			len++;
+		} while (unlikely(name[len] == '/'));
+		if (!name[len])
 			goto last_component;
+		name += len;
 
 		err = walk_component(nd, &next, &this, type, LOOKUP_FOLLOW);
 		if (err < 0)
@@ -1695,59 +1854,6 @@ int vfs_path_lookup(struct dentry *dentry, struct vfsmount *mnt,
 	return err;
 }
 
-static struct dentry *__lookup_hash(struct qstr *name,
-		struct dentry *base, struct nameidata *nd)
-{
-	struct inode *inode = base->d_inode;
-	struct dentry *dentry;
-	int err;
-
-	err = inode_permission(inode, MAY_EXEC);
-	if (err)
-		return ERR_PTR(err);
-
-	/*
-	 * Don't bother with __d_lookup: callers are for creat as
-	 * well as unlink, so a lot of the time it would cost
-	 * a double lookup.
-	 */
-	dentry = d_lookup(base, name);
-
-	if (dentry && d_need_lookup(dentry)) {
-		/*
-		 * __lookup_hash is called with the parent dir's i_mutex already
-		 * held, so we are good to go here.
-		 */
-		dentry = d_inode_lookup(base, dentry, nd);
-		if (IS_ERR(dentry))
-			return dentry;
-	}
-
-	if (dentry && (dentry->d_flags & DCACHE_OP_REVALIDATE)) {
-		int status = d_revalidate(dentry, nd);
-		if (unlikely(status <= 0)) {
-			/*
-			 * The dentry failed validation.
-			 * If d_revalidate returned 0 attempt to invalidate
-			 * the dentry otherwise d_revalidate is asking us
-			 * to return a fail status.
-			 */
-			if (status < 0) {
-				dput(dentry);
-				return ERR_PTR(status);
-			} else if (!d_invalidate(dentry)) {
-				dput(dentry);
-				dentry = NULL;
-			}
-		}
-	}
-
-	if (!dentry)
-		dentry = d_alloc_and_lookup(base, name, nd);
-
-	return dentry;
-}
-
 /*
  * Restricted form of lookup. Doesn't follow links, single-component only,
  * needs parent already locked. Doesn't follow mounts.
@@ -1772,24 +1878,22 @@ static struct dentry *lookup_hash(struct nameidata *nd)
 struct dentry *lookup_one_len(const char *name, struct dentry *base, int len)
 {
 	struct qstr this;
-	unsigned long hash;
 	unsigned int c;
+	int err;
 
 	WARN_ON_ONCE(!mutex_is_locked(&base->d_inode->i_mutex));
 
 	this.name = name;
 	this.len = len;
+	this.hash = full_name_hash(name, len);
 	if (!len)
 		return ERR_PTR(-EACCES);
 
-	hash = init_name_hash();
 	while (len--) {
 		c = *(const unsigned char *)name++;
 		if (c == '/' || c == '\0')
 			return ERR_PTR(-EACCES);
-		hash = partial_name_hash(c, hash);
 	}
-	this.hash = end_name_hash(hash);
 	/*
 	 * See if the low-level filesystem might want
 	 * to use its own hash..
@@ -1799,6 +1903,10 @@ struct dentry *lookup_one_len(const char *name, struct dentry *base, int len)
 		if (err < 0)
 			return ERR_PTR(err);
 	}
+
+	err = inode_permission(base->d_inode, MAY_EXEC);
+	if (err)
+		return ERR_PTR(err);
 
 	return __lookup_hash(&this, base, NULL);
 }
@@ -1824,7 +1932,7 @@ int user_path_at_empty(int dfd, const char __user *name, unsigned flags,
 int user_path_at(int dfd, const char __user *name, unsigned flags,
 		 struct path *path)
 {
-	return user_path_at_empty(dfd, name, flags, path, 0);
+	return user_path_at_empty(dfd, name, flags, path, NULL);
 }
 
 static int user_path_parent(int dfd, const char __user *path,
@@ -2497,7 +2605,7 @@ SYSCALL_DEFINE4(mknodat, int, dfd, const char __user *, filename, int, mode,
 {
 	struct dentry *dentry;
 	struct path path;
-	int error;
+	int error = 0;
 
 	if (S_ISDIR(mode))
 		return -EPERM;
@@ -2569,7 +2677,7 @@ SYSCALL_DEFINE3(mkdirat, int, dfd, const char __user *, pathname, int, mode)
 {
 	struct dentry *dentry;
 	struct path path;
-	int error;
+	int error = 0;
 
 	dentry = user_path_create(dfd, pathname, &path, 1);
 	if (IS_ERR(dentry))
@@ -2662,7 +2770,7 @@ out:
 static long do_rmdir(int dfd, const char __user *pathname)
 {
 	int error = 0;
-	char * name;
+	char * name = 0;
 	struct dentry *dentry;
 	struct nameidata nd;
 
@@ -2758,7 +2866,7 @@ int vfs_unlink(struct inode *dir, struct dentry *dentry)
 static long do_unlinkat(int dfd, const char __user *pathname)
 {
 	int error;
-	char *name;
+	char *name = 0;
 	struct dentry *dentry;
 	struct nameidata nd;
 	struct inode *inode = NULL;
@@ -3149,8 +3257,8 @@ SYSCALL_DEFINE4(renameat, int, olddfd, const char __user *, oldname,
 	struct dentry *old_dentry, *new_dentry;
 	struct dentry *trap;
 	struct nameidata oldnd, newnd;
-	char *from;
-	char *to;
+	char *from = 0;
+	char *to = 0;
 	int error;
 
 	error = user_path_parent(olddfd, oldname, &oldnd, &from);

@@ -3,7 +3,7 @@
  *
  * Copyright 2013: Olympus Kernel Project
  * <http://forum.xda-developers.com/showthread.php?t=2016837>
- 
+
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
@@ -23,9 +23,9 @@ static __initdata struct tegra_clk_init_table olympus_clk_init_table[] = {
 			/* name			parent			rate		enabled */
 		//	{"sbc1",		"pll_c",		60000000,	true},
 		//	{ "sbc1",		"pll_m",		26000000,	true},
-			{"sbc1",		NULL,			0,			true},
+			{"sbc1",		NULL,			0,			false},
 		    {"sclk",		"pll_p_out4",	108000000,	true},
-			{"sbc2",		"pll_c",		60000000,	true},
+			{"sbc2",		NULL,		60000000,	true},
 			{"pwm",			"clk_32k",		32768,		false},
 			{"kbc",			"clk_32k",		32768,		true},
 		    {"blink",		"clk_32k",		32768,		false},

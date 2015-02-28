@@ -375,7 +375,7 @@ static struct tegra_spi_platform_data mdm6600_spi_slave_platform_data = {
 
 static struct tegra_clk_init_table mdm6600_spi_clk_table[] = {
 	/* spi slave controller clock @ 4 x 13 Mhz interface clock */
-	{ "sbc1",	"pll_m",	104000000,	true},
+	{ "sbc1",	"pll_m",	208000000,	true},
 	{ NULL,		NULL,		0,		0},
 };
 

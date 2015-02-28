@@ -128,6 +128,7 @@ static int motsnd_hw_params(struct snd_pcm_substream *substream,
 		mclk *= 2;
 	if( card_data  )
 	{
+	MOTSND_DEBUG_LOG("will tegra_asoc_utils_set_rate");
 	ret = tegra_asoc_utils_set_rate(&card_data->util_data, srate, mclk);
 
 	if (ret < 0) {
@@ -138,6 +139,7 @@ static int motsnd_hw_params(struct snd_pcm_substream *substream,
 		printk(KERN_ERR  "card_data is NULL\n");
 	}
 	/* Set codec DAI configuration */
+	MOTSND_DEBUG_LOG("will snd_soc_dai_set_fmt");
 	ret = snd_soc_dai_set_fmt(codec_dai,
 				  SND_SOC_DAIFMT_I2S |
 				  SND_SOC_DAIFMT_IB_NF |
@@ -147,6 +149,7 @@ static int motsnd_hw_params(struct snd_pcm_substream *substream,
 		return ret;
 	}
 
+	MOTSND_DEBUG_LOG("will snd_soc_dai_set_fmt");
 	/* Set cpu DAI configuration */
 	ret = snd_soc_dai_set_fmt(cpu_dai,
 				  SND_SOC_DAIFMT_I2S |
@@ -159,6 +162,7 @@ static int motsnd_hw_params(struct snd_pcm_substream *substream,
 
 	/* Set the codec system clock for DAC and ADC */
 //	if (mclk_change) {
+        MOTSND_DEBUG_LOG("will snd_soc_dai_set_sysclk");
 	ret = snd_soc_dai_set_sysclk(codec_dai, 0, 26000000,
 				     SND_SOC_CLOCK_IN);
 	if (ret < 0) {
@@ -167,13 +171,14 @@ static int motsnd_hw_params(struct snd_pcm_substream *substream,
 	}
 //	}
 	/* Make Das connection */
-
+	MOTSND_DEBUG_LOG("will tegra20_das_connect_dac_to_dap for SEL_DAC1");
 	ret = tegra20_das_connect_dac_to_dap(TEGRA20_DAS_DAP_SEL_DAC1,
 					TEGRA20_DAS_DAP_ID_1);
 	if (ret < 0) {
 		printk(KERN_ERR "failed to set dap-dac path\n");
 		return ret;
 	}
+	MOTSND_DEBUG_LOG("will tegra20_das_connect_dac_to_dap for DAP_ID_1");
 
 	ret = tegra20_das_connect_dap_to_dac(TEGRA20_DAS_DAP_ID_1,
 					TEGRA20_DAS_DAP_SEL_DAC1);
@@ -181,6 +186,7 @@ static int motsnd_hw_params(struct snd_pcm_substream *substream,
 		printk(KERN_ERR  "failed to set dac-dap path\n");
 		return ret;
 	}
+	MOTSND_DEBUG_LOG("finished w/ code %d", ret);
 
 	return ret;
 }

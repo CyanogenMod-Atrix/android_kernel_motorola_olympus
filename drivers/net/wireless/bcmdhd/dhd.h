@@ -91,7 +91,7 @@ enum dhd_bus_state {
 #define DHD_SCAN_ACTIVE_TIME	 40 /* ms : Embedded default Active setting from DHD Driver */
 #define DHD_SCAN_PASSIVE_TIME	130 /* ms: Embedded default Passive setting from DHD Driver */
 
-#define DHD_BEACON_TIMEOUT_NORMAL	4
+#define DHD_BEACON_TIMEOUT_NORMAL	5
 #define DHD_BEACON_TIMEOUT_HIGH		10
 
 enum dhd_bus_wake_state {
@@ -250,7 +250,7 @@ typedef struct dhd_cmn {
 			SMP_RD_BARRIER_DEPENDS(); \
 			while (dhd_mmc_suspend && retry++ != b) { \
 				SMP_RD_BARRIER_DEPENDS(); \
-				wait_event_interruptible_timeout(a, !dhd_mmc_suspend, HZ/100); \
+				wait_event_interruptible_timeout(a, !dhd_mmc_suspend, 1); \
 			} \
 		} while (0)
 	#define DHD_PM_RESUME_WAIT(a) 		_DHD_PM_RESUME_WAIT(a, 200)
@@ -262,7 +262,7 @@ typedef struct dhd_cmn {
 	#define SPINWAIT_SLEEP(a, exp, us) do { \
 		uint countdown = (us) + 9999; \
 		while ((exp) && (countdown >= 10000)) { \
-			wait_event_interruptible_timeout(a, FALSE, HZ/100); \
+			wait_event_interruptible_timeout(a, FALSE, 1); \
 			countdown -= 10000; \
 		} \
 	} while (0)
@@ -300,6 +300,8 @@ extern int dhd_os_wake_unlock(dhd_pub_t *pub);
 extern int dhd_os_wake_lock_timeout(dhd_pub_t *pub);
 extern int dhd_os_wake_lock_rx_timeout_enable(dhd_pub_t *pub, int val);
 extern int dhd_os_wake_lock_ctrl_timeout_enable(dhd_pub_t *pub, int val);
+extern int dhd_os_wd_wake_lock(dhd_pub_t *pub);
+extern int dhd_os_wd_wake_unlock(dhd_pub_t *pub);
 
 inline static void MUTEX_LOCK_SOFTAP_SET_INIT(dhd_pub_t * dhdp)
 {
@@ -322,13 +324,16 @@ inline static void MUTEX_UNLOCK_SOFTAP_SET(dhd_pub_t * dhdp)
 #endif /* (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27)) */
 }
 
-#define DHD_OS_WAKE_LOCK(pub) 			dhd_os_wake_lock(pub)
-#define DHD_OS_WAKE_UNLOCK(pub) 		dhd_os_wake_unlock(pub)
+#define DHD_OS_WAKE_LOCK(pub)			dhd_os_wake_lock(pub)
+#define DHD_OS_WAKE_UNLOCK(pub)			dhd_os_wake_unlock(pub)
+#define DHD_OS_WD_WAKE_LOCK(pub)		dhd_os_wd_wake_lock(pub)
+#define DHD_OS_WD_WAKE_UNLOCK(pub)		dhd_os_wd_wake_unlock(pub)
 #define DHD_OS_WAKE_LOCK_TIMEOUT(pub)		dhd_os_wake_lock_timeout(pub)
 #define DHD_OS_WAKE_LOCK_RX_TIMEOUT_ENABLE(pub, val)	dhd_os_wake_lock_rx_timeout_enable(pub, val)
 #define DHD_OS_WAKE_LOCK_CTRL_TIMEOUT_ENABLE(pub, val)	dhd_os_wake_lock_ctrl_timeout_enable(pub, val)
-#define DHD_PACKET_TIMEOUT_MS	1000
-#define DHD_EVENT_TIMEOUT_MS	1500
+#define DHD_PACKET_TIMEOUT_MS	 750
+#define DHD_PACKET_RX_TIMEOUT_MS 250
+#define DHD_EVENT_TIMEOUT_MS	 1500
 
 /* interface operations (register, remove) should be atomic, use this lock to prevent race
  * condition among wifi on/off and interface operation functions

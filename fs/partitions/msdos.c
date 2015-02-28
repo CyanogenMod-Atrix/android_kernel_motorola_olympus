@@ -166,10 +166,15 @@ static void parse_extended(struct parsed_partitions *state,
 			}
 
 #ifdef CONFIG_MACH_OLYMPUS
-#define MB002	 			0x001000
+#define MB002			0x001000
+#define MB016			0x008000
 #define OLYMPUS_SYSTEM_START	0x00E000
 #define OLYMPUS_OSH_START	0x0AE000
 #define OLYMPUS_OSH_END 	0x22DFFF
+#define OLYMPUS_DATA_START	0x378000
+#define OLYMPUS_PREINSTALL_START	0x778000
+#define OLYMPUS_PREINSTALL_END 	0x8247FF
+
 
 			if (next == OLYMPUS_SYSTEM_START*sector_size)
 			{
@@ -180,6 +185,17 @@ static void parse_extended(struct parsed_partitions *state,
 			{
 				printk("Fixing up osh part\n");
 				next = (OLYMPUS_OSH_END-MB002+1ULL)*sector_size;
+				size = MB002*sector_size;
+			}
+			else if (next == OLYMPUS_DATA_START*sector_size)
+			{
+				printk("Fixing up data part\n");
+				size = (OLYMPUS_PREINSTALL_END-MB002-OLYMPUS_DATA_START+1ULL)*sector_size;
+			}
+			else if (next == OLYMPUS_PREINSTALL_START*sector_size)
+			{
+				printk("Fixing up preinstall part\n");
+				next = (OLYMPUS_PREINSTALL_END-MB002+1ULL)*sector_size;
 				size = MB002*sector_size;
 			}
 

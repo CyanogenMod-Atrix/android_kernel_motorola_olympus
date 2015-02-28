@@ -111,18 +111,18 @@ static void tegra2_auto_hotplug_work_func(struct work_struct *work)
 		return;
 
 	case TEGRA_HP_IDLE:
-		pr_info("%s TEGRA_HP_IDLE", __func__);
+		pr_debug("%s TEGRA_HP_IDLE", __func__);
 		break;
 	case TEGRA_HP_DOWN:
 		if (cpu_online(1)) {
-			pr_info("%s TEGRA_HP_DOWN", __func__);
+			pr_debug("%s TEGRA_HP_DOWN", __func__);
 			if ((now - last_change_time_hi) >= down_delay)
 				good_time = true;
 			}
 		break;
 	case TEGRA_HP_UP:
 		if (!cpu_online(1)) {
-			pr_info("%s TEGRA_HP_UP", __func__);
+			pr_debug("%s TEGRA_HP_UP", __func__);
 			up = true;
 			if ((now - last_change_time_lo) >= up_delay)
 				good_time = true;
@@ -136,13 +136,13 @@ static void tegra2_auto_hotplug_work_func(struct work_struct *work)
 	pending = false;
 //	pr_info("%s before switch", __func__);
 	if (good_time) {
-		pr_info("%s good time", __func__);
+		pr_debug("%s good time", __func__);
 		if (up) {
-			//cpu_up(1);
+			cpu_up(1);
 			last_change_time_hi = now;
 			last_change_time_lo = now;
 		} else {
-			//cpu_down(1);
+			cpu_down(1);
 			last_change_time_hi = now;
 			last_change_time_lo = now;
 		}
@@ -158,7 +158,7 @@ void tegra2_auto_hotplug_governor(unsigned int cpu_freq, bool suspend)
 	switch (hp_state) {
 
 	case TEGRA_HP_DISABLED:
-		//pr_info("%s TEGRA_HP_DISABLED", __func__);
+		//pr_debug("%s TEGRA_HP_DISABLED", __func__);
 		break;
 
 	case TEGRA_HP_IDLE:
@@ -166,12 +166,12 @@ void tegra2_auto_hotplug_governor(unsigned int cpu_freq, bool suspend)
 			    hp_state = TEGRA_HP_UP;
 				queue_delayed_work(hotplug_wq, &hotplug_work, up_delay);
 //				last_change_time_hi = now;
-				pr_info("%s going up", __func__);
+				//pr_debug("%s going up", __func__);
 		} else if (cpu_freq <= bottom_freq) {
 				hp_state = TEGRA_HP_DOWN;
 				queue_delayed_work(hotplug_wq, &hotplug_work, down_delay);
 //				last_change_time_lo = now;
-				pr_info("%s going down", __func__);
+			//	pr_debug("%s going down", __func__);
 		}
 		break;
 
@@ -180,7 +180,7 @@ void tegra2_auto_hotplug_governor(unsigned int cpu_freq, bool suspend)
 				hp_state = TEGRA_HP_UP;
 				queue_delayed_work(hotplug_wq, &hotplug_work, up_delay);
 //				last_change_time_hi = now;
-				pr_info("%s going up", __func__);
+			//	pr_debug("%s going up", __func__);
 		} else if (cpu_freq > bottom_freq) {
 			hp_state = TEGRA_HP_IDLE;
 		}
@@ -192,7 +192,7 @@ void tegra2_auto_hotplug_governor(unsigned int cpu_freq, bool suspend)
 				hp_state = TEGRA_HP_DOWN;
 				queue_delayed_work(hotplug_wq, &hotplug_work, down_delay);
 //				last_change_time_lo = now;
-				pr_info("%s going down", __func__);
+			//	pr_debug("%s going down", __func__);
 		} else if (cpu_freq <= top_freq) {
 			hp_state = TEGRA_HP_IDLE;
 		}
@@ -203,7 +203,7 @@ void tegra2_auto_hotplug_governor(unsigned int cpu_freq, bool suspend)
 		       __func__, hp_state);
 		BUG();
 	}
-	//pr_info("%s exit", __func__);
+	//pr_debug("%s exit", __func__);
 }
 
 int tegra2_auto_hotplug_init(struct mutex *cpu_lock)

@@ -383,9 +383,9 @@ static int config_unused_pins(char *pins, int num)
 static void __init tegra_olympus_init(void)
 {
 	olympus_clks_init();
-
-	//tegra_ram_console_debug_init();
-
+#ifdef CONFIG_ANDROID_RAM_CONSOLE
+	tegra_ram_console_debug_init();
+#endif
 	olympus_pinmux_init();
 
 	olympus_i2c_init();
@@ -531,9 +531,11 @@ void __init tegra_olympus_reserve(void)
 	if (memblock_reserve(0x0, 4096) < 0)
 		pr_warn("Cannot reserve first 4K of memory for safety\n");
 
-	tegra_reserve(SZ_128M + SZ_64M, SZ_8M, SZ_16M);
-	//tegra_reserve(SZ_256M, SZ_16M, SZ_16M);
+#ifdef CONFIG_ANDROID_RAM_CONSOLE
 	tegra_ram_console_debug_reserve(SZ_1M);
+#endif
+	//tegra_reserve(SZ_128M + SZ_64M, SZ_8M, SZ_16M);
+	tegra_reserve(SZ_128M + SZ_64M, SZ_8M, SZ_16M);
 
 }
 

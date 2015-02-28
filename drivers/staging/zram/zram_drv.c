@@ -649,6 +649,12 @@ int zram_init_device(struct zram *zram)
 	}
 
 	num_pages = zram->disksize >> PAGE_SHIFT;
+#if defined(CONFIG_ANDROID)
+	if (num_pages) {
+		pr_info("android zram active, overriding sys.vm.page-cluster to 0.");
+		page_cluster = 0;
+	}
+#endif	
 	zram->table = vzalloc(num_pages * sizeof(*zram->table));
 	if (!zram->table) {
 		pr_err("Error allocating zram address table\n");

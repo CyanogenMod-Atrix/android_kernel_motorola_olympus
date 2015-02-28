@@ -838,6 +838,8 @@ static unsigned long shrink_page_list(struct list_head *page_list,
 		if (PageAnon(page) && !PageSwapCache(page)) {
 			if (!(sc->gfp_mask & __GFP_IO))
 				goto keep_locked;
+			if (!sc->may_writepage)
+				goto keep_locked;
 			if (!add_to_swap(page))
 				goto activate_locked;
 			may_enter_fs = 1;
@@ -1825,6 +1827,12 @@ static void get_scan_count(struct zone *zone, struct scan_control *sc,
 		/* If we have very few page cache pages,
 		   force-scan anon pages. */
 		if (unlikely(file + free <= high_wmark_pages(zone))) {
+			/*
+			 * From now on, we have to swap out
+			 * for peventing OOM kill although
+			 * we sacrifice power consumption.
+			 */
+			sc->may_writepage = 1;
 			fraction[0] = 1;
 			fraction[1] = 0;
 			denominator = 1;
