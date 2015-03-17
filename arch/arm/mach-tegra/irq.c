@@ -196,6 +196,12 @@ static int tegra_legacy_irq_suspend(void)
 
 		/* disable COP interrupts */
 		writel(~0, ictlr + ICTLR_COP_IER_CLR);
+
+		/* disable CPU interrupts */
+		writel(~0, ictlr + ICTLR_CPU_IER_CLR);
+
+		/* enable lp1 wake sources */
+		writel(ictlr_wake_mask[i], ictlr + ICTLR_CPU_IER_SET);
 	}
 	local_irq_restore(flags);
 

@@ -55,13 +55,14 @@
 
 #include <mach/iomap.h>
 #include <mach/irqs.h>
+#include <mach/io.h>
+#include <mach/iomap.h>
+#include <mach/pinmux.h>
 
 #include "gpio-names.h"
 #include "board.h"
 #include "hwrev.h"
 #include "pm.h"
-#include <mach/io.h>
-#include <mach/iomap.h>
 #include "apbio.h"
 #include "pm-irq.h"
 #include "fuse.h"
@@ -901,7 +902,7 @@ static struct regulator_init_data cpcap_regulator[CPCAP_NUM_REGULATORS] = {
 			.max_uV			= 3300000,
 			.valid_ops_mask		= REGULATOR_CHANGE_STATUS,
 			.apply_uV		= 1,
-		//	.always_on		= 1,
+			//.always_on		= 1,
 		},
 		.num_consumer_supplies	= ARRAY_SIZE(cpcap_vusb_consumers),
 		.consumer_supplies	= cpcap_vusb_consumers,
@@ -1099,9 +1100,9 @@ static void olympus_board_resume(int lp_state, enum resume_stage stg)
 		tegra_pinmux_set_tristate(10/*TEGRA_PINGROUP_DAP2*/, TEGRA_TRI_NORMAL);
 		tegra_pinmux_set_tristate(11/*TEGRA_PINGROUP_DAP3*/, TEGRA_TRI_NORMAL);
 		tegra_pinmux_set_tristate(12/*TEGRA_PINGROUP_DAP4*/, TEGRA_TRI_NORMAL);
-		tegra_pinmux_set_tristate(22 /*TEGRA_PINGROUP_GMC*/, TEGRA_TRI_NORMAL);
-		tegra_pinmux_set_tristate(30/*TEGRA_PINGROUP_IRRX*/, TEGRA_TRI_NORMAL);
-		tegra_pinmux_set_tristate(31/*TEGRA_PINGROUP_IRTX*/, TEGRA_TRI_NORMAL);
+		tegra_pinmux_set_tristate(22 /*TEGRA_PINGROUP_GMC*/, TEGRA_TRI_NORMAL); //uart
+		tegra_pinmux_set_tristate(30/*TEGRA_PINGROUP_IRRX*/, TEGRA_TRI_NORMAL);//uart
+		tegra_pinmux_set_tristate(31/*TEGRA_PINGROUP_IRTX*/, TEGRA_TRI_NORMAL);//uart
 		tegra_pinmux_set_tristate(49 /*TEGRA_PINGROUP_LD2*/, TEGRA_TRI_NORMAL);
 		tegra_pinmux_set_tristate(51 /*TEGRA_PINGROUP_LD4*/, TEGRA_TRI_NORMAL);
 		tegra_pinmux_set_tristate(58 /*TEGRA_PINGROUP_LDI*/, TEGRA_TRI_NORMAL);
@@ -1109,8 +1110,8 @@ static void olympus_board_resume(int lp_state, enum resume_stage stg)
 		tegra_pinmux_set_tristate(74/*TEGRA_PINGROUP_LSPI*/, TEGRA_TRI_NORMAL);
 		tegra_pinmux_set_tristate(76/*TEGRA_PINGROUP_LVP1*/, TEGRA_TRI_NORMAL);
 		tegra_pinmux_set_tristate(77 /*TEGRA_PINGROUP_LVS*/, TEGRA_TRI_NORMAL);
-		tegra_pinmux_set_tristate(104/*TEGRA_PINGROUP_UCA*/, TEGRA_TRI_NORMAL);
-		tegra_pinmux_set_tristate(105/*TEGRA_PINGROUP_UCB*/, TEGRA_TRI_NORMAL);
+		tegra_pinmux_set_tristate(104/*TEGRA_PINGROUP_UCA*/, TEGRA_TRI_NORMAL);//uart
+		tegra_pinmux_set_tristate(105/*TEGRA_PINGROUP_UCB*/, TEGRA_TRI_NORMAL);//uart
 		tegra_pinmux_set_pullupdown(108/*TEGRA_PINGROUP_DDRC*/, TEGRA_PUPD_NORMAL);
 
 		printk(KERN_INFO "%s: TEGRA_GPIO_PM2 = 1",__func__);

@@ -2,7 +2,7 @@
  * arch/arm/mach-tegra/include/mach/pm.h
  *
  * Copyright (C) 2010 Google, Inc.
- * Copyright (C) 2010-2012 NVIDIA Corporation
+ * Copyright (c) 2010-2012, NVIDIA CORPORATION.  All rights reserved.
  *
  * Author:
  *	Colin Cross <ccross@google.com>
@@ -67,18 +67,15 @@ struct tegra_suspend_platform_data {
 	unsigned int cpu_resume_boost;	/* CPU frequency resume boost in kHz */
 };
 
-/* Tegra io dpd entry - for each supported driver */
-struct tegra_io_dpd {
-	const char *name;	/* driver name */
-	u8 io_dpd_reg_index;	/* io dpd register index */
-	u8 io_dpd_bit;		/* bit position for driver in dpd register */
-};
+/* clears io dpd settings before kernel code */
+void tegra_bl_io_dpd_cleanup(void);
 
 unsigned long tegra_cpu_power_good_time(void);
 unsigned long tegra_cpu_power_off_time(void);
 unsigned long tegra_cpu_lp2_min_residency(void);
 void tegra_clear_cpu_in_lp2(int cpu);
 bool tegra_set_cpu_in_lp2(int cpu);
+bool tegra_is_cpu_in_lp2(int cpu);
 
 int tegra_suspend_dram(enum tegra_suspend_mode mode, unsigned int flags);
 
@@ -226,6 +223,8 @@ extern bool tegra_all_cpus_booted __read_mostly;
 
 #ifdef CONFIG_TRUSTED_FOUNDATIONS
 void tegra_generic_smc(u32 type, u32 subtype, u32 arg);
+void tegra_generic_smc_local(u32 type, u32 subtype, u32 arg);
+void tegra_generic_smc_uncached(u32 type, u32 subtype, u32 arg);
 #endif
 
 /* The debug channel uart base physical address */

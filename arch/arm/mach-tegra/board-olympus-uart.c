@@ -147,6 +147,12 @@ void __init olympus_uart_init(void)
 		uart_parent_clk[i].parent_clk = c;
 		uart_parent_clk[i].fixed_clk_rate = clk_get_rate(c);
 	}
+
+	for (i = 0; i < ARRAY_SIZE(olympus_uart_pdata); i++) {
+		olympus_uart_pdata[i].uart_pinmux1 = -1;
+		olympus_uart_pdata[i].uart_pinmux2 = -1;
+	};
+
 	olympus_uart_pdata[0].parent_clk_list = uart_parent_clk;
 	olympus_uart_pdata[0].parent_clk_count = ARRAY_SIZE(uart_parent_clk);
 	olympus_uart_pdata[0].is_loopback = false;
@@ -155,8 +161,7 @@ void __init olympus_uart_init(void)
 
 	olympus_uart_pdata[1].parent_clk_list = uart_parent_clk;
 	olympus_uart_pdata[1].parent_clk_count = ARRAY_SIZE(uart_parent_clk);
-	olympus_uart_pdata[1].uart_pinmux1 = -1;
-	olympus_uart_pdata[1].uart_pinmux2 = -1;
+	olympus_uart_pdata[1].uart_pinmux1 = TEGRA_PINGROUP_UAD;
 
 	olympus_uart_pdata[2].parent_clk_list = uart_parent_clk;
 	olympus_uart_pdata[2].parent_clk_count = ARRAY_SIZE(uart_parent_clk);
@@ -169,8 +174,7 @@ void __init olympus_uart_init(void)
 	olympus_uart_pdata[3].parent_clk_list = uart_parent_clk;
 	olympus_uart_pdata[3].parent_clk_count = ARRAY_SIZE(uart_parent_clk);
 	olympus_uart_pdata[3].is_loopback = false;
-	olympus_uart_pdata[3].uart_pinmux1 = -1;//TEGRA_PINGROUP_GMC;
-	olympus_uart_pdata[3].uart_pinmux2 = -1; //to find
+	olympus_uart_pdata[3].uart_pinmux1 = TEGRA_PINGROUP_GMC;
 
 	tegra_uarta_device.dev.platform_data = &olympus_uart_pdata[0];
 	tegra_uartb_device.dev.platform_data = &olympus_uart_pdata[1];

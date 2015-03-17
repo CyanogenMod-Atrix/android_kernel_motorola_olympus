@@ -41,6 +41,7 @@
 #include <mach/nvmap.h>
 #include <mach/dc.h>
 #include <mach/fb.h>
+#include <mach/pinmux.h>
 
 #include "board.h"
 #include "board-olympus.h"
@@ -577,6 +578,9 @@ static void olympus_panel_early_suspend(struct early_suspend *h)
 	cpufreq_store_default_gov();
 	cpufreq_change_gov(cpufreq_conservative_gov);
 #endif
+	tegra_gpio_disable(HDMI_HPD_GPIO);
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_HDINT, TEGRA_TRI_TRISTATE);
+
 }
 
 static void olympus_panel_late_resume(struct early_suspend *h)
@@ -590,6 +594,9 @@ static void olympus_panel_late_resume(struct early_suspend *h)
 	for (i = 0; i < num_registered_fb; i++)
 		fb_blank(registered_fb[i], FB_BLANK_UNBLANK);
 //	tegra2_disable_autoplug();
+	tegra_gpio_enable(HDMI_HPD_GPIO);
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_HDINT, TEGRA_TRI_NORMAL);
+
 }
 #endif
 

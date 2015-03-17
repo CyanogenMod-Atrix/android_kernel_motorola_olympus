@@ -3,7 +3,7 @@
  *
  * Tegra 2 LP0 scratch register preservation
  *
- * Copyright (c) 2009-2011, NVIDIA Corporation.
+ * Copyright (c) 2009-2012, NVIDIA CORPORATION. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -357,6 +357,8 @@ void __init tegra2_lp0_suspend_init(void)
 	wmb();
 }
 
+#ifdef CONFIG_PM_SLEEP
+
 struct tegra_io_dpd *tegra_io_dpd_get(struct device *dev)
 {
 	return NULL;
@@ -374,3 +376,17 @@ void tegra_io_dpd_disable(struct tegra_io_dpd *hnd)
 	return;
 }
 EXPORT_SYMBOL(tegra_io_dpd_disable);
+
+#endif
+
+int tegra_io_dpd_init(void)
+{
+	return 0;
+}
+EXPORT_SYMBOL(tegra_io_dpd_init);
+
+void tegra_bl_io_dpd_cleanup()
+{
+}
+EXPORT_SYMBOL(tegra_bl_io_dpd_cleanup);
+

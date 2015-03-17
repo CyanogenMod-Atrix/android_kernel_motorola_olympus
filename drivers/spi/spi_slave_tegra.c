@@ -20,8 +20,8 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-/*#define DEBUG           1*/
-/*#define VERBOSE_DEBUG   1*/
+/*#define DEBUG           1
+#define VERBOSE_DEBUG   1*/
 
 #include <linux/kernel.h>
 #include <linux/init.h>
@@ -671,6 +671,8 @@ static void set_best_clk_source(struct spi_tegra_data *tspi,
 	if (cdiv < tspi->min_div) {
 		nrate = DIV_ROUND_UP(prate, tspi->min_div);
 		clk_set_rate(tspi->clk, nrate);
+		dev_dbg(&tspi->pdev->dev, "Setting clk to %ld\n",
+				nrate);
 	}
 
 	for (count = 0; count < tspi->parent_clk_count; ++count) {
@@ -697,7 +699,7 @@ static void set_best_clk_source(struct spi_tegra_data *tspi,
 	}
 
 	if (final_index >= 0) {
-		dev_info(&tspi->pdev->dev, "Setting clk_src %s\n",
+		dev_dbg(&tspi->pdev->dev, "Setting clk_src %s\n",
 				tspi->parent_clk_list[final_index].name);
 		clk_set_parent(tspi->clk,
 			tspi->parent_clk_list[final_index].parent_clk);
@@ -723,6 +725,7 @@ static void spi_tegra_start_transfer(struct spi_device *spi,
 		set_best_clk_source(tspi, speed);
 		clk_set_rate(tspi->clk, speed * 4);
 		tspi->cur_speed = speed;
+		dev_dbg(&tspi->pdev->dev, "%s: tspi->cur_speed = %d (clk_rate = %d)\n", __func__, speed, speed * 4);
 	}
 
 	tspi->cur = t;
@@ -940,12 +943,13 @@ static void spi_tegra_curr_transfer_complete(struct spi_tegra_data *tspi,
 	del_timer_sync(&tspi->transfer_timer);
 	if (err)
 	printk(KERN_ALERT"spi:tegra:address m=%x m->complete=%x\n",(unsigned int)(m),(unsigned int)(m->complete));
-	else
+//	else
 #endif
 	m->complete(m->context);
 #ifdef CONFIG_MACH_OLYMPUS
-	if (tspi->client_slave_done_cb)
+	if (tspi->client_slave_done_cb) {
 		tspi->client_slave_done_cb(tspi->client_done_data);
+	}
 #endif
 	if (!list_empty(&tspi->queue)) {
 		m = list_first_entry(&tspi->queue, struct spi_message, queue);
@@ -1071,12 +1075,16 @@ static irqreturn_t spi_tegra_isr_thread(int irq, void *context_data)
 
 	if (tspi->cur_direction & DATA_DIR_RX) {
 		if (tspi->rx_status) {
+			dev_vdbg(&tspi->pdev->dev, " tspi->rx_status %lx\n",
+									(long unsigned)(tspi->rx_status));
 			cancel_dma(tspi->rx_dma, &tspi->rx_dma_req);
 			err += 2;
 		} else {
 			wait_status = wait_for_completion_interruptible_timeout(
 				&tspi->rx_dma_complete, SLINK_DMA_TIMEOUT);
 			if (wait_status <= 0) {
+				dev_vdbg(&tspi->pdev->dev, " wait_status %lx\n",
+										wait_status);
 				cancel_dma(tspi->rx_dma, &tspi->rx_dma_req);
 				dev_err(&tspi->pdev->dev, "Error in Dma Rx "
 							"transfer\n");

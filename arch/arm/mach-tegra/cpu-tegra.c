@@ -59,6 +59,11 @@ static DEFINE_MUTEX(early_mutex);
 static bool is_suspended;
 static int suspend_index;
 
+#ifdef CONFIG_OLYMPUS_UV
+static unsigned int full_speed;
+extern int g_is_call_mode;
+#endif
+
 static bool force_policy_max;
 
 static int force_policy_max_set(const char *arg, const struct kernel_param *kp)
@@ -67,7 +72,6 @@ static int force_policy_max_set(const char *arg, const struct kernel_param *kp)
 	bool old_policy = force_policy_max;
 
 	mutex_lock(&tegra_cpu_lock);
-	////printk(KERN_INFO "%s\n", __func__);
 	ret = param_set_bool(arg, kp);
 	if ((ret == 0) && (old_policy != force_policy_max))
 		tegra_cpu_set_speed_cap(NULL);
@@ -92,7 +96,6 @@ static unsigned int cpu_user_cap;
 
 static inline void _cpu_user_cap_set_locked(void)
 {
-	////printk(KERN_INFO "%s\n", __func__);
 #ifndef CONFIG_TEGRA_CPU_CAP_EXACT_FREQ
 	if (cpu_user_cap != 0) {
 		int i;
@@ -109,6 +112,7 @@ static inline void _cpu_user_cap_set_locked(void)
 
 void tegra_cpu_user_cap_set(unsigned int speed_khz)
 {
+	printk(KERN_INFO "%s: %u\n", __func__, speed_khz);
 	mutex_lock(&tegra_cpu_lock);
 
 	cpu_user_cap = speed_khz;
@@ -459,7 +463,7 @@ module_exit(tegra_cpu_debug_exit);
 #endif /* CONFIG_DEBUG_FS */
 
 int tegra_verify_speed(struct cpufreq_policy *policy)
-{	////printk(KERN_INFO "%s\n", __func__);
+{
 	return cpufreq_frequency_table_verify(policy, freq_table);
 }
 
@@ -547,7 +551,7 @@ unsigned int tegra_count_slow_cpus(unsigned long speed_limit)
 {
 	unsigned int cnt = 0;
 	int i;
-	////printk(KERN_INFO "%s\n", __func__);
+
 	for_each_online_cpu(i)
 		if (target_cpu_speed[i] <= speed_limit)
 			cnt++;
@@ -558,7 +562,7 @@ unsigned int tegra_get_slowest_cpu_n(void) {
 	unsigned int cpu = nr_cpu_ids;
 	unsigned long rate = ULONG_MAX;
 	int i;
-	////printk(KERN_INFO "%s\n", __func__);
+
 	for_each_online_cpu(i)
 		if ((i > 0) && (rate > target_cpu_speed[i])) {
 			cpu = i;
@@ -570,7 +574,7 @@ unsigned int tegra_get_slowest_cpu_n(void) {
 unsigned long tegra_cpu_lowest_speed(void) {
 	unsigned long rate = ULONG_MAX;
 	int i;
-	////printk(KERN_INFO "%s\n", __func__);
+
 	for_each_online_cpu(i)
 		rate = min(rate, target_cpu_speed[i]);
 	return rate;
@@ -580,7 +584,7 @@ unsigned long tegra_cpu_highest_speed(void) {
 	unsigned long policy_max = ULONG_MAX;
 	unsigned long rate = 0;
 	int i;
-	////printk(KERN_INFO "%s\n", __func__);
+
 	for_each_online_cpu(i) {
 		if (force_policy_max)
 			policy_max = min(policy_max, policy_max_speed[i]);
@@ -594,7 +598,7 @@ int tegra_cpu_set_speed_cap(unsigned int *speed_cap)
 {
 	int ret = 0;
 	unsigned int new_speed = tegra_cpu_highest_speed();
-	////printk(KERN_INFO "%s\n", __func__);
+
 	if (is_suspended)
 		return -EBUSY;
 
@@ -620,7 +624,7 @@ int tegra_suspended_target(unsigned int target_freq)
 	/* apply only "hard" caps */
 	new_speed = tegra_throttle_governor_speed(new_speed);
 	new_speed = edp_governor_speed(new_speed);
-	////printk(KERN_INFO "%s\n", __func__);
+
 	return tegra_update_cpu_speed(new_speed);
 }
 
@@ -634,7 +638,6 @@ static int tegra_target(struct cpufreq_policy *policy,
 	int ret = 0;
 
 	mutex_lock(&tegra_cpu_lock);
-	////printk(KERN_INFO "%s\n", __func__);
 	ret = cpufreq_frequency_table_target(policy, freq_table, target_freq,
 		relation, &idx);
 	if (ret)
@@ -655,7 +658,7 @@ static int tegra_pm_notify(struct notifier_block *nb, unsigned long event,
 	void *dummy)
 {
 	mutex_lock(&tegra_cpu_lock);
-	////printk(KERN_INFO "%s\n", __func__);
+
 	if (event == PM_SUSPEND_PREPARE) {
 		is_suspended = true;
 		pr_info("Tegra cpufreq suspend: setting frequency to %d kHz\n",
@@ -667,7 +670,12 @@ static int tegra_pm_notify(struct notifier_block *nb, unsigned long event,
 		unsigned int freq;
 		is_suspended = false;
 		tegra_cpu_edp_init(true);
-		tegra_cpu_set_speed_cap(&freq);
+#ifdef CONFIG_OLYMPUS_UV
+		if (g_is_call_mode)
+			tegra_cpu_set_speed_cap(&full_speed);
+		else
+#endif
+			tegra_cpu_set_speed_cap(&freq);
 		pr_info("Tegra cpufreq resume: restoring frequency to %d kHz\n",
 			freq);
 	}
@@ -684,7 +692,7 @@ static int tegra_cpu_init(struct cpufreq_policy *policy)
 {
 	if (policy->cpu >= CONFIG_NR_CPUS)
 		return -EINVAL;
-	//printk(KERN_INFO "%s\n", __func__);
+
 	cpu_clk = clk_get_sys(NULL, "cpu");
 	if (IS_ERR(cpu_clk))
 		return PTR_ERR(cpu_clk);
@@ -704,7 +712,7 @@ static int tegra_cpu_init(struct cpufreq_policy *policy)
 	target_cpu_speed[policy->cpu] = policy->cur;
 
 	/* FIXME: what's the actual transition time? */
-	policy->cpuinfo.transition_latency = 0;//300 * 1000;
+	policy->cpuinfo.transition_latency = 0;// 0 is from the 2.6.32.9 kernel, default was: 300 * 1000;
 
 	policy->shared_type = CPUFREQ_SHARED_TYPE_ALL;
 	cpumask_copy(policy->related_cpus, cpu_possible_mask);
@@ -712,13 +720,14 @@ static int tegra_cpu_init(struct cpufreq_policy *policy)
 	if (policy->cpu == 0) {
 		register_pm_notifier(&tegra_cpu_pm_notifier);
 	}
-
+#ifdef CONFIG_OLYMPUS_UV
+	full_speed = tegra_cpu_highest_speed();
+#endif
 	return 0;
 }
 
 static int tegra_cpu_exit(struct cpufreq_policy *policy)
 {
-	//printk(KERN_INFO "%s\n", __func__);
 	cpufreq_frequency_table_cpuinfo(policy, freq_table);
 	clk_disable(emc_clk);
 	clk_put(emc_clk);
@@ -731,7 +740,7 @@ static int tegra_cpufreq_policy_notifier(
 {
 	int i, ret;
 	struct cpufreq_policy *policy = data;
-	////printk(KERN_INFO "%s\n", __func__);
+
 	if (event == CPUFREQ_NOTIFY) {
 		ret = cpufreq_frequency_table_target(policy, freq_table,
 			policy->max, CPUFREQ_RELATION_H, &i);
@@ -765,11 +774,12 @@ static struct cpufreq_driver tegra_cpufreq_driver = {
 	.attr		= tegra_cpufreq_attr,
 };
 
+#ifdef CONFIG_OLYMPUS_UV
 static void tegra_cpu_early_suspend(struct early_suspend *h)
 {
-#ifdef CONFIG_OLYMPUS_UV
-	tegra_cpu_user_cap_set(456000);
-#endif
+	if (!g_is_call_mode)
+		tegra_cpu_user_cap_set(216000);
+
 	mutex_lock(&early_mutex);
 	/* turn off 2nd cpu ALWAYS */
 	if (num_online_cpus() > 1)
@@ -780,9 +790,8 @@ static void tegra_cpu_early_suspend(struct early_suspend *h)
 
 static void tegra_cpu_late_resume(struct early_suspend *h)
 {
-#ifdef CONFIG_OLYMPUS_UV
-	tegra_cpu_user_cap_set(1000000);
-#endif
+	tegra_cpu_user_cap_set(full_speed);
+
 	mutex_lock(&early_mutex);
 	/* restore dual core operations */
 	if (num_online_cpus() < 2)
@@ -792,10 +801,11 @@ static void tegra_cpu_late_resume(struct early_suspend *h)
 }
 
 static struct early_suspend tegra_cpu_early_suspend_handler = {
-	.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN,
+	.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN+15,
 	.suspend = tegra_cpu_early_suspend,
 	.resume = tegra_cpu_late_resume,
 };
+#endif
 
 static int __init tegra_cpufreq_init(void)
 {
@@ -823,9 +833,9 @@ static int __init tegra_cpufreq_init(void)
 		&tegra_cpufreq_policy_nb, CPUFREQ_POLICY_NOTIFIER);
 	if (ret)
 		return ret;
-
+#ifdef CONFIG_OLYMPUS_UV
 	register_early_suspend(&tegra_cpu_early_suspend_handler);
-
+#endif
 	return cpufreq_register_driver(&tegra_cpufreq_driver);
 }
 

@@ -31,6 +31,10 @@
 
 #include <media/tegra_camera.h>
 
+#ifdef CONFIG_MACH_OLYMPUS
+#include <mach/pinmux.h>
+#endif
+
 /* Eventually this should handle all clock and reset calls for the isp, vi,
  * vi_sensor, and csi modules, replacing nvrm and nvos completely for camera
  */
@@ -351,6 +355,10 @@ static int tegra_camera_open(struct inode *inode, struct file *file)
 	if (atomic_xchg(&dev->in_use, 1))
 		return -EBUSY;
 
+#ifdef CONFIG_MACH_OLYMPUS
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_CSUS, TEGRA_TRI_NORMAL);
+#endif
+
 	file->private_data = dev;
 
 	mutex_lock(&dev->tegra_camera_lock);
@@ -378,7 +386,6 @@ static int tegra_camera_release(struct inode *inode, struct file *file)
 
 	dev_info(dev->dev, "%s\n", __func__);
 
-
 	mutex_lock(&dev->tegra_camera_lock);
 	/* disable HW clock */
 	ret = tegra_camera_disable_clk(dev);
@@ -392,6 +399,10 @@ static int tegra_camera_release(struct inode *inode, struct file *file)
 	tegra_camera_power_off(dev);
 	if (ret)
 		goto release_exit;
+
+#ifdef CONFIG_MACH_OLYMPUS
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_CSUS, TEGRA_TRI_TRISTATE);
+#endif
 
 release_exit:
 	mutex_unlock(&dev->tegra_camera_lock);
@@ -548,7 +559,6 @@ static int tegra_camera_suspend(struct platform_device *pdev, pm_message_t state
 		"application is holding on to camera. \n");
 	}
 	mutex_unlock(&dev->tegra_camera_lock);
-
 	return ret;
 }
 

@@ -176,6 +176,7 @@
 #include <linux/signal.h>
 #include <linux/spi/spi.h>
 #include <mach/gpio.h>
+#include <mach/pinmux.h>
 
 /* Identifiers */
 #define AES_SPI_DRIVER_NAME ("aes1750")
@@ -1483,6 +1484,7 @@ static int aes1750_suspend(struct spi_device *spi, pm_message_t mesg)
 	/* Reset the sensor so that it is in low-power mode. */
 	aes1750_reset(aes1750);
 	aes1750_info("finished\n");
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_LHP0, TEGRA_TRI_TRISTATE);
 
 	return 0;
 }
@@ -1493,6 +1495,7 @@ static int aes1750_resume(struct spi_device *spi)
 
 	aes1750_info("started\n");
 
+	tegra_pinmux_set_tristate(TEGRA_PINGROUP_LHP0, TEGRA_TRI_NORMAL);
 	atomic_set(&aes1750->is_suspended, 0);
 	enable_irq(aes1750->spi->irq);
 	aes1750_send_user_signal(aes1750, AES1750_SIGNAL_RESUME);

@@ -52,8 +52,8 @@
 
 /*
  * SPI configuration for Olympus:
- *   SPI1 - modem
- *   SPI2 - cpcap?
+ *   SPI1 - fingerprint sensor/modem
+ *   SPI2 - cpcap
  *   SPI3 - ?
  *   SPI4 - ?
  */
@@ -62,7 +62,7 @@ static struct tegra_spi_platform_data olympus_spi_pdata = {
 	.is_dma_based		= true,
 	.max_dma_buffer		= (16 * 1024),
 	.is_clkon_always	= false,
-	.max_rate			= 100000000,
+	.max_rate			= 104000000,
 };
 
 static struct tegra_spi_platform_data olympus_spi_cpcap_pdata = {
@@ -84,7 +84,7 @@ void __init olympus_spi_init(void)
 	int i;
 	struct clk *clk;
 
-	printk("this board spi init\n");
+	printk("board spi init\n");
         for (i = 0; i < ARRAY_SIZE(spi_parent_clk); ++i) {
       		clk = tegra_get_clock_by_name(spi_parent_clk[i].name);
 		if (IS_ERR_OR_NULL(clk)) {
@@ -97,12 +97,12 @@ void __init olympus_spi_init(void)
 	olympus_spi_pdata.parent_clk_list = spi_parent_clk;
 	olympus_spi_pdata.parent_clk_count = ARRAY_SIZE(spi_parent_clk);
 
-	tegra_spi_device1.dev.platform_data = &olympus_spi_pdata;
+	tegra_spi_slave_device1.dev.platform_data = &olympus_spi_pdata;
 	tegra_spi_device2.dev.platform_data = &olympus_spi_cpcap_pdata;
 	tegra_spi_device3.dev.platform_data = &olympus_spi_pdata;
 	tegra_spi_device4.dev.platform_data = &olympus_spi_pdata;
 
-//	platform_device_register(&tegra_spi_slave_device1);
+	platform_device_register(&tegra_spi_slave_device1);
 	platform_device_register(&tegra_spi_device2);
 	platform_device_register(&tegra_spi_device3);
 	platform_device_register(&tegra_spi_device4);

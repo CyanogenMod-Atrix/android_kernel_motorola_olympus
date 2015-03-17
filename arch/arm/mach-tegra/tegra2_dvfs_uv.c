@@ -78,6 +78,18 @@ static const int core_speedo_nominal_millivolts[] =
 #define KHZ 1000
 #define MHZ 1000000
 
+static unsigned int suspend_cpu_mV = 950;
+module_param(suspend_cpu_mV, uint, S_IRUGO|S_IWUSR);
+
+static unsigned int suspend_core_mV = 1150;
+module_param(suspend_core_mV, uint, S_IRUGO|S_IWUSR);
+
+static unsigned int nominal_cpu_mV = 950;
+module_param(nominal_cpu_mV, uint, S_IRUGO|S_IWUSR);
+
+static unsigned int nominal_core_mV = 1150;
+module_param(nominal_core_mV, uint, S_IRUGO|S_IWUSR);
+
 static struct dvfs_rail tegra2_dvfs_rail_vdd_cpu = {
 	.reg_id = "vdd_cpu",
 #ifdef CPU_UV
@@ -418,6 +430,14 @@ void __init tegra_soc_init_dvfs(void)
 	int cpu_process_id = tegra_cpu_process_id();
 	int core_process_id = tegra_core_process_id();
 	int speedo_id = tegra_soc_speedo_id();
+
+	for (i = 0; i < ARRAY_SIZE(cpu_millivolts); i++)
+		if (suspend_cpu_mV==cpu_millivolts[i])
+			pr_info("%s: suspend_cpu_mV = %d\n", __func__, suspend_cpu_mV);
+
+	for (i = 0; i < ARRAY_SIZE(core_millivolts); i++)
+		if (suspend_core_mV==core_millivolts[i])
+			pr_info("%s: suspend_core_mV = %d\n", __func__, suspend_core_mV);
 
 	BUG_ON(speedo_id >= ARRAY_SIZE(cpu_speedo_nominal_millivolts));
 	tegra2_dvfs_rail_vdd_cpu.nominal_millivolts =

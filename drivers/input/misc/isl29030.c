@@ -21,6 +21,7 @@
 #include <linux/isl29030.h>
 
 #include <linux/delay.h>
+#include <linux/earlysuspend.h>
 #include <linux/i2c.h>
 #include <linux/input.h>
 #include <linux/interrupt.h>
@@ -34,6 +35,7 @@
 #include <linux/types.h>
 #include <linux/uaccess.h>
 #include <linux/workqueue.h>
+#include <linux/tegra_audio.h>
 
 struct isl29030_data {
 	struct input_dev *dev;
@@ -51,6 +53,7 @@ struct isl29030_data {
 	unsigned int als_enabled;
 	unsigned int prox_near;
 	unsigned int last_prox_near;
+	struct early_suspend early_suspend;
 	unsigned int lux_level;
 };
 
@@ -75,12 +78,17 @@ static struct isl29030_reg {
 	{ "DISABLE",		ISL29030_TEST2 },
 };
 
+#ifdef CONFIG_HAS_EARLYSUSPEND
+static void isl29030_early_suspend(struct early_suspend *handler);
+static void isl29030_late_resume(struct early_suspend *handler);
+#endif
+
 #define ISL29030_DBG_INPUT		0x00000001
 #define ISL29030_DBG_POWER_ON_OFF	0x00000002
 #define ISL29030_DBG_ENABLE_DISABLE	0x00000004
 #define ISL29030_DBG_IOCTL		0x00000008
 #define ISL29030_DBG_SUSPEND_RESUME	0x00000010
-static u32 isl29030_debug = 0x00000000;
+static u32 isl29030_debug = 0x00000016;
 
 module_param_named(als_debug, isl29030_debug, uint, 0664);
 
@@ -952,20 +960,20 @@ static int isl29030_pm_event(struct notifier_block *this, unsigned long event,
 
 	if (isl29030_debug & ISL29030_DBG_SUSPEND_RESUME)
 		pr_info("%s: event = %lu\n", __func__, event);
-
+#if 0
 	mutex_lock(&isl->mutex);
 
 	switch (event) {
 	case PM_SUSPEND_PREPARE:
-		isl29030_suspend(isl);
+			isl29030_suspend(isl);
 		break;
 	case PM_POST_SUSPEND:
-		isl29030_resume(isl);
+			isl29030_resume(isl);
 		break;
 	}
 
 	mutex_unlock(&isl->mutex);
-
+#endif
 	return NOTIFY_DONE;
 }
 
@@ -1094,6 +1102,13 @@ static int ld_isl29030_probe(struct i2c_client *client,
 		goto error_power_on_failed;
 	}
 
+#ifdef CONFIG_HAS_EARLYSUSPEND
+	isl->early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN + 1;
+	isl->early_suspend.suspend = isl29030_early_suspend;
+	isl->early_suspend.resume = isl29030_late_resume;
+	register_early_suspend(&isl->early_suspend);
+#endif
+
 	return 0;
 
 error_power_on_failed:
@@ -1147,6 +1162,30 @@ static int ld_isl29030_remove(struct i2c_client *client)
 
 	return 0;
 }
+
+#ifdef CONFIG_HAS_EARLYSUSPEND
+static void isl29030_early_suspend(struct early_suspend *handler)
+{
+	struct isl29030_data *isl;
+
+	isl = container_of(handler, struct isl29030_data,
+				early_suspend);
+	mutex_lock(&isl->mutex);
+	isl29030_suspend(isl);
+	mutex_unlock(&isl->mutex);
+}
+
+static void isl29030_late_resume(struct early_suspend *handler)
+{
+	struct isl29030_data *isl;
+
+	isl = container_of(handler, struct isl29030_data,
+			early_suspend);
+	mutex_lock(&isl->mutex);
+	isl29030_resume(isl);
+	mutex_unlock(&isl->mutex);
+}
+#endif
 
 static const struct i2c_device_id isl29030_id[] = {
 	{LD_ISL29030_NAME, 0},

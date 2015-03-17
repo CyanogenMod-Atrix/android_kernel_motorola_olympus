@@ -43,6 +43,7 @@
 #include <mach/irqs.h>
 #include <mach/pinmux.h>
 #include <mach/iomap.h>
+#include <mach/io_dpd.h>
 #include <mach/io.h>
 #include <mach/pci.h>
 #include <mach/audio.h>
@@ -592,6 +593,7 @@ static void __init tegra_p1852_init(void)
 	p1852_gpio_init();
 	p1852_uart_init();
 	p1852_usb_init();
+	tegra_io_dpd_init();
 	p1852_sdhci_init();
 	p1852_spi_init();
 	platform_add_devices(p1852_devices, ARRAY_SIZE(p1852_devices));
