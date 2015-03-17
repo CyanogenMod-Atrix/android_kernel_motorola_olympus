@@ -82,6 +82,9 @@ ENTRY(tegra_resume)
 	mov32	r0, TEGRA_ARM_PERIF_BASE
 	ldr	r1, [r0]
 	orr	r1, r1, #1
+#ifdef CONFIG_ARM_SCU_SPECULATIVE_LINE
+	orr	r1, r1, #(1 << 3)
+#endif
 	str	r1, [r0]
 
 #ifdef CONFIG_TRUSTED_FOUNDATIONS

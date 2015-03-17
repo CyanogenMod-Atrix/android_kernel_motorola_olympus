@@ -3344,6 +3344,9 @@ static void ext4_mb_pa_callback(struct rcu_head *head)
 {
 	struct ext4_prealloc_space *pa;
 	pa = container_of(head, struct ext4_prealloc_space, u.pa_rcu);
+	
+	BUG_ON(atomic_read(&pa->pa_count));
+	BUG_ON(pa->pa_deleted == 0);
 	kmem_cache_free(ext4_pspace_cachep, pa);
 }
 
@@ -3357,15 +3360,12 @@ static void ext4_mb_put_pa(struct ext4_allocation_context *ac,
 	ext4_group_t grp;
 	ext4_fsblk_t grp_blk;
 
-	if (!atomic_dec_and_test(&pa->pa_count) || pa->pa_free != 0)
-		return;
-
 	/* in this short window concurrent discard can set pa_deleted */
 	spin_lock(&pa->pa_lock);
-	if (pa->pa_deleted == 1) {
-		spin_unlock(&pa->pa_lock);
-		return;
-	}
+	if (!atomic_dec_and_test(&pa->pa_count) || pa->pa_free != 0 || pa->pa_deleted == 1) {
+	        spin_unlock(&pa->pa_lock);
+	        return;
+        }
 
 	pa->pa_deleted = 1;
 	spin_unlock(&pa->pa_lock);

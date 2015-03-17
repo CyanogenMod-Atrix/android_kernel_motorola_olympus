@@ -701,6 +701,9 @@ static void notify_whisper_switch(struct cpcap_usb_det_data *data, enum cpcap_ac
 	if (accy == CPCAP_ACCY_CHARGER || accy == CPCAP_ACCY_WHISPER_PPD) {
 		/* Set switch for whisper PPDs and Chargers, which are like whisper SPDs */
 		switch_set_state(&data->wsdev, 1);
+		if (accy == CPCAP_ACCY_WHISPER_PPD)
+                 switch_set_state(&data->dsdev, 2);
+
 	} else if (accy != CPCAP_ACCY_CHARGER && accy != CPCAP_ACCY_WHISPER_PPD) {
 		switch_set_state(&data->wsdev, 0);
 		mutex_lock(&switch_access);
@@ -864,6 +867,7 @@ static void detection_work(struct work_struct *work)
 
 			data->state = WHISPER_SMART_DOCK;
 			switch_set_state(&data->sdsdev, 1);
+			switch_set_state(&data->dsdev, 1);
 		} else if (data->sense == SENSE_WHISPER_PPD ||
 				   data->sense == SENSE_WHISPER_PPD_NO_DP) {
 

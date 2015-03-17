@@ -810,31 +810,33 @@ sdioh_request_byte(sdioh_info_t *sd, uint rw, uint func, uint regaddr, uint8 *by
 #if defined(MMC_SDIO_ABORT)
 			/* to allow abort command through F1 */
 			else if (regaddr == SDIOD_CCCR_IOABORT) {
-				sdio_claim_host(gInstance->func[func]);
-				/*
-				* this sdio_f0_writeb() can be replaced with another api
-				* depending upon MMC driver change.
-				* As of this time, this is temporaray one
-				*/
-				sdio_writeb(gInstance->func[func], *byte, regaddr, &err_ret);
-				sdio_release_host(gInstance->func[func]);
+			 	if (gInstance->func[func]) {
+					sdio_claim_host(gInstance->func[func]);
+					/*
+					* this sdio_f0_writeb() can be replaced with another api
+					* depending upon MMC driver change.
+					* As of this time, this is temporaray one
+					*/
+					sdio_writeb(gInstance->func[func], *byte, regaddr, &err_ret);
+					sdio_release_host(gInstance->func[func]);
+				}	
 			}
 #endif /* MMC_SDIO_ABORT */
 			else if (regaddr < 0xF0) {
 				sd_err(("bcmsdh_sdmmc: F0 Wr:0x%02x: write disallowed\n", regaddr));
-			} else {
+			} else if (gInstance->func[func]) {
 				/* Claim host controller, perform F0 write, and release */
 				sdio_claim_host(gInstance->func[func]);
 				sdio_f0_writeb(gInstance->func[func], *byte, regaddr, &err_ret);
 				sdio_release_host(gInstance->func[func]);
 			}
-		} else {
+		} else if (gInstance->func[func]) {
 			/* Claim host controller, perform Fn write, and release */
 			sdio_claim_host(gInstance->func[func]);
 			sdio_writeb(gInstance->func[func], *byte, regaddr, &err_ret);
 			sdio_release_host(gInstance->func[func]);
 		}
-	} else { /* CMD52 Read */
+	} else if (gInstance->func[func]) { /* CMD52 Read */
 		/* Claim host controller, perform Fn read, and release */
 		sdio_claim_host(gInstance->func[func]);
 
@@ -1023,7 +1025,11 @@ sdioh_request_packet(sdioh_info_t *sd, uint fix_inc, uint write, uint func,
 				pkt_len -= xfred_len;
 				xfred_len = 0;
 			}
-			pkt_len = (pkt_len + 3) & 0xFFFFFFFC;
+			if (!write || pkt_len < 32) {
+				pkt_len = (pkt_len + 3) & 0xFFFFFFFC;
+			} else if (pkt_len % DHD_SDALIGN) {
+				pkt_len += DHD_SDALIGN - (pkt_len % DHD_SDALIGN);
+			}
 #ifdef CONFIG_MMC_MSM7X00A
 			if ((pkt_len % 64) == 32) {
 				sd_trace(("%s: Rounding up TX packet +=32\n", __FUNCTION__));

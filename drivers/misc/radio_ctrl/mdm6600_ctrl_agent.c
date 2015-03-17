@@ -129,7 +129,7 @@ static void bp_change_worker(struct work_struct *work)
 {
 	char *envp[] = {"MDM_SHUTDOWN=0", NULL};
 
-	pr_info("%s\n", __func__);
+	//pr_info("%s\n", __func__);
 
 	/* Notify userspace that modem is shutting down */
 	/* due to kernel reboot or powerdown */

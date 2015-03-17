@@ -208,6 +208,11 @@ ENDPROC(__dabt_svc)
 	.align	5
 __irq_svc:
 	svc_entry
+
+#ifdef CONFIG_TRACE_IRQFLAGS
+	bl	trace_hardirqs_off
+#endif
+
 	irq_handler
 
 #ifdef CONFIG_PREEMPT

@@ -353,10 +353,11 @@ static void cpufreq_smartass_timer(unsigned long cpu)
 
 static void cpufreq_idle(void)
 {
-	struct smartass_info_s *this_smartass = &per_cpu(smartass_info, smp_processor_id());
+	struct smartass_info_s *this_smartass = &per_cpu(smartass_info, raw_smp_processor_id());
 	struct cpufreq_policy *policy = this_smartass->cur_policy;
 
-	if (!this_smartass->enable) {
+	
+	if (!this_smartass || !policy || !this_smartass->enable) {
 		pm_idle_old();
 		return;
 	}
@@ -367,7 +368,7 @@ static void cpufreq_idle(void)
 	pm_idle_old();
 
 	if (!timer_pending(&this_smartass->timer))
-		reset_timer(smp_processor_id(), this_smartass);
+		reset_timer(raw_smp_processor_id(), this_smartass);
 }
 
 /* We use the same work function to sale up and down */
@@ -742,7 +743,7 @@ static int cpufreq_governor_smartass(struct cpufreq_policy *new_policy,
 
 static void smartass_suspend(int cpu, int suspend)
 {
-	struct smartass_info_s *this_smartass = &per_cpu(smartass_info, smp_processor_id());
+	struct smartass_info_s *this_smartass = &per_cpu(smartass_info, raw_smp_processor_id());
 	struct cpufreq_policy *policy = this_smartass->cur_policy;
 	unsigned int new_freq;
 
@@ -768,7 +769,7 @@ static void smartass_suspend(int cpu, int suspend)
 		dprintk(SMARTASS_DEBUG_JUMPS,"SmartassS: suspending at %d\n",policy->cur);
 	}
 
-	reset_timer(smp_processor_id(),this_smartass);
+	reset_timer(raw_smp_processor_id(),this_smartass);
 }
 
 static void smartass_early_suspend(struct early_suspend *handler) {

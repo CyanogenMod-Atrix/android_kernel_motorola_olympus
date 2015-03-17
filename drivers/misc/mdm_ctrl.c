@@ -925,7 +925,8 @@ static ssize_t mdm_ctrl_read(struct file *filp, char __user * buff,
 	cinfo = (struct clientinfo *)filp->private_data;
 	if (!cinfo) {
 		pr_info("%s: File pointer invalid.\n", __func__);
-		return -EBADF;
+		ret = -EBADF;
+		goto out;
 	}
 	mask = cinfo->mask;
 

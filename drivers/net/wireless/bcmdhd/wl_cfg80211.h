@@ -61,13 +61,24 @@ struct wl_ibss;
 /* 0 invalidates all debug messages.  default is 1 */
 #define WL_DBG_LEVEL 0xFF
 
-#define	WL_ERR(args)									\
+#if defined(DHD_DEBUG)
+#define	WL_ERR(args)								\
 do {										\
-	if (wl_dbg_level & WL_DBG_ERR) {				\
+	if (wl_dbg_level & WL_DBG_ERR) {					\
 			printk(KERN_ERR "CFG80211-ERROR) %s : ", __func__);	\
 			printk args;						\
 		} 								\
 } while (0)
+#else /* defined(DHD_DEBUG) */
+#define	WL_ERR(args)								\
+do {										\
+	if ((wl_dbg_level & WL_DBG_ERR) && net_ratelimit())  {			\
+			printk(KERN_INFO "CFG80211-ERROR) %s : ", __func__);	\
+			printk args;						\
+		} 								\
+} while (0)
+#endif /* defined(DHD_DEBUG) */
+
 #ifdef WL_INFO
 #undef WL_INFO
 #endif
@@ -109,7 +120,7 @@ do {									\
 #else				/* !(WL_DBG_LEVEL > 0) */
 #define	WL_DBG(args)
 #endif				/* (WL_DBG_LEVEL > 0) */
-
+#define	WL_PNO(args)
 
 #define WL_SCAN_RETRY_MAX	3
 #define WL_NUM_PMKIDS_MAX	MAXPMKID
@@ -135,6 +146,14 @@ do {									\
 #define WL_ACT_FRAME_RETRY 4
 
 #define WL_INVALID 		-1
+
+
+/* Bring down SCB Timeout to 20secs from 60secs default */
+#ifndef WL_SCB_TIMEOUT
+#define WL_SCB_TIMEOUT 20
+#endif
+
+#define WLAN_REASON_DRIVER_ERROR 	WLAN_REASON_UNSPECIFIED
 
 /* driver status */
 enum wl_status {
@@ -164,6 +183,7 @@ enum wl_prof_list {
 	WL_PROF_IBSS,
 	WL_PROF_BAND,
 	WL_PROF_BSSID,
+	WL_PROF_PENDING_BSSID,
 	WL_PROF_ACT,
 	WL_PROF_BEACONINT,
 	WL_PROF_DTIMPERIOD
@@ -266,6 +286,7 @@ struct wl_profile {
 	struct wl_security sec;
 	struct wl_ibss ibss;
 	u8 bssid[ETHER_ADDR_LEN];
+	u8 pending_bssid[ETHER_ADDR_LEN];
 	u16 beacon_interval;
 	u8 dtim_period;
 	bool active;
@@ -381,7 +402,7 @@ struct afx_hdl {
 };
 
 /* private data of cfg80211 interface */
-struct wl_priv {
+typedef struct wl_priv {
 	struct wireless_dev *wdev;	/* representing wl cfg80211 device */
 
 	struct wireless_dev *p2p_wdev;	/* representing wl cfg80211 device for P2P */
@@ -450,7 +471,10 @@ struct wl_priv {
 	bool sched_scan_running;	/* scheduled scan req status */
 	u16 hostapd_chan;            /* remember chan requested by framework for hostapd  */
 	u16 deauth_reason;           /* Place holder to save deauth/disassoc reasons */
-};
+	u16 scan_busy_count;
+	struct work_struct work_scan_timeout;
+} wl_priv_t;
+
 
 static inline struct wl_bss_info *next_bss(struct wl_scan_results *list, struct wl_bss_info *bss)
 {
@@ -524,6 +548,29 @@ wl_get_status_all(struct wl_priv *wl, s32 status)
 	}
 	return cnt? true: false;
 }
+
+
+static inline void
+wl_set_status_all(struct wl_priv *wl, s32 status, u32 op)
+{
+	struct net_info *_net_info, *next;
+
+	list_for_each_entry_safe(_net_info, next, &wl->net_list, list) {
+		switch (op) {
+			case 1:
+				return; /* set all status is not allowed */
+			case 2:
+				clear_bit(status, &_net_info->sme_state);
+				break;
+			case 4:
+				return; /* change all status is not allowed */
+			default:
+				return; /* unknown operation */
+		}
+	}
+
+}
+
 
 static inline void
 wl_set_status_by_netdev(struct wl_priv *wl, s32 status,
@@ -615,6 +662,8 @@ wl_get_profile_by_netdev(struct wl_priv *wl, struct net_device *ndev)
 	(wl_set_status_by_netdev(wl, WL_STATUS_ ## stat, ndev, 1))
 #define wl_clr_drv_status(wl, stat, ndev)  \
 	(wl_set_status_by_netdev(wl, WL_STATUS_ ## stat, ndev, 2))
+#define wl_clr_drv_status_all(wl, stat)  \
+	(wl_set_status_all(wl, WL_STATUS_ ## stat, 2))
 #define wl_chg_drv_status(wl, stat, ndev)  \
 	(wl_set_status_by_netdev(wl, WL_STATUS_ ## stat, ndev, 4))
 
@@ -662,5 +711,8 @@ extern int wl_cfg80211_hang(struct net_device *dev, u16 reason);
 extern s32 wl_mode_to_nl80211_iftype(s32 mode);
 int wl_cfg80211_do_driver_init(struct net_device *net);
 void wl_cfg80211_enable_trace(int level);
+extern s32 wl_update_wiphybands(struct wl_priv *wl);
 extern s32 wl_cfg80211_if_is_group_owner(void);
+extern int wl_cfg80211_update_power_mode(struct net_device *dev);
+extern s32 wl_add_remove_eventmsg(struct net_device *ndev, u16 event, bool add);
 #endif				/* _wl_cfg80211_h_ */

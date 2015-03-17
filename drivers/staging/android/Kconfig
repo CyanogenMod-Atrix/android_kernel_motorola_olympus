@@ -8,6 +8,13 @@ config ANDROID
 
 if ANDROID
 
+config ANDROID_NO_BLK_PLUG
+	bool "Disable block plugging for Android"
+	default y
+	help
+	  Disable block plugging. Should enhance storage writing performance
+	  on certain kinds of flash storage. Benchmark this if in doubt.
+
 config ANDROID_BINDER_IPC
 	bool "Android Binder IPC Driver"
 	default n
