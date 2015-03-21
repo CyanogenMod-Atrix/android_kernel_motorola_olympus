@@ -30,6 +30,7 @@ echo "Proceeding. If \"ok\" isn't printed at end, something went wrong."
 makekernel
 (rm -rf mod && mkdir mod && cd mod && tar xvf ../../*.tar && mv `find -name '*.ko'` .  && tar cvf modules.tar *.ko)
 # Update modules.
+mkdir -p kupd/system/lib/modules || true
 (cd kupd/system/lib/modules && rm -rf *.ko && tar xvf ../../../../mod/modules.tar)
 buildpkg
 buildpkg "-hporch32"
