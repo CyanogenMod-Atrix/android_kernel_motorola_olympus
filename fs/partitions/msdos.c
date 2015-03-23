@@ -165,7 +165,7 @@ static void parse_extended(struct parsed_partitions *state,
 					continue;
 			}
 
-#ifdef CONFIG_MACH_OLYMPUS
+#ifdef CONFIG_MACH_OLYMPUS_BIGPART
 #define MB002			0x001000
 #define MB016			0x008000
 #define OLYMPUS_SYSTEM_START	0x00E000
