@@ -60,9 +60,12 @@ static bool is_suspended;
 static int suspend_index;
 
 #ifdef CONFIG_OLYMPUS_UV
+static bool is_earlysuspend = false;
 static unsigned int full_speed;
 extern int g_is_call_mode;
 #endif
+
+static bool same_freq = false;
 
 static bool force_policy_max;
 
@@ -120,6 +123,7 @@ void tegra_cpu_user_cap_set(unsigned int speed_khz)
 
 	mutex_unlock(&tegra_cpu_lock);
 }
+EXPORT_SYMBOL_GPL(tegra_cpu_user_cap_set);
 
 static int cpu_user_cap_set(const char *arg, const struct kernel_param *kp)
 {
@@ -477,30 +481,23 @@ unsigned int tegra_getspeed(unsigned int cpu)
 	rate = clk_get_rate(cpu_clk) / 1000;
 	return rate;
 }
-#ifdef CONFIG_TEGRA_AUTO_HOTPLUG
-#define CPU1_ON_PENDING_MS  4500
-#define CPU1_OFF_PENDING_MS 1000
-#define HI_LIMIT 760000
-#define LO_LIMIT 456000
-
-extern u64 last_change_time(void);
-static bool up_state = true;
-#endif
 
 int tegra_update_cpu_speed(unsigned long rate)
 {
 	int ret = 0;
+	same_freq = false;
 	struct cpufreq_freqs freqs;
 	freqs.old = tegra_getspeed(0);
 	freqs.new = rate;
-
 
 	rate = clk_round_rate(cpu_clk, rate * 1000);
 	if (!IS_ERR_VALUE(rate))
 		freqs.new = rate / 1000;
 
-	if (freqs.old == freqs.new)
+	if (freqs.old == freqs.new) {
+		same_freq = true;
 		return ret;
+	}
 
 	/*
 	 * Vote on memory bus frequency based on cpu frequency
@@ -609,8 +606,14 @@ int tegra_cpu_set_speed_cap(unsigned int *speed_cap)
 		*speed_cap = new_speed;
 
 	ret = tegra_update_cpu_speed(new_speed);
+
 	if (ret == 0)
-		tegra_auto_hotplug_governor(new_speed, false);
+#ifdef CONFIG_OLYMPUS_UV
+		if (!same_freq) tegra_auto_hotplug_governor(new_speed, is_earlysuspend);
+#else
+		if (!same_freq) tegra_auto_hotplug_governor(new_speed, false);
+#endif
+
 	return ret;
 }
 
@@ -777,27 +780,28 @@ static struct cpufreq_driver tegra_cpufreq_driver = {
 #ifdef CONFIG_OLYMPUS_UV
 static void tegra_cpu_early_suspend(struct early_suspend *h)
 {
+	is_earlysuspend = true;
 	if (!g_is_call_mode)
-		tegra_cpu_user_cap_set(216000);
-
+		tegra_cpu_user_cap_set(456000);
+/*	// it's handled by hotplug now
 	mutex_lock(&early_mutex);
-	/* turn off 2nd cpu ALWAYS */
 	if (num_online_cpus() > 1)
 		cpu_down(1);
 
 	mutex_unlock(&early_mutex);
+*/
 }
 
 static void tegra_cpu_late_resume(struct early_suspend *h)
 {
+	is_earlysuspend = false;
 	tegra_cpu_user_cap_set(full_speed);
-
+/*	// it's handled by hotplug now
 	mutex_lock(&early_mutex);
-	/* restore dual core operations */
 	if (num_online_cpus() < 2)
 		cpu_up(1);
 
-	mutex_unlock(&early_mutex);
+	mutex_unlock(&early_mutex);*/
 }
 
 static struct early_suspend tegra_cpu_early_suspend_handler = {
