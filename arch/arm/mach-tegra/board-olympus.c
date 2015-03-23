@@ -535,7 +535,7 @@ void __init tegra_olympus_reserve(void)
 	tegra_ram_console_debug_reserve(SZ_1M);
 #endif
 	//tegra_reserve(SZ_128M + SZ_64M, SZ_8M, SZ_16M);
-	tegra_reserve(SZ_128M + SZ_64M, SZ_8M, SZ_8M);
+	tegra_reserve(SZ_128M + SZ_128M, SZ_8M, SZ_16M);
 
 }
 
