@@ -555,8 +555,20 @@ config TEGRA_DC_USE_HW_BPP
 	  hardware value for bits per pixel setting.  Useful for
           preserving and displaying framebuffer content from bootloader.
 
+config OLYMPUS_BIGPART
+	bool "Allows using resized partitions on Atrix"
+	default y
+	help
+		Required for Kitkat.
+
 config OLYMPUS_UV
-	bool "Undervolting for Motorola Atrix 4g (Olympus)"
+	bool "Basic voltage limiting for Motorola Atrix 4g (Olympus)"
+	default n
+	help
+		Basic undervolting.
+
+config OLYMPUS_DEEP_UV
+	bool "Lowered voltages for cpu and cores for Motorola Atrix 4g (Olympus)"
 	default n
 	help
 		Extreme undervolting.
