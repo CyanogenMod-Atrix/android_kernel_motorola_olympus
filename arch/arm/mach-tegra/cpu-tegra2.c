@@ -43,15 +43,8 @@
 #define INITIAL_STATE		TEGRA_HP_IDLE
 #define DELAY_MS			0
 
-#define CPU1_ON_PENDING_MS  200
-#define CPU1_OFF_PENDING_MS 1000
-
-#ifdef CONFIG_TEGRA_CONVSERVATIVE_GOV_ON_EARLYSUPSEND
-#define CPU1_ON_PENDING_MS_SUSPEND  1000
-#define CPU1_OFF_PENDING_MS_SUSPEND  200
-static unsigned long up_suspend_delay = 0;
-static unsigned long down_suspend_delay = 0;
-#endif
+#define CPU1_ON_PENDING_MS  1000
+#define CPU1_OFF_PENDING_MS 200
 
 static bool pending = false;
 
@@ -145,16 +138,10 @@ void tegra2_auto_hotplug_governor(unsigned int cpu_freq, bool suspend)
 		if (cpu_freq > top_freq) {
 			pending = true;
 			hp_state = TEGRA_HP_UP;
-#ifdef CONFIG_TEGRA_CONVSERVATIVE_GOV_ON_EARLYSUPSEND
-			if (suspend) queue_delayed_work(hotplug_wq, &hotplug_work, up_suspend_delay);else
-#endif
-			queue_delayed_work(hotplug_wq, &hotplug_work, up_delay);
+			if (!suspend) queue_delayed_work(hotplug_wq, &hotplug_work, up_delay);
 		} else if (cpu_freq <= bottom_freq) {
 			pending = true;
 			hp_state = TEGRA_HP_DOWN;
-#ifdef CONFIG_TEGRA_CONVSERVATIVE_GOV_ON_EARLYSUPSEND
-			if (suspend) queue_delayed_work(hotplug_wq, &hotplug_work, down_suspend_delay);else
-#endif
 			queue_delayed_work(hotplug_wq, &hotplug_work, down_delay);
 		}
 		break;
@@ -164,10 +151,7 @@ void tegra2_auto_hotplug_governor(unsigned int cpu_freq, bool suspend)
 			if (!pending) {
 				pending = true;
 				hp_state = TEGRA_HP_UP;
-#ifdef CONFIG_TEGRA_CONVSERVATIVE_GOV_ON_EARLYSUPSEND
-			if (suspend) queue_delayed_work(hotplug_wq, &hotplug_work, up_suspend_delay);else
-#endif
-			queue_delayed_work(hotplug_wq, &hotplug_work, up_delay);
+				if (!suspend) queue_delayed_work(hotplug_wq, &hotplug_work, up_delay);
 			}
 		break;
 
@@ -176,10 +160,7 @@ void tegra2_auto_hotplug_governor(unsigned int cpu_freq, bool suspend)
 			if (!pending) {
 				pending = true;
 				hp_state = TEGRA_HP_DOWN;
-#ifdef CONFIG_TEGRA_CONVSERVATIVE_GOV_ON_EARLYSUPSEND
-			if (suspend) queue_delayed_work(hotplug_wq, &hotplug_work, down_suspend_delay);else
-#endif
-			queue_delayed_work(hotplug_wq, &hotplug_work, down_delay);
+				queue_delayed_work(hotplug_wq, &hotplug_work, down_delay);
 			}
 		break;
 
@@ -223,10 +204,7 @@ int tegra2_auto_hotplug_init(struct mutex *cpu_lock)
 	delay = msecs_to_jiffies(DELAY_MS);
 	up_delay = msecs_to_jiffies(CPU1_ON_PENDING_MS);
 	down_delay = msecs_to_jiffies(CPU1_OFF_PENDING_MS);
-#ifdef CONFIG_TEGRA_CONVSERVATIVE_GOV_ON_EARLYSUPSEND
-	up_suspend_delay = msecs_to_jiffies(CPU1_ON_PENDING_MS_SUSPEND);
-	down_suspend_delay = msecs_to_jiffies(CPU1_OFF_PENDING_MS_SUSPEND);
-#endif
+
 	tegra2_cpu_lock = cpu_lock;
 	hp_state = INITIAL_STATE;
 	pr_info("Tegra auto-hotplug initialized: %s\n",
