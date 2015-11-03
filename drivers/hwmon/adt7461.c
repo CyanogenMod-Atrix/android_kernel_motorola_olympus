@@ -579,7 +579,7 @@ static int adt7461_init_client(struct i2c_client *client)
 		data->flags |= ADT7461_FLAG_THERM2;
 
 		if (gpio_is_valid(pdata->irq_gpio)) {
-			if (!IS_ERR(gpio_request(pdata->irq_gpio, "adt7461"))) {
+			if (!IS_ERR_VALUE(gpio_request(pdata->irq_gpio, "adt7461"))) {
 				gpio_direction_input(pdata->irq_gpio);
 				data->irq_gpio = pdata->irq_gpio;
 			}

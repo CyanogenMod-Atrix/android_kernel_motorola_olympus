@@ -45,7 +45,7 @@ void *return_address(unsigned int);
 
 #else
 
-extern inline void *return_address(unsigned int level)
+extern inline __attribute__((__gnu_inline__)) void *return_address(unsigned int level)
 {
 	return NULL;
 }
